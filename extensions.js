@@ -8,7 +8,7 @@ export const FormExtension = {
     // 1) Récupération des valeurs dynamiques du payload
     const fields = trace.payload?.fields || [];
     const formTitle = trace.payload?.formTitle || 'Vos coordonnées';
-    const confidentialityText = trace.payload?.confidentialityText || 'Vos informations resteront confidentielles.';
+    const confidentialityText = trace.payload?.confidentialityText || ''; // si vide, on masque
     const submitText = trace.payload?.submitText || 'Envoyer';
     const primaryColor = trace.payload?.primaryColor || '#2e6ee1';
 
@@ -35,13 +35,15 @@ export const FormExtension = {
     const container = document.createElement('div');
     container.innerHTML = `
       <style>
-        /* Le conteneur occupe toute la largeur du widget avec une marge */
         .form-card {
-          width: calc(100% - 40px);
-          margin: 20px auto;
+          /* Pour occuper toute la largeur disponible dans le chat */
+          width: 100%;
+          /* On ajoute un peu de marge en haut/bas pour l'aération */
+          margin: 10px 0;
           background-color: #ffffff;
           border-radius: 8px;
           padding: 20px 25px;
+          box-sizing: border-box;
           box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
           font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
           color: #333;
@@ -113,13 +115,21 @@ export const FormExtension = {
       </div>
     `;
 
-    // 4) Insertion du titre et du footer
+    // 4) Sélection des éléments
     const formCard = container.querySelector('.form-card');
     const formElement = formCard.querySelector('#dynamic-form');
     const titleElement = formCard.querySelector('#form-title');
     const footerElement = formCard.querySelector('#form-footer');
+
+    // Titre
     titleElement.textContent = formTitle;
-    footerElement.textContent = confidentialityText;
+
+    // Si confidentialityText est vide, on masque le footer
+    if (!confidentialityText.trim()) {
+      footerElement.style.display = 'none';
+    } else {
+      footerElement.textContent = confidentialityText;
+    }
 
     // 5) Génération dynamique des champs
     fields.forEach((field) => {
@@ -147,7 +157,7 @@ export const FormExtension = {
     submitBtn.classList.add('submit-btn');
     formElement.appendChild(submitBtn);
 
-    // 7) Gestion de la soumission du formulaire
+    // 7) Gestion de la soumission
     formElement.addEventListener('submit', function (event) {
       event.preventDefault();
 
@@ -163,7 +173,7 @@ export const FormExtension = {
       });
 
       if (!formElement.checkValidity()) return;
-      
+
       // Empêche les doubles envois
       submitBtn.remove();
 
@@ -174,7 +184,7 @@ export const FormExtension = {
       });
     });
 
-    // 8) Ajout du conteneur dans l'élément passé en paramètre
+    // 8) Ajout du conteneur au DOM
     element.appendChild(container);
   },
 };

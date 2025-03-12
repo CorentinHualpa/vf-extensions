@@ -5,16 +5,17 @@ export const FormExtension = {
     trace.type === 'ext_form' || trace.payload?.name === 'ext_form',
 
   render: ({ trace, element }) => {
-    // 1) Injection d'un style global pour forcer la largeur de la bulle
+    // 1) Injection d'un style global (pour enlever les marges par défaut de la bulle)
     const globalStyle = document.createElement('style');
     globalStyle.textContent = `
+      /* Force la bulle de l’extension à ne pas ajouter de padding/marge superflu */
       .vfrc-message--extension-Forms,
       .vfrc-message--extension-Forms .vfrc-bubble {
-        width: 100% !important;
-        max-width: 100% !important;
         margin: 0 !important;
         padding: 0 !important;
         display: block !important;
+        width: auto !important; /* Laisse la .form-card gérer sa largeur en px */
+        max-width: none !important;
       }
     `;
     document.head.appendChild(globalStyle);
@@ -26,7 +27,7 @@ export const FormExtension = {
     const submitText = trace.payload?.submitText || 'Envoyer';
     const primaryColor = trace.payload?.primaryColor || '#2e6ee1';
 
-    // 3) Fonction utilitaire pour éclaircir la couleur
+    // 3) Petite fonction pour éclaircir la couleur (dégradé)
     function shadeColor(color, percent) {
       const R = parseInt(color.substring(1, 3), 16);
       const G = parseInt(color.substring(3, 5), 16);
@@ -34,17 +35,20 @@ export const FormExtension = {
       const r = Math.min(255, Math.floor(R * (100 + percent) / 100));
       const g = Math.min(255, Math.floor(G * (100 + percent) / 100));
       const b = Math.min(255, Math.floor(B * (100 + percent) / 100));
-      return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+      return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b
+        .toString(16)
+        .padStart(2, '0')}`;
     }
     const lighterColor = shadeColor(primaryColor, 15);
 
-    // 4) Construction du conteneur principal (formulaire)
+    // 4) Construction du conteneur principal
     const container = document.createElement('div');
     container.innerHTML = `
       <style>
         .form-card {
-          width: 100%;
-          margin: 10px 0;
+          /* Largeur fixe en pixels, adaptée au popover */
+          width: 360px;
+          margin: 10px auto;
           background-color: #ffffff;
           border-radius: 8px;
           padding: 20px 25px;
@@ -112,6 +116,7 @@ export const FormExtension = {
           text-align: center;
         }
       </style>
+
       <div class="form-card">
         <h2 id="form-title"></h2>
         <form id="dynamic-form"></form>
@@ -119,42 +124,48 @@ export const FormExtension = {
       </div>
     `;
 
-    // 5) Injection du titre et gestion du footer (masquer si vide)
+    // 5) Sélection des éléments
     const formCard = container.querySelector('.form-card');
     const formElement = formCard.querySelector('#dynamic-form');
     const titleElement = formCard.querySelector('#form-title');
     const footerElement = formCard.querySelector('#form-footer');
+
+    // Titre
     titleElement.textContent = formTitle;
+
+    // Affichage ou non du footer
     if (!confidentialityText.trim()) {
       footerElement.style.display = 'none';
     } else {
       footerElement.textContent = confidentialityText;
     }
 
-    // 6) Génération dynamique des champs à partir du payload
+    // 6) Génération dynamique des champs
     fields.forEach((field) => {
       const formGroup = document.createElement('div');
       formGroup.classList.add('form-group');
       const label = document.createElement('label');
       label.setAttribute('for', field.name);
       label.textContent = field.label;
+
       const input = document.createElement('input');
       input.setAttribute('name', field.name);
       input.setAttribute('type', field.type || 'text');
       if (field.required) input.required = true;
       if (field.pattern) input.pattern = field.pattern;
+
       formGroup.appendChild(label);
       formGroup.appendChild(input);
       formElement.appendChild(formGroup);
     });
 
-    // 7) Bouton de soumission
+    // 7) Bouton Submit
     const submitBtn = document.createElement('button');
     submitBtn.textContent = submitText;
     submitBtn.classList.add('submit-btn');
     formElement.appendChild(submitBtn);
 
-    // 8) Gestion de la soumission du formulaire
+    // 8) Écouteur de soumission
     formElement.addEventListener('submit', function (event) {
       event.preventDefault();
       const formData = {};
@@ -171,11 +182,11 @@ export const FormExtension = {
       submitBtn.remove();
       window.voiceflow.chat.interact({
         type: 'complete',
-        payload: formData
+        payload: formData,
       });
     });
 
-    // 9) Ajout du conteneur dans l'élément de rendu
+    // 9) Ajout du conteneur dans l'élément
     element.appendChild(container);
   },
 };

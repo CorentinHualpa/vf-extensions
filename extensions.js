@@ -5,40 +5,55 @@ export const FormExtension = {
     trace.type === 'ext_form' || trace.payload?.name === 'ext_form',
 
   render: ({ trace, element }) => {
-    // 1) Récupération des valeurs dynamiques du payload
+    // 1) Injecter un style global qui force la bulle à 100%
+    const globalStyle = document.createElement('style');
+    globalStyle.textContent = `
+      /* Force l'extension à occuper la largeur complète du conteneur */
+      .vfrc-message--extension-Forms {
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+
+      /* Dans certains cas, Voiceflow enveloppe encore la bulle dans .vfrc-bubble */
+      .vfrc-message--extension-Forms .vfrc-bubble {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-sizing: border-box;
+      }
+    `;
+    document.head.appendChild(globalStyle);
+
+    // 2) Récupérer votre payload
     const fields = trace.payload?.fields || [];
     const formTitle = trace.payload?.formTitle || 'Vos coordonnées';
-    const confidentialityText = trace.payload?.confidentialityText || ''; // si vide, on masque
+    const confidentialityText = trace.payload?.confidentialityText || '';
     const submitText = trace.payload?.submitText || 'Envoyer';
     const primaryColor = trace.payload?.primaryColor || '#2e6ee1';
 
-    // 2) Petite fonction pour éclaircir la couleur (pour le dégradé)
+    // 3) Petite fonction pour éclaircir la couleur
     function shadeColor(color, percent) {
-      // color doit être au format "#RRGGBB"
       const R = parseInt(color.substring(1, 3), 16);
       const G = parseInt(color.substring(3, 5), 16);
       const B = parseInt(color.substring(5, 7), 16);
-
       const r = Math.min(255, Math.floor(R * (100 + percent) / 100));
       const g = Math.min(255, Math.floor(G * (100 + percent) / 100));
       const b = Math.min(255, Math.floor(B * (100 + percent) / 100));
-
-      const rr = r.toString(16).padStart(2, '0');
-      const gg = g.toString(16).padStart(2, '0');
-      const bb = b.toString(16).padStart(2, '0');
-
-      return `#${rr}${gg}${bb}`;
+      return `#${r.toString(16).padStart(2, '0')}${g
+        .toString(16)
+        .padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
     }
     const lighterColor = shadeColor(primaryColor, 15);
 
-    // 3) Construction du conteneur principal
+    // 4) Construire le conteneur principal
     const container = document.createElement('div');
     container.innerHTML = `
       <style>
         .form-card {
-          /* Pour occuper toute la largeur disponible dans le chat */
           width: 100%;
-          /* On ajoute un peu de marge en haut/bas pour l'aération */
           margin: 10px 0;
           background-color: #ffffff;
           border-radius: 8px;
@@ -115,7 +130,7 @@ export const FormExtension = {
       </div>
     `;
 
-    // 4) Sélection des éléments
+    // 5) Sélection des éléments
     const formCard = container.querySelector('.form-card');
     const formElement = formCard.querySelector('#dynamic-form');
     const titleElement = formCard.querySelector('#form-title');
@@ -124,14 +139,14 @@ export const FormExtension = {
     // Titre
     titleElement.textContent = formTitle;
 
-    // Si confidentialityText est vide, on masque le footer
+    // Affichage ou non du footer
     if (!confidentialityText.trim()) {
       footerElement.style.display = 'none';
     } else {
       footerElement.textContent = confidentialityText;
     }
 
-    // 5) Génération dynamique des champs
+    // Génération dynamique des champs
     fields.forEach((field) => {
       const formGroup = document.createElement('div');
       formGroup.classList.add('form-group');
@@ -151,13 +166,13 @@ export const FormExtension = {
       formElement.appendChild(formGroup);
     });
 
-    // 6) Bouton Submit
+    // Bouton Submit
     const submitBtn = document.createElement('button');
     submitBtn.textContent = submitText;
     submitBtn.classList.add('submit-btn');
     formElement.appendChild(submitBtn);
 
-    // 7) Gestion de la soumission
+    // Écouteur de soumission
     formElement.addEventListener('submit', function (event) {
       event.preventDefault();
 
@@ -174,17 +189,15 @@ export const FormExtension = {
 
       if (!formElement.checkValidity()) return;
 
-      // Empêche les doubles envois
       submitBtn.remove();
 
-      // Envoie les données à Voiceflow
       window.voiceflow.chat.interact({
         type: 'complete',
-        payload: formData
+        payload: formData,
       });
     });
 
-    // 8) Ajout du conteneur au DOM
+    // 6) Ajout du conteneur au DOM
     element.appendChild(container);
   },
 };

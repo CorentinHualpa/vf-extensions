@@ -5,7 +5,7 @@ export const FormExtension = {
     trace.type === 'ext_form' || trace.payload?.name === 'ext_form',
 
   render: ({ trace, element }) => {
-    // 1) Supprimer les marges/paddings de la “bulle”
+    // 1) Supprimer les marges/paddings de la "bulle" et optimiser l'espace
     const globalStyle = document.createElement('style');
     globalStyle.textContent = `
       .vfrc-message--extension-Forms,
@@ -16,6 +16,25 @@ export const FormExtension = {
         width: 100% !important;
         max-width: 100% !important;
         box-sizing: border-box !important;
+      }
+      
+      /* Styles pour assurer que le widget prend toute la largeur disponible */
+      .vfrc-message--extension-Forms .vfrc-bubble-content {
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+      }
+      
+      /* Forcer le contenu à prendre toute la largeur */
+      .vfrc-message--extension-Forms .vfrc-message-content {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+      
+      /* Supprimer les marges internes excessives */
+      .vfrc-message.vfrc-message--extension-Forms {
+        width: 100% !important;
+        max-width: 100% !important;
       }
     `;
     document.head.appendChild(globalStyle);
@@ -41,16 +60,19 @@ export const FormExtension = {
     }
     const lighterColor = shadeColor(primaryColor, 15);
 
-    // 4) Construction du conteneur
+    // 4) Construction du conteneur avec une largeur à 100%
     const container = document.createElement('div');
+    container.style.width = '100%';
+    container.style.maxWidth = '100%';
+    container.style.boxSizing = 'border-box';
     container.innerHTML = `
       <style>
         .form-card {
           width: 100%;
-          /* Pas de margin, pour remplir le popover */
+          max-width: 100%;
           margin: 0;
           background-color: #ffffff;
-          border-radius: 0; /* on peut aussi enlever le border-radius si on veut */
+          border-radius: 0;
           padding: 15px;
           box-sizing: border-box;
           font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -62,15 +84,18 @@ export const FormExtension = {
           font-size: 1.2em;
           font-weight: 600;
           color: ${primaryColor};
+          width: 100%;
         }
         .form-group {
           margin-bottom: 15px;
+          width: 100%;
         }
         .form-group label {
           display: block;
           font-size: 0.85em;
           color: #666;
           margin-bottom: 5px;
+          width: 100%;
         }
         .form-group input[type="text"],
         .form-group input[type="email"],
@@ -93,7 +118,7 @@ export const FormExtension = {
           border-color: red;
         }
         .submit-btn {
-          display: inline-block;
+          display: block;
           width: 100%;
           padding: 12px 0;
           border-radius: 4px;
@@ -113,6 +138,7 @@ export const FormExtension = {
           font-size: 0.8em;
           color: #999;
           text-align: center;
+          width: 100%;
         }
       </style>
       <div class="form-card">
@@ -181,7 +207,24 @@ export const FormExtension = {
       });
     });
 
-    // 9) Ajout
+    // 9) Ajout au DOM et forçage de la largeur
+    element.style.width = '100%';
+    element.style.maxWidth = '100%';
     element.appendChild(container);
+    
+    // 10) Ajout d'un script pour forcer la largeur après le rendu
+    setTimeout(() => {
+      const messageElement = element.closest('.vfrc-message');
+      if (messageElement) {
+        messageElement.style.width = '100%';
+        messageElement.style.maxWidth = '100%';
+        
+        const bubbleContent = messageElement.querySelector('.vfrc-bubble-content');
+        if (bubbleContent) {
+          bubbleContent.style.width = '100%';
+          bubbleContent.style.maxWidth = '100%';
+        }
+      }
+    }, 0);
   },
 };

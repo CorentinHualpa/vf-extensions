@@ -21,6 +21,7 @@ export const MultiSelect = {
             } = trace.payload;
 
             let totalChecked = 0;
+            let userInputValues = {};
             
             // Créer un container principal
             const container = document.createElement('div');
@@ -72,6 +73,27 @@ export const MultiSelect = {
                 }
                 .multiselect-container .title {
                     color: ${textColor} !important;
+                }
+                .multiselect-container .user-input-container {
+                    margin-top: 15px;
+                    margin-bottom: 10px;
+                }
+                .multiselect-container .user-input-label {
+                    display: block;
+                    margin-bottom: 8px;
+                    color: ${textColor};
+                    font-weight: bold;
+                }
+                .multiselect-container .user-input-field {
+                    width: 100%;
+                    padding: 8px;
+                    border-radius: 5px;
+                    border: 1px solid #ccc;
+                    font-size: 0.9em;
+                }
+                .multiselect-container .user-input-field:focus {
+                    border-color: ${buttonColor};
+                    outline: none;
                 }
             `;
             container.appendChild(styleElement);
@@ -179,68 +201,98 @@ export const MultiSelect = {
                         const optionDiv = document.createElement('div');
                         optionDiv.classList.add('option-container');
                         
-                        const input = document.createElement('input');
-                        input.type = multiselect ? 'checkbox' : 'radio';
-                        input.style.display = multiselect ? 'block' : 'none';
-                        input.name = `option-${index}`;
-                        input.id = `${section.label}-${option.name}-${option.action}-${section.id || ''}`;
-                        
-                        const label = document.createElement('label');
-                        label.setAttribute('for', input.id);
-                        label.textContent = option.name;
-                        
-                        optionDiv.appendChild(input);
-                        optionDiv.appendChild(label);
+                        if (option.action === 'user_input') {
+                            // Créer un conteneur pour le champ de saisie utilisateur
+                            const userInputDiv = document.createElement('div');
+                            userInputDiv.classList.add('user-input-container');
+                            
+                            // Créer le libellé du champ
+                            const userInputLabel = document.createElement('label');
+                            userInputLabel.classList.add('user-input-label');
+                            userInputLabel.textContent = option.label || 'Entrez votre réponse :';
+                            
+                            // Créer le champ de saisie
+                            const userInputField = document.createElement('input');
+                            userInputField.type = 'text';
+                            userInputField.classList.add('user-input-field');
+                            userInputField.placeholder = option.placeholder || 'Saisissez votre texte ici...';
+                            userInputField.id = `${section.label}-user-input-${section.id || ''}`;
+                            
+                            // Stocker la référence à ce champ pour récupérer sa valeur plus tard
+                            userInputValues[userInputField.id] = '';
+                            
+                            // Mettre à jour la valeur stockée à chaque modification
+                            userInputField.addEventListener('input', (e) => {
+                                userInputValues[userInputField.id] = e.target.value;
+                            });
+                            
+                            userInputDiv.appendChild(userInputLabel);
+                            userInputDiv.appendChild(userInputField);
+                            sectionDiv.appendChild(userInputDiv);
+                        } else {
+                            const input = document.createElement('input');
+                            input.type = multiselect ? 'checkbox' : 'radio';
+                            input.style.display = multiselect ? 'block' : 'none';
+                            input.name = `option-${index}`;
+                            input.id = `${section.label}-${option.name}-${option.action}-${section.id || ''}`;
+                            
+                            const label = document.createElement('label');
+                            label.setAttribute('for', input.id);
+                            label.textContent = option.name;
+                            
+                            optionDiv.appendChild(input);
+                            optionDiv.appendChild(label);
 
-                        input.addEventListener('change', () => {
-                            updateTotalChecked();
-                            const allCheckboxes = sectionDiv.querySelectorAll('input[type="checkbox"]');
-                            const checkedCount = Array.from(allCheckboxes).filter(checkbox => checkbox.checked).length;
+                            input.addEventListener('change', () => {
+                                updateTotalChecked();
+                                const allCheckboxes = sectionDiv.querySelectorAll('input[type="checkbox"]');
+                                const checkedCount = Array.from(allCheckboxes).filter(checkbox => checkbox.checked).length;
 
-                            if (option.action === 'all' && input.checked) {
-                                allCheckboxes.forEach(checkbox => {
-                                    if (checkbox !== input) {
-                                        checkbox.disabled = true;
-                                        checkbox.checked = false;
-                                    }
-                                });
-                            } else if (option.action === 'all' && !input.checked) {
-                                allCheckboxes.forEach(checkbox => {
-                                    checkbox.disabled = false;
-                                });
-                            } else if (checkedCount >= maxSelect) {
-                                allCheckboxes.forEach(checkbox => {
-                                    if (!checkbox.checked) {
-                                        checkbox.disabled = true;
-                                    }
-                                });
-                            } else {
-                                if (totalMaxSelect === 0) {
+                                if (option.action === 'all' && input.checked) {
+                                    allCheckboxes.forEach(checkbox => {
+                                        if (checkbox !== input) {
+                                            checkbox.disabled = true;
+                                            checkbox.checked = false;
+                                        }
+                                    });
+                                } else if (option.action === 'all' && !input.checked) {
                                     allCheckboxes.forEach(checkbox => {
                                         checkbox.disabled = false;
                                     });
+                                } else if (checkedCount >= maxSelect) {
+                                    allCheckboxes.forEach(checkbox => {
+                                        if (!checkbox.checked) {
+                                            checkbox.disabled = true;
+                                        }
+                                    });
+                                } else {
+                                    if (totalMaxSelect === 0) {
+                                        allCheckboxes.forEach(checkbox => {
+                                            checkbox.disabled = false;
+                                        });
+                                    }
                                 }
-                            }
 
-                            if (!multiselect) {
-                                label.style.backgroundColor = textColor;
-                                label.style.color = buttonColor;
-                                
-                                const selectedOption = {
-                                    section: section.label,
-                                    selections: [option.name]
-                                };
+                                if (!multiselect) {
+                                    label.style.backgroundColor = textColor;
+                                    label.style.color = buttonColor;
+                                    
+                                    const selectedOption = {
+                                        section: section.label,
+                                        selections: [option.name]
+                                    };
 
-                                // Approche simplifiée qui fonctionne avec vos autres extensions
-                                console.log("Envoi de sélection simple:", selectedOption);
-                                window.voiceflow.chat.interact({
-                                    type: 'text',
-                                    payload: option.name
-                                });
-                            }
-                        });
+                                    // Approche simplifiée qui fonctionne avec vos autres extensions
+                                    console.log("Envoi de sélection simple:", selectedOption);
+                                    window.voiceflow.chat.interact({
+                                        type: 'text',
+                                        payload: option.name
+                                    });
+                                }
+                            });
 
-                        sectionDiv.appendChild(optionDiv);
+                            sectionDiv.appendChild(optionDiv);
+                        }
                     });
                 }
 
@@ -266,26 +318,40 @@ export const MultiSelect = {
                             const sectionElement = container.querySelectorAll('.section-container')[idx];
                             if (!sectionElement) return null;
                             
+                            // Récupérer les cases cochées
                             const sectionSelections = Array.from(
                                 sectionElement.querySelectorAll('input[type="checkbox"]:checked')
                             ).map(checkbox => checkbox.nextElementSibling.innerText);
-
+                            
+                            // Récupérer les valeurs des champs de saisie utilisateur
+                            const userInputFields = {};
+                            const userInputId = `${section.label}-user-input-${section.id || ''}`;
+                            if (userInputValues[userInputId] !== undefined) {
+                                userInputFields.userInput = userInputValues[userInputId];
+                            }
+                            
                             return {
                                 section: section.label, 
-                                selections: sectionSelections
+                                selections: sectionSelections,
+                                userInput: userInputFields.userInput || ""
                             };
-                        }).filter(section => section && section.selections.length > 0);
+                        }).filter(section => section && (section.selections.length > 0 || section.userInput));
 
                         // Masquer tous les boutons après sélection
                         buttonContainer.querySelectorAll('.submit-btn').forEach(btn => {
                             btn.style.display = 'none';
                         });
                         
-                        // Utiliser le même format simpliste que FormExtension
+                        // Construire une réponse complète avec les sélections et les entrées utilisateur
                         console.log("Envoi des sélections:", selectedOptions);
+                        
+                        // Convertir les sélections en format JSON
+                        const selectionJSON = JSON.stringify(selectedOptions);
+                        
+                        // Utiliser le même format simpliste que FormExtension
                         window.voiceflow.chat.interact({
                             type: 'text',
-                            payload: button.text
+                            payload: button.text + " - Sélections: " + selectionJSON
                         });
                     });
 

@@ -6,7 +6,7 @@ export const CalendlyExtension = {
     trace.type === 'ext_calendly' || trace.payload?.name === 'ext_calendly',
 
   render: ({ trace, element }) => {
-    // Récupérer les paramètres avec des valeurs par défaut
+    // Récupérer les paramètres depuis le payload (avec des valeurs par défaut)
     const {
       url = 'https://calendly.com/corentin-hualpa/echange-30-minutes',
       height = 700,
@@ -14,22 +14,45 @@ export const CalendlyExtension = {
       backgroundColor = '#ffffff'
     } = trace.payload || {};
 
-    // Créer un conteneur pour le widget Calendly
+    // Créer un conteneur pour accueillir le widget Calendly
     const container = document.createElement('div');
     container.style.backgroundColor = backgroundColor;
-    container.style.width = '100%';
-
-    // Créer la div Calendly inline widget (inspirée du code embed officiel)
-    const calendlyDiv = document.createElement('div');
-    calendlyDiv.className = 'calendly-inline-widget';
-    calendlyDiv.setAttribute('data-url', url);
-    calendlyDiv.style.minWidth = minWidth;
-    calendlyDiv.style.height = `${height}px`;
-
-    container.appendChild(calendlyDiv);
+    container.style.minWidth = minWidth;
+    container.style.height = `${height}px`;
+    // On peut ajouter d'autres styles si besoin (margin, border, etc.)
     element.appendChild(container);
 
-    // Attacher immédiatement un écouteur d'événements pour capter les messages Calendly
+    // Fonction qui initialise l'embed inline Calendly dans le conteneur
+    const initWidget = () => {
+      if (window.Calendly && typeof window.Calendly.initInlineWidget === 'function') {
+        window.Calendly.initInlineWidget({
+          url: url,
+          parentElement: container,
+          // Vous pouvez ajouter ici d'éventuels paramètres de prefill ou utm, par exemple :
+          // prefill: { name: 'John Doe', email: 'john.doe@example.com' },
+          // utm: { utm_campaign: 'myCampaign', utm_source: 'mySource' }
+        });
+      } else {
+        // Si le script Calendly n'est pas encore chargé, on réessaie après 100ms
+        setTimeout(initWidget, 100);
+      }
+    };
+
+    // Charger le script Calendly s'il n'est pas déjà présent
+    if (!document.querySelector('script[src="https://assets.calendly.com/assets/external/widget.js"]')) {
+      const script = document.createElement('script');
+      script.type = 'text/javascript';
+      script.src = 'https://assets.calendly.com/assets/external/widget.js';
+      script.async = true;
+      script.onload = () => {
+        initWidget();
+      };
+      document.head.appendChild(script);
+    } else {
+      initWidget();
+    }
+
+    // Optionnel : attacher un écouteur d'événements pour capter par exemple l'événement "calendly.event_scheduled"
     const calendlyListener = (e) => {
       if (
         e.data &&
@@ -39,9 +62,7 @@ export const CalendlyExtension = {
       ) {
         console.log('[CalendlyExtension] Message reçu :', e.data);
         if (e.data.event === 'calendly.event_scheduled') {
-          // On retire l'écouteur pour éviter les appels multiples
           window.removeEventListener('message', calendlyListener);
-
           const eventDetails = e.data.payload || {};
           // Notifier Voiceflow que le rendez-vous est programmé
           window.voiceflow.chat.interact({
@@ -58,16 +79,6 @@ export const CalendlyExtension = {
       }
     };
 
-    // Attache l'écouteur dès maintenant (avant que le widget ne soit chargé)
     window.addEventListener('message', calendlyListener);
-
-    // Charger le script Calendly s'il n'est pas déjà présent
-    if (!document.querySelector('script[src="https://assets.calendly.com/assets/external/widget.js"]')) {
-      const script = document.createElement('script');
-      script.type = 'text/javascript';
-      script.src = 'https://assets.calendly.com/assets/external/widget.js';
-      script.async = true;
-      document.head.appendChild(script);
-    }
   }
 };

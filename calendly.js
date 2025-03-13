@@ -1,27 +1,29 @@
 export const CalendlyExtension = {
   name: 'Calendly',
   type: 'response',
-  match: ({ trace }) => trace.type === 'calendly' || trace.payload?.type === 'calendly',
-  
+  match: ({ trace }) => 
+    // On matche si trace.type = "calendly" OU si trace.payload.type = "calendly"
+    trace.type === 'calendly' || trace.payload?.type === 'calendly',
+
   render: ({ trace, element }) => {
     try {
       console.log("Démarrage du rendu de l'extension Calendly");
       
       // Récupérer les paramètres depuis le payload
       const {
-        url = 'https://calendly.com/votre-compte',  // URL Calendly par défaut
-        height = 650,                               // Hauteur par défaut
-        width = '100%',                             // Largeur par défaut
-        backgroundColor = '#ffffff',                // Couleur de fond
-        textColor = '#333333',                      // Couleur du texte
-        primaryColor = '#3A87AD',                   // Couleur primaire (boutons)
-        hideCookieBanner = true,                    // Masquer la bannière de cookies
-        hideEventTypeDetails = false,               // Afficher les détails des types d'événements
-        hideGdprBanner = true,                      // Masquer la bannière GDPR
-        hidePrerequisiteBanner = true               // Masquer la bannière des prérequis
+        url = 'https://calendly.com/votre-compte', // URL Calendly par défaut
+        height = 650,                              // Hauteur par défaut
+        width = '100%',                            // Largeur par défaut
+        backgroundColor = '#ffffff',               // Couleur de fond
+        textColor = '#333333',                     // Couleur du texte
+        primaryColor = '#3A87AD',                  // Couleur primaire (boutons)
+        hideCookieBanner = true,                   // Masquer la bannière de cookies
+        hideEventTypeDetails = false,              // Afficher les détails des types d'événements
+        hideGdprBanner = true,                     // Masquer la bannière GDPR
+        hidePrerequisiteBanner = true              // Masquer la bannière des prérequis
       } = trace.payload || {};
       
-      // Styles globaux pour optimiser l'espace
+      // Styles globaux
       const styleElement = document.createElement('style');
       styleElement.textContent = `
         .vfrc-message--extension-Calendly,
@@ -83,7 +85,6 @@ export const CalendlyExtension = {
       // Ajouter un spinner de chargement
       const loadingSpinner = document.createElement('div');
       loadingSpinner.classList.add('calendly-spinner');
-      loadingSpinner.textContent = "";
       container.appendChild(loadingSpinner);
       
       // Créer l'iframe pour Calendly
@@ -91,17 +92,17 @@ export const CalendlyExtension = {
       calendlyIframe.style.width = width;
       calendlyIframe.style.height = `${height}px`;
       calendlyIframe.style.border = 'none';
-      calendlyIframe.style.display = 'none';  // Caché jusqu'au chargement
+      calendlyIframe.style.display = 'none';  // on le cache avant le load
       
       // Construire l'URL avec les paramètres
       let calendlyUrl = url;
-      if (url.indexOf('?') === -1) {
+      if (calendlyUrl.indexOf('?') === -1) {
         calendlyUrl += '?';
       } else {
         calendlyUrl += '&';
       }
       
-      calendlyUrl += `hide_gdpr_banner=${hideCookieBanner}`;
+      calendlyUrl += `hide_gdpr_banner=${hideGdprBanner}`;
       calendlyUrl += `&hide_cookie_banner=${hideCookieBanner}`;
       calendlyUrl += `&hide_event_type_details=${hideEventTypeDetails}`;
       calendlyUrl += `&hide_prerequisite_banner=${hidePrerequisiteBanner}`;
@@ -115,33 +116,23 @@ export const CalendlyExtension = {
       calendlyIframe.addEventListener('load', () => {
         loadingSpinner.style.display = 'none';
         calendlyIframe.style.display = 'block';
-        
-        // Redimensionnement du conteneur parent si nécessaire
-        setTimeout(() => {
-          const messageElement = element.closest('.vfrc-message');
-          if (messageElement) {
-            messageElement.style.width = '100%';
-            messageElement.style.maxWidth = '100%';
-          }
-        }, 100);
       });
       
       container.appendChild(calendlyIframe);
       element.appendChild(container);
       
-      // Intégrer le script Calendly pour les événements
+      // Intégrer le script Calendly pour capter les événements
       const script = document.createElement('script');
       script.src = 'https://assets.calendly.com/assets/external/widget.js';
       script.async = true;
       
-      // Écouter les événements Calendly
       script.onload = () => {
+        // Sur écoute "postMessage" pour les events Calendly
         window.addEventListener('message', (e) => {
           if (e.data.event && e.data.event.indexOf('calendly') === 0) {
-            // Traiter les événements Calendly
             console.log('Événement Calendly reçu:', e.data.event);
             
-            // Capture des événements de prise de rendez-vous
+            // Quand un rendez-vous est pris
             if (e.data.event === 'calendly.event_scheduled') {
               const eventDetails = e.data.payload;
               console.log('Rendez-vous programmé:', eventDetails);

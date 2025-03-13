@@ -5,17 +5,17 @@ export const CalendlyExtension = {
     trace.type === 'ext_calendly' || trace.payload?.name === 'ext_calendly',
 
   render: ({ trace, element }) => {
-    // S'assurer que l'objet voiceflow existe et initialiser log_details
-    window.voiceflow = window.voiceflow || {};
-    window.voiceflow.log_details = window.voiceflow.log_details || "";
+    // S'assurer que l'objet voiceflow existe et initialiser log_details dans globalThis
+    globalThis.voiceflow = globalThis.voiceflow || {};
+    globalThis.voiceflow.log_details = globalThis.voiceflow.log_details || "";
 
     const log = (msg) => {
       console.log(msg);
-      window.voiceflow.log_details += msg + "\n";
+      globalThis.voiceflow.log_details += msg + "\n";
     };
 
     try {
-      // Récupération des paramètres depuis le payload
+      // Récupérer les paramètres depuis le payload
       const {
         url = 'https://calendly.com/corentin-hualpa/echange-30-minutes?hide_event_type_details=1&hide_gdpr_banner=1',
         height = 900
@@ -44,7 +44,7 @@ export const CalendlyExtension = {
       const container = document.createElement('div');
       container.style.width = '100%';
       container.style.height = `${height}px`;
-      container.style.overflow = 'hidden';
+      container.style.overflow = 'hidden'; // Pour éviter la scrollbar interne
       container.style.boxSizing = 'border-box';
       element.appendChild(container);
 
@@ -59,9 +59,9 @@ export const CalendlyExtension = {
 
       // Fonction pour initialiser le widget Calendly en mode inline
       const initWidget = () => {
-        if (window.Calendly && typeof window.Calendly.initInlineWidget === 'function') {
+        if (globalThis.Calendly && typeof globalThis.Calendly.initInlineWidget === 'function') {
           log("CalendlyExtension: Appel de Calendly.initInlineWidget");
-          window.Calendly.initInlineWidget({
+          globalThis.Calendly.initInlineWidget({
             url,
             parentElement: container
           });
@@ -70,7 +70,7 @@ export const CalendlyExtension = {
         }
       };
 
-      // Charger le script Calendly si nécessaire
+      // Charger le script Calendly s'il n'est pas déjà présent
       if (!document.querySelector('script[src="https://assets.calendly.com/assets/external/widget.js"]')) {
         const script = document.createElement('script');
         script.src = 'https://assets.calendly.com/assets/external/widget.js';
@@ -88,7 +88,7 @@ export const CalendlyExtension = {
       }
 
       // Initialiser une variable globale pour stocker la sélection temporaire
-      window.lastCalendlySelection = {};
+      globalThis.lastCalendlySelection = {};
 
       // Écoute des événements Calendly
       const calendlyListener = (e) => {
@@ -100,43 +100,42 @@ export const CalendlyExtension = {
 
         // Quand l'utilisateur sélectionne un créneau, stocker localement (sans déclencher Voiceflow)
         if (e.data.event === 'calendly.date_and_time_selected') {
-          window.lastCalendlySelection = {
+          globalThis.lastCalendlySelection = {
             dateSelected: e.data.payload?.date || '',
             timeSelected: e.data.payload?.time || '',
             rawPayload: e.data.payload
           };
-          log("CalendlyExtension: Sélection temporaire enregistrée : " + JSON.stringify(window.lastCalendlySelection));
+          log("CalendlyExtension: Sélection temporaire enregistrée : " + JSON.stringify(globalThis.lastCalendlySelection));
         }
 
-        // Quand l'utilisateur confirme le rendez-vous
+        // Quand l'utilisateur confirme le rendez-vous, on envoie l'info à Voiceflow
         if (e.data.event === 'calendly.event_scheduled') {
-          window.removeEventListener('message', calendlyListener);
+          globalThis.removeEventListener('message', calendlyListener);
           const details = e.data.payload || {};
           const finalPayload = {
             event: 'scheduled',
-            // Utilise la date/heure confirmée si fournie, sinon la sélection temporaire
-            startTime: details.event?.start_time || window.lastCalendlySelection.dateSelected || '',
+            // Utilise la date confirmée si présente, sinon la sélection temporaire
+            startTime: details.event?.start_time || globalThis.lastCalendlySelection.dateSelected || '',
             eventName: details.event_type?.name || '',
             inviteeName: details.invitee?.name || '',
             inviteeEmail: details.invitee?.email || '',
             customAnswers: details.invitee?.questions_and_answers || [],
             uri: details.uri || '',
-            // Optionnel : transmettre la sélection temporaire
-            dateSelected: window.lastCalendlySelection.dateSelected || '',
-            timeSelected: window.lastCalendlySelection.timeSelected || ''
+            dateSelected: globalThis.lastCalendlySelection.dateSelected || '',
+            timeSelected: globalThis.lastCalendlySelection.timeSelected || ''
           };
           log("CalendlyExtension: Rendez-vous confirmé. Payload final : " + JSON.stringify(finalPayload));
-          window.voiceflow.chat.interact({
+          globalThis.voiceflow.chat.interact({
             type: 'calendly_event',
             payload: finalPayload
           });
         }
       };
 
-      window.addEventListener('message', calendlyListener);
+      globalThis.addEventListener('message', calendlyListener);
     } catch (err) {
       console.error("CalendlyExtension: Erreur :", err);
-      window.voiceflow.log_details += "CalendlyExtension: Erreur : " + err.message + "\n";
+      globalThis.voiceflow.log_details += "CalendlyExtension: Erreur : " + err.message + "\n";
     }
   }
 };

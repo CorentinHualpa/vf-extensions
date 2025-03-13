@@ -43,7 +43,6 @@ export const MultiSelect = {
                 const details = getCheckedDetails(container);
                 totalChecked = 0;
 
-                // Calculer le nombre total de cases cochées dans toutes les sections
                 details.forEach((detail) => {
                     if (detail.checkedAll.length > 0) {
                         totalChecked += detail.sectionSize;
@@ -52,7 +51,6 @@ export const MultiSelect = {
                     }
                 });
 
-                // Désactiver toutes les cases non cochées si la limite globale est atteinte
                 if (totalMaxSelect > 0 && totalChecked >= totalMaxSelect) {
                     Array.from(container.querySelectorAll('input[type="checkbox"]')).forEach(checkbox => {
                         if (!checkbox.checked) {
@@ -60,30 +58,24 @@ export const MultiSelect = {
                         }
                     });
                 } else {
-                    // Réactiver les cases si la limite globale n'est pas atteinte
                     Array.from(container.querySelectorAll('.section-container')).forEach((section, sectionIndex) => {
                         const checkboxes = section.querySelectorAll('input[type="checkbox"]');
-                        const uncheckedCheckboxes = Array.from(checkboxes).filter(checkbox => !checkbox.checked);
-
                         const { checkedNormal, checkedAll, sectionSize } = details[sectionIndex];
                         const sectionCheckedCount = checkedAll.length > 0 ? sectionSize : checkedNormal.length;
                         const sectionMaxSelect = sections[sectionIndex].maxSelect || Infinity;
 
                         if (sectionCheckedCount >= sectionMaxSelect || checkedAll.length > 0) {
-                            // Désactiver les cases non cochées si la limite de la section est atteinte
                             checkboxes.forEach(checkbox => {
                                 if (!checkbox.checked) {
                                     checkbox.disabled = true;
                                 }
                             });
                         } else {
-                            // Réactiver les cases de la section si la limite de la section n'est pas atteinte
                             checkboxes.forEach(checkbox => {
                                 checkbox.disabled = false;
                             });
                         }
 
-                        // Gérer les messages d'erreur pour les cases "-all-" uniquement
                         checkboxes.forEach(checkbox => {
                             const isAllCheckbox = checkbox.id.includes("-all-");
                             const errorSpan = checkbox.parentElement.querySelector('.error-message');
@@ -109,7 +101,6 @@ export const MultiSelect = {
                 }
             };
 
-            // Vérifier que sections est un tableau
             if (!Array.isArray(sections)) {
                 console.error('Erreur : `sections` n\'est pas un tableau', sections);
                 return;
@@ -165,7 +156,6 @@ export const MultiSelect = {
             </style>
         `;
 
-            // Création des sections avec les options
             sections.forEach((section, sectionIndex) => {
                 const {maxSelect = 200} = section;
                 const sectionDiv = document.createElement('div');
@@ -193,7 +183,6 @@ export const MultiSelect = {
 
                         const input = optionDiv.querySelector(`input[type="${multiselect ? 'checkbox' : 'radio'}"]`);
 
-                        // Gestion de la sélection et des actions spéciales
                         input.addEventListener('change', () => {
                             updateTotalChecked();
                             const allCheckboxes = sectionDiv.querySelectorAll('input[type="checkbox"]');
@@ -224,42 +213,27 @@ export const MultiSelect = {
                                 }
                             }
 
-                            // Envoi immédiat pour sélection unique
                             if (!multiselect) {
-                                const selectedOption = {
-                                    section: section.label,
-                                    selections: [option.name],
-                                };
-
                                 input.labels[0].style.backgroundColor = textColor;
                                 input.labels[0].style.color = buttonColor;
                                 
-                                // Réponse pour Voiceflow
-                                const jsonPayload = {
-                                    count: 1,
-                                    selections: [selectedOption],
-                                    path: 'Default' // Valeur par défaut
-                                };
-                                
-                                // Nouvel API complet de Voiceflow pour widget
-                                if (runtime && typeof runtime.reply === 'function') {
-                                    runtime.reply({
-                                        type: 'complete',
-                                        payload: JSON.stringify(jsonPayload)
-                                    });
-                                } else if (runtime && typeof runtime.interact === 'function') {
+                                // Utiliser uniquement un message texte simple avec le path
+                                if (runtime) {
+                                    console.log("Envoi d'une sélection simple via runtime:", option.name);
                                     runtime.interact({
                                         type: 'text',
                                         payload: {
-                                            message: JSON.stringify(jsonPayload),
-                                            complete: true
+                                            message: option.name,
+                                            path: 'Default'
                                         }
                                     });
                                 } else {
-                                    // Fallback à l'ancienne méthode
+                                    console.log("Envoi d'une sélection simple via window.voiceflow:", option.name);
                                     window.voiceflow.chat.interact({
-                                        type: 'complete',
-                                        payload: JSON.stringify(jsonPayload),
+                                        type: 'text',
+                                        payload: {
+                                            message: option.name
+                                        }
                                     });
                                 }
                             }
@@ -274,7 +248,6 @@ export const MultiSelect = {
                 container.appendChild(sectionDiv);
             });
 
-            // Si `multiselect` est vrai, ajoutez les boutons
             if (multiselect) {
                 const buttonContainer = document.createElement('div');
                 buttonContainer.setAttribute('data-index', index);
@@ -298,45 +271,32 @@ export const MultiSelect = {
                             return {section: section.label, selections: sectionSelections};
                         }).filter(section => section.selections.length > 0);
 
-                        const jsonPayload = {
-                            count: selectedOptions.reduce((sum, section) => sum + section.selections.length, 0),
-                            selections: selectedOptions,
-                            path: button.path || 'Default',
-                        };
-
+                        // Masquer les boutons après sélection
                         const currentContainer = container.querySelector(`[data-index="${index}"]`);
                         if (currentContainer) {
                             const allButtons = currentContainer.querySelectorAll('.submit-btn');
                             allButtons.forEach(btn => (btn.style.display = 'none'));
-                        } else {
-                            console.error(`Conteneur avec data-index="${index}" introuvable.`);
                         }
 
-                        // Ajout de logs pour le débogage
-                        console.log("Payload à envoyer:", jsonPayload);
+                        // Simplifier au maximum le format d'envoi - utiliser uniquement le texte du bouton
+                        // et le chemin associé
+                        const buttonPath = button.path || 'Default';
+                        console.log("Envoi du chemin:", buttonPath);
                         
-                        // Nouvel API complet de Voiceflow pour widget
-                        if (runtime && typeof runtime.reply === 'function') {
-                            console.log("Utilisation de runtime.reply");
-                            runtime.reply({
-                                type: 'complete',
-                                payload: JSON.stringify(jsonPayload)
-                            });
-                        } else if (runtime && typeof runtime.interact === 'function') {
-                            console.log("Utilisation de runtime.interact");
+                        if (runtime) {
                             runtime.interact({
                                 type: 'text',
                                 payload: {
-                                    message: JSON.stringify(jsonPayload),
-                                    complete: true
+                                    message: button.text,
+                                    path: buttonPath
                                 }
                             });
                         } else {
-                            console.log("Utilisation de window.voiceflow.chat.interact");
-                            // Fallback à l'ancienne méthode
                             window.voiceflow.chat.interact({
-                                type: 'complete',
-                                payload: JSON.stringify(jsonPayload),
+                                type: 'text',
+                                payload: {
+                                    message: button.text
+                                }
                             });
                         }
                     });

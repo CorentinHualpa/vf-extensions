@@ -319,8 +319,7 @@ export const MultiSelect = {
             });
 
             // Si `multiselect` est vrai OU s'il y a au moins un champ user_input, ajouter les boutons
-            // CORRECTION: Modifier la condition pour ajouter toujours les boutons si le composant a des champs libres
-            if ((multiselect || !multiselect) && hasUserInputField) {
+            if (hasUserInputField) {
                 const buttonContainer = document.createElement('div');
                 buttonContainer.setAttribute('data-index', index);
                 buttonContainer.style.display = 'flex';
@@ -365,13 +364,25 @@ export const MultiSelect = {
                         // Construire une réponse complète avec les sélections et les entrées utilisateur
                         console.log("Envoi des sélections:", selectedOptions);
                         
-                        // Convertir les sélections en format JSON
-                        const selectionJSON = JSON.stringify(selectedOptions);
+                        // MODIFICATION ICI: Envoyer directement le champ libre s'il est seul et rempli
+                        let payload;
                         
-                        // Utiliser le même format simpliste que FormExtension
+                        // Vérifier si nous avons une seule section avec uniquement un champ libre
+                        if (selectedOptions.length === 1 && 
+                            selectedOptions[0].selections.length === 0 && 
+                            selectedOptions[0].userInput.trim() !== "") {
+                            // Envoyer directement la valeur du champ libre
+                            payload = selectedOptions[0].userInput.trim();
+                        } else {
+                            // Sinon, convertir les sélections en format JSON avec le préfixe
+                            const selectionJSON = JSON.stringify(selectedOptions);
+                            payload = button.text + " - Sélections: " + selectionJSON;
+                        }
+                        
+                        // Envoyer la réponse
                         window.voiceflow.chat.interact({
                             type: 'text',
-                            payload: button.text + " - Sélections: " + selectionJSON
+                            payload: payload
                         });
                     });
 

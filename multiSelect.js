@@ -22,6 +22,7 @@ export const MultiSelect = {
 
             let totalChecked = 0;
             let userInputValues = {};
+            let hasUserInputField = false;  // Flag pour vérifier si un champ libre existe
             
             // Créer un container principal
             const container = document.createElement('div');
@@ -184,6 +185,17 @@ export const MultiSelect = {
                 }
             };
 
+            // Vérifier d'abord si nous avons des champs user_input
+            sections.forEach(section => {
+                if (Array.isArray(section.options)) {
+                    section.options.forEach(option => {
+                        if (option.action === 'user_input') {
+                            hasUserInputField = true;
+                        }
+                    });
+                }
+            });
+
             // Création des sections avec les options
             sections.forEach((section, sectionIndex) => {
                 const {maxSelect = 200} = section;
@@ -196,111 +208,118 @@ export const MultiSelect = {
                 sectionLabel.textContent = section.label;
                 sectionDiv.appendChild(sectionLabel);
 
+                // Ajouter les options standard
                 if (Array.isArray(section.options)) {
-                    section.options.forEach(option => {
+                    const standardOptions = section.options.filter(option => option.action !== 'user_input');
+                    
+                    standardOptions.forEach(option => {
                         const optionDiv = document.createElement('div');
                         optionDiv.classList.add('option-container');
                         
-                        if (option.action === 'user_input') {
-                            // Créer un conteneur pour le champ de saisie utilisateur
-                            const userInputDiv = document.createElement('div');
-                            userInputDiv.classList.add('user-input-container');
-                            
-                            // Créer le libellé du champ
-                            const userInputLabel = document.createElement('label');
-                            userInputLabel.classList.add('user-input-label');
-                            userInputLabel.textContent = option.label || 'Entrez votre réponse :';
-                            
-                            // Créer le champ de saisie
-                            const userInputField = document.createElement('input');
-                            userInputField.type = 'text';
-                            userInputField.classList.add('user-input-field');
-                            userInputField.placeholder = option.placeholder || 'Saisissez votre texte ici...';
-                            userInputField.id = `${section.label}-user-input-${section.id || ''}`;
-                            
-                            // Stocker la référence à ce champ pour récupérer sa valeur plus tard
-                            userInputValues[userInputField.id] = '';
-                            
-                            // Mettre à jour la valeur stockée à chaque modification
-                            userInputField.addEventListener('input', (e) => {
-                                userInputValues[userInputField.id] = e.target.value;
-                            });
-                            
-                            userInputDiv.appendChild(userInputLabel);
-                            userInputDiv.appendChild(userInputField);
-                            sectionDiv.appendChild(userInputDiv);
-                        } else {
-                            const input = document.createElement('input');
-                            input.type = multiselect ? 'checkbox' : 'radio';
-                            input.style.display = multiselect ? 'block' : 'none';
-                            input.name = `option-${index}`;
-                            input.id = `${section.label}-${option.name}-${option.action}-${section.id || ''}`;
-                            
-                            const label = document.createElement('label');
-                            label.setAttribute('for', input.id);
-                            label.textContent = option.name;
-                            
-                            optionDiv.appendChild(input);
-                            optionDiv.appendChild(label);
+                        const input = document.createElement('input');
+                        input.type = multiselect ? 'checkbox' : 'radio';
+                        input.style.display = multiselect ? 'block' : 'none';
+                        input.name = `option-${index}`;
+                        input.id = `${section.label}-${option.name}-${option.action}-${section.id || ''}`;
+                        
+                        const label = document.createElement('label');
+                        label.setAttribute('for', input.id);
+                        label.textContent = option.name;
+                        
+                        optionDiv.appendChild(input);
+                        optionDiv.appendChild(label);
 
-                            input.addEventListener('change', () => {
-                                updateTotalChecked();
-                                const allCheckboxes = sectionDiv.querySelectorAll('input[type="checkbox"]');
-                                const checkedCount = Array.from(allCheckboxes).filter(checkbox => checkbox.checked).length;
+                        input.addEventListener('change', () => {
+                            updateTotalChecked();
+                            const allCheckboxes = sectionDiv.querySelectorAll('input[type="checkbox"]');
+                            const checkedCount = Array.from(allCheckboxes).filter(checkbox => checkbox.checked).length;
 
-                                if (option.action === 'all' && input.checked) {
-                                    allCheckboxes.forEach(checkbox => {
-                                        if (checkbox !== input) {
-                                            checkbox.disabled = true;
-                                            checkbox.checked = false;
-                                        }
-                                    });
-                                } else if (option.action === 'all' && !input.checked) {
+                            if (option.action === 'all' && input.checked) {
+                                allCheckboxes.forEach(checkbox => {
+                                    if (checkbox !== input) {
+                                        checkbox.disabled = true;
+                                        checkbox.checked = false;
+                                    }
+                                });
+                            } else if (option.action === 'all' && !input.checked) {
+                                allCheckboxes.forEach(checkbox => {
+                                    checkbox.disabled = false;
+                                });
+                            } else if (checkedCount >= maxSelect) {
+                                allCheckboxes.forEach(checkbox => {
+                                    if (!checkbox.checked) {
+                                        checkbox.disabled = true;
+                                    }
+                                });
+                            } else {
+                                if (totalMaxSelect === 0) {
                                     allCheckboxes.forEach(checkbox => {
                                         checkbox.disabled = false;
                                     });
-                                } else if (checkedCount >= maxSelect) {
-                                    allCheckboxes.forEach(checkbox => {
-                                        if (!checkbox.checked) {
-                                            checkbox.disabled = true;
-                                        }
-                                    });
-                                } else {
-                                    if (totalMaxSelect === 0) {
-                                        allCheckboxes.forEach(checkbox => {
-                                            checkbox.disabled = false;
-                                        });
-                                    }
                                 }
+                            }
 
-                                if (!multiselect) {
-                                    label.style.backgroundColor = textColor;
-                                    label.style.color = buttonColor;
-                                    
-                                    const selectedOption = {
-                                        section: section.label,
-                                        selections: [option.name]
-                                    };
+                            if (!multiselect) {
+                                label.style.backgroundColor = textColor;
+                                label.style.color = buttonColor;
+                                
+                                const selectedOption = {
+                                    section: section.label,
+                                    selections: [option.name]
+                                };
 
-                                    // Approche simplifiée qui fonctionne avec vos autres extensions
-                                    console.log("Envoi de sélection simple:", selectedOption);
-                                    window.voiceflow.chat.interact({
-                                        type: 'text',
-                                        payload: option.name
-                                    });
-                                }
-                            });
+                                // Approche simplifiée qui fonctionne avec vos autres extensions
+                                console.log("Envoi de sélection simple:", selectedOption);
+                                window.voiceflow.chat.interact({
+                                    type: 'text',
+                                    payload: option.name
+                                });
+                            }
+                        });
 
-                            sectionDiv.appendChild(optionDiv);
-                        }
+                        sectionDiv.appendChild(optionDiv);
+                    });
+                    
+                    // Ajouter le champ libre à la fin
+                    const userInputOptions = section.options.filter(option => option.action === 'user_input');
+                    
+                    userInputOptions.forEach(option => {
+                        // Créer un conteneur pour le champ de saisie utilisateur
+                        const userInputDiv = document.createElement('div');
+                        userInputDiv.classList.add('user-input-container');
+                        
+                        // Créer le libellé du champ
+                        const userInputLabel = document.createElement('label');
+                        userInputLabel.classList.add('user-input-label');
+                        // Utiliser le texte par défaut si non spécifié
+                        userInputLabel.textContent = option.label || 'Indiquez votre marché si aucun ne correspond';
+                        
+                        // Créer le champ de saisie
+                        const userInputField = document.createElement('input');
+                        userInputField.type = 'text';
+                        userInputField.classList.add('user-input-field');
+                        userInputField.placeholder = option.placeholder || 'Saisissez votre texte ici...';
+                        userInputField.id = `${section.label}-user-input-${section.id || ''}`;
+                        
+                        // Stocker la référence à ce champ pour récupérer sa valeur plus tard
+                        userInputValues[userInputField.id] = '';
+                        
+                        // Mettre à jour la valeur stockée à chaque modification
+                        userInputField.addEventListener('input', (e) => {
+                            userInputValues[userInputField.id] = e.target.value;
+                        });
+                        
+                        userInputDiv.appendChild(userInputLabel);
+                        userInputDiv.appendChild(userInputField);
+                        sectionDiv.appendChild(userInputDiv);
                     });
                 }
 
                 container.appendChild(sectionDiv);
             });
 
-            // Si `multiselect` est vrai, ajoutez les boutons
-            if (multiselect) {
+            // Si `multiselect` est vrai, ET qu'il y a au moins un champ user_input, ajoutez les boutons
+            if (multiselect && hasUserInputField) {
                 const buttonContainer = document.createElement('div');
                 buttonContainer.setAttribute('data-index', index);
                 buttonContainer.style.display = 'flex';

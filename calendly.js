@@ -5,7 +5,7 @@ export const CalendlyExtension = {
     trace.type === 'ext_calendly' || trace.payload?.name === 'ext_calendly',
 
   render: ({ trace, element }) => {
-    // S'assurer que l'objet voiceflow existe et initialiser log_details dans globalThis
+    // Initialisation de globalThis.voiceflow et log_details si nécessaire
     globalThis.voiceflow = globalThis.voiceflow || {};
     globalThis.voiceflow.log_details = globalThis.voiceflow.log_details || "";
 
@@ -44,7 +44,7 @@ export const CalendlyExtension = {
       const container = document.createElement('div');
       container.style.width = '100%';
       container.style.height = `${height}px`;
-      container.style.overflow = 'hidden'; // Pour éviter la scrollbar interne
+      container.style.overflow = 'hidden';
       container.style.boxSizing = 'border-box';
       element.appendChild(container);
 
@@ -98,7 +98,7 @@ export const CalendlyExtension = {
         log("CalendlyExtension: Événement reçu : " + e.data.event);
         log("CalendlyExtension: Payload reçu : " + JSON.stringify(e.data.payload));
 
-        // Quand l'utilisateur sélectionne un créneau, stocker localement (sans déclencher Voiceflow)
+        // Lors de la sélection d'un créneau, stocker localement (sans déclencher Voiceflow)
         if (e.data.event === 'calendly.date_and_time_selected') {
           globalThis.lastCalendlySelection = {
             dateSelected: e.data.payload?.date || '',
@@ -108,13 +108,12 @@ export const CalendlyExtension = {
           log("CalendlyExtension: Sélection temporaire enregistrée : " + JSON.stringify(globalThis.lastCalendlySelection));
         }
 
-        // Quand l'utilisateur confirme le rendez-vous, on envoie l'info à Voiceflow
+        // Lors de la confirmation du rendez-vous, envoyer l'info à Voiceflow
         if (e.data.event === 'calendly.event_scheduled') {
           globalThis.removeEventListener('message', calendlyListener);
           const details = e.data.payload || {};
           const finalPayload = {
             event: 'scheduled',
-            // Utilise la date confirmée si présente, sinon la sélection temporaire
             startTime: details.event?.start_time || globalThis.lastCalendlySelection.dateSelected || '',
             eventName: details.event_type?.name || '',
             inviteeName: details.invitee?.name || '',

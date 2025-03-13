@@ -5,13 +5,13 @@ export const CalendlyExtension = {
     trace.type === 'ext_calendly' || trace.payload?.name === 'ext_calendly',
 
   render: ({ trace, element }) => {
-    // Récupère l'URL Calendly et la hauteur voulue
+    // Paramètres envoyés depuis Voiceflow
     const {
       url = 'https://calendly.com/corentin-hualpa/echange-30-minutes',
       height = 900
     } = trace.payload || {};
 
-    // Injecte un style pour forcer la bulle Voiceflow à 100%
+    // Injecter du style pour occuper toute la largeur
     const styleEl = document.createElement('style');
     styleEl.textContent = `
       .vfrc-message--extension-Calendly,
@@ -28,14 +28,14 @@ export const CalendlyExtension = {
     `;
     document.head.appendChild(styleEl);
 
-    // Crée un conteneur pour Calendly
+    // Créer un conteneur Calendly
     const container = document.createElement('div');
     container.style.width = '100%';
     container.style.height = `${height}px`;
     container.style.overflow = 'hidden';
     element.appendChild(container);
 
-    // Ajuste la largeur après l'injection
+    // Ajuster la bulle Voiceflow après l'injection
     setTimeout(() => {
       const messageEl = element.closest('.vfrc-message');
       if (messageEl) {
@@ -44,7 +44,7 @@ export const CalendlyExtension = {
       }
     }, 0);
 
-    // Fonction pour initialiser le widget Calendly inline
+    // Fonction d'init du widget Calendly inline
     const initWidget = () => {
       if (window.Calendly && typeof window.Calendly.initInlineWidget === 'function') {
         window.Calendly.initInlineWidget({
@@ -56,7 +56,7 @@ export const CalendlyExtension = {
       }
     };
 
-    // Charger le script Calendly s'il n'est pas déjà présent
+    // Charger le script Calendly si besoin
     if (!document.querySelector('script[src="https://assets.calendly.com/assets/external/widget.js"]')) {
       const script = document.createElement('script');
       script.src = 'https://assets.calendly.com/assets/external/widget.js';
@@ -67,44 +67,49 @@ export const CalendlyExtension = {
       initWidget();
     }
 
-    // Écoute les événements Calendly, ignore tout sauf l'événement final
+    // Écoute des événements Calendly
     const calendlyListener = (e) => {
-      if (e.data && typeof e.data === 'object' && e.data.event) {
-        // On log pour vérifier quel event arrive
-        console.log('[CalendlyExtension] event=', e.data.event);
+      if (!e.data || typeof e.data !== 'object' || !e.data.event) return;
+      if (!e.data.event.startsWith('calendly')) return;
 
-        // 1) NE RIEN FAIRE sur "date_and_time_selected"
-        // ou tout autre event intermédiaire
-        if (e.data.event === 'calendly.date_and_time_selected') {
-          // Juste un log, pas d'appel à Voiceflow
-          console.log('[CalendlyExtension] Créneau sélectionné (ignoré)');
-          return;
-        }
+      // On loggue le payload pour voir toutes les données
+      console.log('[CalendlyExtension] event=', e.data.event, 'payload=', e.data.payload);
 
-        // 2) Seule la confirmation "event_scheduled" envoie un message à Voiceflow
-        if (e.data.event === 'calendly.event_scheduled') {
-          // On supprime l'écouteur pour éviter double déclenchement
-          window.removeEventListener('message', calendlyListener);
+      // 1) Quand l’utilisateur sélectionne un créneau
+      if (e.data.event === 'calendly.date_and_time_selected') {
+        // => On envoie un événement "time_selected" à Voiceflow
+        //    e.data.payload peut contenir la date/heure (selon Calendly)
+        window.voiceflow.chat.interact({
+          type: 'calendly_event',
+          payload: {
+            event: 'time_selected',
+            dateSelected: e.data.payload?.date || '',
+            timeSelected: e.data.payload?.time || ''
+            // Selon la doc Calendly, parfois c’est un champ "start_time"
+          }
+        });
+      }
 
-          const details = e.data.payload || {};
-          console.log('[CalendlyExtension] Rendez-vous confirmé:', details);
+      // 2) Quand l’utilisateur confirme le rendez-vous
+      if (e.data.event === 'calendly.event_scheduled') {
+        // e.data.payload contient: event, event_type, invitee, uri, etc.
+        window.removeEventListener('message', calendlyListener);
 
-          // (Optionnel) Vérifier si Calendly envoie parfois event_scheduled
-          // avant la saisie d'email. Si c'est le cas, on peut tester :
-          // if (!details.invitee?.email) return;
-
-          // Envoi à Voiceflow
-          window.voiceflow.chat.interact({
-            type: 'calendly_event',
-            payload: {
-              event: 'scheduled',
-              eventDate: details.event?.start_time || '',
-              eventType: details.event_type?.name || '',
-              inviteeUri: details.invitee?.uri || '',
-              uri: details.uri || ''
-            }
-          });
-        }
+        const details = e.data.payload || {};
+        // Exemples de champs : invitee.name, invitee.email, invitee.questions_and_answers
+        window.voiceflow.chat.interact({
+          type: 'calendly_event',
+          payload: {
+            event: 'scheduled',
+            startTime: details.event?.start_time || '',
+            endTime: details.event?.end_time || '',
+            eventName: details.event_type?.name || '',
+            inviteeName: details.invitee?.name || '',
+            inviteeEmail: details.invitee?.email || '',
+            customAnswers: details.invitee?.questions_and_answers || [],
+            uri: details.uri || ''
+          }
+        });
       }
     };
     window.addEventListener('message', calendlyListener);

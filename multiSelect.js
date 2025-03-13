@@ -4,7 +4,7 @@ export const MultiSelect = {
     match: ({trace}) => {
         return trace.payload && trace.type === 'multi_select';
     },
-    render: ({trace, element, runtime}) => {
+    render: ({trace, element, runtime}) => {  // Ajout du paramètre runtime
         try {
             // Récupérer les données depuis le payload
             const {
@@ -240,44 +240,31 @@ export const MultiSelect = {
                                 input.labels[0].style.backgroundColor = textColor;
                                 input.labels[0].style.color = buttonColor;
                                 
-                                // Changement crucial pour le nouveau format d'interaction Voiceflow
-                                try {
-                                    // Méthode 1: via directement le runtime
-                                    if (runtime && runtime.trace) {
-                                        runtime.trace({
-                                            type: 'complete',
-                                            payload: JSON.stringify({
-                                                count: 1,
-                                                selections: [selectedOption],
-                                            }),
-                                        });
-                                    } 
-                                    // Méthode 2: via window.voiceflow (plus ancien)
-                                    else if (window.voiceflow && window.voiceflow.chat) {
-                                        window.voiceflow.chat.interact({
-                                            type: 'complete',
-                                            payload: JSON.stringify({
-                                                count: 1,
-                                                selections: [selectedOption],
-                                            }),
-                                        });
-                                    }
-                                    // Méthode 3: via un event personnalisé (approche robuste)
-                                    else {
-                                        const event = new CustomEvent('voiceflow:multiselect', {
-                                            detail: {
-                                                type: 'complete',
-                                                payload: {
+                                // Modification pour utiliser le SDK Voiceflow actualisé
+                                if (runtime && typeof runtime.interact === 'function') {
+                                    runtime.interact({
+                                        type: 'intent',
+                                        payload: {
+                                            intent: {
+                                                name: 'complete',
+                                            },
+                                            entities: {
+                                                payload: JSON.stringify({
                                                     count: 1,
                                                     selections: [selectedOption],
-                                                },
-                                            },
-                                            bubbles: true,
-                                        });
-                                        element.dispatchEvent(event);
-                                    }
-                                } catch (e) {
-                                    console.error('Erreur lors de l\'envoi de la sélection:', e);
+                                                })
+                                            }
+                                        }
+                                    });
+                                } else {
+                                    // Fallback à l'ancienne méthode si runtime n'est pas disponible
+                                    window.voiceflow.chat.interact({
+                                        type: 'complete',
+                                        payload: JSON.stringify({
+                                            count: 1,
+                                            selections: [selectedOption],
+                                        }),
+                                    });
                                 }
                             }
                         });
@@ -334,35 +321,25 @@ export const MultiSelect = {
                             console.error(`Conteneur avec data-index="${index}" introuvable.`);
                         }
 
-                        // Changement crucial pour le nouveau format d'interaction Voiceflow
-                        try {
-                            // Méthode 1: via directement le runtime
-                            if (runtime && runtime.trace) {
-                                runtime.trace({
-                                    type: 'complete',
-                                    payload: JSON.stringify(jsonPayload),
-                                });
-                            } 
-                            // Méthode 2: via window.voiceflow (plus ancien)
-                            else if (window.voiceflow && window.voiceflow.chat) {
-                                window.voiceflow.chat.interact({
-                                    type: 'complete',
-                                    payload: JSON.stringify(jsonPayload),
-                                });
-                            }
-                            // Méthode 3: via un event personnalisé (approche robuste)
-                            else {
-                                const event = new CustomEvent('voiceflow:multiselect', {
-                                    detail: {
-                                        type: 'complete',
-                                        payload: jsonPayload,
+                        // Modification pour utiliser le SDK Voiceflow actualisé
+                        if (runtime && typeof runtime.interact === 'function') {
+                            runtime.interact({
+                                type: 'intent',
+                                payload: {
+                                    intent: {
+                                        name: 'complete',
                                     },
-                                    bubbles: true,
-                                });
-                                element.dispatchEvent(event);
-                            }
-                        } catch (e) {
-                            console.error('Erreur lors de l\'envoi de la sélection:', e);
+                                    entities: {
+                                        payload: JSON.stringify(jsonPayload)
+                                    }
+                                }
+                            });
+                        } else {
+                            // Fallback à l'ancienne méthode si runtime n'est pas disponible
+                            window.voiceflow.chat.interact({
+                                type: 'complete',
+                                payload: JSON.stringify(jsonPayload),
+                            });
                         }
                     });
 

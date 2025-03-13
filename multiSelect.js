@@ -318,8 +318,9 @@ export const MultiSelect = {
                 container.appendChild(sectionDiv);
             });
 
-            // Si `multiselect` est vrai, ET qu'il y a au moins un champ user_input, ajoutez les boutons
-            if (multiselect && hasUserInputField) {
+            // Si `multiselect` est vrai OU s'il y a au moins un champ user_input, ajouter les boutons
+            // CORRECTION: Modifier la condition pour ajouter toujours les boutons si le composant a des champs libres
+            if ((multiselect || !multiselect) && hasUserInputField) {
                 const buttonContainer = document.createElement('div');
                 buttonContainer.setAttribute('data-index', index);
                 buttonContainer.style.display = 'flex';

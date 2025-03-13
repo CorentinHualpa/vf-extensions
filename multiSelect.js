@@ -20,7 +20,6 @@ export const MultiSelect = {
 
             let totalChecked = 0;
 
-            // Fonction pour obtenir les détails des cases cochées
             const getCheckedDetails = (container) => {
                 const sections = Array.from(container.querySelectorAll('.section-container'));
                 const details = sections.map(section => {
@@ -30,17 +29,16 @@ export const MultiSelect = {
                     const checkedAll = checkedCheckboxes.filter(checkbox => checkbox.id.includes("-all-"));
 
                     return {
-                        sectionLabel: section.querySelector('h3').textContent,
-                        sectionSize: allCheckboxes.length - 1,
-                        checkedNormal: checkedNormal.map(checkbox => checkbox.id),
-                        checkedAll: checkedAll.map(checkbox => checkbox.id),
+                        sectionLabel: section.querySelector('h3').textContent, // Nom de la section
+                        sectionSize: allCheckboxes.length - 1, // Nombre total de checkbox dans la section
+                        checkedNormal: checkedNormal.map(checkbox => checkbox.id), // IDs des checkboxes normales cochées
+                        checkedAll: checkedAll.map(checkbox => checkbox.id), // IDs des checkboxes "all" cochées
                     };
                 });
 
                 return details;
             };
 
-            // Fonction pour mettre à jour le compte total de cases cochées
             const updateTotalChecked = () => {
                 const details = getCheckedDetails(container);
                 totalChecked = 0;
@@ -97,8 +95,8 @@ export const MultiSelect = {
                                     span.classList.add('error-message');
                                     span.textContent = "Trop de cases cochées pour cocher celle-ci";
                                     span.style.color = 'red';
-                                    span.style.marginLeft= '10px';
-                                    span.style.display = 'block';
+                                    span.style.marginLeft= '10px'; // Espace en haut
+                                    span.style.display = 'block'; // Forcer à apparaître sous la case
                                     checkbox.parentElement.appendChild(span);
                                 }
                                 checkbox.disabled = true;
@@ -120,33 +118,30 @@ export const MultiSelect = {
             }
 
             const container = document.createElement('div');
-            container.classList.add('multiselect-container');
-            
-            // Ajout du style dans un élément <style> pour éviter les conflits avec l'iframe
-            const styleElement = document.createElement('style');
-            styleElement.textContent = `
-                .multiselect-container .section-container {
+            container.innerHTML = `
+            <style>
+                .section-container {
                     padding: 10px;
                     border-radius: 5px;
                     margin-bottom: 20px;
                 }
-                .multiselect-container .option-container { 
+                .option-container { 
                     display: flex; 
                     align-items: center;
                     margin: 8px 0;
                 }
-                .multiselect-container .option-container input[type="checkbox"] {
+                .option-container input[type="checkbox"] {
                     height: 20px;
                     width: 20px;
                     border-radius: 30px;
                     margin-right: 10px;
                 }
-                .multiselect-container .active-btn {
-                    background: ${textColor};
+                 .active-btn {
+                    background: ${textColor}; /* Inversez les couleurs */
                     color: ${buttonColor};
-                    border: 2px solid ${buttonColor};
+                    border: 2px solid ${buttonColor}; /* Ajoutez une bordure */
                 }
-                .multiselect-container .option-container label {
+                .option-container label {
                     cursor: pointer; 
                     font-size: 0.9em;
                     border-radius: 5px;
@@ -155,7 +150,7 @@ export const MultiSelect = {
                     background-color: rgba(0, 0, 0, ${backgroundOpacity});
                     user-select: none;
                 }
-                .multiselect-container .submit-btn {
+                .submit-btn {
                     background: ${buttonColor};
                     color: white;
                     padding: 10px;
@@ -163,14 +158,14 @@ export const MultiSelect = {
                     cursor: pointer;
                     border: none;
                 }
-                .multiselect-container .submit-btn:hover {
+                .submit-btn:hover {
                     opacity: 0.8;
                 }
-                .multiselect-container .title {
+                .title {
                     color: ${textColor} !important;
                 }
-            `;
-            container.appendChild(styleElement);
+            </style>
+        `;
 
             // Création des sections avec les options
             sections.forEach((section, sectionIndex) => {
@@ -188,19 +183,17 @@ export const MultiSelect = {
                     section.options.forEach(option => {
                         const optionDiv = document.createElement('div');
                         optionDiv.classList.add('option-container');
-                        
-                        const input = document.createElement('input');
-                        input.type = multiselect ? 'checkbox' : 'radio';
-                        input.style.display = multiselect ? 'block' : 'none';
-                        input.name = `option-${index}`;
-                        input.id = `${section.label}-${option.name}-${option.action}-${section.id}`;
-                        
-                        const label = document.createElement('label');
-                        label.setAttribute('for', input.id);
-                        label.textContent = option.name;
-                        
-                        optionDiv.appendChild(input);
-                        optionDiv.appendChild(label);
+                        optionDiv.innerHTML = `
+                            <input
+                                type="${multiselect ? 'checkbox' : 'radio'}" 
+                                style="display: ${multiselect ? 'block' : 'none'}" 
+                                name="option-${index}" 
+                                id="${section.label}-${option.name}-${option.action}-${section.id}" 
+                            />
+                            <label for="${section.label}-${option.name}-${option.action}-${section.id}">${option.name}</label>
+                        `;
+
+                        const input = optionDiv.querySelector(`input[type="${multiselect ? 'checkbox' : 'radio'}"]`);
 
                         // Gestion de la sélection et des actions spéciales
                         input.addEventListener('change', () => {
@@ -244,21 +237,48 @@ export const MultiSelect = {
                                     selections: [option.name],
                                 };
 
-                                label.style.backgroundColor = textColor;
-                                label.style.color = buttonColor;
+                                input.labels[0].style.backgroundColor = textColor;
+                                input.labels[0].style.color = buttonColor;
                                 
-                                // Modification importante : utiliser le bon format de payload
-                                runtime.interact({
-                                    type: 'intent',
-                                    payload: {
-                                        type: 'complete',
-                                        payload: JSON.stringify({
-                                            count: 1,
-                                            selections: [selectedOption],
-                                            path: 'Default'  // Valeur par défaut si non spécifiée
-                                        })
+                                // Changement crucial pour le nouveau format d'interaction Voiceflow
+                                try {
+                                    // Méthode 1: via directement le runtime
+                                    if (runtime && runtime.trace) {
+                                        runtime.trace({
+                                            type: 'complete',
+                                            payload: JSON.stringify({
+                                                count: 1,
+                                                selections: [selectedOption],
+                                            }),
+                                        });
+                                    } 
+                                    // Méthode 2: via window.voiceflow (plus ancien)
+                                    else if (window.voiceflow && window.voiceflow.chat) {
+                                        window.voiceflow.chat.interact({
+                                            type: 'complete',
+                                            payload: JSON.stringify({
+                                                count: 1,
+                                                selections: [selectedOption],
+                                            }),
+                                        });
                                     }
-                                });
+                                    // Méthode 3: via un event personnalisé (approche robuste)
+                                    else {
+                                        const event = new CustomEvent('voiceflow:multiselect', {
+                                            detail: {
+                                                type: 'complete',
+                                                payload: {
+                                                    count: 1,
+                                                    selections: [selectedOption],
+                                                },
+                                            },
+                                            bubbles: true,
+                                        });
+                                        element.dispatchEvent(event);
+                                    }
+                                } catch (e) {
+                                    console.error('Erreur lors de l\'envoi de la sélection:', e);
+                                }
                             }
                         });
 
@@ -275,17 +295,17 @@ export const MultiSelect = {
             if (multiselect) {
                 // Créer un conteneur pour les boutons
                 const buttonContainer = document.createElement('div');
-                buttonContainer.setAttribute('data-index', index);
+                buttonContainer.setAttribute('data-index', index); // Ajouter un attribut pour identifier ce conteneur
                 buttonContainer.style.display = 'flex';
-                buttonContainer.style.justifyContent = 'center';
-                buttonContainer.style.gap = '10px';
-                buttonContainer.style.marginTop = '20px';
+                buttonContainer.style.justifyContent = 'center'; // Centre les boutons
+                buttonContainer.style.gap = '10px'; // Espacement entre les boutons
+                buttonContainer.style.marginTop = '20px'; // Marges au-dessus du conteneur
 
                 // Parcourir les boutons définis dans le payload
                 buttons.forEach(button => {
                     const buttonElement = document.createElement('button');
                     buttonElement.classList.add('submit-btn');
-                    buttonElement.textContent = button.text;
+                    buttonElement.textContent = button.text; // Texte du bouton
 
                     // Ajouter un événement "click" pour chaque bouton
                     buttonElement.addEventListener('click', () => {
@@ -302,7 +322,7 @@ export const MultiSelect = {
                         const jsonPayload = {
                             count: selectedOptions.reduce((sum, section) => sum + section.selections.length, 0),
                             selections: selectedOptions,
-                            path: button.path || 'Default',
+                            path: button.path, // Récupérer le path du bouton
                         };
 
                         // Masquer tous les boutons dans ce conteneur
@@ -314,14 +334,36 @@ export const MultiSelect = {
                             console.error(`Conteneur avec data-index="${index}" introuvable.`);
                         }
 
-                        // Modification importante : utiliser le bon format de payload
-                        runtime.interact({
-                            type: 'intent',
-                            payload: {
-                                type: 'complete',
-                                payload: JSON.stringify(jsonPayload)
+                        // Changement crucial pour le nouveau format d'interaction Voiceflow
+                        try {
+                            // Méthode 1: via directement le runtime
+                            if (runtime && runtime.trace) {
+                                runtime.trace({
+                                    type: 'complete',
+                                    payload: JSON.stringify(jsonPayload),
+                                });
+                            } 
+                            // Méthode 2: via window.voiceflow (plus ancien)
+                            else if (window.voiceflow && window.voiceflow.chat) {
+                                window.voiceflow.chat.interact({
+                                    type: 'complete',
+                                    payload: JSON.stringify(jsonPayload),
+                                });
                             }
-                        });
+                            // Méthode 3: via un event personnalisé (approche robuste)
+                            else {
+                                const event = new CustomEvent('voiceflow:multiselect', {
+                                    detail: {
+                                        type: 'complete',
+                                        payload: jsonPayload,
+                                    },
+                                    bubbles: true,
+                                });
+                                element.dispatchEvent(event);
+                            }
+                        } catch (e) {
+                            console.error('Erreur lors de l\'envoi de la sélection:', e);
+                        }
                     });
 
                     // Ajouter le bouton au conteneur des boutons

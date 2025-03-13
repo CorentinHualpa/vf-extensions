@@ -4,7 +4,7 @@ export const MultiSelect = {
     match: ({trace}) => {
         return trace.payload && trace.type === 'multi_select';
     },
-    render: ({trace, element, runtime}) => {  // Ajout du paramètre runtime
+    render: ({trace, element, runtime}) => {
         try {
             // Récupérer les données depuis le payload
             const {
@@ -29,10 +29,10 @@ export const MultiSelect = {
                     const checkedAll = checkedCheckboxes.filter(checkbox => checkbox.id.includes("-all-"));
 
                     return {
-                        sectionLabel: section.querySelector('h3').textContent, // Nom de la section
-                        sectionSize: allCheckboxes.length - 1, // Nombre total de checkbox dans la section
-                        checkedNormal: checkedNormal.map(checkbox => checkbox.id), // IDs des checkboxes normales cochées
-                        checkedAll: checkedAll.map(checkbox => checkbox.id), // IDs des checkboxes "all" cochées
+                        sectionLabel: section.querySelector('h3').textContent,
+                        sectionSize: allCheckboxes.length - 1,
+                        checkedNormal: checkedNormal.map(checkbox => checkbox.id),
+                        checkedAll: checkedAll.map(checkbox => checkbox.id),
                     };
                 });
 
@@ -46,9 +46,9 @@ export const MultiSelect = {
                 // Calculer le nombre total de cases cochées dans toutes les sections
                 details.forEach((detail) => {
                     if (detail.checkedAll.length > 0) {
-                        totalChecked += detail.sectionSize; // Si "all" est coché, toutes les cases de la section sont comptées
+                        totalChecked += detail.sectionSize;
                     } else {
-                        totalChecked += detail.checkedNormal.length; // Sinon, seules les cases normales cochées sont comptées
+                        totalChecked += detail.checkedNormal.length;
                     }
                 });
 
@@ -65,10 +65,9 @@ export const MultiSelect = {
                         const checkboxes = section.querySelectorAll('input[type="checkbox"]');
                         const uncheckedCheckboxes = Array.from(checkboxes).filter(checkbox => !checkbox.checked);
 
-                        // Obtenir les détails de la section actuelle
                         const { checkedNormal, checkedAll, sectionSize } = details[sectionIndex];
                         const sectionCheckedCount = checkedAll.length > 0 ? sectionSize : checkedNormal.length;
-                        const sectionMaxSelect = sections[sectionIndex].maxSelect || Infinity; // Limite max de la section
+                        const sectionMaxSelect = sections[sectionIndex].maxSelect || Infinity;
 
                         if (sectionCheckedCount >= sectionMaxSelect || checkedAll.length > 0) {
                             // Désactiver les cases non cochées si la limite de la section est atteinte
@@ -95,13 +94,12 @@ export const MultiSelect = {
                                     span.classList.add('error-message');
                                     span.textContent = "Trop de cases cochées pour cocher celle-ci";
                                     span.style.color = 'red';
-                                    span.style.marginLeft= '10px'; // Espace en haut
-                                    span.style.display = 'block'; // Forcer à apparaître sous la case
+                                    span.style.marginLeft= '10px';
+                                    span.style.display = 'block';
                                     checkbox.parentElement.appendChild(span);
                                 }
                                 checkbox.disabled = true;
                             } else {
-                                // Supprimer le message d'erreur si la checkbox devient réactivable
                                 if (errorSpan) {
                                     errorSpan.remove();
                                 }
@@ -137,9 +135,9 @@ export const MultiSelect = {
                     margin-right: 10px;
                 }
                  .active-btn {
-                    background: ${textColor}; /* Inversez les couleurs */
+                    background: ${textColor};
                     color: ${buttonColor};
-                    border: 2px solid ${buttonColor}; /* Ajoutez une bordure */
+                    border: 2px solid ${buttonColor};
                 }
                 .option-container label {
                     cursor: pointer; 
@@ -169,7 +167,7 @@ export const MultiSelect = {
 
             // Création des sections avec les options
             sections.forEach((section, sectionIndex) => {
-                const {maxSelect = 200} = section; // Définir maxSelect pour chaque section
+                const {maxSelect = 200} = section;
                 const sectionDiv = document.createElement('div');
                 sectionDiv.classList.add('section-container');
                 sectionDiv.style.backgroundColor = section.color;
@@ -202,7 +200,6 @@ export const MultiSelect = {
                             const checkedCount = Array.from(allCheckboxes).filter(checkbox => checkbox.checked).length;
 
                             if (option.action === 'all' && input.checked) {
-                                // Désactiver et décocher toutes les autres cases dans cette section
                                 allCheckboxes.forEach(checkbox => {
                                     if (checkbox !== input) {
                                         checkbox.disabled = true;
@@ -210,19 +207,16 @@ export const MultiSelect = {
                                     }
                                 });
                             } else if (option.action === 'all' && !input.checked) {
-                                // Réactiver toutes les cases de cette section si décoché
                                 allCheckboxes.forEach(checkbox => {
                                     checkbox.disabled = false;
                                 });
                             } else if (checkedCount >= maxSelect) {
-                                // Limitation par maxSelect dans cette section
                                 allCheckboxes.forEach(checkbox => {
                                     if (!checkbox.checked) {
                                         checkbox.disabled = true;
                                     }
                                 });
                             } else {
-                                // Réactiver toutes les cases de cette section si limite non atteinte
                                 if (totalMaxSelect === 0) {
                                     allCheckboxes.forEach(checkbox => {
                                         checkbox.disabled = false;
@@ -240,30 +234,32 @@ export const MultiSelect = {
                                 input.labels[0].style.backgroundColor = textColor;
                                 input.labels[0].style.color = buttonColor;
                                 
-                                // Modification pour utiliser le SDK Voiceflow actualisé
-                                if (runtime && typeof runtime.interact === 'function') {
+                                // Réponse pour Voiceflow
+                                const jsonPayload = {
+                                    count: 1,
+                                    selections: [selectedOption],
+                                    path: 'Default' // Valeur par défaut
+                                };
+                                
+                                // Nouvel API complet de Voiceflow pour widget
+                                if (runtime && typeof runtime.reply === 'function') {
+                                    runtime.reply({
+                                        type: 'complete',
+                                        payload: JSON.stringify(jsonPayload)
+                                    });
+                                } else if (runtime && typeof runtime.interact === 'function') {
                                     runtime.interact({
-                                        type: 'intent',
+                                        type: 'text',
                                         payload: {
-                                            intent: {
-                                                name: 'complete',
-                                            },
-                                            entities: {
-                                                payload: JSON.stringify({
-                                                    count: 1,
-                                                    selections: [selectedOption],
-                                                })
-                                            }
+                                            message: JSON.stringify(jsonPayload),
+                                            complete: true
                                         }
                                     });
                                 } else {
-                                    // Fallback à l'ancienne méthode si runtime n'est pas disponible
+                                    // Fallback à l'ancienne méthode
                                     window.voiceflow.chat.interact({
                                         type: 'complete',
-                                        payload: JSON.stringify({
-                                            count: 1,
-                                            selections: [selectedOption],
-                                        }),
+                                        payload: JSON.stringify(jsonPayload),
                                     });
                                 }
                             }
@@ -280,21 +276,18 @@ export const MultiSelect = {
 
             // Si `multiselect` est vrai, ajoutez les boutons
             if (multiselect) {
-                // Créer un conteneur pour les boutons
                 const buttonContainer = document.createElement('div');
-                buttonContainer.setAttribute('data-index', index); // Ajouter un attribut pour identifier ce conteneur
+                buttonContainer.setAttribute('data-index', index);
                 buttonContainer.style.display = 'flex';
-                buttonContainer.style.justifyContent = 'center'; // Centre les boutons
-                buttonContainer.style.gap = '10px'; // Espacement entre les boutons
-                buttonContainer.style.marginTop = '20px'; // Marges au-dessus du conteneur
+                buttonContainer.style.justifyContent = 'center';
+                buttonContainer.style.gap = '10px';
+                buttonContainer.style.marginTop = '20px';
 
-                // Parcourir les boutons définis dans le payload
                 buttons.forEach(button => {
                     const buttonElement = document.createElement('button');
                     buttonElement.classList.add('submit-btn');
-                    buttonElement.textContent = button.text; // Texte du bouton
+                    buttonElement.textContent = button.text;
 
-                    // Ajouter un événement "click" pour chaque bouton
                     buttonElement.addEventListener('click', () => {
                         const selectedOptions = sections.map((section, idx) => {
                             const sectionElement = container.querySelectorAll('.section-container')[idx];
@@ -305,14 +298,12 @@ export const MultiSelect = {
                             return {section: section.label, selections: sectionSelections};
                         }).filter(section => section.selections.length > 0);
 
-                        // Construire le payload avec le path associé au bouton cliqué
                         const jsonPayload = {
                             count: selectedOptions.reduce((sum, section) => sum + section.selections.length, 0),
                             selections: selectedOptions,
-                            path: button.path, // Récupérer le path du bouton
+                            path: button.path || 'Default',
                         };
 
-                        // Masquer tous les boutons dans ce conteneur
                         const currentContainer = container.querySelector(`[data-index="${index}"]`);
                         if (currentContainer) {
                             const allButtons = currentContainer.querySelectorAll('.submit-btn');
@@ -321,21 +312,28 @@ export const MultiSelect = {
                             console.error(`Conteneur avec data-index="${index}" introuvable.`);
                         }
 
-                        // Modification pour utiliser le SDK Voiceflow actualisé
-                        if (runtime && typeof runtime.interact === 'function') {
+                        // Ajout de logs pour le débogage
+                        console.log("Payload à envoyer:", jsonPayload);
+                        
+                        // Nouvel API complet de Voiceflow pour widget
+                        if (runtime && typeof runtime.reply === 'function') {
+                            console.log("Utilisation de runtime.reply");
+                            runtime.reply({
+                                type: 'complete',
+                                payload: JSON.stringify(jsonPayload)
+                            });
+                        } else if (runtime && typeof runtime.interact === 'function') {
+                            console.log("Utilisation de runtime.interact");
                             runtime.interact({
-                                type: 'intent',
+                                type: 'text',
                                 payload: {
-                                    intent: {
-                                        name: 'complete',
-                                    },
-                                    entities: {
-                                        payload: JSON.stringify(jsonPayload)
-                                    }
+                                    message: JSON.stringify(jsonPayload),
+                                    complete: true
                                 }
                             });
                         } else {
-                            // Fallback à l'ancienne méthode si runtime n'est pas disponible
+                            console.log("Utilisation de window.voiceflow.chat.interact");
+                            // Fallback à l'ancienne méthode
                             window.voiceflow.chat.interact({
                                 type: 'complete',
                                 payload: JSON.stringify(jsonPayload),
@@ -343,11 +341,9 @@ export const MultiSelect = {
                         }
                     });
 
-                    // Ajouter le bouton au conteneur des boutons
                     buttonContainer.appendChild(buttonElement);
                 });
 
-                // Ajouter le conteneur des boutons au conteneur principal
                 container.appendChild(buttonContainer);
             }
 

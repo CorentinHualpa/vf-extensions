@@ -5,59 +5,41 @@ export const CalendlyExtension = {
     trace.type === 'ext_calendly' || trace.payload?.name === 'ext_calendly',
 
   render: ({ trace, element }) => {
-    // 1) Injecter du style global pour forcer la bulle à 100%
+    // 1) Injecter des styles pour forcer la bulle à occuper toute la largeur
     const globalStyle = document.createElement('style');
     globalStyle.textContent = `
-      /* Forcer la bulle Calendly à 100% de largeur, sans marge/padding */
       .vfrc-message--extension-Calendly,
-      .vfrc-message--extension-Calendly .vfrc-bubble {
-        margin: 0 !important;
-        padding: 0 !important;
-        display: block !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        box-sizing: border-box !important;
-      }
-
-      /* S'assurer que le contenu interne prend toute la largeur */
-      .vfrc-message--extension-Calendly .vfrc-bubble-content {
-        width: 100% !important;
-        max-width: 100% !important;
-        padding: 0 !important;
-      }
-
-      /* Forcer le message-content à 100% également */
-      .vfrc-message--extension-Calendly .vfrc-message-content {
-        width: 100% !important;
-        max-width: 100% !important;
-      }
-
-      /* Enfin, la classe globale de la bulle */
+      .vfrc-message--extension-Calendly .vfrc-bubble,
+      .vfrc-message--extension-Calendly .vfrc-bubble-content,
+      .vfrc-message--extension-Calendly .vfrc-message-content,
       .vfrc-message.vfrc-message--extension-Calendly {
         width: 100% !important;
         max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-sizing: border-box !important;
       }
     `;
     document.head.appendChild(globalStyle);
 
-    // 2) Récupérer les paramètres
+    // 2) Récupérer les paramètres (défaut avec masquage des détails d'événement et bannière GDPR)
     const {
-      url = 'https://calendly.com/corentin-hualpa/echange-30-minutes',
-      height = 900,              // Grande hauteur pour éviter la scrollbar
+      url = 'https://calendly.com/corentin-hualpa/echange-30-minutes?hide_event_type_details=1&hide_gdpr_banner=1',
+      height = 900,
       backgroundColor = '#ffffff'
     } = trace.payload || {};
 
-    // 3) Créer un conteneur pour Calendly, 100% large, overflow hidden
+    // 3) Créer un conteneur pour le widget Calendly
     const container = document.createElement('div');
     container.style.width = '100%';
     container.style.maxWidth = '100%';
-    container.style.height = `${height}px`;
+    container.style.height = `${height}px`;  // Adaptez cette valeur pour éviter le scroll interne
     container.style.backgroundColor = backgroundColor;
-    container.style.overflow = 'hidden'; // pas de scrollbar
+    container.style.overflow = 'hidden'; // pas de scrollbar interne
     container.style.boxSizing = 'border-box';
     element.appendChild(container);
 
-    // 4) Forcer après coup la largeur du message
+    // 4) Forcer la largeur de la bulle Voiceflow
     setTimeout(() => {
       const messageElement = element.closest('.vfrc-message');
       if (messageElement) {
@@ -71,21 +53,20 @@ export const CalendlyExtension = {
       }
     }, 0);
 
-    // 5) Fonction d'init du widget Calendly (initInlineWidget)
+    // 5) Fonction d'initialisation du widget Calendly en mode inline
     const initWidget = () => {
       if (window.Calendly && typeof window.Calendly.initInlineWidget === 'function') {
         window.Calendly.initInlineWidget({
           url: url,
-          parentElement: container,
-          // ex: prefill: { name: 'John Doe', email: 'john@doe.com' }
+          parentElement: container
+          // Vous pouvez ajouter ici "prefill" ou "utm" si nécessaire
         });
       } else {
-        // Le script Calendly peut ne pas être prêt, on retente
         setTimeout(initWidget, 100);
       }
     };
 
-    // 6) Charger le script Calendly s'il n'est pas déjà là
+    // 6) Charger le script Calendly s'il n'est pas déjà présent
     if (!document.querySelector('script[src="https://assets.calendly.com/assets/external/widget.js"]')) {
       const script = document.createElement('script');
       script.type = 'text/javascript';
@@ -97,27 +78,34 @@ export const CalendlyExtension = {
       initWidget();
     }
 
-    // 7) (Facultatif) Écouter "calendly.event_scheduled" pour Voiceflow
+    // 7) Écouter les événements Calendly via window.postMessage
     const calendlyListener = (e) => {
-      if (
-        e.data &&
-        typeof e.data === 'object' &&
-        e.data.event &&
-        e.data.event.indexOf('calendly') === 0
-      ) {
-        console.log('[CalendlyExtension] Message reçu :', e.data);
+      if (e.data && typeof e.data === 'object' && e.data.event && e.data.event.indexOf('calendly') === 0) {
+        console.log('[CalendlyExtension] Event reçu:', e.data.event, e.data.payload);
+
+        // Lorsque l'utilisateur sélectionne une date/heure (avant confirmation)
+        if (e.data.event === 'calendly.date_and_time_selected') {
+          window.voiceflow.chat.interact({
+            type: 'calendly_event',
+            payload: {
+              action: 'time_selected',
+              details: e.data.payload
+            }
+          });
+        }
+
+        // Lorsque l'utilisateur confirme et planifie le rendez-vous
         if (e.data.event === 'calendly.event_scheduled') {
           window.removeEventListener('message', calendlyListener);
-          const eventDetails = e.data.payload || {};
-          // Envoyer la complétion à Voiceflow
+          const payload = e.data.payload || {};
           window.voiceflow.chat.interact({
-            type: 'complete',
+            type: 'calendly_event',
             payload: {
-              event: 'scheduled',
-              uri: eventDetails.uri || '',
-              inviteeUri: eventDetails.invitee?.uri || '',
-              eventType: eventDetails.event_type?.name || '',
-              eventDate: eventDetails.event?.start_time || ''
+              action: 'event_scheduled',
+              uri: payload.uri || '',
+              inviteeUri: payload.invitee ? payload.invitee.uri : '',
+              eventType: payload.event_type ? payload.event_type.name : '',
+              eventDate: payload.event ? payload.event.start_time : ''
             }
           });
         }

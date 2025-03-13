@@ -247,13 +247,17 @@ export const MultiSelect = {
                                 label.style.backgroundColor = textColor;
                                 label.style.color = buttonColor;
                                 
-                                // Utiliser runtime pour interagir avec Voiceflow plutôt que window.voiceflow
+                                // Modification importante : utiliser le bon format de payload
                                 runtime.interact({
-                                    type: 'complete',
-                                    payload: JSON.stringify({
-                                        count: 1,
-                                        selections: [selectedOption],
-                                    }),
+                                    type: 'intent',
+                                    payload: {
+                                        type: 'complete',
+                                        payload: JSON.stringify({
+                                            count: 1,
+                                            selections: [selectedOption],
+                                            path: 'Default'  // Valeur par défaut si non spécifiée
+                                        })
+                                    }
                                 });
                             }
                         });
@@ -298,7 +302,7 @@ export const MultiSelect = {
                         const jsonPayload = {
                             count: selectedOptions.reduce((sum, section) => sum + section.selections.length, 0),
                             selections: selectedOptions,
-                            path: button.path,
+                            path: button.path || 'Default',
                         };
 
                         // Masquer tous les boutons dans ce conteneur
@@ -310,10 +314,13 @@ export const MultiSelect = {
                             console.error(`Conteneur avec data-index="${index}" introuvable.`);
                         }
 
-                        // Utiliser runtime pour interagir avec Voiceflow plutôt que window.voiceflow
+                        // Modification importante : utiliser le bon format de payload
                         runtime.interact({
-                            type: 'complete',
-                            payload: JSON.stringify(jsonPayload),
+                            type: 'intent',
+                            payload: {
+                                type: 'complete',
+                                payload: JSON.stringify(jsonPayload)
+                            }
                         });
                     });
 

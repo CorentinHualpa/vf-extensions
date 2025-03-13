@@ -1,58 +1,69 @@
 export const CalendlyExtension = {
   name: 'Calendly',
   type: 'response',
-  // On matche si le bloc a pour type "ext_calendly" ou payload.name "ext_calendly"
   match: ({ trace }) =>
     trace.type === 'ext_calendly' || trace.payload?.name === 'ext_calendly',
 
   render: ({ trace, element }) => {
-    // Récupérer les paramètres depuis le payload (avec des valeurs par défaut)
+    // On récupère les paramètres, en laissant par défaut une grande hauteur
     const {
       url = 'https://calendly.com/corentin-hualpa/echange-30-minutes',
-      height = 700,
-      minWidth = '320px',
+      // Mets la hauteur que tu veux, ex. 900 ou 1000 pour éviter le scroll
+      height = 900,
       backgroundColor = '#ffffff'
     } = trace.payload || {};
 
-    // Créer un conteneur pour accueillir le widget Calendly
+    // 1) Injecter un peu de CSS pour que la bulle Voiceflow fasse 100 % de largeur
+    const styleElement = document.createElement('style');
+    styleElement.textContent = `
+      /* Forcer la bulle du chat à occuper 100% */
+      .vfrc-message--extension-Calendly,
+      .vfrc-message--extension-Calendly .vfrc-bubble,
+      .vfrc-message--extension-Calendly .vfrc-bubble-content {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+    `;
+    document.head.appendChild(styleElement);
+
+    // 2) Créer un conteneur pour Calendly (100% de large, grande hauteur)
     const container = document.createElement('div');
-    container.style.backgroundColor = backgroundColor;
-    container.style.minWidth = minWidth;
+    container.style.width = '100%';
     container.style.height = `${height}px`;
-    // On peut ajouter d'autres styles si besoin (margin, border, etc.)
+    container.style.backgroundColor = backgroundColor;
+    container.style.overflow = 'hidden'; // évite la barre de scroll
     element.appendChild(container);
 
-    // Fonction qui initialise l'embed inline Calendly dans le conteneur
+    // 3) Fonction d'init du widget Calendly
     const initWidget = () => {
       if (window.Calendly && typeof window.Calendly.initInlineWidget === 'function') {
         window.Calendly.initInlineWidget({
           url: url,
           parentElement: container,
-          // Vous pouvez ajouter ici d'éventuels paramètres de prefill ou utm, par exemple :
-          // prefill: { name: 'John Doe', email: 'john.doe@example.com' },
-          // utm: { utm_campaign: 'myCampaign', utm_source: 'mySource' }
+          // Si tu veux pré-remplir, tu peux ajouter:
+          // prefill: { name: 'John Doe', email: 'john@doe.com' },
         });
       } else {
-        // Si le script Calendly n'est pas encore chargé, on réessaie après 100ms
+        // Réessaye si le script Calendly n'est pas encore prêt
         setTimeout(initWidget, 100);
       }
     };
 
-    // Charger le script Calendly s'il n'est pas déjà présent
+    // 4) Charger le script Calendly s'il n'est pas déjà présent
     if (!document.querySelector('script[src="https://assets.calendly.com/assets/external/widget.js"]')) {
       const script = document.createElement('script');
       script.type = 'text/javascript';
       script.src = 'https://assets.calendly.com/assets/external/widget.js';
       script.async = true;
-      script.onload = () => {
-        initWidget();
-      };
+      script.onload = initWidget;
       document.head.appendChild(script);
     } else {
       initWidget();
     }
 
-    // Optionnel : attacher un écouteur d'événements pour capter par exemple l'événement "calendly.event_scheduled"
+    // 5) (Facultatif) Écouter l’événement "calendly.event_scheduled" pour Voiceflow
     const calendlyListener = (e) => {
       if (
         e.data &&
@@ -64,21 +75,20 @@ export const CalendlyExtension = {
         if (e.data.event === 'calendly.event_scheduled') {
           window.removeEventListener('message', calendlyListener);
           const eventDetails = e.data.payload || {};
-          // Notifier Voiceflow que le rendez-vous est programmé
+          // Envoyer la complétion à Voiceflow
           window.voiceflow.chat.interact({
             type: 'complete',
             payload: {
               event: 'scheduled',
               uri: eventDetails.uri || '',
-              inviteeUri: eventDetails.invitee ? eventDetails.invitee.uri : '',
-              eventType: eventDetails.event_type ? eventDetails.event_type.name : '',
-              eventDate: eventDetails.event ? eventDetails.event.start_time : ''
+              inviteeUri: eventDetails.invitee?.uri || '',
+              eventType: eventDetails.event_type?.name || '',
+              eventDate: eventDetails.event?.start_time || ''
             }
           });
         }
       }
     };
-
     window.addEventListener('message', calendlyListener);
   }
 };

@@ -21,7 +21,7 @@ export const CalendlyExtension = {
     };
 
     log("Extension Calendly initialisée avec URL = " + url + " et height = " + height);
-    log("Token Calendly : " + calendlyToken);
+    log("Token Calendly : " + (calendlyToken ? "Présent" : "Absent"));
 
     // 2. Injections de styles pour l'affichage
     const styleEl = document.createElement('style');
@@ -91,7 +91,18 @@ export const CalendlyExtension = {
       return match ? match[1] : null;
     }
 
-    // 8. Écoute des événements Calendly
+    // 8. Définir des variables globales pour stocker les informations du rendez-vous
+    if (!globalThis.rdv_data) {
+      globalThis.rdv_data = {
+        name: "",
+        email: "",
+        start: "",
+        message: "",
+        reason: ""
+      };
+    }
+
+    // 9. Écoute des événements Calendly
     const calendlyListener = async (e) => {
       if (!e.data || typeof e.data !== 'object' || !e.data.event) return;
       if (!e.data.event.startsWith('calendly')) return;
@@ -106,72 +117,55 @@ export const CalendlyExtension = {
         log("Event URI : " + eventUri);
         log("Event UUID extrait : " + eventUuid);
 
-        // Construire un payload partiel avec les données déjà disponibles
-        const finalPayload = {
-          event: 'scheduled',
-          eventUri,
-          eventName: details.event_type?.name || 'Rendez-vous',
-          inviteeEmail: details.invitee?.email || '',
-          inviteeName: details.invitee?.name || '',
-          startTime: details.event?.start_time || ''
+        // Stocker l'événement complet pour une utilisation ultérieure
+        globalThis.last_calendly_event = {
+          type: 'calendly_event',
+          payload: {
+            event: 'scheduled',
+            eventUri: eventUri,
+            eventUuid: eventUuid,
+            eventName: details.event_type?.name || 'Rendez-vous',
+            inviteeEmail: details.invitee?.email || '',
+            inviteeName: details.invitee?.name || '',
+            startTime: details.event?.start_time || '',
+            calendlyToken: calendlyToken,
+            inviteeUri: details.invitee?.uri || ''
+          }
         };
 
-        // Si on a un token et un eventUuid, on va compléter via l'API Calendly
-        if (calendlyToken && eventUuid && details.invitee?.uri) {
-          log("Appel de l'API Calendly pour récupérer les informations de l'invité...");
-          try {
-            const inviteeRes = await fetch(
-              details.invitee.uri, // On peut utiliser directement l'URI de l'invité
-              {
-                headers: {
-                  "Authorization": `Bearer ${calendlyToken}`,
-                  "Content-Type": "application/json"
-                }
-              }
-            );
-            if (inviteeRes.ok) {
-              const inviteeData = await inviteeRes.json();
-              log("Réponse inviteeData : " + JSON.stringify(inviteeData));
-              finalPayload.inviteeEmail = inviteeData.resource.email || finalPayload.inviteeEmail;
-              finalPayload.inviteeName = inviteeData.resource.name || finalPayload.inviteeName;
-            } else {
-              log("Échec de la requête invitees : " + inviteeRes.status);
-            }
-          } catch (err) {
-            log("Erreur appel Calendly API (invitee) : " + err);
-          }
-        } else {
-          log("Token, eventUuid ou invitee URI manquant, appel API ignoré.");
-        }
-
-        // Conversion de startTime en date/heure lisibles
+        // Mettre à jour les variables rdv_data avec les informations disponibles
         let rdv_start = "Date/heure non renseignée";
-        if (finalPayload.startTime) {
-          const dateObj = new Date(finalPayload.startTime);
+        if (details.event?.start_time) {
+          const dateObj = new Date(details.event.start_time);
           const appointmentDate = dateObj.toLocaleDateString("fr-FR");
           const appointmentTime = dateObj.toLocaleTimeString("fr-FR", { hour: '2-digit', minute: '2-digit' });
           rdv_start = appointmentDate + " à " + appointmentTime;
         }
         
-        // Définir les variables globales attendues
-        rdv_name = finalPayload.inviteeName;
-        rdv_mail = finalPayload.inviteeEmail;
-        rdv_start = rdv_start;
-        rdv_message = "Rendez-vous confirmé : " + finalPayload.eventName +
-                      " avec " + rdv_name +
-                      " (" + rdv_mail + ") pour le " + rdv_start;
+        globalThis.rdv_data = {
+          name: details.invitee?.name || "",
+          email: details.invitee?.email || "",
+          start: rdv_start,
+          message: "Rendez-vous confirmé : " + (details.event_type?.name || "Rendez-vous") +
+                   " pour le " + rdv_start,
+          reason: ""
+        };
 
-        log("[CalendlyExtension] rdv_message = " + rdv_message);
-        log("[CalendlyExtension] Final payload envoyé à Voiceflow : " + JSON.stringify(finalPayload));
+        log("[CalendlyExtension] rdv_data mis à jour : " + JSON.stringify(globalThis.rdv_data));
 
-        // Envoyer le payload final à Voiceflow
+        // Envoyer les données à Voiceflow
         window.voiceflow.chat.interact({
           type: 'calendly_event',
-          payload: finalPayload
+          payload: globalThis.last_calendly_event.payload
         });
       }
     };
 
     window.addEventListener('message', calendlyListener);
+
+    // Nettoyage lors de la suppression de l'élément
+    return () => {
+      window.removeEventListener('message', calendlyListener);
+    };
   }
 };

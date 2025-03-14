@@ -6,16 +6,15 @@ export const CalendlyExtension = {
 
   render: ({ trace, element }) => {
     // S'assurer que l'objet global voiceflow existe
-    window.voiceflow = window.voiceflow || {};
-    window.voiceflow.log_details = window.voiceflow.log_details || "";
+    globalThis.voiceflow = globalThis.voiceflow || {};
+    globalThis.voiceflow.log_details = globalThis.voiceflow.log_details || "";
 
     const log = (msg) => {
       console.log(msg);
-      window.voiceflow.log_details += msg + "\n";
+      globalThis.voiceflow.log_details += msg + "\n";
     };
 
     try {
-      // Récupération des paramètres depuis le payload
       const {
         url = 'https://calendly.com/corentin-hualpa/echange-30-minutes?hide_event_type_details=1&hide_gdpr_banner=1',
         height = 900
@@ -23,7 +22,7 @@ export const CalendlyExtension = {
 
       log("CalendlyExtension: Initialisation avec URL = " + url + " et height = " + height);
 
-      // Injecter des styles pour forcer l'extension à occuper toute la largeur
+      // Injection des styles pour forcer l'affichage sur 100%
       const styleEl = document.createElement('style');
       styleEl.textContent = `
         .vfrc-message--extension-Calendly,
@@ -59,9 +58,9 @@ export const CalendlyExtension = {
 
       // Fonction pour initialiser le widget Calendly en mode inline
       const initWidget = () => {
-        if (window.Calendly && typeof window.Calendly.initInlineWidget === 'function') {
+        if (globalThis.Calendly && typeof globalThis.Calendly.initInlineWidget === 'function') {
           log("CalendlyExtension: Appel de Calendly.initInlineWidget");
-          window.Calendly.initInlineWidget({
+          globalThis.Calendly.initInlineWidget({
             url,
             parentElement: container
           });
@@ -70,7 +69,7 @@ export const CalendlyExtension = {
         }
       };
 
-      // Charger le script Calendly s'il n'est pas déjà présent
+      // Charger le script Calendly si nécessaire
       if (!document.querySelector('script[src="https://assets.calendly.com/assets/external/widget.js"]')) {
         const script = document.createElement('script');
         script.src = 'https://assets.calendly.com/assets/external/widget.js';
@@ -88,7 +87,7 @@ export const CalendlyExtension = {
       }
 
       // Initialiser une variable globale pour stocker la sélection temporaire
-      window.lastCalendlySelection = {};
+      globalThis.lastCalendlySelection = {};
 
       // Écoute des événements Calendly
       const calendlyListener = (e) => {
@@ -98,46 +97,41 @@ export const CalendlyExtension = {
         log("CalendlyExtension: Événement reçu : " + e.data.event);
         log("CalendlyExtension: Payload reçu : " + JSON.stringify(e.data.payload));
 
-        // Lorsque l'utilisateur sélectionne un créneau, stocker la sélection temporaire
         if (e.data.event === 'calendly.date_and_time_selected') {
-          window.lastCalendlySelection = {
+          globalThis.lastCalendlySelection = {
             dateSelected: e.data.payload?.date || '',
             timeSelected: e.data.payload?.time || '',
             rawPayload: e.data.payload
           };
-          log("CalendlyExtension: Sélection temporaire enregistrée : " + JSON.stringify(window.lastCalendlySelection));
+          log("CalendlyExtension: Sélection temporaire enregistrée : " + JSON.stringify(globalThis.lastCalendlySelection));
         }
 
-        // Lorsque l'utilisateur confirme le rendez-vous
         if (e.data.event === 'calendly.event_scheduled') {
-          // Optionnel : retirer l'écouteur pour éviter des doublons
-          window.removeEventListener('message', calendlyListener);
+          globalThis.removeEventListener('message', calendlyListener);
           const details = e.data.payload || {};
           const finalPayload = {
             event: 'scheduled',
-            // Utiliser start_time confirmée si fournie, sinon la sélection temporaire
-            startTime: details.event?.start_time || window.lastCalendlySelection.dateSelected || '',
+            startTime: details.event?.start_time || globalThis.lastCalendlySelection.dateSelected || '',
             eventName: details.event_type?.name || '',
             inviteeName: details.invitee?.name || '',
             inviteeEmail: details.invitee?.email || '',
             customAnswers: details.invitee?.questions_and_answers || [],
             uri: details.uri || '',
-            // Transmission de la sélection temporaire
-            dateSelected: window.lastCalendlySelection.dateSelected || '',
-            timeSelected: window.lastCalendlySelection.timeSelected || ''
+            dateSelected: globalThis.lastCalendlySelection.dateSelected || '',
+            timeSelected: globalThis.lastCalendlySelection.timeSelected || ''
           };
           log("CalendlyExtension: Rendez-vous confirmé. Payload final : " + JSON.stringify(finalPayload));
-          window.voiceflow.chat.interact({
+          globalThis.voiceflow.chat.interact({
             type: 'calendly_event',
             payload: finalPayload
           });
         }
       };
 
-      window.addEventListener('message', calendlyListener);
+      globalThis.addEventListener('message', calendlyListener);
     } catch (err) {
       console.error("CalendlyExtension: Erreur :", err);
-      window.voiceflow.log_details += "CalendlyExtension: Erreur : " + err.message + "\n";
+      globalThis.voiceflow.log_details += "CalendlyExtension: Erreur : " + err.message + "\n";
     }
   }
 };

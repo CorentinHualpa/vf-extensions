@@ -5,17 +5,16 @@ export const CalendlyExtension = {
     trace.type === 'ext_calendly' || trace.payload?.name === 'ext_calendly',
 
   render: ({ trace, element }) => {
-    // Initialisation de globalThis.voiceflow et log_details si nécessaire
+    // Initialiser globalThis.voiceflow et log_details si nécessaire
     globalThis.voiceflow = globalThis.voiceflow || {};
     globalThis.voiceflow.log_details = globalThis.voiceflow.log_details || "";
-
     const log = (msg) => {
       console.log(msg);
       globalThis.voiceflow.log_details += msg + "\n";
     };
 
     try {
-      // Récupérer les paramètres depuis le payload
+      // Récupérer les paramètres envoyés depuis Voiceflow
       const {
         url = 'https://calendly.com/corentin-hualpa/echange-30-minutes?hide_event_type_details=1&hide_gdpr_banner=1',
         height = 900
@@ -44,7 +43,7 @@ export const CalendlyExtension = {
       const container = document.createElement('div');
       container.style.width = '100%';
       container.style.height = `${height}px`;
-      container.style.overflow = 'hidden';
+      container.style.overflow = 'hidden'; // pour éviter la scrollbar interne
       container.style.boxSizing = 'border-box';
       element.appendChild(container);
 
@@ -87,10 +86,10 @@ export const CalendlyExtension = {
         initWidget();
       }
 
-      // Initialiser une variable globale pour stocker la sélection temporaire
+      // Stocker la sélection temporaire dans globalThis.lastCalendlySelection
       globalThis.lastCalendlySelection = {};
 
-      // Écoute des événements Calendly
+      // Écouter les événements Calendly via postMessage
       const calendlyListener = (e) => {
         if (!e.data || typeof e.data !== 'object' || !e.data.event) return;
         if (!e.data.event.startsWith('calendly')) return;
@@ -98,7 +97,7 @@ export const CalendlyExtension = {
         log("CalendlyExtension: Événement reçu : " + e.data.event);
         log("CalendlyExtension: Payload reçu : " + JSON.stringify(e.data.payload));
 
-        // Lors de la sélection d'un créneau, stocker localement (sans déclencher Voiceflow)
+        // Lorsque l'utilisateur sélectionne un créneau (avant confirmation)
         if (e.data.event === 'calendly.date_and_time_selected') {
           globalThis.lastCalendlySelection = {
             dateSelected: e.data.payload?.date || '',
@@ -108,18 +107,18 @@ export const CalendlyExtension = {
           log("CalendlyExtension: Sélection temporaire enregistrée : " + JSON.stringify(globalThis.lastCalendlySelection));
         }
 
-        // Lors de la confirmation du rendez-vous, envoyer l'info à Voiceflow
+        // Lorsque l'utilisateur confirme le rendez-vous
         if (e.data.event === 'calendly.event_scheduled') {
           globalThis.removeEventListener('message', calendlyListener);
           const details = e.data.payload || {};
+          // Construction du payload final en se basant sur la doc Calendly API
           const finalPayload = {
             event: 'scheduled',
-            startTime: details.event?.start_time || globalThis.lastCalendlySelection.dateSelected || '',
-            eventName: details.event_type?.name || '',
-            inviteeName: details.invitee?.name || '',
-            inviteeEmail: details.invitee?.email || '',
-            customAnswers: details.invitee?.questions_and_answers || [],
-            uri: details.uri || '',
+            rdv_name: details.name || "Rendez-vous",       // Le nom de l'événement
+            rdv_start: details.start_time || globalThis.lastCalendlySelection.dateSelected || '',
+            rdv_invitee: (details.event_memberships && details.event_memberships[0] && details.event_memberships[0].user_name) || '',
+            rdv_mail: (details.event_memberships && details.event_memberships[0] && details.event_memberships[0].user_email) || '',
+            rdv_uri: details.uri || '',
             dateSelected: globalThis.lastCalendlySelection.dateSelected || '',
             timeSelected: globalThis.lastCalendlySelection.timeSelected || ''
           };

@@ -122,14 +122,16 @@ export const CalendlyExtension = {
         console.log("- Date:", formattedDateTime);
         console.log("- Événement:", eventName);
         
-        // IMPORTANT: Envoyer l'événement sous forme d'un texte simple
-        // Ne pas utiliser un type personnalisé comme 'calendly_event'
+        // Envoyer l'événement à Voiceflow sous forme de texte
         try {
-          console.log("Envoi du rendez-vous à Voiceflow comme text");
+          console.log("Envoi du rendez-vous à Voiceflow");
+          
+          // IMPORTANT: Envoyer comme 'text' pour que last_event.type === 'text'
           window.voiceflow.chat.interact({
             type: 'text',
             payload: `CALENDLY_CONFIRMED|${inviteeName}|${inviteeEmail}|${formattedDateTime}|${eventName}`
           });
+          
           console.log("Événement envoyé avec succès");
         } catch (error) {
           console.error("Erreur lors de l'envoi à Voiceflow:", error);

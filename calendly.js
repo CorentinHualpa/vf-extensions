@@ -9,7 +9,7 @@ export const CalendlyExtension = {
     const {
       url = 'https://calendly.com/corentin-hualpa/echange-30-minutes',
       height = 900,
-      calendlyToken = '',
+      calendlyToken = 'eyJraWQiOiIxY2UxZTEzNjE3ZGNmNzY2YjNjZWJjY2Y4ZGM1YmFmYThhNjVlNjg0MDIzZjdjMzJiZTgzNDliMjM4MDEzNWI0IiwidHlwIjoiUEFUIiwiYWxnIjoiRVMyNTYifQ.eyJpc3MiOiJodHRwczovL2F1dGguY2FsZW5kbHkuY29tIiwiaWF0IjoxNzQxOTE5ODMwLCJqdGkiOiI0NWVkN2IyMy04ZTc3LTQ5YzMtOGVjZC0yYjc2YjQzNzQ3NjYiLCJ1c2VyX3V1aWQiOiI3NDBiMzJjNy1iYzA0LTQ5YWMtYmYxOS04OThmNzYxNjQ2MTgifQ.BEZsBGyBl6bXR9HXBja_c821gMOxzTpPVKqCp9uDqj_U4G0jWZ8sztOzEqXsNMcN1JDDLwXbwFJtC2IbW8eXZA',
       backgroundColor = '#ffffff'
     } = trace.payload || {};
 

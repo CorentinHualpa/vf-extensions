@@ -13,20 +13,12 @@ export const CalendlyExtension = {
       backgroundColor = '#ffffff'
     } = trace.payload || {};
 
-    // S'assurer que l'objet voiceflow existe globalement
-    if (!globalThis.voiceflow) {
-      globalThis.voiceflow = {};
-    }
-    
-    // Initialiser le log_details s'il n'existe pas
-    if (!globalThis.voiceflow.log_details) {
-      globalThis.voiceflow.log_details = "";
-    }
-    
     // Fonction de log pour faciliter le débogage
     const log = (msg) => {
       console.log(`[Calendly] ${msg}`);
-      globalThis.voiceflow.log_details += `[Calendly] ${msg}\n`;
+      if (window.voiceflow && window.voiceflow.log_details !== undefined) {
+        window.voiceflow.log_details += `[Calendly] ${msg}\n`;
+      }
     };
 
     log("Extension Calendly initialisée");
@@ -83,7 +75,7 @@ export const CalendlyExtension = {
     container.style.boxSizing = 'border-box';
     container.style.border = '1px solid #e2e8f0';
     container.style.borderRadius = '8px';
-    container.style.backgroundColor = backgroundColor;
+    container.style.backgroundColor = backgroundColor || '#ffffff';
     
     // Ajouter le conteneur à l'élément fourni par Voiceflow
     element.appendChild(container);
@@ -156,131 +148,114 @@ export const CalendlyExtension = {
       initWidget();
     }
 
-    // 8. Fonction pour extraire les informations d'un événement
-    function parseEventDetails(eventUri) {
-      if (!eventUri) return null;
-      const match = eventUri.match(/scheduled_events\/([^\/]+)/);
-      return match ? match[1] : null;
+    // 8. Fonction pour formater la date
+    function formatDateTime(dateStr) {
+      try {
+        const dateObj = new Date(dateStr);
+        return dateObj.toLocaleDateString("fr-FR") + 
+               " à " + 
+               dateObj.toLocaleTimeString("fr-FR", { 
+                 hour: '2-digit', 
+                 minute: '2-digit' 
+               });
+      } catch (err) {
+        log(`Erreur lors du formatage de la date: ${err.message}`);
+        return dateStr;
+      }
     }
 
     // 9. Écouter les événements de Calendly
-    const calendlyListener = async (e) => {
+    const calendlyListener = (e) => {
       // Vérifier que c'est bien un événement Calendly
       if (!e.data || typeof e.data !== 'object' || !e.data.event) return;
       if (!e.data.event.startsWith('calendly')) return;
       
       log(`Événement Calendly reçu: ${e.data.event}`);
       
-      // Récupérer les détails de l'événement
-      const eventData = e.data.payload || {};
-      
       // Traiter l'événement de prise de rendez-vous
       if (e.data.event === 'calendly.event_scheduled') {
         log("Rendez-vous programmé détecté!");
         
+        // Récupérer les détails de l'événement
+        const eventData = e.data.payload || {};
+        
         // Extraire les informations principales
-        const eventUri = eventData.event?.uri || '';
-        const eventId = parseEventDetails(eventUri);
-        const startTime = eventData.event?.start_time || '';
-        const inviteeEmail = eventData.invitee?.email || '';
         const inviteeName = eventData.invitee?.name || '';
+        const inviteeEmail = eventData.invitee?.email || '';
+        const startTime = eventData.event?.start_time || '';
         const eventName = eventData.event_type?.name || 'Rendez-vous';
-        const inviteeUri = eventData.invitee?.uri || '';
+        const formattedDateTime = startTime ? formatDateTime(startTime) : '';
         
         log(`Détails du rendez-vous:`);
-        log(`- ID: ${eventId}`);
         log(`- Événement: ${eventName}`);
         log(`- Invité: ${inviteeName} (${inviteeEmail})`);
-        log(`- Date/heure: ${startTime}`);
-        log(`- URI invitee: ${inviteeUri}`);
+        log(`- Date/heure: ${formattedDateTime}`);
         
-        // Formater la date et l'heure
-        let formattedDateTime = "Date non spécifiée";
-        if (startTime) {
-          try {
-            const dateObj = new Date(startTime);
-            formattedDateTime = dateObj.toLocaleDateString("fr-FR") + 
-                              " à " + 
-                              dateObj.toLocaleTimeString("fr-FR", { 
-                                hour: '2-digit', 
-                                minute: '2-digit' 
-                              });
-          } catch (err) {
-            log(`Erreur lors du formatage de la date: ${err.message}`);
-            formattedDateTime = startTime;
-          }
-        }
-        
-        // Créer un objet avec toutes les données de l'événement
-        const completEventData = {
+        // Créer la charge utile complète
+        const payload = {
           event: 'scheduled',
           eventName: eventName,
           inviteeName: inviteeName,
           inviteeEmail: inviteeEmail,
           startTime: startTime,
           formattedDateTime: formattedDateTime,
-          eventId: eventId,
           calendlyToken: calendlyToken,
+          // Ajouter les URIs si disponibles
           uri: {
-            event: eventUri,
-            invitee: inviteeUri
-          },
-          raw: eventData
+            event: eventData.event?.uri || '',
+            invitee: eventData.invitee?.uri || ''
+          }
         };
         
-        // IMPORTANT: Stocker l'événement de différentes manières pour assurer la capture
+        // Stocker les données partout où c'est possible pour maximiser les chances de capture
         
-        // 1. Dans les variables globales traditionnelles
-        log("Stockage des données dans les variables globales standard");
-        globalThis.rdv_data = {
+        // 1. Variable globale standard pour Voiceflow
+        if (window.rdv_data === undefined) window.rdv_data = {};
+        window.rdv_data = {
           name: inviteeName,
           email: inviteeEmail,
           start: formattedDateTime,
           event_name: eventName,
-          message: `Rendez-vous confirmé: ${eventName} avec ${inviteeName} (${inviteeEmail}) pour le ${formattedDateTime}`,
-          reason: ""
+          message: `Rendez-vous confirmé: ${eventName} avec ${inviteeName} (${inviteeEmail}) pour le ${formattedDateTime}`
         };
         
-        // 2. Dans une variable dédiée aux événements Calendly
-        globalThis.calendly_event = completEventData;
+        // 2. Variable spécifique pour l'événement Calendly
+        window.calendly_event = payload;
         
-        // 3. Directement dans window pour une accessibilité maximale
+        // 3. Variables directes
         window.rdv_name = inviteeName;
         window.rdv_mail = inviteeEmail;
         window.rdv_start = formattedDateTime;
         window.rdv_event_name = eventName;
         
-        // 4. Dans localStorage pour persistance entre les pages
+        // 4. LocalStorage pour persistance
         try {
-            localStorage.setItem('calendly_event', JSON.stringify(completEventData));
-            log("Données stockées dans localStorage");
+          localStorage.setItem('calendly_event', JSON.stringify(payload));
         } catch (err) {
-            log(`Erreur lors du stockage dans localStorage: ${err.message}`);
+          log(`Erreur lors du stockage dans localStorage: ${err.message}`);
         }
+        
+        // 5. Stocker dans last_event global pour capture ultérieure
+        window.last_event = {
+          type: 'calendly_event',
+          payload: payload
+        };
+        
+        log("Données stockées dans toutes les variables disponibles");
         
         // Envoyer l'événement à Voiceflow
         try {
           log("Envoi de l'événement à Voiceflow...");
           
-          // IMPORTANT: Stocker dans last_event avant d'envoyer l'interact
-          globalThis.last_event = {
-            type: 'calendly_event',
-            payload: completEventData
-          };
-          
-          window.voiceflow.chat.interact({
-            type: 'calendly_event',
-            payload: completEventData
-          });
-          
-          log("Événement envoyé à Voiceflow avec succès");
-          
-          // Vérification post-envoi pour le débogage
-          log("Vérification après envoi:");
-          log(`- globalThis.last_event existe: ${!!globalThis.last_event}`);
-          log(`- globalThis.calendly_event existe: ${!!globalThis.calendly_event}`);
-          log(`- globalThis.rdv_data existe: ${!!globalThis.rdv_data}`);
-          
+          if (window.voiceflow && window.voiceflow.chat && typeof window.voiceflow.chat.interact === 'function') {
+            window.voiceflow.chat.interact({
+              type: 'calendly_event',
+              payload: payload
+            });
+            log("Événement envoyé à Voiceflow avec succès");
+          } else {
+            log("Fonction voiceflow.chat.interact non disponible");
+          }
         } catch (err) {
           log(`Erreur lors de l'envoi à Voiceflow: ${err.message}`);
         }

@@ -5,16 +5,14 @@ export const CalendlyExtension = {
     trace.type === 'ext_calendly' || trace.payload?.name === 'ext_calendly',
 
   render: ({ trace, element }) => {
-    // 1. Récupérer les paramètres
+    // 1. Récupérer les paramètres depuis le bloc Voiceflow
     const {
       url = 'https://calendly.com/corentin-hualpa/echange-30-minutes',
       height = 900,
-      backgroundColor = '#ffffff'
+      calendlyToken = '' // Ton token d'accès personnel
     } = trace.payload || {};
 
-    console.log("Extension Calendly initialisée");
-    
-    // 2. Ajouter des styles pour assurer que l'élément prend toute la largeur
+    // 2. Injections de styles pour l'affichage
     const styleEl = document.createElement('style');
     styleEl.textContent = `
       .vfrc-message--extension-Calendly,
@@ -31,138 +29,118 @@ export const CalendlyExtension = {
     `;
     document.head.appendChild(styleEl);
 
-    // 3. Ajuster manuellement la largeur du message parent
-    const adjustContainer = () => {
-      // Trouver tous les parents possibles et ajuster leur largeur
-      const messageEl = element.closest('.vfrc-message');
-      if (messageEl) {
-        messageEl.style.width = '100%';
-        messageEl.style.maxWidth = '100%';
-        messageEl.style.margin = '0';
-        messageEl.style.padding = '0';
-      }
-      
-      const bubbleEl = element.closest('.vfrc-bubble');
-      if (bubbleEl) {
-        bubbleEl.style.width = '100%';
-        bubbleEl.style.maxWidth = '100%';
-        bubbleEl.style.margin = '0';
-        bubbleEl.style.padding = '0';
-      }
-      
-      const contentEl = element.closest('.vfrc-bubble-content, .vfrc-message-content');
-      if (contentEl) {
-        contentEl.style.width = '100%';
-        contentEl.style.maxWidth = '100%';
-        contentEl.style.margin = '0';
-        contentEl.style.padding = '0';
-      }
-    };
-    
-    // Exécuter l'ajustement immédiatement et après un court délai
-    adjustContainer();
-    setTimeout(adjustContainer, 100);
-    setTimeout(adjustContainer, 500); // Parfois nécessaire pour les éléments chargés lentement
-    
-    // 4. Créer un conteneur pour le widget
+    // 3. Créer un conteneur pour Calendly
     const container = document.createElement('div');
-    container.id = 'calendly-container-' + Date.now();
     container.style.width = '100%';
     container.style.height = `${height}px`;
     container.style.overflow = 'hidden';
     container.style.boxSizing = 'border-box';
-    container.style.border = '1px solid #e2e8f0';
-    container.style.borderRadius = '8px';
-    container.style.backgroundColor = backgroundColor;
-    
-    // Ajouter le conteneur à l'élément
     element.appendChild(container);
 
-    // 5. Créer et ajouter une iframe Calendly directe
-    const iframe = document.createElement('iframe');
-    iframe.src = url;
-    iframe.width = '100%';
-    iframe.height = '100%';
-    iframe.frameBorder = '0';
-    iframe.style.width = '100%';
-    iframe.style.height = '100%';
-    iframe.style.border = 'none';
-    iframe.allow = 'camera; microphone; fullscreen; clipboard-read; clipboard-write;';
-    iframe.setAttribute('loading', 'lazy');
-    container.appendChild(iframe);
+    // 4. Ajuster la largeur de la bulle Voiceflow
+    setTimeout(() => {
+      const messageEl = element.closest('.vfrc-message');
+      if (messageEl) {
+        messageEl.style.width = '100%';
+        messageEl.style.maxWidth = '100%';
+      }
+    }, 0);
 
-    // 6. Stocker les données de rendez-vous dans une variable globale
-    window.calendlyData = {
-      received: false,
-      name: '',
-      email: '',
-      start: '',
-      event_name: ''
-    };
-
-    // 7. Écouter les messages pour capturer l'événement Calendly
-    const messageListener = event => {
-      // Vérifier si c'est un événement Calendly
-      if (event.data && event.data.event && event.data.event === 'calendly.event_scheduled') {
-        console.log("Rendez-vous Calendly détecté !", event.data);
-        
-        // Extraire les informations du rendez-vous
-        const eventData = event.data.payload || {};
-        const inviteeName = eventData.invitee?.name || '';
-        const inviteeEmail = eventData.invitee?.email || '';
-        const eventName = eventData.event_type?.name || 'Rendez-vous';
-        
-        // Formater la date
-        let formattedDate = '';
-        if (eventData.event && eventData.event.start_time) {
-          try {
-            const date = new Date(eventData.event.start_time);
-            formattedDate = date.toLocaleDateString('fr-FR') + ' à ' + 
-                            date.toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'});
-          } catch (e) {
-            console.error("Erreur de formatage de date:", e);
-            formattedDate = "Date non disponible";
-          }
-        }
-        
-        // Stocker les données dans la variable globale
-        window.calendlyData = {
-          received: true,
-          name: inviteeName,
-          email: inviteeEmail,
-          start: formattedDate,
-          event_name: eventName
-        };
-        
-        // Stocker aussi comme variables globales directes pour compatibilité
-        window.rdv_name = inviteeName;
-        window.rdv_mail = inviteeEmail;
-        window.rdv_start = formattedDate;
-        window.rdv_event_name = eventName;
-        
-        // Envoyer la confirmation à Voiceflow
-        try {
-          const payload = `CALENDLY_CONFIRMED|${inviteeName}|${inviteeEmail}|${formattedDate}|${eventName}`;
-          console.log("Envoi du payload à Voiceflow:", payload);
-          
-          window.voiceflow.chat.interact({
-            type: 'text',
-            payload: payload
-          });
-          
-          console.log("Confirmation envoyée à Voiceflow");
-        } catch (error) {
-          console.error("Erreur lors de l'envoi à Voiceflow:", error);
-        }
+    // 5. Fonction d'init Calendly
+    const initWidget = () => {
+      if (window.Calendly && typeof window.Calendly.initInlineWidget === 'function') {
+        window.Calendly.initInlineWidget({
+          url,
+          parentElement: container
+        });
+      } else {
+        setTimeout(initWidget, 100);
       }
     };
-    
-    // Ajouter l'écouteur d'événements
-    window.addEventListener('message', messageListener);
-    
-    // Retourner une fonction de nettoyage
-    return () => {
-      window.removeEventListener('message', messageListener);
+
+    // 6. Charger le script Calendly si nécessaire
+    if (!document.querySelector('script[src="https://assets.calendly.com/assets/external/widget.js"]')) {
+      const script = document.createElement('script');
+      script.src = 'https://assets.calendly.com/assets/external/widget.js';
+      script.async = true;
+      script.onload = () => initWidget();
+      script.onerror = () => console.warn("Erreur de chargement Calendly");
+      document.head.appendChild(script);
+    } else {
+      initWidget();
+    }
+
+    // 7. Fonction utilitaire pour extraire l'UUID depuis l'URI Calendly
+    //    (ex: "https://api.calendly.com/scheduled_events/ABC123" => "ABC123")
+    function parseEventUuid(eventUri) {
+      if (!eventUri) return null;
+      const match = eventUri.match(/scheduled_events\\/([^\\/]+)/);
+      return match ? match[1] : null;
+    }
+
+    // 8. Écoute des événements Calendly
+    const calendlyListener = async (e) => {
+      if (!e.data || typeof e.data !== 'object' || !e.data.event) return;
+      if (!e.data.event.startsWith('calendly')) return;
+
+      console.log("[CalendlyExtension] Événement reçu :", e.data.event);
+      const details = e.data.payload || {};
+
+      // Lorsqu'un créneau est confirmé
+      if (e.data.event === 'calendly.event_scheduled') {
+        // Extraire l'event.uri pour obtenir l'UUID
+        const eventUri = details.event?.uri; 
+        const eventUuid = parseEventUuid(eventUri);
+
+        // Construire un payload partiel
+        const finalPayload = {
+          event: 'scheduled',
+          eventUri,
+          eventName: details.event_type?.name || 'Rendez-vous',
+          inviteeEmail: details.invitee?.email || '',
+          inviteeName: details.invitee?.name || '',
+          startTime: details.event?.start_time || ''
+        };
+
+        // 9. Si on a un token et un eventUuid, on va appeler l'API Calendly
+        if (calendlyToken && eventUuid) {
+          console.log("[CalendlyExtension] Appel Calendly API pour lister les invitees...");
+          try {
+            const inviteeRes = await fetch(
+              `https://api.calendly.com/scheduled_events/${eventUuid}/invitees`,
+              {
+                headers: {
+                  "Authorization": `Bearer ${calendlyToken}`,
+                  "Content-Type": "application/json"
+                }
+              }
+            );
+            if (inviteeRes.ok) {
+              const inviteeData = await inviteeRes.json();
+              // On prend le premier invitee (s'il y en a un)
+              if (inviteeData.collection && inviteeData.collection.length > 0) {
+                const firstInvitee = inviteeData.collection[0];
+                finalPayload.inviteeEmail = firstInvitee.email || finalPayload.inviteeEmail;
+                finalPayload.inviteeName = firstInvitee.name || finalPayload.inviteeName;
+                // On pourrait récupérer d'autres champs (first_name, last_name, questions_and_answers, etc.)
+              }
+            } else {
+              console.warn("Échec de la requête invitees:", inviteeRes.status);
+            }
+          } catch (err) {
+            console.error("Erreur appel Calendly API:", err);
+          }
+        }
+
+        // 10. Envoyer le payload final à Voiceflow
+        console.log("[CalendlyExtension] Rendez-vous confirmé. Payload final :", finalPayload);
+        window.voiceflow.chat.interact({
+          type: 'calendly_event',
+          payload: finalPayload
+        });
+      }
     };
+
+    window.addEventListener('message', calendlyListener);
   }
 };

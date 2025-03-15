@@ -9,7 +9,9 @@ export const CalendlyExtension = {
     const {
       url = 'https://calendly.com/corentin-hualpa/echange-30-minutes',
       height = 900,
-      backgroundColor = '#ffffff'
+      backgroundColor = '#992D00',
+      minWidth = '320px',
+      calendlyToken = ''
     } = trace.payload || {};
 
     console.log("[Calendly] Initialisation avec URL:", url);
@@ -28,6 +30,21 @@ export const CalendlyExtension = {
         padding: 0 !important;
         box-sizing: border-box !important;
       }
+      
+      @keyframes calendly-spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      
+      .calendly-spinner {
+        border: 4px solid rgba(0, 0, 0, 0.1);
+        border-left-color: #4a5568;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: calendly-spin 1s linear infinite;
+        margin-bottom: 16px;
+      }
     `;
     document.head.appendChild(styleEl);
 
@@ -36,6 +53,7 @@ export const CalendlyExtension = {
     container.id = 'calendly-container-' + Date.now();
     container.style.width = '100%';
     container.style.height = `${height}px`;
+    container.style.minWidth = minWidth;
     container.style.overflow = 'hidden';
     container.style.boxSizing = 'border-box';
     container.style.border = '1px solid #e2e8f0';
@@ -43,7 +61,26 @@ export const CalendlyExtension = {
     container.style.backgroundColor = backgroundColor;
     element.appendChild(container);
 
-    // 4. Fonction pour ajuster manuellement tous les éléments parents
+    // 4. Indicateur de chargement
+    const loaderContainer = document.createElement('div');
+    loaderContainer.style.display = 'flex';
+    loaderContainer.style.flexDirection = 'column';
+    loaderContainer.style.alignItems = 'center';
+    loaderContainer.style.justifyContent = 'center';
+    loaderContainer.style.height = '100%';
+    loaderContainer.style.color = '#ffffff';
+    
+    const spinner = document.createElement('div');
+    spinner.className = 'calendly-spinner';
+    
+    const loadingText = document.createElement('div');
+    loadingText.textContent = 'Chargement du calendrier...';
+    
+    loaderContainer.appendChild(spinner);
+    loaderContainer.appendChild(loadingText);
+    container.appendChild(loaderContainer);
+
+    // 5. Fonction pour ajuster manuellement tous les éléments parents
     const adjustContainers = () => {
       // Trouver tous les parents pour ajuster leur largeur
       const messageEl = element.closest('.vfrc-message');
@@ -84,25 +121,44 @@ export const CalendlyExtension = {
     setTimeout(adjustContainers, 100);
     setTimeout(adjustContainers, 500);
 
-    // 5. Création de l'iframe Calendly
-    const iframe = document.createElement('iframe');
-    iframe.src = url;
-    iframe.width = '100%';
-    iframe.height = '100%';
-    iframe.frameBorder = '0';
-    iframe.style.width = '100%';
-    iframe.style.height = '100%';
-    iframe.style.border = 'none';
-    iframe.style.overflow = 'hidden';
-    iframe.allow = 'camera; microphone; fullscreen; clipboard-read; clipboard-write;';
-    container.appendChild(iframe);
+    // 6. Variables globales pour stocker les données du rendez-vous
+    window.calendlyData = {
+      dateSelected: '',
+      dateTimeFormatted: '',
+      name: '',
+      email: '',
+      eventName: '',
+      dateCaptured: false,
+      eventCompleted: false
+    };
 
-    // 6. Fonction pour vérifier si c'est un événement Calendly (selon la doc)
+    // 7. Fonction pour charger le script Calendly ou utiliser l'iframe directe
+    const loadCalendly = () => {
+      // Méthode 1: Utiliser une iframe directe (plus compatible avec les restrictions CSP)
+      const iframe = document.createElement('iframe');
+      iframe.src = url;
+      iframe.width = '100%';
+      iframe.height = '100%';
+      iframe.frameBorder = '0';
+      iframe.style.width = '100%';
+      iframe.style.height = '100%';
+      iframe.style.border = 'none';
+      iframe.style.overflow = 'hidden';
+      iframe.allow = 'camera; microphone; fullscreen; clipboard-read; clipboard-write;';
+      
+      // Remplacer le loader par l'iframe
+      container.innerHTML = '';
+      container.appendChild(iframe);
+      
+      console.log("[Calendly] Iframe créée");
+    };
+
+    // 8. Fonction pour vérifier si c'est un événement Calendly (selon la doc)
     function isCalendlyEvent(e) {
       return e.data.event && e.data.event.indexOf('calendly') === 0;
     }
 
-    // 7. Fonction pour formater la date correctement
+    // 9. Fonction pour formater la date correctement
     function formatDate(dateStr) {
       try {
         if (!dateStr) return "Date non disponible";
@@ -118,7 +174,7 @@ export const CalendlyExtension = {
       }
     }
 
-    // 8. Écouter les événements Calendly (basé sur la documentation officielle)
+    // 10. Écouter les événements Calendly (basé sur la documentation officielle)
     const handleCalendlyEvent = function(e) {
       if (!isCalendlyEvent(e)) return;
       
@@ -131,25 +187,50 @@ export const CalendlyExtension = {
         
         // Récupérer les données du payload
         const payload = e.data.payload || {};
-        const inviteeStartTime = payload.invitee_start_time || "";
+        let inviteeStartTime = "";
+        
+        // Essayer de récupérer la date depuis différentes sources possibles
+        if (payload.invitee_start_time) {
+          inviteeStartTime = payload.invitee_start_time;
+        } else if (payload.event && payload.event.start_time) {
+          inviteeStartTime = payload.event.start_time;
+        } else if (payload.start_time) {
+          inviteeStartTime = payload.start_time;
+        }
+        
         const eventName = payload.event_type?.name || "Rendez-vous";
         
         // Formater la date
         const formattedDate = formatDate(inviteeStartTime);
         
-        // Stocker pour référence future
-        window.rdv_date = inviteeStartTime;
-        window.rdv_date_formatted = formattedDate;
-        window.rdv_event_name = eventName;
+        // Stocker les données
+        window.calendlyData = {
+          ...window.calendlyData,
+          dateSelected: inviteeStartTime,
+          dateTimeFormatted: formattedDate,
+          eventName: eventName,
+          dateCaptured: true
+        };
         
         console.log("[Calendly] Date sélectionnée:", formattedDate);
         console.log("[Calendly] Type d'événement:", eventName);
         
-        // Envoyer à Voiceflow
+        // Stocker aussi dans des variables individuelles pour compatibilité
+        window.rdv_date = inviteeStartTime;
+        window.rdv_date_formatted = formattedDate;
+        window.rdv_event_name = eventName;
+        
+        // Envoyer l'événement à Voiceflow avec le format événement
         window.voiceflow.chat.interact({
-          type: 'text',
-          payload: `CALENDLY_DATE_SELECTED|${formattedDate}|${eventName}`
+          type: 'event',
+          name: 'CALENDLY_DATE_SELECTED',
+          payload: {
+            date: formattedDate,
+            eventName: eventName
+          }
         });
+        
+        console.log("[Calendly] Événement CALENDLY_DATE_SELECTED envoyé à Voiceflow");
       }
       
       // ÉTAPE 2: Rendez-vous confirmé
@@ -158,22 +239,44 @@ export const CalendlyExtension = {
         
         // Récupérer les données du payload
         const payload = e.data.payload || {};
-        const eventName = payload.event_type?.name || window.rdv_event_name || "Rendez-vous";
+        
+        // Récupérer le nom de l'événement (plusieurs sources possibles)
+        const eventName = payload.event_type?.name || 
+                         window.rdv_event_name || 
+                         window.calendlyData.eventName || 
+                         "Rendez-vous";
+                         
+        // Récupérer les informations de l'invité
         const inviteeEmail = payload.invitee?.email || "";
         const inviteeName = payload.invitee?.name || "";
         
-        // Utiliser la date de l'étape 1 si disponible, sinon utiliser celle de l'événement actuel
+        // Récupérer la date (plusieurs sources possibles)
         let startTime = "";
+        let formattedDate = "Date non disponible";
+        
         if (payload.event && payload.event.start_time) {
           startTime = payload.event.start_time;
-        } else if (window.rdv_date) {
-          startTime = window.rdv_date;
+          formattedDate = formatDate(startTime);
+        } else if (window.rdv_date_formatted) {
+          formattedDate = window.rdv_date_formatted;
+        } else if (window.calendlyData.dateTimeFormatted) {
+          formattedDate = window.calendlyData.dateTimeFormatted;
+        } else if (payload.scheduled_event && payload.scheduled_event.start_time) {
+          startTime = payload.scheduled_event.start_time;
+          formattedDate = formatDate(startTime);
         }
         
-        // Formater la date
-        const formattedDate = window.rdv_date_formatted || formatDate(startTime);
+        // Mettre à jour les données dans l'objet global
+        window.calendlyData = {
+          ...window.calendlyData,
+          name: inviteeName,
+          email: inviteeEmail,
+          dateTimeFormatted: formattedDate,
+          eventName: eventName,
+          eventCompleted: true
+        };
         
-        // Stocker les informations pour référence future
+        // Stocker aussi dans des variables individuelles pour compatibilité
         window.rdv_name = inviteeName;
         window.rdv_mail = inviteeEmail;
         window.rdv_start = formattedDate;
@@ -185,18 +288,27 @@ export const CalendlyExtension = {
         console.log("- Date:", formattedDate);
         console.log("- Type:", eventName);
         
-        // Envoyer à Voiceflow
+        // Envoyer l'événement à Voiceflow avec le format événement
         window.voiceflow.chat.interact({
-          type: 'text',
-          payload: `CALENDLY_CONFIRMED|${inviteeName}|${inviteeEmail}|${formattedDate}|${eventName}`
+          type: 'event',
+          name: 'CALENDLY_CONFIRMED',
+          payload: {
+            name: inviteeName,
+            email: inviteeEmail,
+            date: formattedDate,
+            eventName: eventName
+          }
         });
+        
+        console.log("[Calendly] Événement CALENDLY_CONFIRMED envoyé à Voiceflow");
       }
     };
     
-    // Ajouter l'écouteur d'événements selon la documentation Calendly
+    // 11. Ajouter l'écouteur d'événements et charger Calendly
     window.addEventListener('message', handleCalendlyEvent);
+    loadCalendly();
     
-    // Retourner la fonction de nettoyage
+    // 12. Retourner la fonction de nettoyage
     return () => {
       window.removeEventListener('message', handleCalendlyEvent);
     };

@@ -198,13 +198,26 @@ export const CalendlyExtension = {
         log(`- Date: ${formattedDateTime}`);
         log(`- Type: ${eventName}`);
         
-        // Envoyer l'événement à Voiceflow
+        // Créer un objet avec les informations du rendez-vous
+        const rendezVousInfo = {
+          inviteeName: inviteeName,
+          inviteeEmail: inviteeEmail,
+          startTime: startTime,
+          formattedDateTime: formattedDateTime,
+          eventName: eventName,
+          reason: ""
+        };
+        
+        // Envoyer l'événement à Voiceflow en JSON
         try {
           log("Envoi du rendez-vous à Voiceflow");
+          
+          // Utiliser le format JSON pour le payload
           window.voiceflow.chat.interact({
             type: 'text',
-            payload: `CALENDLY_CONFIRMED|${inviteeName}|${inviteeEmail}|${formattedDateTime}|${eventName}`
+            payload: JSON.stringify(rendezVousInfo)
           });
+          
           log("Événement envoyé avec succès");
         } catch (error) {
           log(`Erreur lors de l'envoi à Voiceflow: ${error.message}`);

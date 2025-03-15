@@ -74,7 +74,7 @@ export const CalendlyExtension = {
     //    (ex: "https://api.calendly.com/scheduled_events/ABC123" => "ABC123")
     function parseEventUuid(eventUri) {
       if (!eventUri) return null;
-      const match = eventUri.match(/scheduled_events\\/([^\\/]+)/);
+      const match = eventUri.match(/scheduled_events\/([^\/]+)/);
       return match ? match[1] : null;
     }
 
@@ -122,7 +122,6 @@ export const CalendlyExtension = {
                 const firstInvitee = inviteeData.collection[0];
                 finalPayload.inviteeEmail = firstInvitee.email || finalPayload.inviteeEmail;
                 finalPayload.inviteeName = firstInvitee.name || finalPayload.inviteeName;
-                // On pourrait récupérer d'autres champs (first_name, last_name, questions_and_answers, etc.)
               }
             } else {
               console.warn("Échec de la requête invitees:", inviteeRes.status);

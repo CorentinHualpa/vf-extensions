@@ -29,17 +29,6 @@ export const CalendlyExtension = {
       globalThis.voiceflow.log_details += `[Calendly] ${msg}\n`;
     };
 
-    // Initialiser l'objet rdv_data pour stocker les données du rendez-vous
-    if (!globalThis.rdv_data) {
-      globalThis.rdv_data = {
-        name: "",
-        email: "",
-        start: "",
-        message: "",
-        reason: ""
-      };
-    }
-
     log("Extension Calendly initialisée");
     log(`URL: ${url}`);
     log(`Height: ${height}px`);
@@ -181,7 +170,6 @@ export const CalendlyExtension = {
       if (!e.data.event.startsWith('calendly')) return;
       
       log(`Événement Calendly reçu: ${e.data.event}`);
-      log(`Données complètes: ${JSON.stringify(e.data, null, 2)}`);
       
       // Récupérer les détails de l'événement
       const eventData = e.data.payload || {};
@@ -240,14 +228,10 @@ export const CalendlyExtension = {
           raw: eventData
         };
         
-        // Stocker l'événement complet dans les variables globales
-        globalThis.calendly_event = completEventData;
-        globalThis.last_event = {
-          type: 'calendly_event',
-          payload: completEventData
-        };
+        // IMPORTANT: Stocker l'événement de différentes manières pour assurer la capture
         
-        // Mettre à jour aussi rdv_data pour compatibilité
+        // 1. Dans les variables globales traditionnelles
+        log("Stockage des données dans les variables globales standard");
         globalThis.rdv_data = {
           name: inviteeName,
           email: inviteeEmail,
@@ -257,19 +241,46 @@ export const CalendlyExtension = {
           reason: ""
         };
         
-        log("Données stockées dans les variables globales:");
-        log("- calendly_event: Stocké");
-        log("- last_event: Stocké");
-        log("- rdv_data: Stocké");
+        // 2. Dans une variable dédiée aux événements Calendly
+        globalThis.calendly_event = completEventData;
+        
+        // 3. Directement dans window pour une accessibilité maximale
+        window.rdv_name = inviteeName;
+        window.rdv_mail = inviteeEmail;
+        window.rdv_start = formattedDateTime;
+        window.rdv_event_name = eventName;
+        
+        // 4. Dans localStorage pour persistance entre les pages
+        try {
+            localStorage.setItem('calendly_event', JSON.stringify(completEventData));
+            log("Données stockées dans localStorage");
+        } catch (err) {
+            log(`Erreur lors du stockage dans localStorage: ${err.message}`);
+        }
         
         // Envoyer l'événement à Voiceflow
         try {
           log("Envoi de l'événement à Voiceflow...");
+          
+          // IMPORTANT: Stocker dans last_event avant d'envoyer l'interact
+          globalThis.last_event = {
+            type: 'calendly_event',
+            payload: completEventData
+          };
+          
           window.voiceflow.chat.interact({
             type: 'calendly_event',
             payload: completEventData
           });
+          
           log("Événement envoyé à Voiceflow avec succès");
+          
+          // Vérification post-envoi pour le débogage
+          log("Vérification après envoi:");
+          log(`- globalThis.last_event existe: ${!!globalThis.last_event}`);
+          log(`- globalThis.calendly_event existe: ${!!globalThis.calendly_event}`);
+          log(`- globalThis.rdv_data existe: ${!!globalThis.rdv_data}`);
+          
         } catch (err) {
           log(`Erreur lors de l'envoi à Voiceflow: ${err.message}`);
         }

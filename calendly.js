@@ -9,14 +9,10 @@ export const CalendlyExtension = {
     const {
       url = 'https://calendly.com/corentin-hualpa/echange-30-minutes',
       height = 900,
-      backgroundColor = '#992D00',
-      minWidth = '320px',
-      calendlyToken = ''
+      calendlyToken = '' // Token d'accès personnel
     } = trace.payload || {};
 
-    console.log("[Calendly] Initialisation avec URL:", url);
-
-    // 2. Styles pour optimiser l'affichage
+    // 2. Injections de styles pour l'affichage
     const styleEl = document.createElement('style');
     styleEl.textContent = `
       .vfrc-message--extension-Calendly,
@@ -30,224 +26,214 @@ export const CalendlyExtension = {
         padding: 0 !important;
         box-sizing: border-box !important;
       }
-      
-      @keyframes calendly-spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-      
-      .calendly-spinner {
-        border: 4px solid rgba(0, 0, 0, 0.1);
-        border-left-color: #4a5568;
-        border-radius: 50%;
-        width: 40px;
-        height: 40px;
-        animation: calendly-spin 1s linear infinite;
-        margin-bottom: 16px;
-      }
     `;
     document.head.appendChild(styleEl);
 
-    // 3. Création du conteneur principal
+    // 3. Créer un conteneur pour Calendly
     const container = document.createElement('div');
-    container.id = 'calendly-container-' + Date.now();
     container.style.width = '100%';
     container.style.height = `${height}px`;
-    container.style.minWidth = minWidth;
     container.style.overflow = 'hidden';
     container.style.boxSizing = 'border-box';
-    container.style.border = '1px solid #e2e8f0';
-    container.style.borderRadius = '8px';
-    container.style.backgroundColor = backgroundColor;
     element.appendChild(container);
 
-    // 4. Indicateur de chargement
-    const loaderContainer = document.createElement('div');
-    loaderContainer.style.display = 'flex';
-    loaderContainer.style.flexDirection = 'column';
-    loaderContainer.style.alignItems = 'center';
-    loaderContainer.style.justifyContent = 'center';
-    loaderContainer.style.height = '100%';
-    loaderContainer.style.color = '#ffffff';
-    
-    const spinner = document.createElement('div');
-    spinner.className = 'calendly-spinner';
-    
-    const loadingText = document.createElement('div');
-    loadingText.textContent = 'Chargement du calendrier...';
-    
-    loaderContainer.appendChild(spinner);
-    loaderContainer.appendChild(loadingText);
-    container.appendChild(loaderContainer);
-
-    // 5. Ajustement de tous les conteneurs parents pour assurer l'affichage correct
-    const adjustContainers = () => {
-      const elements = [
-        element.closest('.vfrc-message'),
-        element.closest('.vfrc-bubble'),
-        element.closest('.vfrc-bubble-content'),
-        element.closest('.vfrc-message-content')
-      ];
-      
-      elements.forEach(el => {
-        if (el) {
-          el.style.width = '100%';
-          el.style.maxWidth = '100%';
-          el.style.margin = '0';
-          el.style.padding = '0';
-        }
-      });
-    };
-    
-    adjustContainers();
-    setTimeout(adjustContainers, 100);
-    setTimeout(adjustContainers, 500);
-
-    // 6. Créer une iframe Calendly
-    const createIframe = () => {
-      const iframe = document.createElement('iframe');
-      iframe.src = url;
-      iframe.width = '100%';
-      iframe.height = '100%';
-      iframe.frameBorder = '0';
-      iframe.style.width = '100%';
-      iframe.style.height = '100%';
-      iframe.style.border = 'none';
-      iframe.style.overflow = 'hidden';
-      iframe.allow = 'camera; microphone; fullscreen; clipboard-read; clipboard-write;';
-      
-      container.innerHTML = '';
-      container.appendChild(iframe);
-      
-      console.log("[Calendly] Iframe créée");
-    };
-
-    // 7. Fonction pour formater la date
-    function formatDate(dateStr) {
-      try {
-        if (!dateStr) return "Date non disponible";
-        
-        const date = new Date(dateStr);
-        if (isNaN(date.getTime())) return "Date non disponible";
-        
-        return date.toLocaleDateString('fr-FR') + ' à ' + 
-               date.toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'});
-      } catch (e) {
-        console.error("[Calendly] Erreur formatage date:", e);
-        return "Date non disponible";
+    // 4. Ajuster la largeur de la bulle Voiceflow
+    setTimeout(() => {
+      const messageEl = element.closest('.vfrc-message');
+      if (messageEl) {
+        messageEl.style.width = '100%';
+        messageEl.style.maxWidth = '100%';
       }
+    }, 0);
+
+    // 5. Fonction d'init Calendly
+    const initWidget = () => {
+      if (window.Calendly && typeof window.Calendly.initInlineWidget === 'function') {
+        window.Calendly.initInlineWidget({
+          url,
+          parentElement: container
+        });
+      } else {
+        setTimeout(initWidget, 100);
+      }
+    };
+
+    // 6. Charger le script Calendly si nécessaire
+    if (!document.querySelector('script[src="https://assets.calendly.com/assets/external/widget.js"]')) {
+      const script = document.createElement('script');
+      script.src = 'https://assets.calendly.com/assets/external/widget.js';
+      script.async = true;
+      script.onload = () => initWidget();
+      script.onerror = () => console.warn("Erreur de chargement Calendly");
+      document.head.appendChild(script);
+    } else {
+      initWidget();
     }
 
-    // 8. Fonction pour vérifier les événements Calendly
-    function isCalendlyEvent(e) {
-      return e.data && e.data.event && e.data.event.indexOf('calendly') === 0;
+    // 7. Fonction utilitaire pour extraire l'UUID depuis l'URI Calendly
+    function parseEventUuid(eventUri) {
+      if (!eventUri) return null;
+      const match = eventUri.match(/scheduled_events\/([^\/]+)/);
+      return match ? match[1] : null;
     }
 
-    // 9. Gestionnaire d'événements Calendly
-    const handleCalendlyEvent = (e) => {
-      if (!isCalendlyEvent(e)) return;
+    // 8. Stockage global pour les sélections Calendly
+    if (!window.voiceflow) {
+      window.voiceflow = {};
+    }
+    
+    // 9. Écoute des événements Calendly
+    const calendlyListener = async (e) => {
+      if (!e.data || typeof e.data !== 'object' || !e.data.event) return;
+      if (!e.data.event.startsWith('calendly')) return;
+
+      console.log("[CalendlyExtension] Événement reçu :", e.data.event, e.data);
+      const details = e.data.payload || {};
+
+      // Stocker la dernière sélection Calendly globalement
+      window.voiceflow.lastCalendlySelection = details;
       
-      console.log("[Calendly] Événement reçu:", e.data.event);
-      console.log("[Calendly] Détails complets:", JSON.stringify(e.data));
-      
-      // Étape 1: Lorsque l'utilisateur sélectionne une date et heure
-      if (e.data.event === 'calendly.date_and_time_selected') {
-        console.log("[Calendly] Date et heure sélectionnées");
-        
-        // Récupérer les informations
-        const payload = e.data.payload || {};
-        
-        // Différentes façons dont la date peut être présente
-        let startTime = payload.invitee_start_time || 
-                        (payload.event && payload.event.start_time) || 
-                        payload.start_time || "";
-                        
-        const eventName = (payload.event_type && payload.event_type.name) || "Rendez-vous";
-        
-        // Formater la date
-        const formattedDate = formatDate(startTime);
-        
-        console.log("[Calendly] Date formatée:", formattedDate);
-        console.log("[Calendly] Type d'événement:", eventName);
-        
-        // Stocker les données pour référence future
-        window.calendlyData = {
-          dateSelected: startTime,
-          dateFormatted: formattedDate,
-          eventName: eventName
+      // Lorsqu'un créneau est confirmé
+      if (e.data.event === 'calendly.event_scheduled') {
+        // Extraire l'event.uri pour obtenir l'UUID
+        const eventUri = details.event?.uri || details.uri; 
+        const eventUuid = parseEventUuid(eventUri);
+        const inviteeUri = details.invitee?.uri;
+
+        // Construire un payload de base
+        const finalPayload = {
+          event: 'scheduled',
+          eventUri: eventUri,
+          inviteeUri: inviteeUri,
+          eventName: details.event_type?.name || 'Rendez-vous',
+          inviteeEmail: details.invitee?.email || '',
+          inviteeName: details.invitee?.name || '',
+          inviteeQuestions: details.questions_and_answers || [],
+          startTime: details.event?.start_time || details.scheduled_event?.start_time || '',
+          endTime: details.event?.end_time || details.scheduled_event?.end_time || '',
+          eventType: details.event_type?.name || '',
+          reason: '',
+          location: details.event?.location?.location || 'En ligne'
         };
         
-        // Envoyer à Voiceflow avec le chemin step1
-        try {
-          console.log("[Calendly] Envoi vers Voiceflow avec chemin step1");
+        // Extraction de la raison du rendez-vous depuis les questions/réponses
+        if (Array.isArray(details.questions_and_answers)) {
+          const reasonQuestion = details.questions_and_answers.find(
+            qa => qa.question.toLowerCase().includes('raison') || 
+                  qa.question.toLowerCase().includes('motif') ||
+                  qa.question.toLowerCase().includes('pourquoi')
+          );
           
-          window.voiceflow.chat.interact({
-            type: 'text',
-            payload: `CALENDLY_DATE_SELECTED|${formattedDate}|${eventName}`
-          }, "step1");
-          
-          console.log("[Calendly] Message envoyé avec succès");
-        } catch (error) {
-          console.error("[Calendly] Erreur d'envoi:", error);
+          if (reasonQuestion) {
+            finalPayload.reason = reasonQuestion.answer || '';
+          }
         }
-      }
-      
-      // Étape 2: Lorsque l'utilisateur confirme le rendez-vous
-      if (e.data.event === 'calendly.event_scheduled') {
-        console.log("[Calendly] Rendez-vous confirmé");
-        
-        // Récupérer les informations
-        const payload = e.data.payload || {};
-        
-        // Récupérer les données du contact
-        const inviteeName = (payload.invitee && payload.invitee.name) || "";
-        const inviteeEmail = (payload.invitee && payload.invitee.email) || "";
-        
-        // Récupérer les données de l'événement
-        const eventName = (payload.event_type && payload.event_type.name) || 
-                          window.calendlyData?.eventName || 
-                          "Rendez-vous";
-        
-        // Récupérer la date (plusieurs sources possibles)
-        let startTime = "";
-        if (payload.event && payload.event.start_time) {
-          startTime = payload.event.start_time;
-        } else if (window.calendlyData && window.calendlyData.dateSelected) {
-          startTime = window.calendlyData.dateSelected;
-        }
-        
-        // Formater la date ou utiliser celle stockée précédemment
-        const formattedDate = window.calendlyData?.dateFormatted || formatDate(startTime);
-        
-        console.log("[Calendly] Informations complètes:");
-        console.log("- Nom:", inviteeName);
-        console.log("- Email:", inviteeEmail);
-        console.log("- Date:", formattedDate);
-        console.log("- Type d'événement:", eventName);
-        
-        // Envoyer à Voiceflow avec le chemin step2
-        try {
-          console.log("[Calendly] Envoi vers Voiceflow avec chemin step2");
+
+        // 10. Si on a un token et un eventUuid, on va appeler l'API Calendly
+        if (calendlyToken) {
+          // Sauvegarder l'accès au token pour le script de capture
+          window.voiceflow.calendlyToken = calendlyToken;
           
-          window.voiceflow.chat.interact({
-            type: 'text',
-            payload: `CALENDLY_CONFIRMED|${inviteeName}|${inviteeEmail}|${formattedDate}|${eventName}`
-          }, "step2");
+          console.log("[CalendlyExtension] Token Calendly disponible");
           
-          console.log("[Calendly] Message envoyé avec succès");
-        } catch (error) {
-          console.error("[Calendly] Erreur d'envoi:", error);
+          // Si on a l'URI de l'invité, on récupère ses informations
+          if (inviteeUri) {
+            console.log("[CalendlyExtension] Appel Calendly API pour les détails de l'invité...");
+            try {
+              const inviteeRes = await fetch(inviteeUri, {
+                headers: {
+                  "Authorization": `Bearer ${calendlyToken}`,
+                  "Content-Type": "application/json"
+                }
+              });
+              
+              if (inviteeRes.ok) {
+                const inviteeData = await inviteeRes.json();
+                console.log("[CalendlyExtension] Données invité récupérées:", inviteeData);
+                
+                // Mise à jour avec les données fraîches de l'API
+                if (inviteeData.resource) {
+                  finalPayload.inviteeEmail = inviteeData.resource.email || finalPayload.inviteeEmail;
+                  finalPayload.inviteeName = inviteeData.resource.name || finalPayload.inviteeName;
+                  
+                  // Récupération des questions/réponses si disponibles
+                  if (Array.isArray(inviteeData.resource.questions_and_answers)) {
+                    finalPayload.inviteeQuestions = inviteeData.resource.questions_and_answers;
+                    
+                    // Chercher à nouveau la raison
+                    const reasonQuestion = inviteeData.resource.questions_and_answers.find(
+                      qa => qa.question.toLowerCase().includes('raison') || 
+                            qa.question.toLowerCase().includes('motif') ||
+                            qa.question.toLowerCase().includes('pourquoi')
+                    );
+                    
+                    if (reasonQuestion) {
+                      finalPayload.reason = reasonQuestion.answer || finalPayload.reason;
+                    }
+                  }
+                }
+              } else {
+                console.warn("[CalendlyExtension] Échec de la requête invitee:", inviteeRes.status);
+              }
+            } catch (err) {
+              console.error("[CalendlyExtension] Erreur appel API invitee:", err);
+            }
+          }
+          
+          // Si on a l'UUID de l'événement, on récupère ses détails
+          if (eventUuid) {
+            console.log("[CalendlyExtension] Appel Calendly API pour les détails de l'événement...");
+            try {
+              const eventRes = await fetch(`https://api.calendly.com/scheduled_events/${eventUuid}`, {
+                headers: {
+                  "Authorization": `Bearer ${calendlyToken}`,
+                  "Content-Type": "application/json"
+                }
+              });
+              
+              if (eventRes.ok) {
+                const eventData = await eventRes.json();
+                console.log("[CalendlyExtension] Données événement récupérées:", eventData);
+                
+                // Mise à jour avec les données fraîches de l'API
+                if (eventData.resource) {
+                  finalPayload.startTime = eventData.resource.start_time || finalPayload.startTime;
+                  finalPayload.endTime = eventData.resource.end_time || finalPayload.endTime;
+                  finalPayload.location = eventData.resource.location?.location || finalPayload.location;
+                  
+                  // Récupérer le nom de l'event type si disponible
+                  if (eventData.resource.event_type) {
+                    finalPayload.eventType = eventData.resource.event_type;
+                  }
+                }
+              } else {
+                console.warn("[CalendlyExtension] Échec de la requête event:", eventRes.status);
+              }
+            } catch (err) {
+              console.error("[CalendlyExtension] Erreur appel API event:", err);
+            }
+          }
+        } else {
+          console.log("[CalendlyExtension] Aucun token Calendly disponible.");
         }
+
+        // 11. Stocker les informations pour le bloc de capture
+        window.voiceflow.calendlyEventData = finalPayload;
+        
+        // 12. Envoyer le payload final à Voiceflow
+        console.log("[CalendlyExtension] Rendez-vous confirmé. Payload final:", finalPayload);
+        window.voiceflow.chat.interact({
+          type: 'calendly_event',
+          payload: finalPayload
+        });
       }
     };
 
-    // 10. Ajouter l'écouteur d'événements et créer l'iframe
-    window.addEventListener('message', handleCalendlyEvent);
-    createIframe();
+    window.addEventListener('message', calendlyListener);
     
-    // 11. Retourner la fonction de nettoyage
+    // Nettoyer l'événement quand le composant est détruit
     return () => {
-      window.removeEventListener('message', handleCalendlyEvent);
+      window.removeEventListener('message', calendlyListener);
     };
   }
 };

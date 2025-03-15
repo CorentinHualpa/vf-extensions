@@ -14,7 +14,57 @@ export const CalendlyExtension = {
 
     console.log("Extension Calendly initialisée");
     
-    // 2. Créer un conteneur pour le widget
+    // 2. Ajouter des styles pour assurer que l'élément prend toute la largeur
+    const styleEl = document.createElement('style');
+    styleEl.textContent = `
+      .vfrc-message--extension-Calendly,
+      .vfrc-message--extension-Calendly .vfrc-bubble,
+      .vfrc-message--extension-Calendly .vfrc-bubble-content,
+      .vfrc-message--extension-Calendly .vfrc-message-content,
+      .vfrc-message.vfrc-message--extension-Calendly {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-sizing: border-box !important;
+      }
+    `;
+    document.head.appendChild(styleEl);
+
+    // 3. Ajuster manuellement la largeur du message parent
+    const adjustContainer = () => {
+      // Trouver tous les parents possibles et ajuster leur largeur
+      const messageEl = element.closest('.vfrc-message');
+      if (messageEl) {
+        messageEl.style.width = '100%';
+        messageEl.style.maxWidth = '100%';
+        messageEl.style.margin = '0';
+        messageEl.style.padding = '0';
+      }
+      
+      const bubbleEl = element.closest('.vfrc-bubble');
+      if (bubbleEl) {
+        bubbleEl.style.width = '100%';
+        bubbleEl.style.maxWidth = '100%';
+        bubbleEl.style.margin = '0';
+        bubbleEl.style.padding = '0';
+      }
+      
+      const contentEl = element.closest('.vfrc-bubble-content, .vfrc-message-content');
+      if (contentEl) {
+        contentEl.style.width = '100%';
+        contentEl.style.maxWidth = '100%';
+        contentEl.style.margin = '0';
+        contentEl.style.padding = '0';
+      }
+    };
+    
+    // Exécuter l'ajustement immédiatement et après un court délai
+    adjustContainer();
+    setTimeout(adjustContainer, 100);
+    setTimeout(adjustContainer, 500); // Parfois nécessaire pour les éléments chargés lentement
+    
+    // 4. Créer un conteneur pour le widget
     const container = document.createElement('div');
     container.id = 'calendly-container-' + Date.now();
     container.style.width = '100%';
@@ -28,7 +78,7 @@ export const CalendlyExtension = {
     // Ajouter le conteneur à l'élément
     element.appendChild(container);
 
-    // 3. Créer et ajouter une iframe Calendly directe
+    // 5. Créer et ajouter une iframe Calendly directe
     const iframe = document.createElement('iframe');
     iframe.src = url;
     iframe.width = '100%';
@@ -41,7 +91,16 @@ export const CalendlyExtension = {
     iframe.setAttribute('loading', 'lazy');
     container.appendChild(iframe);
 
-    // 4. Écouter les messages pour capturer l'événement Calendly
+    // 6. Stocker les données de rendez-vous dans une variable globale
+    window.calendlyData = {
+      received: false,
+      name: '',
+      email: '',
+      start: '',
+      event_name: ''
+    };
+
+    // 7. Écouter les messages pour capturer l'événement Calendly
     const messageListener = event => {
       // Vérifier si c'est un événement Calendly
       if (event.data && event.data.event && event.data.event === 'calendly.event_scheduled') {
@@ -66,12 +125,31 @@ export const CalendlyExtension = {
           }
         }
         
+        // Stocker les données dans la variable globale
+        window.calendlyData = {
+          received: true,
+          name: inviteeName,
+          email: inviteeEmail,
+          start: formattedDate,
+          event_name: eventName
+        };
+        
+        // Stocker aussi comme variables globales directes pour compatibilité
+        window.rdv_name = inviteeName;
+        window.rdv_mail = inviteeEmail;
+        window.rdv_start = formattedDate;
+        window.rdv_event_name = eventName;
+        
         // Envoyer la confirmation à Voiceflow
         try {
+          const payload = `CALENDLY_CONFIRMED|${inviteeName}|${inviteeEmail}|${formattedDate}|${eventName}`;
+          console.log("Envoi du payload à Voiceflow:", payload);
+          
           window.voiceflow.chat.interact({
             type: 'text',
-            payload: `CALENDLY_CONFIRMED|${inviteeName}|${inviteeEmail}|${formattedDate}|${eventName}`
+            payload: payload
           });
+          
           console.log("Confirmation envoyée à Voiceflow");
         } catch (error) {
           console.error("Erreur lors de l'envoi à Voiceflow:", error);

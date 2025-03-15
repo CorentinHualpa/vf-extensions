@@ -114,19 +114,35 @@ export const CalendlyExtension = {
       return match ? match[1] : null;
     }
 
-    // 8. Formatage de date
+    // 8. Formatage de date amélioré pour gérer les cas d'erreur
     function formatDateTime(dateStr) {
       try {
+        // Vérifier si la date est valide
+        if (!dateStr || dateStr === "undefined" || dateStr === "null") {
+          console.warn("[CalendlyExtension] Date invalide reçue:", dateStr);
+          return { date: "Date non disponible", time: "Heure non disponible", formatted: "Date et heure non disponibles" };
+        }
+        
         const dateObj = new Date(dateStr);
+        
+        // Vérifier si la date est valide après parsing
+        if (isNaN(dateObj.getTime())) {
+          console.warn("[CalendlyExtension] Date invalide après parsing:", dateStr);
+          return { date: "Date non disponible", time: "Heure non disponible", formatted: "Date et heure non disponibles" };
+        }
+        
+        // Formater la date et l'heure
+        const formattedDate = dateObj.toLocaleDateString("fr-FR");
+        const formattedTime = dateObj.toLocaleTimeString("fr-FR", { hour: '2-digit', minute: '2-digit' });
+        
         return {
-          date: dateObj.toLocaleDateString("fr-FR"), 
-          time: dateObj.toLocaleTimeString("fr-FR", { hour: '2-digit', minute: '2-digit' }),
-          formatted: dateObj.toLocaleDateString("fr-FR") + " à " + 
-                    dateObj.toLocaleTimeString("fr-FR", { hour: '2-digit', minute: '2-digit' })
+          date: formattedDate, 
+          time: formattedTime,
+          formatted: `${formattedDate} à ${formattedTime}`
         };
       } catch (e) {
-        console.error("[CalendlyExtension] Erreur formatage date:", e);
-        return { date: "", time: "", formatted: "" };
+        console.error("[CalendlyExtension] Erreur formatage date:", e, "Date reçue:", dateStr);
+        return { date: "Date non disponible", time: "Heure non disponible", formatted: "Date et heure non disponibles" };
       }
     }
 
@@ -135,30 +151,52 @@ export const CalendlyExtension = {
       if (!e.data || typeof e.data !== 'object' || !e.data.event) return;
       if (!e.data.event.startsWith('calendly')) return;
 
-      console.log("[CalendlyExtension] Événement reçu :", e.data.event);
+      console.log("[CalendlyExtension] Événement reçu :", e.data.event, e.data);
       const details = e.data.payload || {};
       
       // ÉTAPE 1: Date et heure sélectionnées
       if (e.data.event === 'calendly.date_and_time_selected') {
         console.log("[CalendlyExtension] Date et heure sélectionnées :", details);
         
-        // Extraire et formater la date/heure
-        const startTime = details.event?.start_time || "";
-        const formattedDate = formatDateTime(startTime);
+        // Extraire les informations importantes
+        const eventName = details.event_type?.name || 'Rendez-vous';
+        let formattedDate = { formatted: "Date non disponible" };
+        
+        // Essayer de récupérer la date de plusieurs manières possibles
+        if (details.event && details.event.start_time) {
+          formattedDate = formatDateTime(details.event.start_time);
+        } else if (details.start_time) {
+          formattedDate = formatDateTime(details.start_time);
+        } else if (details.invitee_start_time) {
+          formattedDate = formatDateTime(details.invitee_start_time);
+        } else {
+          console.warn("[CalendlyExtension] Aucune date trouvée dans l'événement", details);
+        }
+        
+        // Afficher les informations pour debug
+        console.log("[CalendlyExtension] Informations de date extraites:", {
+          eventName,
+          formattedDate,
+          rawDetails: details
+        });
         
         // Stocker les informations
-        window.calendlyData.dateSelected = startTime;
-        window.calendlyData.timeSelected = formattedDate.time;
-        window.calendlyData.dateTimeFormatted = formattedDate.formatted;
-        window.calendlyData.dateCaptured = true;
-        window.calendlyData.eventName = details.event_type?.name || 'Rendez-vous';
-        
-        console.log("[CalendlyExtension] Date formatée:", formattedDate.formatted);
+        window.calendlyData = {
+          ...window.calendlyData,
+          dateSelected: details.event?.start_time || details.start_time || "",
+          timeSelected: formattedDate.time,
+          dateTimeFormatted: formattedDate.formatted,
+          dateCaptured: true,
+          eventName: eventName
+        };
         
         // Envoyer l'événement à Voiceflow
+        const payload = `CALENDLY_DATE_SELECTED|${formattedDate.formatted}|${eventName}`;
+        console.log("[CalendlyExtension] Envoi du payload à Voiceflow:", payload);
+        
         window.voiceflow.chat.interact({
           type: 'text',
-          payload: `CALENDLY_DATE_SELECTED|${formattedDate.formatted}|${window.calendlyData.eventName}`
+          payload: payload
         });
         
         console.log("[CalendlyExtension] Notification de date envoyée à Voiceflow");
@@ -174,15 +212,39 @@ export const CalendlyExtension = {
         const inviteeName = details.invitee?.name || '';
         const inviteeEmail = details.invitee?.email || '';
         const eventName = details.event_type?.name || 'Rendez-vous';
-        const startTime = details.event?.start_time || window.calendlyData.dateSelected || '';
-        const formattedDate = formatDateTime(startTime).formatted || window.calendlyData.dateTimeFormatted;
+        
+        // Récupérer et formater la date
+        let startTime = "";
+        let formattedDate = { formatted: "Date non disponible" };
+        
+        if (details.event && details.event.start_time) {
+          startTime = details.event.start_time;
+          formattedDate = formatDateTime(startTime);
+        } else if (window.calendlyData.dateSelected) {
+          startTime = window.calendlyData.dateSelected;
+          formattedDate = formatDateTime(startTime);
+        } else if (details.scheduled_event && details.scheduled_event.start_time) {
+          startTime = details.scheduled_event.start_time;
+          formattedDate = formatDateTime(startTime);
+        }
+        
+        // Utiliser la date formatée de l'étape 1 si disponible
+        if (window.calendlyData.dateTimeFormatted && window.calendlyData.dateTimeFormatted !== "Date et heure non disponibles") {
+          formattedDate.formatted = window.calendlyData.dateTimeFormatted;
+        }
         
         // Mettre à jour les données globales
-        window.calendlyData.name = inviteeName;
-        window.calendlyData.email = inviteeEmail;
-        window.calendlyData.eventName = eventName;
-        window.calendlyData.dateTimeFormatted = formattedDate;
-        window.calendlyData.eventCompleted = true;
+        window.calendlyData = {
+          ...window.calendlyData,
+          name: inviteeName,
+          email: inviteeEmail,
+          eventName: eventName,
+          dateTimeFormatted: formattedDate.formatted,
+          eventCompleted: true
+        };
+        
+        // Afficher les informations complètes pour debug
+        console.log("[CalendlyExtension] Informations finales:", window.calendlyData);
         
         // Construire le payload complet
         const finalPayload = {
@@ -192,7 +254,7 @@ export const CalendlyExtension = {
           inviteeEmail,
           inviteeName,
           startTime,
-          formattedDateTime: formattedDate
+          formattedDateTime: formattedDate.formatted
         };
 
         // Si on a un token, essayer d'obtenir plus d'informations
@@ -226,10 +288,12 @@ export const CalendlyExtension = {
         }
 
         // Envoyer le payload à Voiceflow
-        console.log("[CalendlyExtension] Envoi de la confirmation finale à Voiceflow");
+        const payload = `CALENDLY_CONFIRMED|${finalPayload.inviteeName}|${finalPayload.inviteeEmail}|${finalPayload.formattedDateTime}|${finalPayload.eventName}`;
+        console.log("[CalendlyExtension] Envoi de la confirmation finale à Voiceflow:", payload);
+        
         window.voiceflow.chat.interact({
           type: 'text',
-          payload: `CALENDLY_CONFIRMED|${finalPayload.inviteeName}|${finalPayload.inviteeEmail}|${finalPayload.formattedDateTime}|${finalPayload.eventName}`
+          payload: payload
         });
       }
     };

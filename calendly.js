@@ -120,38 +120,7 @@ export const CalendlyExtension = {
     loaderContainer.appendChild(loaderText);
     container.appendChild(loaderContainer);
 
-    // 6. Fonction pour obtenir les informations utilisateur (nécessaire pour l'API)
-    const getUserInfo = async () => {
-      if (!calendlyToken) {
-        log("Aucun token fourni, impossible d'obtenir les informations utilisateur");
-        return null;
-      }
-      
-      try {
-        log("Récupération des informations utilisateur...");
-        const response = await fetch("https://api.calendly.com/users/me", {
-          method: "GET",
-          headers: {
-            "Authorization": `Bearer ${calendlyToken}`,
-            "Content-Type": "application/json"
-          }
-        });
-        
-        if (!response.ok) {
-          log(`Erreur lors de la récupération des informations utilisateur: ${response.status}`);
-          return null;
-        }
-        
-        const data = await response.json();
-        log(`Utilisateur identifié: ${data.resource.name}`);
-        return data.resource;
-      } catch (error) {
-        log(`Erreur lors de la récupération des informations utilisateur: ${error.message}`);
-        return null;
-      }
-    };
-
-    // 7. Fonction d'initialisation du widget Calendly
+    // 6. Fonction d'initialisation du widget Calendly
     const initWidget = () => {
       if (window.Calendly && typeof window.Calendly.initInlineWidget === 'function') {
         log("Initialisation du widget Calendly");
@@ -176,7 +145,7 @@ export const CalendlyExtension = {
       }
     };
 
-    // 8. Charger le script Calendly
+    // 7. Charger le script Calendly
     if (!document.querySelector('script[src="https://assets.calendly.com/assets/external/widget.js"]')) {
       log("Chargement du script Calendly...");
       const script = document.createElement('script');
@@ -198,26 +167,21 @@ export const CalendlyExtension = {
       initWidget();
     }
 
-    // 9. Fonction pour extraire les informations d'un événement
+    // 8. Fonction pour extraire les informations d'un événement
     function parseEventDetails(eventUri) {
       if (!eventUri) return null;
       const match = eventUri.match(/scheduled_events\/([^\/]+)/);
       return match ? match[1] : null;
     }
 
-    // 10. Stocker les informations utilisateur
-    getUserInfo().then(userInfo => {
-      globalThis.calendly_user_info = userInfo;
-      log("Informations utilisateur stockées globalement");
-    });
-
-    // 11. Écouter les événements de Calendly
+    // 9. Écouter les événements de Calendly
     const calendlyListener = async (e) => {
       // Vérifier que c'est bien un événement Calendly
       if (!e.data || typeof e.data !== 'object' || !e.data.event) return;
       if (!e.data.event.startsWith('calendly')) return;
       
       log(`Événement Calendly reçu: ${e.data.event}`);
+      log(`Données complètes: ${JSON.stringify(e.data, null, 2)}`);
       
       // Récupérer les détails de l'événement
       const eventData = e.data.payload || {};
@@ -233,12 +197,14 @@ export const CalendlyExtension = {
         const inviteeEmail = eventData.invitee?.email || '';
         const inviteeName = eventData.invitee?.name || '';
         const eventName = eventData.event_type?.name || 'Rendez-vous';
+        const inviteeUri = eventData.invitee?.uri || '';
         
         log(`Détails du rendez-vous:`);
         log(`- ID: ${eventId}`);
         log(`- Événement: ${eventName}`);
         log(`- Invité: ${inviteeName} (${inviteeEmail})`);
         log(`- Date/heure: ${startTime}`);
+        log(`- URI invitee: ${inviteeUri}`);
         
         // Formater la date et l'heure
         let formattedDateTime = "Date non spécifiée";
@@ -257,91 +223,51 @@ export const CalendlyExtension = {
           }
         }
         
-        // Obtenir plus d'informations sur l'invité via l'API si possible
-        let additionalInfo = {};
-        const inviteeUri = eventData.invitee?.uri;
+        // Créer un objet avec toutes les données de l'événement
+        const completEventData = {
+          event: 'scheduled',
+          eventName: eventName,
+          inviteeName: inviteeName,
+          inviteeEmail: inviteeEmail,
+          startTime: startTime,
+          formattedDateTime: formattedDateTime,
+          eventId: eventId,
+          calendlyToken: calendlyToken,
+          uri: {
+            event: eventUri,
+            invitee: inviteeUri
+          },
+          raw: eventData
+        };
         
-        if (calendlyToken && inviteeUri) {
-          try {
-            log("Récupération des informations détaillées de l'invité...");
-            const response = await fetch(inviteeUri, {
-              method: "GET",
-              headers: {
-                "Authorization": `Bearer ${calendlyToken}`,
-                "Content-Type": "application/json"
-              }
-            });
-            
-            if (response.ok) {
-              const inviteeData = await response.json();
-              log("Informations détaillées de l'invité récupérées avec succès");
-              
-              // Vérifier s'il y a des questions/réponses
-              if (inviteeData.resource.questions_and_answers && 
-                  inviteeData.resource.questions_and_answers.length > 0) {
-                log(`${inviteeData.resource.questions_and_answers.length} questions/réponses trouvées`);
-                
-                // Chercher la raison du rendez-vous
-                for (const qa of inviteeData.resource.questions_and_answers) {
-                  if (qa.question.toLowerCase().includes("raison") || 
-                      qa.question.toLowerCase().includes("motif")) {
-                    additionalInfo.reason = qa.answer;
-                    log(`Raison du rendez-vous trouvée: ${qa.answer}`);
-                    break;
-                  }
-                }
-                
-                // Stocker toutes les questions/réponses
-                additionalInfo.questions_and_answers = inviteeData.resource.questions_and_answers;
-              }
-            } else {
-              log(`Impossible d'obtenir les informations détaillées de l'invité: ${response.status}`);
-            }
-          } catch (error) {
-            log(`Erreur lors de la récupération des informations détaillées: ${error.message}`);
-          }
-        }
+        // Stocker l'événement complet dans les variables globales
+        globalThis.calendly_event = completEventData;
+        globalThis.last_event = {
+          type: 'calendly_event',
+          payload: completEventData
+        };
         
-        // Mettre à jour les données globales
+        // Mettre à jour aussi rdv_data pour compatibilité
         globalThis.rdv_data = {
           name: inviteeName,
           email: inviteeEmail,
           start: formattedDateTime,
-          event_id: eventId,
           event_name: eventName,
           message: `Rendez-vous confirmé: ${eventName} avec ${inviteeName} (${inviteeEmail}) pour le ${formattedDateTime}`,
-          reason: additionalInfo.reason || ""
+          reason: ""
         };
         
-        // Sauvegarder l'événement complet pour une utilisation ultérieure
-        globalThis.calendly_event = {
-          ...eventData,
-          formatted_date: formattedDateTime,
-          ...additionalInfo
-        };
-        
-        log("Données du rendez-vous enregistrées globalement");
+        log("Données stockées dans les variables globales:");
+        log("- calendly_event: Stocké");
+        log("- last_event: Stocké");
+        log("- rdv_data: Stocké");
         
         // Envoyer l'événement à Voiceflow
         try {
           log("Envoi de l'événement à Voiceflow...");
           window.voiceflow.chat.interact({
             type: 'calendly_event',
-            payload: {
-              event: 'scheduled',
-              eventName: eventName,
-              inviteeName: inviteeName,
-              inviteeEmail: inviteeEmail,
-              startTime: startTime,
-              formattedDateTime: formattedDateTime,
-              eventId: eventId,
-              reason: additionalInfo.reason || "",
-              calendlyToken: calendlyToken, // Envoi du token pour permettre des appels API ultérieurs
-              uri: {
-                event: eventUri,
-                invitee: inviteeUri
-              }
-            }
+            payload: completEventData
           });
           log("Événement envoyé à Voiceflow avec succès");
         } catch (err) {
@@ -350,11 +276,11 @@ export const CalendlyExtension = {
       }
     };
     
-    // 12. Ajouter l'écouteur d'événements
+    // 10. Ajouter l'écouteur d'événements
     window.addEventListener('message', calendlyListener);
     log("Écouteur d'événements Calendly ajouté");
     
-    // 13. Nettoyage lors de la suppression de l'élément
+    // 11. Fonction de nettoyage
     return () => {
       log("Nettoyage de l'extension Calendly");
       window.removeEventListener('message', calendlyListener);

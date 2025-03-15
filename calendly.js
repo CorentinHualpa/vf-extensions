@@ -220,17 +220,13 @@ export const CalendlyExtension = {
         window.rdv_date_formatted = formattedDate;
         window.rdv_event_name = eventName;
         
-        // Envoyer l'événement à Voiceflow avec le format événement
+        // Envoyer à Voiceflow comme un texte avec le chemin "step1"
         window.voiceflow.chat.interact({
-          type: 'event',
-          name: 'CALENDLY_DATE_SELECTED',
-          payload: {
-            date: formattedDate,
-            eventName: eventName
-          }
-        });
+          type: 'text',
+          payload: `CALENDLY_DATE_SELECTED|${formattedDate}|${eventName}`
+        }, 'step1');
         
-        console.log("[Calendly] Événement CALENDLY_DATE_SELECTED envoyé à Voiceflow");
+        console.log("[Calendly] Message envoyé à Voiceflow avec le chemin step1");
       }
       
       // ÉTAPE 2: Rendez-vous confirmé
@@ -288,19 +284,13 @@ export const CalendlyExtension = {
         console.log("- Date:", formattedDate);
         console.log("- Type:", eventName);
         
-        // Envoyer l'événement à Voiceflow avec le format événement
+        // Envoyer à Voiceflow comme un texte avec le chemin "step2"
         window.voiceflow.chat.interact({
-          type: 'event',
-          name: 'CALENDLY_CONFIRMED',
-          payload: {
-            name: inviteeName,
-            email: inviteeEmail,
-            date: formattedDate,
-            eventName: eventName
-          }
-        });
+          type: 'text',
+          payload: `CALENDLY_CONFIRMED|${inviteeName}|${inviteeEmail}|${formattedDate}|${eventName}`
+        }, 'step2');
         
-        console.log("[Calendly] Événement CALENDLY_CONFIRMED envoyé à Voiceflow");
+        console.log("[Calendly] Message envoyé à Voiceflow avec le chemin step2");
       }
     };
     

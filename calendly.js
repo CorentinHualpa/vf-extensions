@@ -82,12 +82,67 @@ export const CalendlyExtension = {
       window.voiceflow = {};
     }
     
+    // Fonction pour extraire les questions et réponses importantes
+    function extractImportantInfo(details) {
+      const result = {
+        reason: "",
+        phone: ""
+      };
+      
+      // Chercher dans les questions_and_answers
+      if (details.questions_and_answers && Array.isArray(details.questions_and_answers)) {
+        console.log("[CalendlyExtension] Analyse des questions_and_answers:", details.questions_and_answers);
+        
+        for (const qa of details.questions_and_answers) {
+          if (!qa || !qa.question) continue;
+          
+          const question = qa.question.toLowerCase();
+          const answer = qa.answer || "";
+          
+          // Recherche du champ de préparation de réunion (comme montré dans la capture d'écran)
+          if (question.includes("partager") && 
+              (question.includes("préparation") || question.includes("réunion")) || 
+              question.includes("utile")) {
+            console.log("[CalendlyExtension] Raison (préparation réunion) trouvée:", answer);
+            result.reason = answer;
+          }
+          
+          // Recherche explicite de la raison
+          if (question.includes("raison") || 
+              question.includes("motif") || 
+              question.includes("pourquoi") || 
+              question.includes("sujet")) {
+            console.log("[CalendlyExtension] Raison explicite trouvée:", answer);
+            result.reason = answer;
+          }
+          
+          // Recherche du numéro de téléphone
+          if (question.includes("sms") || 
+              question.includes("téléphone") || 
+              question.includes("portable") ||
+              question.includes("mobile") ||
+              question.includes("phone")) {
+            console.log("[CalendlyExtension] Numéro de téléphone trouvé:", answer);
+            result.phone = answer;
+          }
+        }
+      }
+      
+      // Chercher également dans d'autres champs possibles
+      if (!result.phone && details.invitee && details.invitee.text_reminder_number) {
+        result.phone = details.invitee.text_reminder_number;
+        console.log("[CalendlyExtension] Téléphone trouvé dans text_reminder_number:", result.phone);
+      }
+      
+      return result;
+    }
+    
     // 9. Écoute des événements Calendly
     const calendlyListener = async (e) => {
       if (!e.data || typeof e.data !== 'object' || !e.data.event) return;
       if (!e.data.event.startsWith('calendly')) return;
 
-      console.log("[CalendlyExtension] Événement reçu :", e.data.event, e.data);
+      console.log("[CalendlyExtension] Événement reçu:", e.data.event, e.data);
       const details = e.data.payload || {};
 
       // Stocker la dernière sélection Calendly globalement
@@ -99,6 +154,9 @@ export const CalendlyExtension = {
         const eventUri = details.event?.uri || details.uri; 
         const eventUuid = parseEventUuid(eventUri);
         const inviteeUri = details.invitee?.uri;
+
+        // Extraire les informations importantes (raison et téléphone)
+        const importantInfo = extractImportantInfo(details);
 
         // Construire un payload de base
         const finalPayload = {
@@ -112,23 +170,11 @@ export const CalendlyExtension = {
           startTime: details.event?.start_time || details.scheduled_event?.start_time || '',
           endTime: details.event?.end_time || details.scheduled_event?.end_time || '',
           eventType: details.event_type?.name || '',
-          reason: '',
+          reason: importantInfo.reason || '',
+          phone: importantInfo.phone || '',
           location: details.event?.location?.location || 'En ligne'
         };
         
-        // Extraction de la raison du rendez-vous depuis les questions/réponses
-        if (Array.isArray(details.questions_and_answers)) {
-          const reasonQuestion = details.questions_and_answers.find(
-            qa => qa.question.toLowerCase().includes('raison') || 
-                  qa.question.toLowerCase().includes('motif') ||
-                  qa.question.toLowerCase().includes('pourquoi')
-          );
-          
-          if (reasonQuestion) {
-            finalPayload.reason = reasonQuestion.answer || '';
-          }
-        }
-
         // 10. Si on a un token et un eventUuid, on va appeler l'API Calendly
         if (calendlyToken) {
           // Sauvegarder l'accès au token pour le script de capture
@@ -156,19 +202,24 @@ export const CalendlyExtension = {
                   finalPayload.inviteeEmail = inviteeData.resource.email || finalPayload.inviteeEmail;
                   finalPayload.inviteeName = inviteeData.resource.name || finalPayload.inviteeName;
                   
+                  // Mise à jour du téléphone si disponible
+                  if (inviteeData.resource.text_reminder_number) {
+                    finalPayload.phone = inviteeData.resource.text_reminder_number || finalPayload.phone;
+                  }
+                  
                   // Récupération des questions/réponses si disponibles
                   if (Array.isArray(inviteeData.resource.questions_and_answers)) {
                     finalPayload.inviteeQuestions = inviteeData.resource.questions_and_answers;
                     
-                    // Chercher à nouveau la raison
-                    const reasonQuestion = inviteeData.resource.questions_and_answers.find(
-                      qa => qa.question.toLowerCase().includes('raison') || 
-                            qa.question.toLowerCase().includes('motif') ||
-                            qa.question.toLowerCase().includes('pourquoi')
-                    );
+                    // Mise à jour des infos importantes
+                    const apiInfo = extractImportantInfo({questions_and_answers: inviteeData.resource.questions_and_answers});
                     
-                    if (reasonQuestion) {
-                      finalPayload.reason = reasonQuestion.answer || finalPayload.reason;
+                    if (apiInfo.reason && !finalPayload.reason) {
+                      finalPayload.reason = apiInfo.reason;
+                    }
+                    
+                    if (apiInfo.phone && !finalPayload.phone) {
+                      finalPayload.phone = apiInfo.phone;
                     }
                   }
                 }
@@ -219,6 +270,15 @@ export const CalendlyExtension = {
 
         // 11. Stocker les informations pour le bloc de capture
         window.voiceflow.calendlyEventData = finalPayload;
+        
+        // Journalisation détaillée des données capturées
+        console.log("[CalendlyExtension] Données capturées:");
+        console.log("- Nom:", finalPayload.inviteeName);
+        console.log("- Email:", finalPayload.inviteeEmail);
+        console.log("- Téléphone:", finalPayload.phone);
+        console.log("- Raison:", finalPayload.reason);
+        console.log("- Date/heure:", finalPayload.startTime);
+        console.log("- Questions/réponses:", finalPayload.inviteeQuestions);
         
         // 12. Envoyer le payload final à Voiceflow
         console.log("[CalendlyExtension] Rendez-vous confirmé. Payload final:", finalPayload);

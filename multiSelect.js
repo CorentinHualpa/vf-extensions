@@ -268,10 +268,10 @@ export const MultiSelect = {
                                     selections: [option.name]
                                 };
 
-                                // Approche simplifiée qui fonctionne avec vos autres extensions
-                                console.log("Envoi de sélection simple:", selectedOption);
+                                // MODIFICATION: Utiliser le type debug pour les sélections simples
+                                console.log("Envoi de sélection simple en mode debug:", selectedOption);
                                 window.voiceflow.chat.interact({
-                                    type: 'text',
+                                    type: 'debug',
                                     payload: option.name
                                 });
                             }
@@ -318,8 +318,7 @@ export const MultiSelect = {
                 container.appendChild(sectionDiv);
             });
 
-            // MODIFICATION: Toujours afficher les boutons si multiselect est true 
-            // OU s'il y a un champ user_input
+            // Toujours afficher les boutons si multiselect est true OU s'il y a un champ user_input
             if (multiselect || hasUserInputField) {
                 const buttonContainer = document.createElement('div');
                 buttonContainer.setAttribute('data-index', index);
@@ -365,7 +364,7 @@ export const MultiSelect = {
                         // Construire une réponse complète avec les sélections et les entrées utilisateur
                         console.log("Envoi des sélections:", selectedOptions);
                         
-                        // MODIFICATION ICI: Envoyer directement le champ libre s'il est seul et rempli
+                        // MODIFICATION: Envoyer en mode debug plutôt qu'en mode text
                         let payload;
                         
                         // Vérifier si nous avons une seule section avec uniquement un champ libre
@@ -380,9 +379,9 @@ export const MultiSelect = {
                             payload = button.text + " - Sélections: " + selectionJSON;
                         }
                         
-                        // Envoyer la réponse
+                        // MODIFICATION: Utiliser le type debug au lieu de text
                         window.voiceflow.chat.interact({
-                            type: 'text',
+                            type: 'debug',
                             payload: payload
                         });
                     });

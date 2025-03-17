@@ -1,19 +1,19 @@
+// Version corrigée pour fileUpload.js
 export const FileUpload = {
     name: 'FileUpload',
     type: 'response',
     match: ({ trace }) => {
-        console.log('Checking match for file_upload');
-        console.log(trace);
-        return trace.payload && trace.payload.name === 'file_upload';
+        return trace.type === 'file_upload' || trace.payload?.name === 'file_upload';
     },
     render: ({ trace, element }) => {
         try {
             console.log('FileUpload extension render');
-            console.log('Trace data:', trace);
 
             // Generate unique ID for this instance
             const uniqueId = 'fileUpload_' + Date.now();
-            console.log(`File upload id: ${uniqueId}`);
+            
+            // Flag pour éviter les soumissions multiples
+            let isUploading = false;
 
             const container = document.createElement('div');
             container.innerHTML = `
@@ -81,10 +81,11 @@ export const FileUpload = {
             };
 
             const handleUpload = async (files) => {
-                if (!files || files.length === 0) {
-                  return;
+                if (!files || files.length === 0 || isUploading) {
+                    return;
                 }
 
+                isUploading = true;
                 showStatus(`Téléversement de ${files.length} fichier(s) en cours...`, 'loading');
 
                 const formData = new FormData();
@@ -104,20 +105,16 @@ export const FileUpload = {
                     if (response.ok) {
                         if (data.urls && data.urls.length > 0) {
                             const fileCount = data.urls.length;
-                            // Create a list of uploaded files with their links
-                            const fileList = data.urls.map(fileData => 
-                                `<div>${fileData.filename}: <a href="${fileData.url}" class="file-link" target="_blank">${fileData.url}</a></div>`
-                            ).join('');
-                            
                             statusContainer.innerHTML = `<div>Téléversement réussi de ${fileCount} fichier(s)!</div>`;
                             statusContainer.className = 'status-container success';
 
+                            // MODIFICATION CRUCIALE: Ne pas utiliser JSON.stringify
                             window.voiceflow.chat.interact({
                                 type: 'complete',
-                                payload: JSON.stringify({
+                                payload: {
                                     success: true,
                                     urls: data.urls
-                                }),
+                                }
                             });
                         } else {
                             throw new Error('Aucune URL retournée par le serveur');
@@ -130,13 +127,16 @@ export const FileUpload = {
                     console.error('Upload error:', error);
                     showStatus(`Erreur: ${error.message}`, 'error');
 
+                    // MODIFICATION CRUCIALE: Ne pas utiliser JSON.stringify
                     window.voiceflow.chat.interact({
                         type: 'complete',
-                        payload: JSON.stringify({
+                        payload: {
                             success: false,
                             error: error.message
-                        }),
+                        }
                     });
+                } finally {
+                    isUploading = false;
                 }
             };
 
@@ -172,9 +172,24 @@ export const FileUpload = {
             });
 
             element.appendChild(container);
+            
+            // Fonction de nettoyage
+            return () => {
+                uploadInput.disabled = true;
+                uploadContainer.style.pointerEvents = 'none';
+            };
 
         } catch (error) {
             console.error('Error in FileUpload render:', error);
+            
+            // MODIFICATION CRUCIALE: En cas d'erreur, débloquer Voiceflow
+            window.voiceflow.chat.interact({
+                type: 'complete',
+                payload: {
+                    success: false,
+                    error: 'Erreur interne de l\'extension'
+                }
+            });
         }
     },
 };

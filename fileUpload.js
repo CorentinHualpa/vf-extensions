@@ -2,21 +2,18 @@ export const FileUpload = {
     name: 'FileUpload',
     type: 'response',
     match: ({ trace }) => {
-        console.log('Vérification du match pour file_upload');
+        console.log('Checking match for file_upload');
         console.log(trace);
-        return trace.type === 'file_upload' || trace.payload?.name === 'file_upload';
+        return trace.payload && trace.payload.name === 'file_upload';
     },
     render: ({ trace, element }) => {
         try {
-            console.log('Rendu de l\'extension FileUpload');
-            console.log('Données trace:', trace);
+            console.log('FileUpload extension render');
+            console.log('Trace data:', trace);
 
-            // Génération d'un ID unique pour cette instance
+            // Generate unique ID for this instance
             const uniqueId = 'fileUpload_' + Date.now();
-            console.log(`ID d'upload de fichier: ${uniqueId}`);
-
-            // Flag pour éviter les uploads multiples simultanés
-            let isUploading = false;
+            console.log(`File upload id: ${uniqueId}`);
 
             const container = document.createElement('div');
             container.innerHTML = `
@@ -84,11 +81,10 @@ export const FileUpload = {
             };
 
             const handleUpload = async (files) => {
-                if (!files || files.length === 0 || isUploading) {
-                    return;
+                if (!files || files.length === 0) {
+                  return;
                 }
 
-                isUploading = true;
                 showStatus(`Téléversement de ${files.length} fichier(s) en cours...`, 'loading');
 
                 const formData = new FormData();
@@ -103,27 +99,25 @@ export const FileUpload = {
                     });
 
                     const data = await response.json();
-                    console.log('Réponse du téléversement:', data);
+                    console.log('Upload response:', data);
 
                     if (response.ok) {
                         if (data.urls && data.urls.length > 0) {
                             const fileCount = data.urls.length;
-                            
-                            // Création d'une liste des fichiers téléversés avec leurs liens
+                            // Create a list of uploaded files with their links
                             const fileList = data.urls.map(fileData => 
                                 `<div>${fileData.filename}: <a href="${fileData.url}" class="file-link" target="_blank">${fileData.url}</a></div>`
                             ).join('');
                             
-                            statusContainer.innerHTML = `<div>Téléversement réussi de ${fileCount} fichier(s)!</div>${fileList}`;
+                            statusContainer.innerHTML = `<div>Téléversement réussi de ${fileCount} fichier(s)!</div>`;
                             statusContainer.className = 'status-container success';
 
-                            // CORRECTION IMPORTANTE: Ne pas utiliser JSON.stringify
                             window.voiceflow.chat.interact({
                                 type: 'complete',
-                                payload: {
+                                payload: JSON.stringify({
                                     success: true,
                                     urls: data.urls
-                                }
+                                }),
                             });
                         } else {
                             throw new Error('Aucune URL retournée par le serveur');
@@ -133,28 +127,25 @@ export const FileUpload = {
                         throw new Error(errorMessage);
                     }
                 } catch (error) {
-                    console.error('Erreur de téléversement:', error);
+                    console.error('Upload error:', error);
                     showStatus(`Erreur: ${error.message}`, 'error');
 
-                    // CORRECTION IMPORTANTE: Ne pas utiliser JSON.stringify
                     window.voiceflow.chat.interact({
                         type: 'complete',
-                        payload: {
+                        payload: JSON.stringify({
                             success: false,
                             error: error.message
-                        }
+                        }),
                     });
-                } finally {
-                    isUploading = false;
                 }
             };
 
-            // Gestion de la sélection de fichier
+            // Handle file select
             uploadInput.addEventListener('change', (event) => {
                 handleUpload(event.target.files);
             });
 
-            // Gestion du glisser-déposer
+            // Handle drag and drop
             uploadContainer.addEventListener('dragenter', (event) => {
                 event.preventDefault();
                 event.stopPropagation();
@@ -181,26 +172,9 @@ export const FileUpload = {
             });
 
             element.appendChild(container);
-            
-            // Fonction de nettoyage pour éviter les fuites mémoire
-            return () => {
-                console.log("Nettoyage de l'extension FileUpload");
-                // Supprimer les écouteurs d'événements pour éviter les fuites mémoire
-                uploadInput.disabled = true;
-                uploadContainer.style.pointerEvents = 'none';
-            };
 
         } catch (error) {
-            console.error('Erreur dans le rendu FileUpload:', error);
-            
-            // En cas d'erreur, envoyer une interaction pour débloquer Voiceflow
-            window.voiceflow.chat.interact({
-                type: 'complete',
-                payload: {
-                    success: false,
-                    error: 'Erreur interne de l\'extension FileUpload'
-                }
-            });
+            console.error('Error in FileUpload render:', error);
         }
     },
 };

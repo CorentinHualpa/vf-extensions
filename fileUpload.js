@@ -15,7 +15,7 @@ export const FileUpload = {
 
       // Extraction des paramètres du payload avec des valeurs par défaut
       const {
-        maxSize = 5, // En Mo
+        maxSize = 100, // En Mo
         acceptedTypes = '*', // ex: '.pdf,.docx,image/*'
         buttonText = 'Cliquer pour téléverser ou glisser-déposer des fichiers',
         multiple = true

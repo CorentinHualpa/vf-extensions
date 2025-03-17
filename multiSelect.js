@@ -2,14 +2,11 @@ export const MultiSelect = {
     name: 'MultiSelect',
     type: 'response',
     match: ({trace}) => {
-        return trace.type === 'multi_select' || trace.payload?.name === 'multi_select';
+        return trace.payload && trace.type === 'multi_select';
     },
     render: ({trace, element}) => {
         try {
             console.log("Démarrage du rendu MultiSelect");
-            
-            // Flag pour empêcher les envois multiples
-            let isSubmitted = false;
 
             // Récupérer les données depuis le payload
             const {
@@ -24,17 +21,16 @@ export const MultiSelect = {
             } = trace.payload;
 
             let totalChecked = 0;
-
-            // Vérifier que sections est un tableau
-            if (!Array.isArray(sections)) {
-                console.error('Erreur : `sections` n\'est pas un tableau', sections);
-                return;
-            }
-
+            let userInputValues = {};
+            let hasUserInputField = false;  // Flag pour vérifier si un champ libre existe
+            
+            // Créer un container principal
             const container = document.createElement('div');
             container.classList.add('multiselect-container');
-            container.innerHTML = `
-            <style>
+            
+            // Ajouter les styles
+            const styleElement = document.createElement('style');
+            styleElement.textContent = `
                 .multiselect-container .section-container {
                     padding: 10px;
                     border-radius: 5px;
@@ -79,9 +75,31 @@ export const MultiSelect = {
                 .multiselect-container .title {
                     color: ${textColor} !important;
                 }
-            </style>
-        `;
+                .multiselect-container .user-input-container {
+                    margin-top: 15px;
+                    margin-bottom: 10px;
+                }
+                .multiselect-container .user-input-label {
+                    display: block;
+                    margin-bottom: 8px;
+                    color: ${textColor};
+                    font-weight: bold;
+                }
+                .multiselect-container .user-input-field {
+                    width: 100%;
+                    padding: 8px;
+                    border-radius: 5px;
+                    border: 1px solid #ccc;
+                    font-size: 0.9em;
+                }
+                .multiselect-container .user-input-field:focus {
+                    border-color: ${buttonColor};
+                    outline: none;
+                }
+            `;
+            container.appendChild(styleElement);
 
+            // Fonction pour obtenir les détails des cases cochées
             const getCheckedDetails = () => {
                 const sectionsElements = Array.from(container.querySelectorAll('.section-container'));
                 const details = sectionsElements.map(section => {
@@ -101,14 +119,11 @@ export const MultiSelect = {
                 return details;
             };
 
+            // Fonction pour mettre à jour le compte total de cases cochées
             const updateTotalChecked = () => {
-                // Ne pas mettre à jour si déjà soumis
-                if (isSubmitted) return;
-                
                 const details = getCheckedDetails();
                 totalChecked = 0;
 
-                // Calculer le nombre total de cases cochées dans toutes les sections
                 details.forEach((detail) => {
                     if (detail.checkedAll.length > 0) {
                         totalChecked += detail.sectionSize;
@@ -117,7 +132,6 @@ export const MultiSelect = {
                     }
                 });
 
-                // Désactiver toutes les cases non cochées si la limite globale est atteinte
                 if (totalMaxSelect > 0 && totalChecked >= totalMaxSelect) {
                     Array.from(container.querySelectorAll('input[type="checkbox"]')).forEach(checkbox => {
                         if (!checkbox.checked) {
@@ -125,7 +139,6 @@ export const MultiSelect = {
                         }
                     });
                 } else {
-                    // Réactiver les cases si la limite globale n'est pas atteinte
                     Array.from(container.querySelectorAll('.section-container')).forEach((section, sectionIndex) => {
                         const checkboxes = section.querySelectorAll('input[type="checkbox"]');
                         
@@ -146,7 +159,6 @@ export const MultiSelect = {
                                 });
                             }
 
-                            // Gérer les messages d'erreur pour les cases "-all-" uniquement
                             checkboxes.forEach(checkbox => {
                                 const isAllCheckbox = checkbox.id.includes("-all-");
                                 const errorSpan = checkbox.parentElement.querySelector('.error-message');
@@ -173,6 +185,17 @@ export const MultiSelect = {
                 }
             };
 
+            // Vérifier d'abord si nous avons des champs user_input
+            sections.forEach(section => {
+                if (Array.isArray(section.options)) {
+                    section.options.forEach(option => {
+                        if (option.action === 'user_input') {
+                            hasUserInputField = true;
+                        }
+                    });
+                }
+            });
+
             // Création des sections avec les options
             sections.forEach((section, sectionIndex) => {
                 const {maxSelect = 200} = section;
@@ -185,8 +208,11 @@ export const MultiSelect = {
                 sectionLabel.textContent = section.label;
                 sectionDiv.appendChild(sectionLabel);
 
+                // Ajouter les options standard
                 if (Array.isArray(section.options)) {
-                    section.options.forEach(option => {
+                    const standardOptions = section.options.filter(option => option.action !== 'user_input');
+                    
+                    standardOptions.forEach(option => {
                         const optionDiv = document.createElement('div');
                         optionDiv.classList.add('option-container');
                         
@@ -203,11 +229,7 @@ export const MultiSelect = {
                         optionDiv.appendChild(input);
                         optionDiv.appendChild(label);
 
-                        // Gestion de la sélection et des actions spéciales
                         input.addEventListener('change', () => {
-                            // Ne pas traiter si déjà soumis
-                            if (isSubmitted) return;
-                            
                             updateTotalChecked();
                             const allCheckboxes = sectionDiv.querySelectorAll('input[type="checkbox"]');
                             const checkedCount = Array.from(allCheckboxes).filter(checkbox => checkbox.checked).length;
@@ -237,48 +259,67 @@ export const MultiSelect = {
                                 }
                             }
 
-                            // Envoi immédiat pour sélection unique
-                            if (!multiselect && !isSubmitted) {
-                                isSubmitted = true;
-                                
-                                const selectedOption = {
-                                    section: section.label,
-                                    selections: [option.name],
-                                };
-
+                            if (!multiselect) {
                                 label.style.backgroundColor = textColor;
                                 label.style.color = buttonColor;
                                 
-                                // IMPORTANT: Envoi direct du payload sans JSON.stringify
+                                const selectedOption = {
+                                    section: section.label,
+                                    selections: [option.name]
+                                };
+
+                                // Approche simplifiée qui fonctionne avec vos autres extensions
+                                console.log("Envoi de sélection simple:", selectedOption);
                                 window.voiceflow.chat.interact({
-                                    type: 'complete',
-                                    payload: {
-                                        count: 1,
-                                        selections: [selectedOption],
-                                    },
+                                    type: 'text',
+                                    payload: option.name
                                 });
-                                
-                                // Désactiver tous les inputs après soumission
-                                setTimeout(() => {
-                                    Array.from(container.querySelectorAll('input')).forEach(inp => {
-                                        inp.disabled = true;
-                                    });
-                                }, 100);
                             }
                         });
 
                         sectionDiv.appendChild(optionDiv);
                     });
-                } else {
-                    console.error('Erreur : `options` n\'est pas un tableau dans la section', section);
+                    
+                    // Ajouter le champ libre à la fin
+                    const userInputOptions = section.options.filter(option => option.action === 'user_input');
+                    
+                    userInputOptions.forEach(option => {
+                        // Créer un conteneur pour le champ de saisie utilisateur
+                        const userInputDiv = document.createElement('div');
+                        userInputDiv.classList.add('user-input-container');
+                        
+                        // Créer le libellé du champ
+                        const userInputLabel = document.createElement('label');
+                        userInputLabel.classList.add('user-input-label');
+                        // Utiliser le texte par défaut si non spécifié
+                        userInputLabel.textContent = option.label || 'Indiquez votre marché si aucun ne correspond';
+                        
+                        // Créer le champ de saisie
+                        const userInputField = document.createElement('input');
+                        userInputField.type = 'text';
+                        userInputField.classList.add('user-input-field');
+                        userInputField.placeholder = option.placeholder || 'Saisissez votre texte ici...';
+                        userInputField.id = `${section.label}-user-input-${section.id || ''}`;
+                        
+                        // Stocker la référence à ce champ pour récupérer sa valeur plus tard
+                        userInputValues[userInputField.id] = '';
+                        
+                        // Mettre à jour la valeur stockée à chaque modification
+                        userInputField.addEventListener('input', (e) => {
+                            userInputValues[userInputField.id] = e.target.value;
+                        });
+                        
+                        userInputDiv.appendChild(userInputLabel);
+                        userInputDiv.appendChild(userInputField);
+                        sectionDiv.appendChild(userInputDiv);
+                    });
                 }
 
                 container.appendChild(sectionDiv);
             });
 
-            // Si `multiselect` est vrai, ajoutez les boutons
-            if (multiselect) {
-                // Créer un conteneur pour les boutons
+            // Si `multiselect` est vrai OU s'il y a au moins un champ user_input, ajouter les boutons
+            if (hasUserInputField) {
                 const buttonContainer = document.createElement('div');
                 buttonContainer.setAttribute('data-index', index);
                 buttonContainer.style.display = 'flex';
@@ -286,100 +327,76 @@ export const MultiSelect = {
                 buttonContainer.style.gap = '10px';
                 buttonContainer.style.marginTop = '20px';
 
-                // Parcourir les boutons définis dans le payload
                 buttons.forEach(button => {
                     const buttonElement = document.createElement('button');
                     buttonElement.classList.add('submit-btn');
                     buttonElement.textContent = button.text;
 
-                    // Ajouter un événement "click" pour chaque bouton
                     buttonElement.addEventListener('click', () => {
-                        // Éviter les soumissions multiples
-                        if (isSubmitted) return;
-                        isSubmitted = true;
-                        
                         const selectedOptions = sections.map((section, idx) => {
                             const sectionElement = container.querySelectorAll('.section-container')[idx];
                             if (!sectionElement) return null;
                             
+                            // Récupérer les cases cochées
                             const sectionSelections = Array.from(
                                 sectionElement.querySelectorAll('input[type="checkbox"]:checked')
                             ).map(checkbox => checkbox.nextElementSibling.innerText);
+                            
+                            // Récupérer les valeurs des champs de saisie utilisateur
+                            const userInputFields = {};
+                            const userInputId = `${section.label}-user-input-${section.id || ''}`;
+                            if (userInputValues[userInputId] !== undefined) {
+                                userInputFields.userInput = userInputValues[userInputId];
+                            }
+                            
+                            return {
+                                section: section.label, 
+                                selections: sectionSelections,
+                                userInput: userInputFields.userInput || ""
+                            };
+                        }).filter(section => section && (section.selections.length > 0 || section.userInput));
 
-                            return {section: section.label, selections: sectionSelections};
-                        }).filter(section => section && section.selections.length > 0);
-
-                        // Construire le payload avec le path associé au bouton cliqué
-                        const payload = {
-                            count: selectedOptions.reduce((sum, section) => sum + section.selections.length, 0),
-                            selections: selectedOptions,
-                            path: button.path,
-                        };
-
-                        // Masquer tous les boutons dans ce conteneur
-                        const currentContainer = container.querySelector(`[data-index="${index}"]`);
-                        if (currentContainer) {
-                            const allButtons = currentContainer.querySelectorAll('.submit-btn');
-                            allButtons.forEach(btn => (btn.style.display = 'none'));
-                        } else {
-                            console.error(`Conteneur avec data-index="${index}" introuvable.`);
-                        }
-
-                        // IMPORTANT: Envoi direct du payload sans JSON.stringify
-                        window.voiceflow.chat.interact({
-                            type: 'complete',
-                            payload: payload,
+                        // Masquer tous les boutons après sélection
+                        buttonContainer.querySelectorAll('.submit-btn').forEach(btn => {
+                            btn.style.display = 'none';
                         });
                         
-                        // Désactiver tous les inputs après soumission
-                        setTimeout(() => {
-                            Array.from(container.querySelectorAll('input')).forEach(inp => {
-                                inp.disabled = true;
-                            });
-                        }, 100);
+                        // Construire une réponse complète avec les sélections et les entrées utilisateur
+                        console.log("Envoi des sélections:", selectedOptions);
+                        
+                        // MODIFICATION ICI: Envoyer directement le champ libre s'il est seul et rempli
+                        let payload;
+                        
+                        // Vérifier si nous avons une seule section avec uniquement un champ libre
+                        if (selectedOptions.length === 1 && 
+                            selectedOptions[0].selections.length === 0 && 
+                            selectedOptions[0].userInput.trim() !== "") {
+                            // Envoyer directement la valeur du champ libre
+                            payload = selectedOptions[0].userInput.trim();
+                        } else {
+                            // Sinon, convertir les sélections en format JSON avec le préfixe
+                            const selectionJSON = JSON.stringify(selectedOptions);
+                            payload = button.text + " - Sélections: " + selectionJSON;
+                        }
+                        
+                        // Envoyer la réponse
+                        window.voiceflow.chat.interact({
+                            type: 'text',
+                            payload: payload
+                        });
                     });
 
-                    // Ajouter le bouton au conteneur des boutons
                     buttonContainer.appendChild(buttonElement);
                 });
 
-                // Ajouter le conteneur des boutons au conteneur principal
                 container.appendChild(buttonContainer);
             }
 
             element.appendChild(container);
             console.log("Rendu MultiSelect terminé");
             
-            // Fonction de nettoyage pour éviter les fuites mémoire
-            return () => {
-                console.log("Nettoyage de MultiSelect");
-                isSubmitted = true;
-                
-                // Suppression explicite des gestionnaires d'événements
-                const inputs = container.querySelectorAll('input');
-                inputs.forEach(input => {
-                    input.disabled = true;
-                });
-                
-                const buttons = container.querySelectorAll('button');
-                buttons.forEach(button => {
-                    button.disabled = true;
-                });
-            };
-            
         } catch (error) {
             console.error('Erreur lors du rendu de MultiSelect:', error);
-            
-            // Débloquer le chat en cas d'erreur
-            if (window.voiceflow && window.voiceflow.chat) {
-                window.voiceflow.chat.interact({
-                    type: 'complete',
-                    payload: {
-                        error: 'Erreur dans l\'extension MultiSelect',
-                        errorDetails: error.message
-                    }
-                });
-            }
         }
     },
 };

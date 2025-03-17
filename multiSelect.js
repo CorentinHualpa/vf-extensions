@@ -263,16 +263,15 @@ export const MultiSelect = {
                                 label.style.backgroundColor = textColor;
                                 label.style.color = buttonColor;
                                 
-                                const selectedOption = {
-                                    section: section.label,
-                                    selections: [option.name]
-                                };
-
-                                // MODIFICATION: Utiliser le type debug pour les sélections simples
-                                console.log("Envoi de sélection simple en mode debug:", selectedOption);
+                                // Pour les sélections simples (radio buttons/selection unique)
+                                // NOTE: On utilise 'complete' avec un objet payload structuré
+                                console.log("Envoi de sélection simple:", option.name);
                                 window.voiceflow.chat.interact({
-                                    type: 'debug',
-                                    payload: option.name
+                                    type: 'complete',
+                                    payload: {
+                                        selection: option.name,
+                                        buttonPath: 'Default'
+                                    }
                                 });
                             }
                         });
@@ -361,28 +360,50 @@ export const MultiSelect = {
                             btn.style.display = 'none';
                         });
                         
-                        // Construire une réponse complète avec les sélections et les entrées utilisateur
                         console.log("Envoi des sélections:", selectedOptions);
                         
-                        // MODIFICATION: Envoyer en mode debug plutôt qu'en mode text
-                        let payload;
-                        
-                        // Vérifier si nous avons une seule section avec uniquement un champ libre
+                        // Construire un payload structuré pour Voiceflow
+                        // Ceci est la clé pour que Voiceflow puisse accéder aux données via last_event.payload
+                        let payloadData = {};
+                        const buttonPath = button.path || 'Default';
+
+                        // Si nous avons une seule section avec uniquement un champ libre
                         if (selectedOptions.length === 1 && 
                             selectedOptions[0].selections.length === 0 && 
                             selectedOptions[0].userInput.trim() !== "") {
-                            // Envoyer directement la valeur du champ libre
-                            payload = selectedOptions[0].userInput.trim();
+                            
+                            // On structure le payload avec le champ libre comme valeur principale
+                            // et on ajoute des métadonnées pour faciliter la récupération
+                            payloadData = {
+                                userInput: selectedOptions[0].userInput.trim(),
+                                buttonText: button.text,
+                                buttonPath: buttonPath,
+                                isEmpty: false,
+                                isUserInput: true
+                            };
+                        } else if (selectedOptions.length > 0) {
+                            // Pour les sélections multiples, on conserve la structure complète
+                            // et on ajoute des métadonnées
+                            payloadData = {
+                                selections: selectedOptions,
+                                buttonText: button.text,
+                                buttonPath: buttonPath,
+                                isEmpty: false,
+                                isUserInput: false
+                            };
                         } else {
-                            // Sinon, convertir les sélections en format JSON avec le préfixe
-                            const selectionJSON = JSON.stringify(selectedOptions);
-                            payload = button.text + " - Sélections: " + selectionJSON;
+                            // Si aucune sélection n'est faite
+                            payloadData = {
+                                buttonText: button.text,
+                                buttonPath: buttonPath,
+                                isEmpty: true
+                            };
                         }
                         
-                        // MODIFICATION: Utiliser le type debug au lieu de text
+                        // Envoyer la réponse avec type 'complete'
                         window.voiceflow.chat.interact({
-                            type: 'debug',
-                            payload: payload
+                            type: 'complete',
+                            payload: payloadData
                         });
                     });
 
@@ -397,6 +418,14 @@ export const MultiSelect = {
             
         } catch (error) {
             console.error('Erreur lors du rendu de MultiSelect:', error);
+            // En cas d'erreur, envoyer une interaction pour continuer le flow
+            window.voiceflow.chat.interact({
+                type: 'complete',
+                payload: {
+                    error: true,
+                    message: error.message
+                }
+            });
         }
     },
 };

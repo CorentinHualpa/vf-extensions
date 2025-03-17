@@ -4,7 +4,7 @@ export const FileUpload = {
     match: ({ trace }) => {
         console.log('Vérification du match pour file_upload');
         console.log(trace);
-        return trace.payload && trace.payload.name === 'file_upload';
+        return trace.type === 'file_upload' || trace.payload?.name === 'file_upload';
     },
     render: ({ trace, element }) => {
         try {
@@ -17,6 +17,7 @@ export const FileUpload = {
             
             // Drapeau pour éviter les uploads multiples
             let isUploading = false;
+            let isCompleted = false;
 
             const container = document.createElement('div');
             container.innerHTML = `
@@ -82,9 +83,33 @@ export const FileUpload = {
                 statusContainer.className = 'status-container ' + type;
                 statusContainer.style.display = 'block';
             };
+            
+            // Fonction pour notifier Voiceflow avec un délai de 500ms
+            const safeInteract = (type, payload) => {
+                if (isCompleted) return;
+                isCompleted = true;
+                
+                // Utilisation d'un type text pour éviter les validations supplémentaires
+                setTimeout(() => {
+                    try {
+                        console.log("Envoi à Voiceflow:", type, payload);
+                        window.voiceflow.chat.interact({
+                            type: type,
+                            payload: payload
+                        });
+                    } catch (error) {
+                        console.error("Erreur lors de l'interaction:", error);
+                        // Tentative de récupération
+                        window.voiceflow.chat.interact({
+                            type: 'text',
+                            payload: 'Téléversement terminé'
+                        });
+                    }
+                }, 500);
+            };
 
             const handleUpload = async (files) => {
-                if (!files || files.length === 0 || isUploading) {
+                if (!files || files.length === 0 || isUploading || isCompleted) {
                     return;
                 }
                 
@@ -109,7 +134,7 @@ export const FileUpload = {
                         if (data.urls && data.urls.length > 0) {
                             const fileCount = data.urls.length;
                             
-                            // Liste des fichiers téléversés avec leurs liens
+                            // Liste des fichiers téléversés
                             const fileList = data.urls.map(fileData => 
                                 `<div>${fileData.filename}: <a href="${fileData.url}" class="file-link" target="_blank">${fileData.url}</a></div>`
                             ).join('');
@@ -117,15 +142,11 @@ export const FileUpload = {
                             statusContainer.innerHTML = `<div>Téléversement réussi de ${fileCount} fichier(s)!</div>`;
                             statusContainer.className = 'status-container success';
                             
-                            // IMPORTANT: Cette ligne est cruciale - nous renvoyons une chaîne JSON
-                            // pour être compatible avec le code Voiceflow qui utilise JSON.parse
-                            window.voiceflow.chat.interact({
-                                type: 'complete',
-                                payload: JSON.stringify({
-                                    success: true,
-                                    urls: data.urls
-                                })
-                            });
+                            // Création de la chaîne de texte des URLs pour Voiceflow
+                            const urlText = data.urls.map(item => item.url).join('\n');
+                            
+                            // Utilisation de type text au lieu de complete
+                            safeInteract('text', `Téléversement réussi de ${fileCount} fichier(s)!\n\nLIENS :\n${urlText}`);
                         } else {
                             throw new Error('Aucune URL retournée par le serveur');
                         }
@@ -137,13 +158,8 @@ export const FileUpload = {
                     console.error('Erreur de téléversement:', error);
                     showStatus(`Erreur: ${error.message}`, 'error');
 
-                    window.voiceflow.chat.interact({
-                        type: 'complete',
-                        payload: JSON.stringify({
-                            success: false,
-                            error: error.message
-                        })
-                    });
+                    // Utilisation de type text pour les erreurs aussi
+                    safeInteract('text', `Erreur de téléversement: ${error.message}`);
                 } finally {
                     isUploading = false;
                 }
@@ -186,18 +202,20 @@ export const FileUpload = {
             return () => {
                 uploadInput.disabled = true;
                 uploadContainer.style.pointerEvents = 'none';
+                
+                // Débloquer Voiceflow en cas de destruction sans complétion
+                if (!isCompleted) {
+                    safeInteract('text', 'Téléversement annulé');
+                }
             };
 
         } catch (error) {
             console.error('Erreur dans le rendu FileUpload:', error);
             
-            // En cas d'erreur, envoi d'une réponse pour débloquer le flux
+            // En cas d'erreur, envoi d'un message texte simple
             window.voiceflow.chat.interact({
-                type: 'complete',
-                payload: JSON.stringify({
-                    success: false,
-                    error: 'Erreur interne de l\'extension'
-                })
+                type: 'text',
+                payload: 'Erreur lors du téléversement. Veuillez réessayer.'
             });
         }
     },

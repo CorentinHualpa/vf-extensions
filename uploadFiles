@@ -1,8 +1,8 @@
+// Version corrigée pour fileUpload.js
 export const FileUpload = {
     name: 'FileUpload',
     type: 'response',
     match: ({ trace }) => {
-        // Utilisation plus robuste du match, similaire aux autres extensions
         return trace.type === 'file_upload' || trace.payload?.name === 'file_upload';
     },
     render: ({ trace, element }) => {
@@ -12,15 +12,8 @@ export const FileUpload = {
             // Generate unique ID for this instance
             const uniqueId = 'fileUpload_' + Date.now();
             
-            // Récupération des paramètres du payload avec valeurs par défaut
-            const {
-                maxFileSize = 10, // En Mo
-                acceptedTypes = '*',
-                uploadLabel = 'Cliquer pour téléverser ou glisser-déposer des fichiers',
-                successMessage = 'Téléversement réussi!',
-                loadingMessage = 'Téléversement en cours...',
-                apiUrl = 'https://chatinnov-api-dev.proudsky-cdf9333b.francecentral.azurecontainerapps.io/documents_upload/'
-            } = trace.payload || {};
+            // Flag pour éviter les soumissions multiples
+            let isUploading = false;
 
             const container = document.createElement('div');
             container.innerHTML = `
@@ -32,7 +25,6 @@ export const FileUpload = {
                         text-align: center;
                         margin-bottom: 20px;
                         cursor: pointer;
-                        transition: border-color 0.3s ease;
                     }
                     .upload-container:hover {
                         border-color: #2e7ff1;
@@ -70,9 +62,9 @@ export const FileUpload = {
                     }
                 </style>
                 <div class="upload-container">
-                    <input type="file" class="upload-input" id="${uniqueId}" multiple accept="${acceptedTypes}">
+                    <input type="file" class="upload-input" id="${uniqueId}" multiple>
                     <label for="${uniqueId}" class="upload-label">
-                        ${uploadLabel}
+                        Cliquer pour téléverser ou glisser-déposer des fichiers
                     </label>
                 </div>
                 <div class="status-container"></div>
@@ -88,24 +80,13 @@ export const FileUpload = {
                 statusContainer.style.display = 'block';
             };
 
-            let isUploading = false;
             const handleUpload = async (files) => {
                 if (!files || files.length === 0 || isUploading) {
                     return;
                 }
-                
-                isUploading = true;
-                
-                // Vérifier la taille des fichiers
-                for (const file of files) {
-                    if (file.size > maxFileSize * 1024 * 1024) {
-                        showStatus(`Le fichier "${file.name}" dépasse la taille maximale de ${maxFileSize}Mo`, 'error');
-                        isUploading = false;
-                        return;
-                    }
-                }
 
-                showStatus(loadingMessage, 'loading');
+                isUploading = true;
+                showStatus(`Téléversement de ${files.length} fichier(s) en cours...`, 'loading');
 
                 const formData = new FormData();
                 Array.from(files).forEach((file) => {
@@ -113,7 +94,7 @@ export const FileUpload = {
                 });
 
                 try {
-                    const response = await fetch(apiUrl, {
+                    const response = await fetch('https://chatinnov-api-dev.proudsky-cdf9333b.francecentral.azurecontainerapps.io/documents_upload/', {
                         method: 'POST',
                         body: formData
                     });
@@ -124,16 +105,15 @@ export const FileUpload = {
                     if (response.ok) {
                         if (data.urls && data.urls.length > 0) {
                             const fileCount = data.urls.length;
-                            statusContainer.innerHTML = `<div>${successMessage} (${fileCount} fichier(s))</div>`;
+                            statusContainer.innerHTML = `<div>Téléversement réussi de ${fileCount} fichier(s)!</div>`;
                             statusContainer.className = 'status-container success';
 
-                            // Structure uniforme de la réponse, sans JSON.stringify supplémentaire
+                            // MODIFICATION CRUCIALE: Ne pas utiliser JSON.stringify
                             window.voiceflow.chat.interact({
                                 type: 'complete',
                                 payload: {
                                     success: true,
-                                    urls: data.urls,
-                                    fileCount: fileCount
+                                    urls: data.urls
                                 }
                             });
                         } else {
@@ -147,6 +127,7 @@ export const FileUpload = {
                     console.error('Upload error:', error);
                     showStatus(`Erreur: ${error.message}`, 'error');
 
+                    // MODIFICATION CRUCIALE: Ne pas utiliser JSON.stringify
                     window.voiceflow.chat.interact({
                         type: 'complete',
                         payload: {
@@ -192,25 +173,21 @@ export const FileUpload = {
 
             element.appendChild(container);
             
-            // Fonction de nettoyage pour éviter les fuites mémoire
+            // Fonction de nettoyage
             return () => {
-                // Retirer tous les event listeners
-                uploadInput.removeEventListener('change', handleUpload);
-                uploadContainer.removeEventListener('dragenter', () => {});
-                uploadContainer.removeEventListener('dragover', () => {});
-                uploadContainer.removeEventListener('dragleave', () => {});
-                uploadContainer.removeEventListener('drop', () => {});
+                uploadInput.disabled = true;
+                uploadContainer.style.pointerEvents = 'none';
             };
 
         } catch (error) {
             console.error('Error in FileUpload render:', error);
             
-            // En cas d'erreur, informer Voiceflow pour éviter le blocage
+            // MODIFICATION CRUCIALE: En cas d'erreur, débloquer Voiceflow
             window.voiceflow.chat.interact({
                 type: 'complete',
                 payload: {
                     success: false,
-                    error: 'Erreur interne de l\'extension FileUpload'
+                    error: 'Erreur interne de l\'extension'
                 }
             });
         }

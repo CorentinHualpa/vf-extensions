@@ -1,18 +1,21 @@
-// Version corrigée pour fileUpload.js
 export const FileUpload = {
     name: 'FileUpload',
     type: 'response',
     match: ({ trace }) => {
+        console.log('Vérification du match pour file_upload');
+        console.log(trace);
         return trace.type === 'file_upload' || trace.payload?.name === 'file_upload';
     },
     render: ({ trace, element }) => {
         try {
-            console.log('FileUpload extension render');
+            console.log('Rendu de l\'extension FileUpload');
+            console.log('Données trace:', trace);
 
-            // Generate unique ID for this instance
+            // Génération d'un ID unique pour cette instance
             const uniqueId = 'fileUpload_' + Date.now();
-            
-            // Flag pour éviter les soumissions multiples
+            console.log(`ID d'upload de fichier: ${uniqueId}`);
+
+            // Flag pour éviter les uploads multiples simultanés
             let isUploading = false;
 
             const container = document.createElement('div');
@@ -100,15 +103,21 @@ export const FileUpload = {
                     });
 
                     const data = await response.json();
-                    console.log('Upload response:', data);
+                    console.log('Réponse du téléversement:', data);
 
                     if (response.ok) {
                         if (data.urls && data.urls.length > 0) {
                             const fileCount = data.urls.length;
-                            statusContainer.innerHTML = `<div>Téléversement réussi de ${fileCount} fichier(s)!</div>`;
+                            
+                            // Création d'une liste des fichiers téléversés avec leurs liens
+                            const fileList = data.urls.map(fileData => 
+                                `<div>${fileData.filename}: <a href="${fileData.url}" class="file-link" target="_blank">${fileData.url}</a></div>`
+                            ).join('');
+                            
+                            statusContainer.innerHTML = `<div>Téléversement réussi de ${fileCount} fichier(s)!</div>${fileList}`;
                             statusContainer.className = 'status-container success';
 
-                            // MODIFICATION CRUCIALE: Ne pas utiliser JSON.stringify
+                            // CORRECTION IMPORTANTE: Ne pas utiliser JSON.stringify
                             window.voiceflow.chat.interact({
                                 type: 'complete',
                                 payload: {
@@ -124,10 +133,10 @@ export const FileUpload = {
                         throw new Error(errorMessage);
                     }
                 } catch (error) {
-                    console.error('Upload error:', error);
+                    console.error('Erreur de téléversement:', error);
                     showStatus(`Erreur: ${error.message}`, 'error');
 
-                    // MODIFICATION CRUCIALE: Ne pas utiliser JSON.stringify
+                    // CORRECTION IMPORTANTE: Ne pas utiliser JSON.stringify
                     window.voiceflow.chat.interact({
                         type: 'complete',
                         payload: {
@@ -140,12 +149,12 @@ export const FileUpload = {
                 }
             };
 
-            // Handle file select
+            // Gestion de la sélection de fichier
             uploadInput.addEventListener('change', (event) => {
                 handleUpload(event.target.files);
             });
 
-            // Handle drag and drop
+            // Gestion du glisser-déposer
             uploadContainer.addEventListener('dragenter', (event) => {
                 event.preventDefault();
                 event.stopPropagation();
@@ -173,21 +182,23 @@ export const FileUpload = {
 
             element.appendChild(container);
             
-            // Fonction de nettoyage
+            // Fonction de nettoyage pour éviter les fuites mémoire
             return () => {
+                console.log("Nettoyage de l'extension FileUpload");
+                // Supprimer les écouteurs d'événements pour éviter les fuites mémoire
                 uploadInput.disabled = true;
                 uploadContainer.style.pointerEvents = 'none';
             };
 
         } catch (error) {
-            console.error('Error in FileUpload render:', error);
+            console.error('Erreur dans le rendu FileUpload:', error);
             
-            // MODIFICATION CRUCIALE: En cas d'erreur, débloquer Voiceflow
+            // En cas d'erreur, envoyer une interaction pour débloquer Voiceflow
             window.voiceflow.chat.interact({
                 type: 'complete',
                 payload: {
                     success: false,
-                    error: 'Erreur interne de l\'extension'
+                    error: 'Erreur interne de l\'extension FileUpload'
                 }
             });
         }

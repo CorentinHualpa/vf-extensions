@@ -14,6 +14,9 @@ export const FileUpload = {
             // Generate unique ID for this instance
             const uniqueId = 'fileUpload_' + Date.now();
             console.log(`File upload id: ${uniqueId}`);
+            
+            // Flag pour éviter les uploads multiples
+            let isUploading = false;
 
             const container = document.createElement('div');
             container.innerHTML = `
@@ -81,10 +84,11 @@ export const FileUpload = {
             };
 
             const handleUpload = async (files) => {
-                if (!files || files.length === 0) {
-                  return;
+                if (!files || files.length === 0 || isUploading) {
+                    return;
                 }
-
+                
+                isUploading = true;
                 showStatus(`Téléversement de ${files.length} fichier(s) en cours...`, 'loading');
 
                 const formData = new FormData();
@@ -112,12 +116,13 @@ export const FileUpload = {
                             statusContainer.innerHTML = `<div>Téléversement réussi de ${fileCount} fichier(s)!</div>`;
                             statusContainer.className = 'status-container success';
 
+                            // IMPORTANT: Ne PAS utiliser JSON.stringify ici
                             window.voiceflow.chat.interact({
                                 type: 'complete',
-                                payload: JSON.stringify({
+                                payload: {
                                     success: true,
                                     urls: data.urls
-                                }),
+                                }
                             });
                         } else {
                             throw new Error('Aucune URL retournée par le serveur');
@@ -130,13 +135,16 @@ export const FileUpload = {
                     console.error('Upload error:', error);
                     showStatus(`Erreur: ${error.message}`, 'error');
 
+                    // IMPORTANT: Ne PAS utiliser JSON.stringify ici
                     window.voiceflow.chat.interact({
                         type: 'complete',
-                        payload: JSON.stringify({
+                        payload: {
                             success: false,
                             error: error.message
-                        }),
+                        }
                     });
+                } finally {
+                    isUploading = false;
                 }
             };
 
@@ -172,9 +180,24 @@ export const FileUpload = {
             });
 
             element.appendChild(container);
+            
+            // Fonction de nettoyage pour éviter les fuites mémoire
+            return () => {
+                uploadInput.disabled = true;
+                uploadContainer.style.pointerEvents = 'none';
+            };
 
         } catch (error) {
             console.error('Error in FileUpload render:', error);
+            
+            // En cas d'erreur, débloquer le flux
+            window.voiceflow.chat.interact({
+                type: 'complete',
+                payload: {
+                    success: false,
+                    error: 'Erreur interne de l\'extension'
+                }
+            });
         }
     },
 };

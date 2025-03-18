@@ -13,8 +13,8 @@ export const MultiSelect = {
                 sections = [],
                 buttons = [],
                 buttonColor = '#4CAF50',
-                textColor = '#0000FF',
-                backgroundOpacity = 0.3,
+                textColor = '#FFFFFF',
+                backgroundOpacity = 0.7,  // Augmenter l'opacité par défaut
                 index = 1,
                 totalMaxSelect = 6,
                 multiselect = true,
@@ -35,55 +35,70 @@ export const MultiSelect = {
                     width: 100%;
                     font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
                     box-sizing: border-box;
+                    max-width: 800px;
+                    margin: 0 auto;
                 }
                 
                 .multiselect-container * {
                     box-sizing: border-box;
                 }
                 
+                /* Grille pour les sections principales */
                 .multiselect-container .sections-grid {
                     display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-                    gap: 15px;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 12px;
                     width: 100%;
                 }
                 
+                @media (max-width: 600px) {
+                    .multiselect-container .sections-grid {
+                        grid-template-columns: 1fr;
+                    }
+                }
+                
+                /* Style des sections */
                 .multiselect-container .section-container {
                     padding: 15px;
                     border-radius: 8px;
                     margin-bottom: 0;
-                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-                    transition: all 0.2s ease;
-                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
                     display: flex;
                     flex-direction: column;
                     height: 100%;
+                    background-color: #673AB7;
+                    border: 1px solid rgba(255, 255, 255, 0.2);
                 }
                 
                 .multiselect-container .section-title {
-                    color: ${textColor} !important;
+                    color: white;
                     font-size: 1.1em;
                     font-weight: 600;
                     margin-top: 0;
                     margin-bottom: 12px;
                     padding-bottom: 8px;
-                    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+                    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
                 }
                 
-                .multiselect-container .options-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+                /* Grille d'options dans chaque section */
+                .multiselect-container .options-list {
+                    display: flex;
+                    flex-direction: column;
                     gap: 8px;
                     width: 100%;
                     flex-grow: 1;
                 }
                 
+                /* Style pour les conteneurs d'options */
                 .multiselect-container .option-container {
                     display: flex;
                     align-items: center;
                     margin: 0;
+                    width: 100%;
                 }
                 
+                /* Style pour les inputs */
                 .multiselect-container .option-container input[type="checkbox"],
                 .multiselect-container .option-container input[type="radio"] {
                     height: 18px;
@@ -94,12 +109,13 @@ export const MultiSelect = {
                     accent-color: ${buttonColor};
                 }
                 
+                /* Style pour les labels */
                 .multiselect-container .option-container label {
                     cursor: pointer;
-                    font-size: 0.9em;
+                    font-size: 0.95em;
                     border-radius: 6px;
-                    padding: 8px 12px;
-                    color: ${textColor};
+                    padding: 10px 12px;
+                    color: white;
                     background-color: rgba(0, 0, 0, ${backgroundOpacity});
                     user-select: none;
                     display: block;
@@ -109,6 +125,7 @@ export const MultiSelect = {
                     white-space: nowrap;
                     overflow: hidden;
                     text-overflow: ellipsis;
+                    font-weight: 500;
                 }
                 
                 .multiselect-container .option-container label:hover {
@@ -117,9 +134,10 @@ export const MultiSelect = {
                 }
                 
                 .multiselect-container .option-container input:checked + label {
-                    background-color: ${buttonColor}22;
-                    border-color: ${buttonColor};
-                    font-weight: 500;
+                    background-color: ${buttonColor};
+                    border-color: white;
+                    font-weight: 600;
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
                 }
                 
                 .multiselect-container .option-container input:disabled + label {
@@ -127,16 +145,11 @@ export const MultiSelect = {
                     cursor: not-allowed;
                 }
                 
-                .multiselect-container .active-btn {
-                    background: ${textColor};
-                    color: ${buttonColor};
-                    border: 2px solid ${buttonColor};
-                }
-                
+                /* Styles des boutons */
                 .multiselect-container .buttons-container {
                     display: flex;
                     justify-content: center;
-                    gap: 10px;
+                    gap: 12px;
                     margin-top: 20px;
                     flex-wrap: wrap;
                 }
@@ -144,36 +157,37 @@ export const MultiSelect = {
                 .multiselect-container .submit-btn {
                     background: ${buttonColor};
                     color: white;
-                    padding: 10px 16px;
+                    padding: 12px 20px;
                     border-radius: 6px;
                     cursor: pointer;
                     border: none;
-                    font-weight: 500;
-                    font-size: 0.95em;
+                    font-weight: 600;
+                    font-size: 1em;
                     transition: all 0.2s ease;
-                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
                 }
                 
                 .multiselect-container .submit-btn:hover {
                     opacity: 0.9;
                     transform: translateY(-2px);
-                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
                 }
                 
                 .multiselect-container .submit-btn:active {
                     transform: translateY(0);
                 }
                 
+                /* Styles pour les champs libres */
                 .multiselect-container .user-input-container {
                     margin-top: 15px;
                     margin-bottom: 10px;
-                    grid-column: 1 / -1;
+                    width: 100%;
                 }
                 
                 .multiselect-container .user-input-label {
                     display: block;
                     margin-bottom: 8px;
-                    color: ${textColor};
+                    color: white;
                     font-weight: 500;
                     font-size: 0.9em;
                 }
@@ -182,32 +196,23 @@ export const MultiSelect = {
                     width: 100%;
                     padding: 10px;
                     border-radius: 6px;
-                    border: 1px solid #ccc;
+                    border: 1px solid rgba(255, 255, 255, 0.3);
                     font-size: 0.95em;
                     transition: all 0.2s ease;
+                    background-color: rgba(255, 255, 255, 0.9);
                 }
                 
                 .multiselect-container .user-input-field:focus {
                     border-color: ${buttonColor};
                     outline: none;
-                    box-shadow: 0 0 0 2px ${buttonColor}33;
+                    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
                 }
                 
                 .multiselect-container .error-message {
-                    color: #f44336;
+                    color: #ffcc00;
                     font-size: 0.85em;
                     margin-top: 6px;
                     display: block;
-                }
-                
-                @media (max-width: 600px) {
-                    .multiselect-container .sections-grid {
-                        grid-template-columns: 1fr;
-                    }
-                    
-                    .multiselect-container .options-grid {
-                        grid-template-columns: 1fr;
-                    }
                 }
             `;
             container.appendChild(styleElement);
@@ -316,21 +321,19 @@ export const MultiSelect = {
                 const sectionDiv = document.createElement('div');
                 sectionDiv.classList.add('section-container');
                 
-                // Appliquer la couleur de section comme propriété personnalisée
-                // Utiliser une version plus subtile de la couleur
-                const sectionColor = section.color;
-                const backgroundColor = sectionColor + '22'; // Ajouter une transparence
-                sectionDiv.style.backgroundColor = backgroundColor;
-                sectionDiv.style.borderColor = sectionColor;
+                // Utiliser la couleur de section directement pour un meilleur contraste
+                if (section.color) {
+                    sectionDiv.style.backgroundColor = section.color;
+                }
 
                 const sectionLabel = document.createElement('h3');
                 sectionLabel.classList.add('section-title');
                 sectionLabel.textContent = section.label;
                 sectionDiv.appendChild(sectionLabel);
 
-                // Créer un conteneur grid pour les options
-                const optionsGrid = document.createElement('div');
-                optionsGrid.classList.add('options-grid');
+                // Créer un conteneur pour les options
+                const optionsList = document.createElement('div');
+                optionsList.classList.add('options-list');
 
                 // Ajouter les options standard
                 if (Array.isArray(section.options)) {
@@ -387,9 +390,6 @@ export const MultiSelect = {
                             }
 
                             if (!multiselect) {
-                                label.style.backgroundColor = textColor;
-                                label.style.color = buttonColor;
-                                
                                 // Pour les sélections simples (radio buttons/selection unique)
                                 console.log("Envoi de sélection simple:", option.name);
                                 window.voiceflow.chat.interact({
@@ -402,10 +402,10 @@ export const MultiSelect = {
                             }
                         });
 
-                        optionsGrid.appendChild(optionDiv);
+                        optionsList.appendChild(optionDiv);
                     });
                     
-                    // Ajouter le champ libre à la fin (toujours pleine largeur)
+                    // Ajouter le champ libre à la fin
                     const userInputOptions = section.options.filter(option => option.action === 'user_input');
                     
                     userInputOptions.forEach(option => {
@@ -436,11 +436,11 @@ export const MultiSelect = {
                         
                         userInputDiv.appendChild(userInputLabel);
                         userInputDiv.appendChild(userInputField);
-                        optionsGrid.appendChild(userInputDiv);
+                        optionsList.appendChild(userInputDiv);
                     });
                 }
 
-                sectionDiv.appendChild(optionsGrid);
+                sectionDiv.appendChild(optionsList);
                 sectionsGrid.appendChild(sectionDiv);
             });
 

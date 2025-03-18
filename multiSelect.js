@@ -28,73 +28,186 @@ export const MultiSelect = {
             const container = document.createElement('div');
             container.classList.add('multiselect-container');
             
-            // Ajouter les styles
+            // Ajouter les styles avec support responsive
             const styleElement = document.createElement('style');
             styleElement.textContent = `
+                .multiselect-container {
+                    width: 100%;
+                    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+                    box-sizing: border-box;
+                }
+                
+                .multiselect-container * {
+                    box-sizing: border-box;
+                }
+                
+                .multiselect-container .sections-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+                    gap: 15px;
+                    width: 100%;
+                }
+                
                 .multiselect-container .section-container {
-                    padding: 10px;
-                    border-radius: 5px;
-                    margin-bottom: 20px;
+                    padding: 15px;
+                    border-radius: 8px;
+                    margin-bottom: 0;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+                    transition: all 0.2s ease;
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    display: flex;
+                    flex-direction: column;
+                    height: 100%;
                 }
-                .multiselect-container .option-container { 
-                    display: flex; 
+                
+                .multiselect-container .section-title {
+                    color: ${textColor} !important;
+                    font-size: 1.1em;
+                    font-weight: 600;
+                    margin-top: 0;
+                    margin-bottom: 12px;
+                    padding-bottom: 8px;
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+                }
+                
+                .multiselect-container .options-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+                    gap: 8px;
+                    width: 100%;
+                    flex-grow: 1;
+                }
+                
+                .multiselect-container .option-container {
+                    display: flex;
                     align-items: center;
-                    margin: 8px 0;
+                    margin: 0;
                 }
-                .multiselect-container .option-container input[type="checkbox"] {
-                    height: 20px;
-                    width: 20px;
-                    border-radius: 30px;
-                    margin-right: 10px;
+                
+                .multiselect-container .option-container input[type="checkbox"],
+                .multiselect-container .option-container input[type="radio"] {
+                    height: 18px;
+                    width: 18px;
+                    border-radius: 4px;
+                    margin-right: 8px;
+                    cursor: pointer;
+                    accent-color: ${buttonColor};
                 }
+                
+                .multiselect-container .option-container label {
+                    cursor: pointer;
+                    font-size: 0.9em;
+                    border-radius: 6px;
+                    padding: 8px 12px;
+                    color: ${textColor};
+                    background-color: rgba(0, 0, 0, ${backgroundOpacity});
+                    user-select: none;
+                    display: block;
+                    width: 100%;
+                    transition: all 0.2s ease;
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+                
+                .multiselect-container .option-container label:hover {
+                    background-color: rgba(0, 0, 0, ${backgroundOpacity + 0.1});
+                    transform: translateY(-1px);
+                }
+                
+                .multiselect-container .option-container input:checked + label {
+                    background-color: ${buttonColor}22;
+                    border-color: ${buttonColor};
+                    font-weight: 500;
+                }
+                
+                .multiselect-container .option-container input:disabled + label {
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                }
+                
                 .multiselect-container .active-btn {
                     background: ${textColor};
                     color: ${buttonColor};
                     border: 2px solid ${buttonColor};
                 }
-                .multiselect-container .option-container label {
-                    cursor: pointer; 
-                    font-size: 0.9em;
-                    border-radius: 5px;
-                    padding: 6px;
-                    color: ${textColor};
-                    background-color: rgba(0, 0, 0, ${backgroundOpacity});
-                    user-select: none;
+                
+                .multiselect-container .buttons-container {
+                    display: flex;
+                    justify-content: center;
+                    gap: 10px;
+                    margin-top: 20px;
+                    flex-wrap: wrap;
                 }
+                
                 .multiselect-container .submit-btn {
                     background: ${buttonColor};
                     color: white;
-                    padding: 10px;
-                    border-radius: 5px;
+                    padding: 10px 16px;
+                    border-radius: 6px;
                     cursor: pointer;
                     border: none;
+                    font-weight: 500;
+                    font-size: 0.95em;
+                    transition: all 0.2s ease;
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
                 }
+                
                 .multiselect-container .submit-btn:hover {
-                    opacity: 0.8;
+                    opacity: 0.9;
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
                 }
-                .multiselect-container .title {
-                    color: ${textColor} !important;
+                
+                .multiselect-container .submit-btn:active {
+                    transform: translateY(0);
                 }
+                
                 .multiselect-container .user-input-container {
                     margin-top: 15px;
                     margin-bottom: 10px;
+                    grid-column: 1 / -1;
                 }
+                
                 .multiselect-container .user-input-label {
                     display: block;
                     margin-bottom: 8px;
                     color: ${textColor};
-                    font-weight: bold;
-                }
-                .multiselect-container .user-input-field {
-                    width: 100%;
-                    padding: 8px;
-                    border-radius: 5px;
-                    border: 1px solid #ccc;
+                    font-weight: 500;
                     font-size: 0.9em;
                 }
+                
+                .multiselect-container .user-input-field {
+                    width: 100%;
+                    padding: 10px;
+                    border-radius: 6px;
+                    border: 1px solid #ccc;
+                    font-size: 0.95em;
+                    transition: all 0.2s ease;
+                }
+                
                 .multiselect-container .user-input-field:focus {
                     border-color: ${buttonColor};
                     outline: none;
+                    box-shadow: 0 0 0 2px ${buttonColor}33;
+                }
+                
+                .multiselect-container .error-message {
+                    color: #f44336;
+                    font-size: 0.85em;
+                    margin-top: 6px;
+                    display: block;
+                }
+                
+                @media (max-width: 600px) {
+                    .multiselect-container .sections-grid {
+                        grid-template-columns: 1fr;
+                    }
+                    
+                    .multiselect-container .options-grid {
+                        grid-template-columns: 1fr;
+                    }
                 }
             `;
             container.appendChild(styleElement);
@@ -109,7 +222,7 @@ export const MultiSelect = {
                     const checkedAll = checkedCheckboxes.filter(checkbox => checkbox.id.includes("-all-"));
 
                     return {
-                        sectionLabel: section.querySelector('h3').textContent,
+                        sectionLabel: section.querySelector('.section-title').textContent,
                         sectionSize: allCheckboxes.length - 1,
                         checkedNormal: checkedNormal.map(checkbox => checkbox.id),
                         checkedAll: checkedAll.map(checkbox => checkbox.id),
@@ -168,9 +281,6 @@ export const MultiSelect = {
                                         const span = document.createElement('span');
                                         span.classList.add('error-message');
                                         span.textContent = "Trop de cases cochées pour cocher celle-ci";
-                                        span.style.color = 'red';
-                                        span.style.marginLeft = '10px';
-                                        span.style.display = 'block';
                                         checkbox.parentElement.appendChild(span);
                                     }
                                     checkbox.disabled = true;
@@ -196,17 +306,31 @@ export const MultiSelect = {
                 }
             });
 
+            // Créer un conteneur grid pour les sections
+            const sectionsGrid = document.createElement('div');
+            sectionsGrid.classList.add('sections-grid');
+
             // Création des sections avec les options
             sections.forEach((section, sectionIndex) => {
                 const {maxSelect = 200} = section;
                 const sectionDiv = document.createElement('div');
                 sectionDiv.classList.add('section-container');
-                sectionDiv.style.backgroundColor = section.color;
+                
+                // Appliquer la couleur de section comme propriété personnalisée
+                // Utiliser une version plus subtile de la couleur
+                const sectionColor = section.color;
+                const backgroundColor = sectionColor + '22'; // Ajouter une transparence
+                sectionDiv.style.backgroundColor = backgroundColor;
+                sectionDiv.style.borderColor = sectionColor;
 
                 const sectionLabel = document.createElement('h3');
-                sectionLabel.classList.add('title');
+                sectionLabel.classList.add('section-title');
                 sectionLabel.textContent = section.label;
                 sectionDiv.appendChild(sectionLabel);
+
+                // Créer un conteneur grid pour les options
+                const optionsGrid = document.createElement('div');
+                optionsGrid.classList.add('options-grid');
 
                 // Ajouter les options standard
                 if (Array.isArray(section.options)) {
@@ -218,13 +342,16 @@ export const MultiSelect = {
                         
                         const input = document.createElement('input');
                         input.type = multiselect ? 'checkbox' : 'radio';
-                        input.style.display = multiselect ? 'block' : 'none';
-                        input.name = `option-${index}`;
+                        if (!multiselect) {
+                            input.style.display = 'none';
+                        }
+                        input.name = `option-${section.label}-${index}`;
                         input.id = `${section.label}-${option.name}-${option.action}-${section.id || ''}`;
                         
                         const label = document.createElement('label');
                         label.setAttribute('for', input.id);
                         label.textContent = option.name;
+                        label.title = option.name; // Pour afficher le texte complet au survol
                         
                         optionDiv.appendChild(input);
                         optionDiv.appendChild(label);
@@ -264,7 +391,6 @@ export const MultiSelect = {
                                 label.style.color = buttonColor;
                                 
                                 // Pour les sélections simples (radio buttons/selection unique)
-                                // NOTE: On utilise 'complete' avec un objet payload structuré
                                 console.log("Envoi de sélection simple:", option.name);
                                 window.voiceflow.chat.interact({
                                     type: 'complete',
@@ -276,10 +402,10 @@ export const MultiSelect = {
                             }
                         });
 
-                        sectionDiv.appendChild(optionDiv);
+                        optionsGrid.appendChild(optionDiv);
                     });
                     
-                    // Ajouter le champ libre à la fin
+                    // Ajouter le champ libre à la fin (toujours pleine largeur)
                     const userInputOptions = section.options.filter(option => option.action === 'user_input');
                     
                     userInputOptions.forEach(option => {
@@ -291,7 +417,7 @@ export const MultiSelect = {
                         const userInputLabel = document.createElement('label');
                         userInputLabel.classList.add('user-input-label');
                         // Utiliser le texte par défaut si non spécifié
-                        userInputLabel.textContent = option.label || 'Indiquez votre marché si aucun ne correspond';
+                        userInputLabel.textContent = option.label || 'Indiquez votre option si aucune ne correspond';
                         
                         // Créer le champ de saisie
                         const userInputField = document.createElement('input');
@@ -310,21 +436,21 @@ export const MultiSelect = {
                         
                         userInputDiv.appendChild(userInputLabel);
                         userInputDiv.appendChild(userInputField);
-                        sectionDiv.appendChild(userInputDiv);
+                        optionsGrid.appendChild(userInputDiv);
                     });
                 }
 
-                container.appendChild(sectionDiv);
+                sectionDiv.appendChild(optionsGrid);
+                sectionsGrid.appendChild(sectionDiv);
             });
+
+            container.appendChild(sectionsGrid);
 
             // Toujours afficher les boutons si multiselect est true OU s'il y a un champ user_input
             if (multiselect || hasUserInputField) {
                 const buttonContainer = document.createElement('div');
                 buttonContainer.setAttribute('data-index', index);
-                buttonContainer.style.display = 'flex';
-                buttonContainer.style.justifyContent = 'center';
-                buttonContainer.style.gap = '10px';
-                buttonContainer.style.marginTop = '20px';
+                buttonContainer.classList.add('buttons-container');
 
                 buttons.forEach(button => {
                     const buttonElement = document.createElement('button');
@@ -363,7 +489,6 @@ export const MultiSelect = {
                         console.log("Envoi des sélections:", selectedOptions);
                         
                         // Construire un payload structuré pour Voiceflow
-                        // Ceci est la clé pour que Voiceflow puisse accéder aux données via last_event.payload
                         let payloadData = {};
                         const buttonPath = button.path || 'Default';
 
@@ -372,8 +497,6 @@ export const MultiSelect = {
                             selectedOptions[0].selections.length === 0 && 
                             selectedOptions[0].userInput.trim() !== "") {
                             
-                            // On structure le payload avec le champ libre comme valeur principale
-                            // et on ajoute des métadonnées pour faciliter la récupération
                             payloadData = {
                                 userInput: selectedOptions[0].userInput.trim(),
                                 buttonText: button.text,
@@ -382,8 +505,6 @@ export const MultiSelect = {
                                 isUserInput: true
                             };
                         } else if (selectedOptions.length > 0) {
-                            // Pour les sélections multiples, on conserve la structure complète
-                            // et on ajoute des métadonnées
                             payloadData = {
                                 selections: selectedOptions,
                                 buttonText: button.text,
@@ -392,7 +513,6 @@ export const MultiSelect = {
                                 isUserInput: false
                             };
                         } else {
-                            // Si aucune sélection n'est faite
                             payloadData = {
                                 buttonText: button.text,
                                 buttonPath: buttonPath,
@@ -413,6 +533,7 @@ export const MultiSelect = {
                 container.appendChild(buttonContainer);
             }
 
+            // Ajouter au conteneur parent
             element.appendChild(container);
             console.log("Rendu MultiSelect terminé");
             

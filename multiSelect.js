@@ -115,7 +115,7 @@ export const MultiSelect = {
                 /* Style pour les conteneurs d'options */
                 .multiselect-container .option-container {
                     display: flex;
-                    align-items: center;
+                    align-items: flex-start;  /* Aligner au début pour permettre le texte multi-lignes */
                     margin: 0;
                     width: 100%;
                 }
@@ -129,6 +129,7 @@ export const MultiSelect = {
                     margin-right: 6px;
                     cursor: pointer;
                     accent-color: ${buttonColor};
+                    margin-top: 6px;  /* Alignement avec la première ligne de texte */
                 }
                 
                 /* Style pour les labels */
@@ -144,9 +145,12 @@ export const MultiSelect = {
                     width: 100%;
                     transition: all 0.2s ease;
                     border: 1px solid rgba(255, 255, 255, 0.1);
-                    white-space: nowrap;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
+                    white-space: normal;  /* Permettre le retour à la ligne */
+                    overflow-wrap: break-word;  /* Forcer les mots longs à se couper */
+                    word-wrap: break-word;
+                    word-break: break-word;  /* Éviter les débordements */
+                    hyphens: auto;  /* Permettre les coupures de mots si nécessaire */
+                    min-height: 31px;  /* Hauteur minimale pour uniformité */
                     font-weight: 500;
                     line-height: 1.3;
                 }
@@ -188,6 +192,9 @@ export const MultiSelect = {
                     font-size: 0.9em;
                     transition: all 0.2s ease;
                     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+                    white-space: normal;  /* Permettre aux boutons de s'adapter aussi */
+                    text-align: center;
+                    min-width: 130px;
                 }
                 
                 .multiselect-container .submit-btn:hover {
@@ -214,6 +221,7 @@ export const MultiSelect = {
                     color: white;
                     font-weight: 500;
                     font-size: 0.85em;
+                    line-height: 1.3;
                 }
                 
                 .multiselect-container .user-input-field {
@@ -237,18 +245,6 @@ export const MultiSelect = {
                     font-size: 0.75em;
                     margin-top: 4px;
                     display: block;
-                }
-                
-                /* Limiter la taille maximale des labels longs */
-                .multiselect-container .option-container label {
-                    max-width: 100%;
-                    display: -webkit-box;
-                    -webkit-line-clamp: 2;
-                    -webkit-box-orient: vertical;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                    height: auto;
-                    white-space: normal;
                 }
             `;
             container.appendChild(styleElement);

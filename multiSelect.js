@@ -156,14 +156,18 @@ export const MultiSelect = {
                 }
 
                 /* Styles pour le HTML dans les labels */
-                .multiselect-container .option-container label h1,
-                .multiselect-container .option-container label h2,
-                .multiselect-container .option-container label h3,
-                .multiselect-container .option-container label h4,
-                .multiselect-container .option-container label h5,
-                .multiselect-container .option-container label h6 {
-                    margin-top: 0.5em;
+                .multiselect-container .option-container label h3 {
+                    margin-top: 0;
+                    margin-bottom: 0.5em;
+                    font-size: 1.1em;
+                    font-weight: 600;
+                    color: white;
+                }
+                
+                .multiselect-container .option-container label h4 {
+                    margin-top: 0.7em;
                     margin-bottom: 0.3em;
+                    font-size: 1em;
                     font-weight: 600;
                     color: white;
                 }
@@ -419,39 +423,17 @@ export const MultiSelect = {
                             input.style.display = 'none';
                         }
                         input.name = `option-${section.label}-${index}`;
-                        input.id = `${section.label}-${option.name}-${option.action}-${section.id || ''}`;
+                        input.id = `${section.label}-${option.name.replace(/<[^>]*>/g, '')}-${option.action}-${section.id || ''}`;
                         
                         const label = document.createElement('label');
                         label.setAttribute('for', input.id);
                         
-                        // MODIFICATION ICI: Utiliser innerHTML au lieu de textContent pour le rendu HTML
-                        const parts = option.name.split(' - ');
-                        if (parts.length > 1) {
-                            // S'il y a un tiret, on suppose que le format est "titre - description avec HTML"
-                            const title = parts[0];
-                            const description = parts.slice(1).join(' - ');
-                            
-                            // On crée un span pour le titre et on met la description en HTML
-                            const titleSpan = document.createElement('span');
-                            titleSpan.textContent = title + ' - ';
-                            titleSpan.style.fontWeight = 'bold';
-                            
-                            label.appendChild(titleSpan);
-                            
-                            // Créer un conteneur pour le HTML
-                            const descriptionDiv = document.createElement('div');
-                            descriptionDiv.innerHTML = description;
-                            label.appendChild(descriptionDiv);
-                        } else {
-                            // Pas de tiret, c'est juste du texte ou du HTML simple
-                            if (option.name.includes('<') && option.name.includes('>')) {
-                                label.innerHTML = option.name;
-                            } else {
-                                label.textContent = option.name;
-                            }
-                        }
+                        // CORRECTION: Utiliser directement innerHTML pour tout le contenu
+                        // Cela permettra aux balises h3 et autres de fonctionner correctement
+                        label.innerHTML = option.name;
                         
-                        label.title = option.name.replace(/<[^>]*>/g, ''); // Texte au survol sans HTML
+                        // Titre alternatif sans HTML pour l'attribut title
+                        label.title = option.name.replace(/<[^>]*>/g, '');
                         
                         optionDiv.appendChild(input);
                         optionDiv.appendChild(label);
@@ -563,10 +545,12 @@ export const MultiSelect = {
                             const sectionSelections = Array.from(
                                 sectionElement.querySelectorAll('input[type="checkbox"]:checked')
                             ).map(checkbox => {
-                                // MODIFICATION ICI: Récupérer le texte de l'option original, pas le HTML formaté
-                                const optionName = section.options.find(opt => 
-                                    checkbox.id.includes(opt.name)
-                                )?.name || checkbox.nextElementSibling.textContent;
+                                // Récupérer le texte de l'option original, y compris les balises HTML
+                                const optionName = section.options.find(opt => {
+                                    // Comparaison sans HTML pour l'ID
+                                    const cleanOptName = opt.name.replace(/<[^>]*>/g, '');
+                                    return checkbox.id.includes(cleanOptName);
+                                })?.name || checkbox.nextElementSibling.innerHTML;
                                 
                                 return optionName;
                             });

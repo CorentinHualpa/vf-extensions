@@ -154,6 +154,37 @@ export const MultiSelect = {
                     font-weight: 500;
                     line-height: 1.3;
                 }
+
+                /* Styles pour le HTML dans les labels */
+                .multiselect-container .option-container label h1,
+                .multiselect-container .option-container label h2,
+                .multiselect-container .option-container label h3,
+                .multiselect-container .option-container label h4,
+                .multiselect-container .option-container label h5,
+                .multiselect-container .option-container label h6 {
+                    margin-top: 0.5em;
+                    margin-bottom: 0.3em;
+                    font-weight: 600;
+                    color: white;
+                }
+
+                .multiselect-container .option-container label p {
+                    margin: 0.3em 0;
+                }
+
+                .multiselect-container .option-container label ul, 
+                .multiselect-container .option-container label ol {
+                    margin: 0.3em 0;
+                    padding-left: 1.5em;
+                }
+
+                .multiselect-container .option-container label li {
+                    margin-bottom: 0.2em;
+                }
+
+                .multiselect-container .option-container label strong {
+                    font-weight: 700;
+                }
                 
                 .multiselect-container .option-container label:hover {
                     background-color: rgba(0, 0, 0, ${backgroundOpacity + 0.1});
@@ -392,8 +423,35 @@ export const MultiSelect = {
                         
                         const label = document.createElement('label');
                         label.setAttribute('for', input.id);
-                        label.textContent = option.name;
-                        label.title = option.name; // Pour afficher le texte complet au survol
+                        
+                        // MODIFICATION ICI: Utiliser innerHTML au lieu de textContent pour le rendu HTML
+                        const parts = option.name.split(' - ');
+                        if (parts.length > 1) {
+                            // S'il y a un tiret, on suppose que le format est "titre - description avec HTML"
+                            const title = parts[0];
+                            const description = parts.slice(1).join(' - ');
+                            
+                            // On crée un span pour le titre et on met la description en HTML
+                            const titleSpan = document.createElement('span');
+                            titleSpan.textContent = title + ' - ';
+                            titleSpan.style.fontWeight = 'bold';
+                            
+                            label.appendChild(titleSpan);
+                            
+                            // Créer un conteneur pour le HTML
+                            const descriptionDiv = document.createElement('div');
+                            descriptionDiv.innerHTML = description;
+                            label.appendChild(descriptionDiv);
+                        } else {
+                            // Pas de tiret, c'est juste du texte ou du HTML simple
+                            if (option.name.includes('<') && option.name.includes('>')) {
+                                label.innerHTML = option.name;
+                            } else {
+                                label.textContent = option.name;
+                            }
+                        }
+                        
+                        label.title = option.name.replace(/<[^>]*>/g, ''); // Texte au survol sans HTML
                         
                         optionDiv.appendChild(input);
                         optionDiv.appendChild(label);
@@ -504,7 +562,14 @@ export const MultiSelect = {
                             // Récupérer les cases cochées
                             const sectionSelections = Array.from(
                                 sectionElement.querySelectorAll('input[type="checkbox"]:checked')
-                            ).map(checkbox => checkbox.nextElementSibling.innerText);
+                            ).map(checkbox => {
+                                // MODIFICATION ICI: Récupérer le texte de l'option original, pas le HTML formaté
+                                const optionName = section.options.find(opt => 
+                                    checkbox.id.includes(opt.name)
+                                )?.name || checkbox.nextElementSibling.textContent;
+                                
+                                return optionName;
+                            });
                             
                             // Récupérer les valeurs des champs de saisie utilisateur
                             const userInputFields = {};

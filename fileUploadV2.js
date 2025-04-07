@@ -1,4 +1,4 @@
-export const FileUploadExtension = {
+export const FileUpload = {
   name: 'FileUpload',
   type: 'response',
   match: ({ trace }) =>

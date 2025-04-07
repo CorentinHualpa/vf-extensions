@@ -7,10 +7,10 @@ export const FileUpload = {
     // Récupérer les métadonnées et les boutons du payload s'ils existent
     const metadata = trace.payload?.metadata || {};
     const buttons = trace.payload?.buttons || [
-      { text: "Continuer", path: "Continue" }
+      { text: "Confirmer l'upload", path: "Continue" }
     ];
     const title = trace.payload?.title || "Upload de fichier";
-    const description = trace.payload?.description || "Drag and drop a file here or click to upload";
+    const description = trace.payload?.description || "Glissez-déposez votre fichier ici ou cliquez pour sélectionner";
     
     // Créer le conteneur pour l'upload
     const fileUploadContainer = document.createElement('div');
@@ -51,8 +51,12 @@ export const FileUpload = {
     // Conteneur pour les boutons
     const buttonsContainer = document.createElement('div');
     buttonsContainer.style.display = 'flex';
+    buttonsContainer.style.flexWrap = 'wrap';
     buttonsContainer.style.gap = '10px';
     buttonsContainer.style.marginTop = '15px';
+    
+    // Indicateur de fichier uploadé
+    let fileUploaded = false;
     
     // Ajouter les boutons
     buttons.forEach(button => {
@@ -65,16 +69,20 @@ export const FileUpload = {
       buttonElement.style.border = 'none';
       buttonElement.style.cursor = 'pointer';
       
-      // Si l'upload n'est pas terminé, désactiver le bouton
+      // Désactiver le bouton au départ
       buttonElement.disabled = true;
       buttonElement.style.opacity = '0.5';
       
-      // Ajouter un événement pour le clic (sera activé après l'upload)
+      // Ajouter un événement pour le clic
       buttonElement.addEventListener('click', function() {
+        // Récupérer l'URL du fichier
+        const fileUrl = fileInfo.dataset.fileUrl || null;
+        
+        // Signaler que l'interaction est terminée
         window.voiceflow.chat.interact({
           type: 'complete',
           payload: {
-            file: fileInfo.dataset.fileUrl || null,
+            file: fileUrl,
             metadata: metadata,
             buttonPath: button.path,
             path: button.path
@@ -121,11 +129,13 @@ export const FileUpload = {
     
     // Fonction pour gérer l'upload du fichier
     function handleFileUpload(file) {
+      if (!file) return;
+      
       fileInfo.textContent = `Fichier: ${file.name}`;
       uploadBox.innerHTML = `
         <div style="display: flex; justify-content: center; align-items: center; flex-direction: column;">
           <img src="https://s3.amazonaws.com/com.voiceflow.studio/share/upload/upload.gif" alt="Upload" width="50" height="50">
-          <p>Uploading...</p>
+          <p>Téléversement en cours...</p>
         </div>
       `;
       
@@ -133,13 +143,13 @@ export const FileUpload = {
       var data = new FormData();
       data.append('file', file);
       
-      // Ajouter les métadonnées à la requête si disponible pour Voiceflow API
+      // Ajouter les métadonnées à la requête si disponible
       if (Object.keys(metadata).length > 0) {
         const metadataString = JSON.stringify(metadata);
         data.append('metadata', metadataString);
       }
       
-      // Effectuer l'upload (ici vers tmpfiles.org, mais peut être remplacé par l'API Voiceflow)
+      // Effectuer l'upload vers tmpfiles.org
       fetch('https://tmpfiles.org/api/v1/upload', {
         method: 'POST',
         body: data,
@@ -148,7 +158,7 @@ export const FileUpload = {
         if (response.ok) {
           return response.json();
         } else {
-          throw new Error('Upload failed: ' + response.statusText);
+          throw new Error('Échec de l\'upload: ' + response.statusText);
         }
       })
       .then(result => {
@@ -170,13 +180,16 @@ export const FileUpload = {
         fileInfo.dataset.fileUrl = fileUrl;
         fileInfo.innerHTML = `<a href="${fileUrl}" target="_blank" style="color: #2E6EE1;">${file.name}</a>`;
         
+        // Marquer comme uploadé
+        fileUploaded = true;
+        
         // Activer tous les boutons
         buttonsContainer.querySelectorAll('button').forEach(button => {
           button.disabled = false;
           button.style.opacity = '1';
         });
         
-        console.log('File uploaded:', fileUrl);
+        console.log('Fichier uploadé:', fileUrl);
       })
       .catch(error => {
         console.error(error);
@@ -186,6 +199,11 @@ export const FileUpload = {
             <p>${error.message}</p>
           </div>
         `;
+        
+        // Réactiver la zone de drop pour permettre une nouvelle tentative
+        uploadBox.addEventListener('click', function() {
+          fileInput.click();
+        });
       });
     }
     

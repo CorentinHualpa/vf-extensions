@@ -1,184 +1,171 @@
-// Extension d'upload de fichiers avec intégration directe à l'API Voiceflow Knowledge Base
-export const FileUpload = {
-  name: 'FileUpload',
+// Extension d'upload de fichiers vers la Voiceflow Knowledge Base
+export const KBUploadExtension = {
+  name: 'KBUpload',
   type: 'response',
-  match: ({ trace }) => {
-    // Vérification rigoureuse de l'existence des propriétés
-    if (!trace) return false;
-    
-    // Vérifier si trace.type existe et contient 'ext_fileUpload'
-    const matchesType = trace.type === 'ext_fileUpload';
-    
-    // Vérifier si trace.payload existe et si trace.payload.name existe
-    const matchesPayloadName = trace.payload && 
-                              typeof trace.payload === 'object' && 
-                              trace.payload.name === 'ext_fileUpload';
-    
-    return matchesType || matchesPayloadName;
-  },
+  match: ({ trace }) =>
+    trace.type === 'ext_KBUpload' || trace.payload.name === 'ext_KBUpload',
   render: ({ trace, element }) => {
-    if (!trace || !element) {
-      console.error("Les paramètres trace ou element sont manquants");
+    // Récupération des paramètres depuis le payload
+    const apiKey = trace.payload.apiKey || null;
+    const maxChunkSize = trace.payload.maxChunkSize || 1000;
+    const overwrite = trace.payload.overwrite || false;
+    const title = trace.payload.title || "Téléverser un document";
+    const description = trace.payload.description || "Glissez-déposez votre fichier ici ou cliquez pour sélectionner";
+    const filters = trace.payload.filters || null;
+    const buttons = trace.payload.buttons || [
+      { text: "Continuer", path: "Continue" }
+    ];
+    
+    // Vérification de la présence de l'API key
+    if (!apiKey) {
+      console.error("Clé API Voiceflow manquante");
       return;
     }
     
-    // Récupérer les données du payload
-    const payload = trace.payload || {};
-    
-    // API Key pour Voiceflow
-    const apiKey = payload.apiKey || '';
-    if (!apiKey) {
-      console.error("Clé API Voiceflow non spécifiée");
-    }
-    
-    // Metadonnées pour le tagging
-    const metadata = payload.metadata || {};
-    
-    // Paramètres pour la requête de test
-    const testParams = payload.testParams || {
-      filters: {},
-      question: "Synthèse du projet",
-      chunkLimit: 2
-    };
-    
-    // Temps entre les tests (en ms)
-    const testInterval = payload.testInterval || 10000; // 10 secondes par défaut
-    
-    // Nombre maximal de chunks pour l'upload
-    const maxChunkSize = payload.maxChunkSize || 1000;
-    
-    // Paramètres visuels
-    const buttons = payload.buttons || [
-      { text: "Confirmer l'upload", path: "Confirm_Upload" }
-    ];
-    const title = payload.title || "Upload de document vers Voiceflow";
-    const description = payload.description || "Glissez-déposez votre fichier ici ou cliquez pour sélectionner";
-    
-    // Créer le conteneur principal
-    const fileUploadContainer = document.createElement('div');
-    fileUploadContainer.style.display = 'flex';
-    fileUploadContainer.style.flexDirection = 'column';
-    fileUploadContainer.style.gap = '15px';
-    fileUploadContainer.style.width = '100%';
+    // Création du conteneur principal
+    const kbfileUploadContainer = document.createElement('div');
+    kbfileUploadContainer.style.display = 'flex';
+    kbfileUploadContainer.style.flexDirection = 'column';
+    kbfileUploadContainer.style.gap = '15px';
+    kbfileUploadContainer.style.width = '100%';
     
     // Titre
     const titleElement = document.createElement('h3');
     titleElement.textContent = title;
     titleElement.style.margin = '0 0 10px 0';
-    fileUploadContainer.appendChild(titleElement);
+    kbfileUploadContainer.appendChild(titleElement);
+    
+    // Styles pour l'extension
+    const style = document.createElement('style');
+    style.textContent = `
+      .kb-upload-box {
+        border: 2px dashed rgba(46, 110, 225, 0.3);
+        padding: 20px;
+        text-align: center;
+        cursor: pointer;
+        border-radius: 8px;
+        background-color: rgba(240, 240, 240, 0.3);
+        transition: background-color 0.3s ease;
+      }
+      .kb-upload-box:hover {
+        background-color: rgba(200, 220, 255, 0.4);
+      }
+      .kb-file-info {
+        margin-top: 10px;
+        font-size: 14px;
+      }
+      .kb-progress-container {
+        width: 100%;
+        margin-top: 15px;
+        display: none;
+      }
+      .kb-progress-bar {
+        height: 8px;
+        background-color: #E0E0E0;
+        border-radius: 4px;
+        overflow: hidden;
+      }
+      .kb-progress-fill {
+        width: 0%;
+        height: 100%;
+        background-color: #4CAF50;
+        transition: width 0.3s ease;
+      }
+      .kb-progress-text {
+        font-size: 12px;
+        margin-top: 5px;
+        color: #666;
+      }
+      .kb-buttons-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 15px;
+      }
+      .kb-button {
+        padding: 8px 16px;
+        border-radius: 4px;
+        border: none;
+        cursor: pointer;
+        font-weight: 500;
+        opacity: 0.5;
+      }
+      .kb-button:disabled {
+        cursor: not-allowed;
+      }
+      .kb-button:not(:disabled) {
+        opacity: 1;
+      }
+    `;
+    kbfileUploadContainer.appendChild(style);
     
     // Zone d'upload
     const uploadBox = document.createElement('div');
-    uploadBox.className = 'upload-box';
-    uploadBox.style.border = '2px dashed rgba(46, 110, 225, 0.3)';
-    uploadBox.style.padding = '20px';
-    uploadBox.style.textAlign = 'center';
-    uploadBox.style.cursor = 'pointer';
-    uploadBox.style.borderRadius = '8px';
-    uploadBox.style.backgroundColor = 'rgba(240, 240, 240, 0.3)';
+    uploadBox.className = 'kb-upload-box';
     uploadBox.innerHTML = `<p>${description}</p>`;
-    fileUploadContainer.appendChild(uploadBox);
+    kbfileUploadContainer.appendChild(uploadBox);
     
     // Input file caché
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
-    fileInput.accept = '.pdf,.doc,.docx,.txt,.text';
+    fileInput.accept = '.txt,.text,.pdf,.docx';
     fileInput.style.display = 'none';
-    fileUploadContainer.appendChild(fileInput);
+    kbfileUploadContainer.appendChild(fileInput);
     
     // Div pour les informations du fichier
     const fileInfo = document.createElement('div');
-    fileInfo.style.marginTop = '10px';
-    fileInfo.style.fontSize = '14px';
-    fileUploadContainer.appendChild(fileInfo);
+    fileInfo.className = 'kb-file-info';
+    kbfileUploadContainer.appendChild(fileInfo);
     
     // Conteneur pour la barre de progression
     const progressContainer = document.createElement('div');
-    progressContainer.style.display = 'none';
-    progressContainer.style.width = '100%';
-    progressContainer.style.marginTop = '15px';
+    progressContainer.className = 'kb-progress-container';
     
     // Barre de progression
     const progressBar = document.createElement('div');
-    progressBar.style.height = '8px';
-    progressBar.style.backgroundColor = '#E0E0E0';
-    progressBar.style.borderRadius = '4px';
-    progressBar.style.overflow = 'hidden';
-    progressContainer.appendChild(progressBar);
+    progressBar.className = 'kb-progress-bar';
     
     // Partie remplie de la barre de progression
     const progressFill = document.createElement('div');
-    progressFill.style.width = '0%';
-    progressFill.style.height = '100%';
-    progressFill.style.backgroundColor = '#4CAF50';
-    progressFill.style.transition = 'width 0.3s ease';
+    progressFill.className = 'kb-progress-fill';
     progressBar.appendChild(progressFill);
     
     // Texte de progression
     const progressText = document.createElement('div');
-    progressText.style.fontSize = '12px';
-    progressText.style.marginTop = '5px';
-    progressText.style.color = '#666';
+    progressText.className = 'kb-progress-text';
     progressText.textContent = 'En attente...';
+    
+    progressContainer.appendChild(progressBar);
     progressContainer.appendChild(progressText);
-    
-    fileUploadContainer.appendChild(progressContainer);
-    
-    // Conteneur pour le statut de vérification
-    const verificationContainer = document.createElement('div');
-    verificationContainer.style.display = 'none';
-    verificationContainer.style.marginTop = '15px';
-    verificationContainer.style.padding = '10px';
-    verificationContainer.style.borderRadius = '4px';
-    verificationContainer.style.backgroundColor = 'rgba(33, 150, 243, 0.1)';
-    verificationContainer.style.fontSize = '14px';
-    fileUploadContainer.appendChild(verificationContainer);
+    kbfileUploadContainer.appendChild(progressContainer);
     
     // Conteneur pour les boutons
     const buttonsContainer = document.createElement('div');
-    buttonsContainer.style.display = 'flex';
-    buttonsContainer.style.flexWrap = 'wrap';
-    buttonsContainer.style.gap = '10px';
-    buttonsContainer.style.marginTop = '15px';
+    buttonsContainer.className = 'kb-buttons-container';
     
-    // Variables de suivi
-    let uploadComplete = false;
+    // Variable de suivi
     let documentId = '';
-    let verificationTimer = null;
-    let verificationCount = 0;
-    const maxVerificationAttempts = 10;
+    let uploadSuccess = false;
     
-    // Créer les boutons
+    // Création des boutons
     buttons.forEach(button => {
       const buttonElement = document.createElement('button');
-      buttonElement.textContent = button.text || "Confirmer";
-      buttonElement.style.padding = '8px 16px';
-      buttonElement.style.borderRadius = '4px';
+      buttonElement.className = 'kb-button';
+      buttonElement.textContent = button.text || "Continuer";
       buttonElement.style.backgroundColor = button.color || '#363534';
       buttonElement.style.color = button.textColor || '#FFFFFF';
-      buttonElement.style.border = 'none';
-      buttonElement.style.cursor = 'pointer';
       
       // Désactiver le bouton au départ
       buttonElement.disabled = true;
-      buttonElement.style.opacity = '0.5';
       
-      // Ajouter un événement pour le clic
+      // Ajouter l'événement click
       buttonElement.addEventListener('click', function() {
-        // Arrêter la vérification si elle est en cours
-        if (verificationTimer) {
-          clearInterval(verificationTimer);
-          verificationTimer = null;
-        }
-        
-        // Signaler que l'interaction est terminée
         if (window.voiceflow && window.voiceflow.chat) {
           window.voiceflow.chat.interact({
             type: 'complete',
             payload: {
               documentId: documentId,
-              metadata: metadata,
-              uploadComplete: uploadComplete,
+              uploadSuccess: uploadSuccess,
               buttonPath: button.path || "Continue",
               path: button.path || "Continue"
             },
@@ -191,7 +178,7 @@ export const FileUpload = {
       buttonsContainer.appendChild(buttonElement);
     });
     
-    fileUploadContainer.appendChild(buttonsContainer);
+    kbfileUploadContainer.appendChild(buttonsContainer);
     
     // Fonction pour mettre à jour la barre de progression
     function updateProgress(percent, message) {
@@ -200,114 +187,20 @@ export const FileUpload = {
       progressText.textContent = message;
     }
     
-    // Fonction pour mettre à jour le statut de vérification
-    function updateVerificationStatus(message, isSuccess, isError) {
-      verificationContainer.style.display = 'block';
-      verificationContainer.textContent = message;
-      
-      if (isSuccess) {
-        verificationContainer.style.backgroundColor = 'rgba(76, 175, 80, 0.1)';
-        verificationContainer.style.color = '#2E7D32';
-      } else if (isError) {
-        verificationContainer.style.backgroundColor = 'rgba(244, 67, 54, 0.1)';
-        verificationContainer.style.color = '#C62828';
-      } else {
-        verificationContainer.style.backgroundColor = 'rgba(33, 150, 243, 0.1)';
-        verificationContainer.style.color = '#0277BD';
-      }
-    }
-    
     // Fonction pour activer les boutons
     function enableButtons() {
       buttonsContainer.querySelectorAll('button').forEach(button => {
         button.disabled = false;
-        button.style.opacity = '1';
       });
     }
     
-    // Fonction pour vérifier si les données sont disponibles dans la Knowledge Base
-    function verifyDataAvailability() {
-      if (!apiKey || !documentId) {
-        console.error("Impossible de vérifier les données: clé API ou ID de document manquant");
-        return;
-      }
-      
-      updateVerificationStatus(`Vérification de la disponibilité des données... (Tentative ${verificationCount + 1}/${maxVerificationAttempts})`, false, false);
-      
-      // Préparer les filtres pour la requête
-      let filters = {};
-      if (testParams.filters) {
-        filters = testParams.filters;
-      }
-      
-      // Envoyer une requête de test à l'API Voiceflow
-      fetch('https://general-runtime.voiceflow.com/knowledge-base/query', {
-        method: 'POST',
-        headers: {
-          'Authorization': apiKey,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          chunkLimit: testParams.chunkLimit || 2,
-          synthesis: false,
-          filters: filters,
-          question: testParams.question || "Synthèse du projet"
-        })
-      })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`Erreur API: ${response.status}`);
-        }
-        return response.json();
-      })
-      .then(data => {
-        console.log("Résultat de la vérification:", data);
-        
-        // Vérifier si la réponse contient des données utiles
-        if (data && data.output && data.output.chunks && data.output.chunks.length > 0) {
-          // Données disponibles!
-          updateVerificationStatus("✅ Données disponibles dans la base de connaissances!", true, false);
-          clearInterval(verificationTimer);
-          verificationTimer = null;
-          
-          // Marquer comme complet
-          uploadComplete = true;
-          
-          // Activer le bouton de confirmation
-          const confirmButton = buttonsContainer.querySelector('button');
-          if (confirmButton) {
-            confirmButton.textContent = "✓ Confirmer l'upload";
-            confirmButton.style.backgroundColor = "#4CAF50";
-            confirmButton.click(); // Déclencher automatiquement le bouton de confirmation
-          }
-        } else {
-          // Pas encore de données ou résultat vide
-          verificationCount++;
-          
-          if (verificationCount >= maxVerificationAttempts) {
-            updateVerificationStatus("⚠️ Délai d'attente dépassé. Les données pourraient ne pas être encore indexées.", false, true);
-            clearInterval(verificationTimer);
-            verificationTimer = null;
-            enableButtons();
-          } else {
-            updateVerificationStatus(`Données en cours d'indexation... (Tentative ${verificationCount}/${maxVerificationAttempts})`, false, false);
-          }
-        }
-      })
-      .catch(error => {
-        console.error("Erreur lors de la vérification des données:", error);
-        verificationCount++;
-        
-        if (verificationCount >= maxVerificationAttempts) {
-          updateVerificationStatus(`❌ Erreur lors de la vérification: ${error.message}`, false, true);
-          clearInterval(verificationTimer);
-          verificationTimer = null;
-          enableButtons();
-        } else {
-          updateVerificationStatus(`Erreur de vérification, nouvelle tentative... (${verificationCount}/${maxVerificationAttempts})`, false, false);
-        }
-      });
+    // Fonction pour formater la taille du fichier
+    function formatFileSize(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
     
     // Gestionnaire d'événement pour le clic sur la zone de drop
@@ -315,7 +208,7 @@ export const FileUpload = {
       fileInput.click();
     });
     
-    // Gestion du glisser-déposer
+    // Gestion du drag & drop
     uploadBox.addEventListener('dragover', function(e) {
       e.preventDefault();
       uploadBox.style.backgroundColor = 'rgba(200, 220, 255, 0.4)';
@@ -342,15 +235,10 @@ export const FileUpload = {
       }
     });
     
-    // Fonction pour téléverser le fichier
+    // Fonction pour gérer le téléversement du fichier
     function handleFileUpload(file) {
       if (!file) {
         console.error("Aucun fichier sélectionné");
-        return;
-      }
-      
-      if (!apiKey) {
-        updateVerificationStatus("❌ Clé API Voiceflow non spécifiée", false, true);
         return;
       }
       
@@ -360,7 +248,8 @@ export const FileUpload = {
       // Mettre à jour l'interface
       uploadBox.innerHTML = `
         <div style="display: flex; justify-content: center; align-items: center; flex-direction: column;">
-          <p>Préparation du téléversement...</p>
+          <img src="https://s3.amazonaws.com/com.voiceflow.studio/share/upload/upload.gif" alt="Upload" width="50" height="50">
+          <p>Téléversement en cours...</p>
         </div>
       `;
       
@@ -371,16 +260,21 @@ export const FileUpload = {
       const formData = new FormData();
       formData.append('file', file);
       
-      // Convertir les métadonnées en chaîne JSON
-      if (Object.keys(metadata).length > 0) {
-        const metadataString = JSON.stringify(metadata);
-        formData.append('metadata', metadataString);
+      // Ajouter les filtres comme métadonnées si présents
+      if (filters && typeof filters === 'object') {
+        try {
+          const metadataString = JSON.stringify(filters);
+          formData.append('metadata', metadataString);
+          console.log("Métadonnées ajoutées:", metadataString);
+        } catch (error) {
+          console.error("Erreur lors de la conversion des filtres en métadonnées:", error);
+        }
       }
       
-      // Créer une requête avec rapport de progression
+      // Utiliser XMLHttpRequest pour suivre la progression
       const xhr = new XMLHttpRequest();
       
-      // Gestion du rapport de progression
+      // Suivi de la progression
       xhr.upload.addEventListener('progress', function(e) {
         if (e.lengthComputable) {
           const percentComplete = Math.round((e.loaded / e.total) * 100);
@@ -388,112 +282,120 @@ export const FileUpload = {
         }
       });
       
+      // URL de l'API (version 1)
+      const apiUrl = `https://api.voiceflow.com/v1/knowledge-base/docs/upload?overwrite=${overwrite}&maxChunkSize=${maxChunkSize}`;
+      
       // Configuration de la requête
-      xhr.open('POST', `https://api.voiceflow.com/v1/knowledge-base/docs/upload?maxChunkSize=${maxChunkSize}`, true);
+      xhr.open('POST', apiUrl, true);
       xhr.setRequestHeader('Authorization', apiKey);
       xhr.setRequestHeader('Accept', 'application/json');
       
       // Gestion de la fin de la requête
       xhr.onload = function() {
-        if (xhr.status === 200 || xhr.status === 201) {
-          try {
-            const response = JSON.parse(xhr.responseText);
-            console.log("Réponse du serveur:", response);
+        try {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              let responseData = null;
+              
+              // Vérifier si la réponse contient du JSON valide
+              try {
+                if (xhr.responseText) {
+                  responseData = JSON.parse(xhr.responseText);
+                  console.log("Réponse API:", responseData);
+                } else {
+                  console.warn("Réponse vide du serveur");
+                }
+              } catch (parseError) {
+                console.error("Erreur de parsing JSON:", parseError, "Réponse brute:", xhr.responseText);
+                throw new Error("Réponse du serveur non valide");
+              }
+              
+              // Vérifier si la réponse contient l'ID du document
+              if (responseData && responseData.data && responseData.data.documentID) {
+                documentId = responseData.data.documentID;
+                uploadSuccess = true;
+                
+                // Mise à jour de l'interface
+                updateProgress(100, "✅ Téléversement terminé!");
+                uploadBox.innerHTML = `
+                  <div style="display: flex; justify-content: center; align-items: center; flex-direction: column;">
+                    <img src="https://s3.amazonaws.com/com.voiceflow.studio/share/check/check.gif" alt="Done" width="50" height="50">
+                    <p>Document téléversé avec succès!</p>
+                    <p style="font-size: 12px; margin-top: 8px;">ID du document: ${documentId}</p>
+                  </div>
+                `;
+                
+                // Activer les boutons
+                enableButtons();
+              } else {
+                throw new Error("ID de document non trouvé dans la réponse");
+              }
+            } catch (error) {
+              handleUploadError("Erreur lors du traitement de la réponse: " + error.message);
+            }
+          } else {
+            // Gérer les erreurs HTTP
+            let errorMessage = `Erreur ${xhr.status}: ${xhr.statusText}`;
             
-            if (response && response.data && response.data.documentID) {
-              documentId = response.data.documentID;
-              
-              // Mise à jour de l'interface
-              updateProgress(100, "✅ Téléversement terminé!");
-              uploadBox.innerHTML = `
-                <div style="display: flex; justify-content: center; align-items: center; flex-direction: column;">
-                  <img src="https://s3.amazonaws.com/com.voiceflow.studio/share/check/check.gif" alt="Done" width="50" height="50">
-                  <p>Document téléversé avec succès!</p>
-                </div>
-              `;
-              
-              // Début de la vérification des données
-              updateVerificationStatus("Vérification de l'indexation des données...", false, false);
-              verificationCount = 0;
-              
-              // Attendre un peu avant de commencer la vérification
-              setTimeout(() => {
-                // Lancer la vérification périodique
-                verifyDataAvailability();
-                verificationTimer = setInterval(verifyDataAvailability, testInterval);
-              }, 5000); // Attendre 5 secondes avant la première vérification
-            } else {
-              throw new Error("ID de document non trouvé dans la réponse");
+            try {
+              if (xhr.responseText) {
+                const errorResponse = JSON.parse(xhr.responseText);
+                if (errorResponse && errorResponse.message) {
+                  errorMessage = errorResponse.message;
+                }
+              }
+            } catch (e) {
+              // Si le parsing échoue, utiliser le message d'erreur par défaut
             }
-          } catch (error) {
-            console.error("Erreur lors du traitement de la réponse:", error);
-            handleUploadError(error.message);
+            
+            handleUploadError(errorMessage);
           }
-        } else {
-          // Gérer les erreurs HTTP
-          console.error("Erreur HTTP:", xhr.status, xhr.statusText);
-          let errorMessage = `Erreur ${xhr.status}: ${xhr.statusText}`;
-          
-          try {
-            const errorResponse = JSON.parse(xhr.responseText);
-            if (errorResponse && errorResponse.message) {
-              errorMessage = errorResponse.message;
-            }
-          } catch (e) {
-            // Si le parsing échoue, utiliser le message d'erreur par défaut
-          }
-          
-          handleUploadError(errorMessage);
+        } catch (error) {
+          handleUploadError("Une erreur critique est survenue: " + error.message);
         }
       };
       
       // Gestion des erreurs réseau
       xhr.onerror = function() {
-        console.error("Erreur réseau lors de l'upload");
         handleUploadError("Erreur de connexion, veuillez vérifier votre connexion internet");
       };
+      
+      // Gestion des timeouts
+      xhr.ontimeout = function() {
+        handleUploadError("La requête a expiré. Veuillez réessayer.");
+      };
+      
+      // Fonction pour gérer les erreurs d'upload
+      function handleUploadError(errorMessage) {
+        console.error("Erreur d'upload:", errorMessage);
+        updateProgress(0, "Échec du téléversement");
+        uploadBox.innerHTML = `
+          <div style="color: #D32F2F; padding: 10px;">
+            <p>Erreur durant le téléversement</p>
+            <p>${errorMessage || "Erreur inconnue"}</p>
+            <p>Cliquez pour réessayer</p>
+          </div>
+        `;
+        
+        // Réactiver la zone de drop pour permettre une nouvelle tentative
+        uploadBox.addEventListener('click', function() {
+          fileInput.click();
+        });
+        
+        // Permettre de continuer malgré l'erreur
+        uploadSuccess = false;
+        enableButtons();
+      }
       
       // Envoi de la requête
       try {
         xhr.send(formData);
       } catch (error) {
-        console.error("Erreur lors de l'envoi de la requête:", error);
-        handleUploadError(error.message);
+        handleUploadError("Erreur lors de l'envoi de la requête: " + error.message);
       }
     }
     
-    // Fonction pour formater la taille du fichier
-    function formatFileSize(bytes) {
-      if (bytes === 0) return '0 Bytes';
-      const k = 1024;
-      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-      const i = Math.floor(Math.log(bytes) / Math.log(k));
-      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    }
-    
-    // Fonction pour gérer les erreurs d'upload
-    function handleUploadError(errorMessage) {
-      updateProgress(0, "Échec du téléversement");
-      uploadBox.innerHTML = `
-        <div style="color: #D32F2F; padding: 10px;">
-          <p>Erreur durant le téléversement</p>
-          <p>${errorMessage || "Erreur inconnue"}</p>
-          <p>Cliquez pour réessayer</p>
-        </div>
-      `;
-      
-      updateVerificationStatus("❌ Le téléversement a échoué", false, true);
-      
-      // Réactiver la zone de drop pour permettre une nouvelle tentative
-      uploadBox.addEventListener('click', function() {
-        fileInput.click();
-      });
-      
-      // Permettre de continuer malgré l'erreur
-      enableButtons();
-    }
-    
     // Ajouter le conteneur à l'élément parent
-    element.appendChild(fileUploadContainer);
-  },
+    element.appendChild(kbfileUploadContainer);
+  }
 };

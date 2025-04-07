@@ -1,16 +1,37 @@
+// Extension d'upload de fichiers avec métadonnées et boutons pour Voiceflow
+// Version corrigée pour résoudre l'erreur de propriété 'name' undefined
+
 export const FileUpload = {
   name: 'FileUpload',
   type: 'response',
-  match: ({ trace }) =>
-    trace.type === 'ext_fileUpload' || trace.payload.name === 'ext_fileUpload',
+  match: ({ trace }) => {
+    // Vérification rigoureuse de l'existence des propriétés avant d'y accéder
+    if (!trace) return false;
+    
+    // Vérifier si trace.type existe et contient 'ext_fileUpload'
+    const matchesType = trace.type === 'ext_fileUpload';
+    
+    // Vérifier si trace.payload existe et si trace.payload.name existe et contient 'ext_fileUpload'
+    const matchesPayloadName = trace.payload && 
+                               typeof trace.payload === 'object' && 
+                               trace.payload.name === 'ext_fileUpload';
+    
+    return matchesType || matchesPayloadName;
+  },
   render: ({ trace, element }) => {
+    if (!trace || !element) {
+      console.error("Les paramètres trace ou element sont manquants");
+      return;
+    }
+    
     // Récupérer les métadonnées et les boutons du payload s'ils existent
-    const metadata = trace.payload?.metadata || {};
-    const buttons = trace.payload?.buttons || [
+    const payload = trace.payload || {};
+    const metadata = payload.metadata || {};
+    const buttons = payload.buttons || [
       { text: "Confirmer l'upload", path: "Continue" }
     ];
-    const title = trace.payload?.title || "Upload de fichier";
-    const description = trace.payload?.description || "Glissez-déposez votre fichier ici ou cliquez pour sélectionner";
+    const title = payload.title || "Upload de fichier";
+    const description = payload.description || "Glissez-déposez votre fichier ici ou cliquez pour sélectionner";
     
     // Créer le conteneur pour l'upload
     const fileUploadContainer = document.createElement('div');
@@ -61,7 +82,7 @@ export const FileUpload = {
     // Ajouter les boutons
     buttons.forEach(button => {
       const buttonElement = document.createElement('button');
-      buttonElement.textContent = button.text;
+      buttonElement.textContent = button.text || "Confirmer";
       buttonElement.style.padding = '8px 16px';
       buttonElement.style.borderRadius = '4px';
       buttonElement.style.backgroundColor = button.color || '#363534';
@@ -78,16 +99,21 @@ export const FileUpload = {
         // Récupérer l'URL du fichier
         const fileUrl = fileInfo.dataset.fileUrl || null;
         
-        // Signaler que l'interaction est terminée
-        window.voiceflow.chat.interact({
-          type: 'complete',
-          payload: {
-            file: fileUrl,
-            metadata: metadata,
-            buttonPath: button.path,
-            path: button.path
-          },
-        });
+        // Vérifier si voiceflow.chat est disponible
+        if (window.voiceflow && window.voiceflow.chat) {
+          // Signaler que l'interaction est terminée
+          window.voiceflow.chat.interact({
+            type: 'complete',
+            payload: {
+              file: fileUrl,
+              metadata: metadata,
+              buttonPath: button.path || "Continue",
+              path: button.path || "Continue"
+            },
+          });
+        } else {
+          console.error("L'API Voiceflow n'est pas disponible");
+        }
       });
       
       buttonsContainer.appendChild(buttonElement);
@@ -114,7 +140,7 @@ export const FileUpload = {
       e.preventDefault();
       uploadBox.style.backgroundColor = 'rgba(240, 240, 240, 0.3)';
       
-      if (e.dataTransfer.files.length) {
+      if (e.dataTransfer.files && e.dataTransfer.files.length) {
         fileInput.files = e.dataTransfer.files;
         handleFileUpload(fileInput.files[0]);
       }
@@ -122,14 +148,17 @@ export const FileUpload = {
     
     // Gérer le changement de fichier
     fileInput.addEventListener('change', function() {
-      if (fileInput.files.length) {
+      if (fileInput.files && fileInput.files.length) {
         handleFileUpload(fileInput.files[0]);
       }
     });
     
     // Fonction pour gérer l'upload du fichier
     function handleFileUpload(file) {
-      if (!file) return;
+      if (!file) {
+        console.error("Aucun fichier sélectionné");
+        return;
+      }
       
       fileInfo.textContent = `Fichier: ${file.name}`;
       uploadBox.innerHTML = `
@@ -162,41 +191,46 @@ export const FileUpload = {
         }
       })
       .then(result => {
-        // URL du fichier uploadé
-        const fileUrl = result.data.url.replace(
-          'https://tmpfiles.org/',
-          'https://tmpfiles.org/dl/'
-        );
-        
-        // Mettre à jour l'interface
-        uploadBox.innerHTML = `
-          <div style="display: flex; justify-content: center; align-items: center; flex-direction: column;">
-            <img src="https://s3.amazonaws.com/com.voiceflow.studio/share/check/check.gif" alt="Done" width="50" height="50">
-            <p>Upload terminé!</p>
-          </div>
-        `;
-        
-        // Stocker l'URL pour les boutons
-        fileInfo.dataset.fileUrl = fileUrl;
-        fileInfo.innerHTML = `<a href="${fileUrl}" target="_blank" style="color: #2E6EE1;">${file.name}</a>`;
-        
-        // Marquer comme uploadé
-        fileUploaded = true;
-        
-        // Activer tous les boutons
-        buttonsContainer.querySelectorAll('button').forEach(button => {
-          button.disabled = false;
-          button.style.opacity = '1';
-        });
-        
-        console.log('Fichier uploadé:', fileUrl);
+        if (result && result.data && result.data.url) {
+          // URL du fichier uploadé
+          const fileUrl = result.data.url.replace(
+            'https://tmpfiles.org/',
+            'https://tmpfiles.org/dl/'
+          );
+          
+          // Mettre à jour l'interface
+          uploadBox.innerHTML = `
+            <div style="display: flex; justify-content: center; align-items: center; flex-direction: column;">
+              <img src="https://s3.amazonaws.com/com.voiceflow.studio/share/check/check.gif" alt="Done" width="50" height="50">
+              <p>Upload terminé!</p>
+            </div>
+          `;
+          
+          // Stocker l'URL pour les boutons
+          fileInfo.dataset.fileUrl = fileUrl;
+          fileInfo.innerHTML = `<a href="${fileUrl}" target="_blank" style="color: #2E6EE1;">${file.name}</a>`;
+          
+          // Marquer comme uploadé
+          fileUploaded = true;
+          
+          // Activer tous les boutons
+          buttonsContainer.querySelectorAll('button').forEach(button => {
+            button.disabled = false;
+            button.style.opacity = '1';
+          });
+          
+          console.log('Fichier uploadé:', fileUrl);
+        } else {
+          throw new Error('Réponse du serveur invalide');
+        }
       })
       .catch(error => {
-        console.error(error);
+        console.error("Erreur lors de l'upload:", error);
         uploadBox.innerHTML = `
           <div style="color: #D32F2F;">
             <p>Erreur durant l'upload</p>
-            <p>${error.message}</p>
+            <p>${error.message || "Erreur inconnue"}</p>
+            <p>Cliquez pour réessayer</p>
           </div>
         `;
         

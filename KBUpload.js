@@ -30,6 +30,7 @@ export const KBUploadExtension = {
       const overwrite = payload.overwrite || false;
       const filters = payload.filters || {};
       const backgroundImage = payload.backgroundImage || null; // URL de l'image de fond
+      const backgroundOpacity = payload.backgroundOpacity || 0.15; // Opacité de l'image (valeur par défaut: 0.15)
       const buttons = payload.buttons || []; // Tableau de boutons personnalisés
       
       // Si pas d'API key, on ne peut pas continuer
@@ -72,10 +73,13 @@ export const KBUploadExtension = {
             height: 100%;
             z-index: 0;
             background-color: rgba(240, 240, 240, 0.3);
-            ${backgroundImage ? `background-image: url('${backgroundImage}');` : ''}
-            background-size: cover;
-            background-position: center;
-            opacity: 0.15;
+            ${backgroundImage ? `
+              background-image: url('${backgroundImage}');
+              background-size: contain;
+              background-repeat: no-repeat;
+              background-position: center;
+              opacity: ${backgroundOpacity};
+            ` : ''}
             border-radius: 10px;
           }
           

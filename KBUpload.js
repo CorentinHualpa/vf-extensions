@@ -1,5 +1,5 @@
 // Extension d'upload de fichiers vers la Voiceflow Knowledge Base
-export const KBUploadExtension = {
+export const KBUpload = {
   name: 'KBUpload',
   type: 'response',
   match: ({ trace }) =>

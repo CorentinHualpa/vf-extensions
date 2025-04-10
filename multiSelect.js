@@ -525,8 +525,9 @@ export const MultiSelect = {
 
             container.appendChild(sectionsGrid);
 
-            // Toujours afficher les boutons si multiselect est true OU s'il y a un champ user_input
-            if (multiselect || hasUserInputField) {
+            // MODIFICATION: Afficher les boutons si au moins un bouton est défini dans le payload
+            // Si aucun bouton n'est défini, ne pas afficher le conteneur de boutons
+            if (buttons && buttons.length > 0) {
                 const buttonContainer = document.createElement('div');
                 buttonContainer.setAttribute('data-index', index);
                 buttonContainer.classList.add('buttons-container');

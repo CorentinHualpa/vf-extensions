@@ -44,7 +44,7 @@ export const MultiSelect = {
       // Injection des styles CSS
       const styleElement = document.createElement('style');
       styleElement.textContent = `
-        /* -- Conteneur principal -- */
+        /* Conteneur principal */
         .multiselect-container {
           width: 100%;
           font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
@@ -57,16 +57,15 @@ export const MultiSelect = {
           box-sizing: border-box;
         }
         
-        /* -- Disposition des sections en "cartes" sur 2 colonnes -- */
+        /* Disposition des sections en "cartes" sur 2 colonnes */
         .multiselect-container .sections-grid {
           display: flex;
-          flex-wrap: wrap;       /* Permet de passer à la ligne si ça déborde */
-          gap: 16px;             /* Espace horizontal/vertical entre sections */
+          flex-wrap: wrap;
+          gap: 16px;
           width: 100%;
-          justify-content: center; /* Centrage horizontal des sections */
+          justify-content: center;
         }
-
-        /* Chaque section occupe ~50% de la largeur, avec minimum 300px */
+        /* Chaque section occupe environ 50% de la largeur, avec un min-width */
         .multiselect-container .section-container {
           flex: 0 1 calc(50% - 16px);
           min-width: 300px;
@@ -81,34 +80,39 @@ export const MultiSelect = {
           overflow-x: hidden;
         }
         @media (max-width: 800px) {
-          /* Sur petits écrans, on repasse en 1 colonne */
           .multiselect-container .section-container {
             flex: 1 1 100%;
             min-width: auto;
           }
         }
 
-        /* Titre de la section (HTML interprété via innerHTML) */
-        .multiselect-container .section-title {
-          margin-top: 0;
-          margin-bottom: 8px;
+        /* Mise en évidence du titre de section (niveau 1) */
+        .multiselect-container .section-title h2 {
+          border: 2px solid #fff;
+          padding: 6px 8px;
+          border-radius: 4px;
+          text-align: center;
+          margin: 0;
+          color: #fff;
+          background-color: transparent;
         }
 
-        /* Liste unique pour les options, plus de grid interne pour éviter la complexité */
+        /* On conserve une disposition simple pour la liste d'options */
         .multiselect-container .options-list {
           display: flex;
           flex-direction: column;
           gap: 6px;
           width: 100%;
+          flex-grow: 1;
         }
 
-        /* Option container commun */
+        /* Conteneurs d'options */
         .multiselect-container .option-container {
           margin: 0;
           width: 100%;
         }
         
-        /* Dernier niveau sélectionnable (case + texte sur la même ligne) */
+        /* Options sélectionnables (dernier niveau) : case et texte alignés sur la même ligne */
         .multiselect-container .option-container.selectable {
           display: flex;
           align-items: center;
@@ -133,9 +137,10 @@ export const MultiSelect = {
           user-select: none;
           transition: all 0.2s ease;
           border: 1px solid rgba(255, 255, 255, 0.1);
-          white-space: normal;
-          word-break: break-word;
-          overflow-wrap: break-word;
+          /* Affichage sur une seule ligne */
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
           min-height: 31px;
           font-weight: 500;
           line-height: 1.3;
@@ -156,7 +161,7 @@ export const MultiSelect = {
           cursor: not-allowed;
         }
         
-        /* Niveaux imbriqués : marges plus ou moins grandes */
+        /* Marges pour les niveaux imbriqués */
         .multiselect-container .option-container.option-level-2 {
           margin-left: 10px;
         }
@@ -164,7 +169,7 @@ export const MultiSelect = {
           margin-left: 20px;
         }
 
-        /* Niveaux intermédiaires (non sélectionnables) */
+        /* Options non-sélectionnables (niveaux intermédiaires) */
         .multiselect-container .option-container.non-selectable {
           display: block;
         }
@@ -187,7 +192,7 @@ export const MultiSelect = {
           max-width: 100%;
           margin-bottom: 6px;
         }
-
+        
         .multiselect-container .children-options {
           display: flex;
           flex-direction: column;
@@ -256,8 +261,8 @@ export const MultiSelect = {
       `;
       container.appendChild(styleElement);
 
-      // Fonction récursive pour créer les éléments d'option (niveaux 2-3)
-      // Seule une option sans children (dernier niveau) est sélectionnable
+      // Fonction récursive pour créer les éléments d'option
+      // Seule une option sans children (dernier niveau) est sélectionnable.
       const createOptionElement = (option, level, sectionLabel) => {
         const optionDiv = document.createElement('div');
         optionDiv.classList.add('option-container', `option-level-${level}`);
@@ -266,26 +271,25 @@ export const MultiSelect = {
         const isSelectable = !hasChildren; // dernier niveau => cliquable
 
         if (isSelectable) {
-          // Cas d'une option sélectionnable (dernier niveau)
           optionDiv.classList.add('selectable');
 
           const input = document.createElement('input');
           input.type = multiselect ? 'checkbox' : 'radio';
-          // Retire les balises HTML pour créer un id "propre"
+          // On retire les balises HTML pour créer un id propre
           const sanitizedOptionName = option.name.replace(/<[^>]*>/g, '').replace(/\s+/g, '-');
           input.id = `${sectionLabel}-${sanitizedOptionName}-l${level}`;
           input.name = `option-${sectionLabel}`;
 
           const label = document.createElement('label');
           label.setAttribute('for', input.id);
-          label.innerHTML = option.name; // Interprète l'HTML (ex. <strong>…)
+          // Interprétation du HTML (pour <strong> par exemple)
+          label.innerHTML = option.name;
 
           // Gestion du changement
           input.addEventListener('change', () => {
             updateTotalChecked();
             if (!multiselect) {
-              // Sélection simple => envoi immédiat
-              console.log("Envoi sélection simple:", option.name);
+              console.log("Envoi de sélection simple:", option.name);
               window.voiceflow.chat.interact({
                 type: 'complete',
                 payload: {
@@ -299,18 +303,18 @@ export const MultiSelect = {
           optionDiv.appendChild(input);
           optionDiv.appendChild(label);
         } else {
-          // Cas d'une option non-sélectionnable (ayant des enfants)
+          // Option non-sélectionnable (ayant des children)
           optionDiv.classList.add('non-selectable');
           const span = document.createElement('span');
-          span.innerHTML = option.name; // Interprétation du HTML (ex. <h3>…)
+          span.innerHTML = option.name;
           optionDiv.appendChild(span);
         }
 
-        // Ajouter récursivement les enfants
+        // Traitement récursif pour les enfants
         if (hasChildren) {
           const childrenContainer = document.createElement('div');
           childrenContainer.classList.add('children-options');
-          option.children.forEach((child) => {
+          option.children.forEach(child => {
             const childElement = createOptionElement(child, level + 1, sectionLabel);
             childrenContainer.appendChild(childElement);
           });
@@ -319,184 +323,5 @@ export const MultiSelect = {
         return optionDiv;
       };
 
-      // Met à jour le nombre total de cases cochées
-      // et désactive si on atteint totalMaxSelect
-      const updateTotalChecked = () => {
-        const allCheckboxes = Array.from(container.querySelectorAll('input[type="checkbox"]'));
-        totalChecked = allCheckboxes.filter(cb => cb.checked).length;
-
-        if (totalMaxSelect > 0 && totalChecked >= totalMaxSelect) {
-          allCheckboxes.forEach((checkbox) => {
-            if (!checkbox.checked) {
-              checkbox.disabled = true;
-            }
-          });
-        } else {
-          allCheckboxes.forEach((checkbox) => {
-            checkbox.disabled = false;
-          });
-        }
-      };
-
-      // Création du conteneur pour toutes les sections
-      const sectionsGrid = document.createElement('div');
-      sectionsGrid.classList.add('sections-grid');
-
-      sections.forEach((section) => {
-        const sectionDiv = document.createElement('div');
-        sectionDiv.classList.add('section-container');
-        if (section.color) {
-          sectionDiv.style.backgroundColor = section.color;
-        }
-
-        // Interpréter l'HTML dans label (ex. <h2>, <h3>)
-        const sectionTitle = document.createElement('div');
-        sectionTitle.classList.add('section-title');
-        sectionTitle.innerHTML = section.label;
-        sectionDiv.appendChild(sectionTitle);
-
-        // Options en liste unique
-        const optionsContainer = document.createElement('div');
-        optionsContainer.classList.add('options-list');
-
-        if (Array.isArray(section.options)) {
-          // Filtrer les options user_input (si besoin)
-          const standardOptions = section.options.filter(opt => opt.action !== 'user_input');
-
-          // Créer chaque option
-          standardOptions.forEach(opt => {
-            const sanitizedSectionLabel = section.label.replace(/<[^>]*>/g, '');
-            const optionElement = createOptionElement(opt, 1, sanitizedSectionLabel);
-            optionsContainer.appendChild(optionElement);
-          });
-
-          // Ajouter user_input si présent
-          const userInputOptions = section.options.filter(opt => opt.action === 'user_input');
-          userInputOptions.forEach(opt => {
-            const userInputDiv = document.createElement('div');
-            userInputDiv.classList.add('user-input-container');
-
-            const userInputLabel = document.createElement('label');
-            userInputLabel.classList.add('user-input-label');
-            userInputLabel.textContent = opt.label || 'Indiquez votre option si aucune ne correspond';
-
-            const userInputField = document.createElement('input');
-            userInputField.type = 'text';
-            userInputField.classList.add('user-input-field');
-            userInputField.placeholder = opt.placeholder || 'Saisissez votre texte ici...';
-            userInputField.id = `${section.label}-user-input-${opt.id || ''}`;
-
-            userInputField.addEventListener('input', (e) => {
-              userInputValues[userInputField.id] = e.target.value;
-            });
-
-            userInputDiv.appendChild(userInputLabel);
-            userInputDiv.appendChild(userInputField);
-            optionsContainer.appendChild(userInputDiv);
-          });
-        }
-
-        sectionDiv.appendChild(optionsContainer);
-        sectionsGrid.appendChild(sectionDiv);
-      });
-
-      container.appendChild(sectionsGrid);
-
-      // Gestion des boutons (validation)
-      if (buttons && buttons.length > 0) {
-        const buttonContainer = document.createElement('div');
-        buttonContainer.setAttribute('data-index', index);
-        buttonContainer.classList.add('buttons-container');
-
-        buttons.forEach(button => {
-          const buttonElement = document.createElement('button');
-          buttonElement.classList.add('submit-btn');
-          buttonElement.textContent = button.text;
-
-          buttonElement.addEventListener('click', () => {
-            // Récupérer la liste des sélections
-            const selectedOptions = sections.map((section, idx) => {
-              const sectionElement = sectionsGrid.querySelectorAll('.section-container')[idx];
-              if (!sectionElement) return null;
-
-              const selections = Array.from(sectionElement.querySelectorAll('input[type="checkbox"]:checked'))
-                .map(cb => (cb.nextElementSibling ? cb.nextElementSibling.innerHTML : ''));
-
-              // Récupérer un éventuel champ user_input
-              const userInputId = `${section.label}-user-input-${section.id || ''}`;
-              const userInputValue = userInputValues[userInputId] || "";
-
-              return {
-                section: section.label.replace(/<[^>]*>/g, ''), // Nettoyer le HTML
-                selections,
-                userInput: userInputValue.trim()
-              };
-            }).filter(sec => sec && (sec.selections.length > 0 || sec.userInput));
-
-            // Masquer les boutons après clic
-            buttonContainer.querySelectorAll('.submit-btn').forEach(btn => {
-              btn.style.display = 'none';
-            });
-
-            console.log("Envoi des sélections:", selectedOptions);
-
-            let payloadData = {};
-            const buttonPath = button.path || 'Default';
-
-            // Cas : un unique userInput, sans sélection
-            if (
-              selectedOptions.length === 1 &&
-              selectedOptions[0].selections.length === 0 &&
-              selectedOptions[0].userInput !== ""
-            ) {
-              payloadData = {
-                userInput: selectedOptions[0].userInput,
-                buttonText: button.text,
-                buttonPath: buttonPath,
-                isEmpty: false,
-                isUserInput: true
-              };
-            } else if (selectedOptions.length > 0) {
-              // Cas standard
-              payloadData = {
-                selections: selectedOptions,
-                buttonText: button.text,
-                buttonPath: buttonPath,
-                isEmpty: false,
-                isUserInput: false
-              };
-            } else {
-              // Aucune sélection
-              payloadData = {
-                buttonText: button.text,
-                buttonPath: buttonPath,
-                isEmpty: true
-              };
-            }
-
-            window.voiceflow.chat.interact({
-              type: 'complete',
-              payload: payloadData
-            });
-          });
-
-          buttonContainer.appendChild(buttonElement);
-        });
-
-        container.appendChild(buttonContainer);
-      }
-
-      element.appendChild(container);
-      console.log("Rendu MultiSelect terminé avec", totalOptions, "options au total");
-    } catch (error) {
-      console.error('Erreur lors du rendu de MultiSelect:', error);
-      window.voiceflow.chat.interact({
-        type: 'complete',
-        payload: {
-          error: true,
-          message: error.message
-        }
-      });
-    }
-  }
-};
+      // Création des sections
+      const sectionsGrid = document.createElement('div

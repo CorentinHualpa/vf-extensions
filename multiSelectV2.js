@@ -42,7 +42,7 @@ export const MultiSelect = {
         }
       });
 
-      // Ajouter les styles CSS (avec styles pour les niveaux imbriqués)
+      // Ajouter les styles CSS (avec règles pour gérer l'indentation et éviter les débordements)
       const styleElement = document.createElement('style');
       styleElement.textContent = `
         .multiselect-container {
@@ -123,9 +123,9 @@ export const MultiSelect = {
           width: 100%;
         }
         
-        /* Styles pour les inputs */
-        .multiselect-container .option-container input[type="checkbox"],
-        .multiselect-container .option-container input[type="radio"] {
+        /* Pour les options sélectionnables (dernier niveau) */
+        .multiselect-container input[type="checkbox"],
+        .multiselect-container input[type="radio"] {
           height: 16px;
           width: 16px;
           border-radius: 3px;
@@ -135,8 +135,7 @@ export const MultiSelect = {
           margin-top: 6px;
         }
         
-        /* Style pour les labels */
-        .multiselect-container .option-container label {
+        .multiselect-container .option-container.selectable label {
           cursor: pointer;
           font-size: 0.85em;
           border-radius: 4px;
@@ -158,19 +157,19 @@ export const MultiSelect = {
           line-height: 1.3;
         }
         
-        .multiselect-container .option-container label:hover {
+        .multiselect-container .option-container.selectable label:hover {
           background-color: rgba(0, 0, 0, ${backgroundOpacity + 0.1});
           transform: translateY(-1px);
         }
         
-        .multiselect-container .option-container input:checked + label {
+        .multiselect-container input:checked + label {
           background-color: ${buttonColor};
           border-color: white;
           font-weight: 600;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
         }
         
-        .multiselect-container .option-container input:disabled + label {
+        .multiselect-container input:disabled + label {
           opacity: 0.5;
           cursor: not-allowed;
         }
@@ -182,6 +181,28 @@ export const MultiSelect = {
         .multiselect-container .option-container.option-level-3 {
           margin-left: 40px;
         }
+        .multiselect-container .option-container.selectable label {
+          max-width: 100%;
+          overflow-x: auto;
+        }
+        
+        /* Pour les options non-sélectionnables (toutes les options qui ne sont pas du dernier niveau) */
+        .multiselect-container .option-container.non-selectable span {
+          cursor: default;
+          opacity: 0.8;
+          padding: 6px 8px;
+          font-size: 0.85em;
+          font-weight: bold;
+          background-color: rgba(0, 0, 0, ${backgroundOpacity});
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 4px;
+          user-select: none;
+          display: block;
+          transition: all 0.2s ease;
+          min-height: 31px;
+          line-height: 1.3;
+        }
+        
         .multiselect-container .children-options {
           display: flex;
           flex-direction: column;
@@ -265,47 +286,56 @@ export const MultiSelect = {
       `;
       container.appendChild(styleElement);
 
-      // Fonction récursive pour créer les éléments d'option (pour niveaux 1, 2, 3, …)
+      // Fonction récursive pour créer les éléments d'option
+      // La règle est : seule une option sans children (le dernier niveau) est sélectionnable.
       const createOptionElement = (option, level, sectionLabel) => {
         const optionDiv = document.createElement('div');
         optionDiv.classList.add('option-container', `option-level-${level}`);
+
+        // Déterminer si l'option est sélectionnable : pas d'enfants (ou enfants vides)
+        const isSelectable = !(option.children && Array.isArray(option.children) && option.children.length > 0);
+
+        if (isSelectable) {
+          // Option sélectionnable : créer l'input et le label associés
+          optionDiv.classList.add('selectable');
+          const input = document.createElement('input');
+          input.type = multiselect ? 'checkbox' : 'radio';
+          input.name = `option-${sectionLabel}`;
+          const sanitizedOptionName = option.name.replace(/<[^>]*>/g, '').replace(/\s+/g, '-');
+          input.id = `${sectionLabel}-${sanitizedOptionName}-l${level}`;
+          
+          const label = document.createElement('label');
+          label.setAttribute('for', input.id);
+          label.innerHTML = option.name;
+          label.title = option.name.replace(/<[^>]*>/g, '');
+          
+          optionDiv.appendChild(input);
+          optionDiv.appendChild(label);
+          
+          input.addEventListener('change', () => {
+            updateTotalChecked();
+            if (!multiselect) {
+              console.log("Envoi de sélection simple:", option.name);
+              window.voiceflow.chat.interact({
+                type: 'complete',
+                payload: {
+                  selection: option.name,
+                  buttonPath: 'Default'
+                }
+              });
+            }
+          });
+        } else {
+          // Option non sélectionnable (n'ayant pas le statut de dernier niveau)
+          optionDiv.classList.add('non-selectable');
+          const span = document.createElement('span');
+          span.innerHTML = option.name;
+          span.title = option.name.replace(/<[^>]*>/g, '');
+          optionDiv.appendChild(span);
+        }
         
-        // Créer l'input (checkbox ou radio)
-        const input = document.createElement('input');
-        input.type = multiselect ? 'checkbox' : 'radio';
-        // Utilisation d'un nom commun par section pour les radios (ou checkbox en multi-select)
-        input.name = `option-${sectionLabel}`;
-        // Générer un id unique en se basant sur le label de la section, le nom de l’option et le niveau
-        const sanitizedOptionName = option.name.replace(/<[^>]*>/g, '').replace(/\s+/g, '-');
-        input.id = `${sectionLabel}-${sanitizedOptionName}-l${level}`;
-        
-        // Créer le label
-        const label = document.createElement('label');
-        label.setAttribute('for', input.id);
-        label.innerHTML = option.name;
-        label.title = option.name.replace(/<[^>]*>/g, '');
-        
-        optionDiv.appendChild(input);
-        optionDiv.appendChild(label);
-        
-        // Écoute du changement
-        input.addEventListener('change', () => {
-          updateTotalChecked();
-          // Comportement pour des sélections simples : envoyer immédiatement la sélection
-          if (!multiselect) {
-            console.log("Envoi de sélection simple:", option.name);
-            window.voiceflow.chat.interact({
-              type: 'complete',
-              payload: {
-                selection: option.name,
-                buttonPath: 'Default'
-              }
-            });
-          }
-        });
-        
-        // Si l'option possède des "children", générer récursivement les sous-options
-        if (option.children && Array.isArray(option.children)) {
+        // S'il existe des enfants, les générer récursivement
+        if (option.children && Array.isArray(option.children) && option.children.length > 0) {
           const childrenContainer = document.createElement('div');
           childrenContainer.classList.add('children-options');
           option.children.forEach(child => {
@@ -317,21 +347,17 @@ export const MultiSelect = {
         return optionDiv;
       };
 
-      // Fonction qui récupère les détails de toutes les cases cochées, dans toutes les sections et niveaux
+      // Fonction qui récupère les détails des cases cochées (options du dernier niveau)
       const getCheckedDetails = () => {
-        // On récupère tous les checkbox cochés dans le conteneur principal
-        const checkedInputs = Array.from(container.querySelectorAll('input[type="checkbox"]'))
-          .filter(input => input.checked);
-        // On construit un tableau simple avec l'info utile (vous pouvez étendre ici pour renvoyer la hiérarchie)
+        const checkedInputs = Array.from(container.querySelectorAll('input[type="checkbox"]')).filter(input => input.checked);
         const details = checkedInputs.map(input => {
-          // Récupère le texte correspondant (via le label associé)
           const optionText = input.nextElementSibling ? input.nextElementSibling.innerHTML : '';
           return optionText;
         });
         return details;
       };
 
-      // Fonction pour mettre à jour le compte total de cases cochées, et désactiver celles non cochées si le max est atteint
+      // Fonction pour mettre à jour le compte total de cases cochées et désactiver les non cochées si le maximum est atteint
       const updateTotalChecked = () => {
         const allCheckboxes = Array.from(container.querySelectorAll('input[type="checkbox"]'));
         totalChecked = allCheckboxes.filter(cb => cb.checked).length;
@@ -349,7 +375,7 @@ export const MultiSelect = {
         }
       };
 
-      // Vérifier si on a des champs "user_input"
+      // Vérifier la présence de champs "user_input"
       sections.forEach(section => {
         if (Array.isArray(section.options)) {
           section.options.forEach(option => {
@@ -360,7 +386,7 @@ export const MultiSelect = {
         }
       });
 
-      // Créer le conteneur grid pour les sections
+      // Création du conteneur grid pour les sections
       const sectionsGrid = document.createElement('div');
       sectionsGrid.classList.add('sections-grid');
 
@@ -378,22 +404,19 @@ export const MultiSelect = {
         sectionLabel.textContent = section.label;
         sectionDiv.appendChild(sectionLabel);
         
-        // Déterminer le nombre d'options dans la section (les options enfants sont comptées dans le total via la fonction récursive)
         let sectionOptionsCount = Array.isArray(section.options) ? section.options.length : 0;
         const optionsContainer = document.createElement('div');
         optionsContainer.classList.add(sectionOptionsCount > 10 ? 'options-grid' : 'options-list');
 
         if (Array.isArray(section.options)) {
-          // Séparer les options standards (possiblement hiérarchisées) des éventuels champs user_input
+          // Filtrer les options standards (hors éventuels champs user_input)
           const standardOptions = section.options.filter(option => option.action !== 'user_input');
-          
-          // Pour chaque option standard, utiliser la fonction récursive pour créer l’élément (niveau 1)
           standardOptions.forEach(option => {
             const optionElement = createOptionElement(option, 1, section.label);
             optionsContainer.appendChild(optionElement);
           });
           
-          // Ajouter les champs "user_input" s'il y en a dans la section
+          // Ajouter les champs "user_input" s'ils existent dans la section
           const userInputOptions = section.options.filter(option => option.action === 'user_input');
           userInputOptions.forEach(option => {
             const userInputDiv = document.createElement('div');
@@ -426,7 +449,7 @@ export const MultiSelect = {
 
       container.appendChild(sectionsGrid);
 
-      // Ajout et configuration des boutons (si définis dans le payload)
+      // Ajout et configuration des boutons (si fournis dans le payload)
       if (buttons && buttons.length > 0) {
         const buttonContainer = document.createElement('div');
         buttonContainer.setAttribute('data-index', index);
@@ -438,16 +461,14 @@ export const MultiSelect = {
           buttonElement.textContent = button.text;
 
           buttonElement.addEventListener('click', () => {
-            // Récupérer toutes les sélections cochées (pour tous les niveaux)
+            // Récupérer les sélections cochées (uniquement les options sélectionnables, c'est-à-dire les dernières)
             const selectedOptions = sections.map((section, idx) => {
               const sectionElement = container.querySelectorAll('.section-container')[idx];
               if (!sectionElement) return null;
-              // Pour simplifier, on récupère ici le contenu des labels des inputs cochés
               const selections = Array.from(sectionElement.querySelectorAll('input[type="checkbox"]:checked')).map(cb => {
                 return cb.nextElementSibling ? cb.nextElementSibling.innerHTML : '';
               });
               
-              // Récupération de l'eventuel champ user_input
               const userInputId = `${section.label}-user-input-${section.id || ''}`;
               const userInputValue = userInputValues[userInputId] !== undefined ? userInputValues[userInputId] : "";
               
@@ -458,7 +479,7 @@ export const MultiSelect = {
               };
             }).filter(section => section && (section.selections.length > 0 || section.userInput));
             
-            // Masquer les boutons après clic
+            // Masquer les boutons après le clic
             buttonContainer.querySelectorAll('.submit-btn').forEach(btn => {
               btn.style.display = 'none';
             });
@@ -469,8 +490,8 @@ export const MultiSelect = {
             let payloadData = {};
             const buttonPath = button.path || 'Default';
             
-            if (selectedOptions.length === 1 && 
-                selectedOptions[0].selections.length === 0 && 
+            if (selectedOptions.length === 1 &&
+                selectedOptions[0].selections.length === 0 &&
                 selectedOptions[0].userInput !== "") {
               payloadData = {
                 userInput: selectedOptions[0].userInput,

@@ -6,7 +6,7 @@ export const MultiSelect = {
   },
   render: ({ trace, element }) => {
     try {
-      console.log("Démarrage du rendu MultiSelect (3 niveaux supportés)");
+      console.log("Démarrage du rendu MultiSelect (gestion dernier niveau sélectionnable)");
 
       // Récupérer les données depuis le payload
       const {
@@ -42,7 +42,7 @@ export const MultiSelect = {
         }
       });
 
-      // Ajouter les styles CSS avec les modifications pour une meilleure visibilité et gestion de l'overflow
+      // Ajouter les styles CSS avec les modifications pour éviter les débordements
       const styleElement = document.createElement('style');
       styleElement.textContent = `
         .multiselect-container {
@@ -84,7 +84,11 @@ export const MultiSelect = {
           height: 100%;
           background-color: #673AB7;
           border: 1px solid rgba(255, 255, 255, 0.2);
+          /* Empêche le contenu de déborder horizontalement : */
+          overflow-x: hidden;
+          position: relative;
         }
+        
         .multiselect-container .section-title {
           color: white;
           font-size: 1em;
@@ -120,7 +124,7 @@ export const MultiSelect = {
           width: 100%;
         }
         
-        /* Pour les options sélectionnables (dernier niveau) */
+        /* Options sélectionnables (dernier niveau) */
         .multiselect-container input[type="checkbox"],
         .multiselect-container input[type="radio"] {
           height: 16px;
@@ -143,6 +147,7 @@ export const MultiSelect = {
           width: 100%;
           transition: all 0.2s ease;
           border: 1px solid rgba(255, 255, 255, 0.1);
+          /* Empêcher le label de sortir du conteneur */
           white-space: normal;
           word-break: break-word;
           overflow-wrap: break-word;
@@ -166,18 +171,18 @@ export const MultiSelect = {
           cursor: not-allowed;
         }
         
-        /* Styles pour les niveaux imbriqués */
+        /* Styles pour les niveaux imbriqués - marges réduites */
         .multiselect-container .option-container.option-level-2 {
-          margin-left: 20px;
+          margin-left: 10px; /* Réduction pour éviter le débordement */
         }
         .multiselect-container .option-container.option-level-3 {
-          margin-left: 30px;
+          margin-left: 15px; /* Réduction pour éviter le débordement */
         }
         
-        /* Pour les options non-sélectionnables (niveaux intermédiaires) */
+        /* Options non-sélectionnables (niveaux intermédiaires) */
         .multiselect-container .option-container.non-selectable span {
           cursor: default;
-          color: #fff; /* Assurer une bonne visibilité du texte */
+          color: #fff;
           background-color: rgba(0, 0, 0, 0.3);
           opacity: 1;
           padding: 6px 8px;
@@ -272,12 +277,13 @@ export const MultiSelect = {
       container.appendChild(styleElement);
 
       // Fonction récursive pour créer les éléments d'option
-      // Seule une option sans children (donc le dernier niveau) sera sélectionnable.
+      // Seule une option sans children (dernier niveau) est sélectionnable.
       const createOptionElement = (option, level, sectionLabel) => {
         const optionDiv = document.createElement('div');
         optionDiv.classList.add('option-container', `option-level-${level}`);
-        // Si l'option n'a pas de children ou que le tableau est vide, elle est sélectionnable.
-        const isSelectable = !(option.children && Array.isArray(option.children) && option.children.length > 0);
+
+        const hasChildren = option.children && Array.isArray(option.children) && option.children.length > 0;
+        const isSelectable = !hasChildren;  // Pas d'enfants => dernier niveau => cliquable
 
         if (isSelectable) {
           optionDiv.classList.add('selectable');
@@ -295,8 +301,10 @@ export const MultiSelect = {
           optionDiv.appendChild(input);
           optionDiv.appendChild(label);
 
+          // Mise à jour du total coché
           input.addEventListener('change', () => {
             updateTotalChecked();
+            // Si pas multiselect, on envoie immédiatement le choix
             if (!multiselect) {
               console.log("Envoi de sélection simple:", option.name);
               window.voiceflow.chat.interact({
@@ -309,7 +317,7 @@ export const MultiSelect = {
             }
           });
         } else {
-          // Option non-sélectionnable (ayant des enfants)
+          // Option non-sélectionnable (ayant des children)
           optionDiv.classList.add('non-selectable');
           const span = document.createElement('span');
           span.innerHTML = option.name;
@@ -317,8 +325,8 @@ export const MultiSelect = {
           optionDiv.appendChild(span);
         }
 
-        // S'il existe des enfants, créer leur conteneur et les générer récursivement
-        if (option.children && Array.isArray(option.children) && option.children.length > 0) {
+        // Enfants éventuels
+        if (hasChildren) {
           const childrenContainer = document.createElement('div');
           childrenContainer.classList.add('children-options');
           option.children.forEach(child => {
@@ -340,10 +348,11 @@ export const MultiSelect = {
         return details;
       };
 
-      // Fonction pour mettre à jour le nombre total de cases cochées et désactiver les autres si le maximum est atteint
+      // Mise à jour du nombre de cases cochées (et désactivation si max atteint)
       const updateTotalChecked = () => {
         const allCheckboxes = Array.from(container.querySelectorAll('input[type="checkbox"]'));
         totalChecked = allCheckboxes.filter(cb => cb.checked).length;
+        
         if (totalMaxSelect > 0 && totalChecked >= totalMaxSelect) {
           allCheckboxes.forEach(checkbox => {
             if (!checkbox.checked) {
@@ -357,7 +366,7 @@ export const MultiSelect = {
         }
       };
 
-      // Vérifier la présence éventuelle de champs "user_input"
+      // Vérifier la présence de champs "user_input"
       sections.forEach(section => {
         if (Array.isArray(section.options)) {
           section.options.forEach(option => {
@@ -388,6 +397,7 @@ export const MultiSelect = {
         
         const sectionOptionsCount = Array.isArray(section.options) ? section.options.length : 0;
         const optionsContainer = document.createElement('div');
+        // Si la section a plus de 10 options, on l'affiche en grille 2 colonnes
         optionsContainer.classList.add(sectionOptionsCount > 10 ? 'options-grid' : 'options-list');
 
         if (Array.isArray(section.options)) {
@@ -430,7 +440,7 @@ export const MultiSelect = {
 
       container.appendChild(sectionsGrid);
 
-      // Ajout des boutons de validation (s'ils sont définis)
+      // Ajout des boutons de validation
       if (buttons && buttons.length > 0) {
         const buttonContainer = document.createElement('div');
         buttonContainer.setAttribute('data-index', index);
@@ -442,6 +452,7 @@ export const MultiSelect = {
           buttonElement.textContent = button.text;
 
           buttonElement.addEventListener('click', () => {
+            // Récupérer les sélections
             const selectedOptions = sections.map((section, idx) => {
               const sectionElement = container.querySelectorAll('.section-container')[idx];
               if (!sectionElement) return null;
@@ -459,6 +470,7 @@ export const MultiSelect = {
               };
             }).filter(section => section && (section.selections.length > 0 || section.userInput));
 
+            // Masquer tous les boutons après le clic
             buttonContainer.querySelectorAll('.submit-btn').forEach(btn => {
               btn.style.display = 'none';
             });
@@ -468,6 +480,7 @@ export const MultiSelect = {
             let payloadData = {};
             const buttonPath = button.path || 'Default';
             
+            // Cas avec un unique userInput
             if (selectedOptions.length === 1 &&
                 selectedOptions[0].selections.length === 0 &&
                 selectedOptions[0].userInput !== "") {
@@ -479,6 +492,7 @@ export const MultiSelect = {
                 isUserInput: true
               };
             } else if (selectedOptions.length > 0) {
+              // Cas standard avec sélections
               payloadData = {
                 selections: selectedOptions,
                 buttonText: button.text,
@@ -487,6 +501,7 @@ export const MultiSelect = {
                 isUserInput: false
               };
             } else {
+              // Cas sans sélection
               payloadData = {
                 buttonText: button.text,
                 buttonPath: buttonPath,

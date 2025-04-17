@@ -6,123 +6,82 @@ export const MultiSelect = {
 
   render: ({ trace, element }) => {
     try {
-      console.log("Démarrage MultiSelect (bloc cliquable + 'all' => injection)");
+      console.log("Démarrage MultiSelect");
 
-      // ───────────
-      // Récupération du payload
+      // ─── payload ───────────────────────────────────────────────────────────
       const {
         sections = [],
         buttons = [],
         buttonColor = '#4CAF50',
         textColor = '#FFFFFF',
         backgroundOpacity = 0.8,
-        index = 1,
         totalMaxSelect = 6,
-        multiselect = true
+        multiselect = true,
       } = trace.payload;
 
-      // utilitaire pour stripper tout HTML/entités des labels
+      // utilitaire pour nettoyer les labels de tout HTML échappé
       const stripHTML = (html) => {
         const tmp = document.createElement('div');
         tmp.innerHTML = html;
         return tmp.textContent || tmp.innerText || '';
       };
 
-      // Variables
-      let totalChecked = 0;
-
-      // Conteneur principal
+      // ─── container principal + styles ───────────────────────────────────────
       const container = document.createElement('div');
       container.classList.add('multiselect-container');
 
-      // Styles (inchangés de ton code d’origine)
       const styleEl = document.createElement('style');
       styleEl.textContent = `
-        .multiselect-container {
-          width: 100%;
-          max-width: 100%;
-          margin: 0 auto;
+        .multiselect-container { /* idem */
+          width: 100%; max-width: 100%; margin: 0 auto;
           font-family: 'Inter','Segoe UI',system-ui,-apple-system,sans-serif;
-          box-sizing: border-box;
-          font-size: 0.9em;
+          box-sizing: border-box; font-size: 0.9em;
         }
-        .multiselect-container * {
-          box-sizing: border-box;
+        .multiselect-container * { box-sizing: border-box; }
+
+        .sections-grid {
+          display: flex; flex-wrap: wrap; gap: 16px; justify-content: center;
         }
-        .multiselect-container .sections-grid {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 16px;
-          justify-content: center;
-        }
-        .multiselect-container .section-container {
-          flex: 0 1 calc(50% - 16px);
-          min-width: 300px;
-          background-color: #673AB7;
-          border: 1px solid rgba(255,255,255,0.2);
-          border-radius: 6px;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-          padding: 10px;
-          display: flex;
-          flex-direction: column;
-          position: relative;
-          overflow: hidden;
+        .section-container {
+          flex: 0 1 calc(50% - 16px); min-width: 300px;
+          background-color: #673AB7; border: 1px solid rgba(255,255,255,0.2);
+          border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+          padding: 10px; display: flex; flex-direction: column;
         }
         @media (max-width: 800px) {
-          .multiselect-container .section-container {
-            flex: 1 1 100%;
-          }
+          .section-container { flex: 1 1 100%; }
         }
-        .multiselect-container .section-title {
-          color: white;
-          font-size: 1em;
-          font-weight: 600;
-          margin-top: 0;
-          margin-bottom: 8px;
-          padding-bottom: 6px;
+
+        .section-title {
+          color: white; font-size: 1em; font-weight: 600;
+          margin: 0 0 8px 0; padding-bottom: 6px;
           border-bottom: 1px solid rgba(255,255,255,0.3);
           text-shadow: 0 1px 1px rgba(0,0,0,0.2);
         }
-        .multiselect-container .options-list {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-          width: 100%;
+
+        .options-list {
+          display: flex; flex-direction: column; gap: 8px; width: 100%;
         }
         .non-selectable-block {
-          background-color: rgba(0,0,0,0.3);
-          border: 1px solid rgba(255,255,255,0.2);
-          border-radius: 4px;
-          padding: 6px 10px;
-          color: #fff;
+          background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2);
+          border-radius: 4px; padding: 6px 10px; color: #fff;
         }
         .children-options {
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-          margin-left: 20px;
-          margin-top: 4px;
+          display: flex; flex-direction: column; gap: 6px;
+          margin: 4px 0 0 20px;
         }
         .option-container {
-          position: relative;
-          margin: 0 6px;
+          position: relative; margin: 0 6px; display: flex; align-items: center;
+        }
+        .option-container.greyed-out-option label {
+          opacity: 0.5; cursor: not-allowed;
         }
         .option-container label {
-          display: inline-flex;
-          align-items: center;
-          cursor: pointer;
-          font-size: 0.85em;
-          border-radius: 4px;
-          padding: 6px 8px;
-          color: #fff;
-          background-color: rgba(0,0,0,${backgroundOpacity});
-          transition: all 0.2s ease;
-          border: 1px solid rgba(255,255,255,0.1);
-          white-space: normal;
-          word-break: break-word;
-          overflow-wrap: break-word;
-          line-height: 1.3;
-          width: 100%;
+          display: inline-flex; align-items: center; cursor: pointer;
+          font-size: 0.85em; border-radius: 4px; padding: 6px 8px;
+          color: #fff; background-color: rgba(0,0,0,${backgroundOpacity});
+          transition: all 0.2s ease; border: 1px solid rgba(255,255,255,0.1);
+          width: 100%; line-height: 1.3;
         }
         .option-container label:hover {
           background-color: rgba(0,0,0,${backgroundOpacity + 0.1});
@@ -130,185 +89,163 @@ export const MultiSelect = {
         }
         .option-container input[type="checkbox"],
         .option-container input[type="radio"] {
-          cursor: pointer;
-          margin-right: 8px;
-          width: 16px;
-          height: 16px;
+          cursor: pointer; margin-right: 8px; width: 16px; height: 16px;
           accent-color: ${buttonColor};
         }
         .option-container input:checked + label {
-          background-color: ${buttonColor};
-          border-color: #fff;
-          font-weight: 600;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+          background-color: ${buttonColor}; border-color: #fff;
+          font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
         }
         .option-container input:disabled + label {
-          opacity: 0.5;
-          cursor: not-allowed;
+          opacity: 0.5; cursor: not-allowed;
         }
+
         .buttons-container {
-          display: flex;
-          justify-content: center;
-          gap: 10px;
-          margin-top: 15px;
+          display: flex; justify-content: center; gap: 10px; margin-top: 15px;
         }
         .submit-btn {
-          background: ${buttonColor};
-          color: #fff;
-          padding: 8px 15px;
-          border-radius: 5px;
-          cursor: pointer;
-          border: none;
-          font-weight: 600;
-          font-size: 0.9em;
-          transition: all 0.2s ease;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-          text-align: center;
-          min-width: 130px;
+          background: ${buttonColor}; color: #fff; padding: 8px 15px;
+          border-radius: 5px; cursor: pointer; border: none;
+          font-weight: 600; font-size: 0.9em; transition: all 0.2s ease;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.2); min-width: 130px;
         }
         .submit-btn:hover {
-          opacity: 0.9;
-          transform: translateY(-1px);
+          opacity: 0.9; transform: translateY(-1px);
           box-shadow: 0 2px 5px rgba(0,0,0,0.25);
         }
-        .submit-btn:active {
-          transform: translateY(0);
+        .submit-btn:active { transform: translateY(0); }
+
+        /* quand on désactive tout le menu après envoi */
+        .multiselect-container.disabled-container {
+          opacity: 0.5; pointer-events: none;
         }
       `;
       container.appendChild(styleEl);
 
-      // Fonction pour gérer le max de sélection
+      // ─── gérer max select ────────────────────────────────────────────────────
       const updateTotalChecked = () => {
-        const checks = container.querySelectorAll('input[type="checkbox"], input[type="radio"]');
-        const checkedCount = [...checks].filter(cb => cb.checked).length;
-        if (totalMaxSelect > 0 && checkedCount >= totalMaxSelect && multiselect) {
-          checks.forEach(cb => {
-            if (!cb.checked) cb.disabled = true;
-          });
+        const checks = [...container.querySelectorAll('input[type="checkbox"],input[type="radio"]')];
+        const n = checks.filter(cb => cb.checked).length;
+        if (totalMaxSelect > 0 && n >= totalMaxSelect && multiselect) {
+          checks.forEach(cb => { if (!cb.checked) cb.disabled = true; });
         } else {
-          checks.forEach(cb => cb.disabled = false);
+          checks.forEach(cb => { if (!cb.closest('.greyed-out-option')) cb.disabled = false; });
         }
       };
 
-      // Création récursive des options (niveau 2 + 3)
+      // ─── création récursive des options ──────────────────────────────────────
       const createOptionElement = (opt, sectionIndex) => {
-        const hasChildren = Array.isArray(opt.children) && opt.children.length > 0;
+        const hasChildren = Array.isArray(opt.children) && opt.children.length;
         if (hasChildren) {
           const block = document.createElement('div');
           block.classList.add('non-selectable-block');
           block.innerHTML = opt.name;
-          const childrenDiv = document.createElement('div');
-          childrenDiv.classList.add('children-options');
-          opt.children.forEach(child => {
-            childrenDiv.appendChild(createOptionElement(child, sectionIndex));
-          });
-          block.appendChild(childrenDiv);
+          const c = document.createElement('div');
+          c.classList.add('children-options');
+          opt.children.forEach(ch => c.appendChild(createOptionElement(ch, sectionIndex)));
+          block.appendChild(c);
           return block;
-        } else {
-          const optionDiv = document.createElement('div');
-          optionDiv.classList.add('option-container');
-          optionDiv.dataset.action = opt.action || "";
-
-          const input = document.createElement('input');
-          input.type = multiselect ? 'checkbox' : 'radio';
-          input.addEventListener('change', () => {
-            updateTotalChecked();
-            if (!multiselect) {
-              window.voiceflow.chat.interact({
-                type: 'complete',
-                payload: {
-                  selection: opt.name,
-                  buttonPath: 'Default'
-                }
-              });
-            }
-          });
-
-          const label = document.createElement('label');
-          label.appendChild(input);
-          const textSpan = document.createElement('span');
-          textSpan.innerHTML = opt.name;
-          label.appendChild(textSpan);
-
-          optionDiv.appendChild(label);
-          return optionDiv;
         }
+        // sinon niveau 3
+        const divOpt = document.createElement('div');
+        divOpt.classList.add('option-container');
+        const input = document.createElement('input');
+        input.type = multiselect ? 'checkbox' : 'radio';
+        // grey ? on grise et on désactive
+        if (opt.grey) {
+          divOpt.classList.add('greyed-out-option');
+          input.disabled = true;
+        }
+        // event change
+        input.addEventListener('change', () => {
+          // on grise tout le menu
+          container.classList.add('disabled-container');
+          updateTotalChecked();
+          if (!multiselect) {
+            window.voiceflow.chat.interact({
+              type: 'complete',
+              payload: { selection: opt.name, buttonPath: 'Default' }
+            });
+          }
+        });
+
+        const label = document.createElement('label');
+        label.appendChild(input);
+        const span = document.createElement('span');
+        span.innerHTML = opt.name;
+        label.appendChild(span);
+        divOpt.appendChild(label);
+        return divOpt;
       };
 
-      // Conteneur des sections
+      // ─── génération des sections ─────────────────────────────────────────────
       const sectionsGrid = document.createElement('div');
       sectionsGrid.classList.add('sections-grid');
 
-      sections.forEach((section, secIndex) => {
-        const sectionDiv = document.createElement('div');
-        sectionDiv.classList.add('section-container');
-        if (section.color) sectionDiv.style.backgroundColor = section.color;
+      sections.forEach((section, i) => {
+        const sDiv = document.createElement('div');
+        sDiv.classList.add('section-container');
+        if (section.color) sDiv.style.backgroundColor = section.color;
 
-        // ** Ici on injecte un vrai <h2> **
-        const sectionTitle = document.createElement('h2');
-        sectionTitle.classList.add('section-title');
-        sectionTitle.textContent = stripHTML(section.label);
-        sectionDiv.appendChild(sectionTitle);
+        // vrai <h2> pour le titre
+        const title = document.createElement('h2');
+        title.classList.add('section-title');
+        title.textContent = stripHTML(section.label);
+        sDiv.appendChild(title);
 
-        const optionsList = document.createElement('div');
-        optionsList.classList.add('options-list');
-        if (Array.isArray(section.options)) {
-          section.options.forEach(opt => {
-            optionsList.appendChild(createOptionElement(opt, secIndex));
-          });
-        }
-        sectionDiv.appendChild(optionsList);
-        sectionsGrid.appendChild(sectionDiv);
+        const opts = document.createElement('div');
+        opts.classList.add('options-list');
+        (section.options||[]).forEach(opt => opts.appendChild(createOptionElement(opt, i)));
+        sDiv.appendChild(opts);
+        sectionsGrid.appendChild(sDiv);
       });
 
       container.appendChild(sectionsGrid);
 
-      // Boutons de validation
-      if (buttons.length > 0) {
-        const btnContainer = document.createElement('div');
-        btnContainer.classList.add('buttons-container');
+      // ─── boutons de validation ───────────────────────────────────────────────
+      if (buttons.length) {
+        const bc = document.createElement('div');
+        bc.classList.add('buttons-container');
         buttons.forEach(btn => {
-          const buttonElem = document.createElement('button');
-          buttonElem.classList.add('submit-btn');
-          buttonElem.textContent = btn.text;
-          buttonElem.addEventListener('click', () => {
-            const finalSections = sections.map((section, sIdx) => {
-              const sDiv = sectionsGrid.children[sIdx];
-              const checked = [...sDiv.querySelectorAll('input:checked')];
-              let sel = [], hasAll = false;
-              checked.forEach(chk => {
-                const actionVal = chk.closest('.option-container')?.dataset.action;
-                const txt = chk.parentNode.querySelector('span').textContent.trim();
-                if (actionVal === 'all') hasAll = true;
-                else sel.push(txt);
+          const b = document.createElement('button');
+          b.classList.add('submit-btn');
+          b.textContent = btn.text;
+          b.addEventListener('click', () => {
+            // on grise tout le menu
+            container.classList.add('disabled-container');
+            // on construit le payload final
+            const finalSections = sections.map((sec, idx) => {
+              const sDom = sectionsGrid.children[idx];
+              const checked = [...sDom.querySelectorAll('input:checked')];
+              let selections = [], hasAll = false;
+              checked.forEach(cb => {
+                if (cb.closest('.option-container').dataset.action==='all') hasAll = true;
+                else selections.push(cb.parentNode.querySelector('span').textContent.trim());
               });
               if (hasAll) {
-                const allOpts = [...sDiv.querySelectorAll('.option-container')]
-                  .filter(d => d.dataset.action === '')
-                  .map(d => d.querySelector('span').textContent.trim());
-                sel = [...new Set([...sel, ...allOpts])];
+                const all = [...sDom.querySelectorAll('.option-container')]
+                  .filter(d=>d.dataset.action!=='all')
+                  .map(d=>d.querySelector('span').textContent.trim());
+                selections = [...new Set([...selections, ...all])];
               }
-              return { section: section.label, selections: sel, userInput: '' };
-            }).filter(s => s);
-
-            btnContainer.querySelectorAll('.submit-btn').forEach(b => b.style.display = 'none');
-            const finalPayload = {
+              return { section: sec.label, selections, userInput: '' };
+            }).filter(x=>x);
+            const payload = {
               selections: finalSections,
               buttonText: btn.text,
-              buttonPath: btn.text.match(/Revenir|Return/) ? 'Previous_step' : btn.path || 'Default',
-              isEmpty: finalSections.every(s => s.selections.length === 0)
+              buttonPath: /Revenir|Return/.test(btn.text) ? 'Previous_step' : (btn.path||'Default'),
+              isEmpty: finalSections.every(s=>s.selections.length===0)
             };
-
-            console.log("Envoi final => Voiceflow:", finalPayload);
-            window.voiceflow.chat.interact({ type: 'complete', payload: finalPayload });
+            window.voiceflow.chat.interact({ type:'complete', payload });
           });
-          btnContainer.appendChild(buttonElem);
+          bc.appendChild(b);
         });
-        container.appendChild(btnContainer);
+        container.appendChild(bc);
       }
 
       element.appendChild(container);
-      console.log("MultiSelect final => ok");
+      console.log("MultiSelect ready");
+
     } catch (err) {
       console.error("Erreur MultiSelect:", err);
       window.voiceflow.chat.interact({

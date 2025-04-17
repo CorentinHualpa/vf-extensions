@@ -9,9 +9,9 @@ export const FlamesExtension = {
     const canvas = document.querySelector('#confetti-canvas');
     if (!canvas) return;
 
-    // On réutilise le global `confetti` chargé par le <script UMD>
+    // Utilisation du global “confetti” chargé par le <script> UMD
     const myFlames = confetti.create(canvas, {
-      resize: true,
+      resize:    true,
       useWorker: true,
     });
 
@@ -22,12 +22,11 @@ export const FlamesExtension = {
       ticks:         200,
       shapes:       ['circle'],
       gravity:       0.3,
-      // couleurs “flammes”
       colors: [
-        '#FF4500', // orange brûlé
-        '#FF8C00', // orange vif
-        '#FFD700', // jaune or
-        '#FF6347', // rouge tomate
+        '#FF4500',
+        '#FF8C00',
+        '#FFD700',
+        '#FF6347',
       ],
     });
   },

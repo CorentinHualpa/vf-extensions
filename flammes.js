@@ -6,41 +6,66 @@ export const FlamesExtension = {
   match: ({ trace }) =>
     trace.type === 'ext_flames' || trace.payload?.name === 'ext_flames',
   effect: () => {
-    const canvas = document.querySelector('#confetti-canvas');
-    if (!canvas) return;
-
-    const flame = confetti.create(canvas, {
-      resize: true,
-      useWorker: true,
+    // On initialise tsParticles sur notre canvas existant
+    tsParticles.load({
+      id: 'confetti-canvas',
+      options: {
+        fullScreen:  { enable: false },
+        background:  { color: 'transparent' },
+        detectRetina: true,
+        emitters: {
+          direction: 'top',
+          life:      { count: -1, duration: 0.1 },
+          rate:      { quantity: 5, delay: 0.05 },
+          size:      { width: 0, height: 0 },
+          position:  { x: 50, y: 100 }
+        },
+        particles: {
+          number:   { value: 0 },
+          shape:    { type: 'circle' },
+          size:     {
+            value: { min: 4, max: 7 },
+            animation: {
+              enable:       true,
+              speed:        20,
+              minimumValue: 4,
+              startValue:   'max',
+              destroy:      'min'
+            }
+          },
+          move: {
+            enable:    true,
+            direction: 'top',
+            outModes:  { default: 'destroy' },
+            gravity:   { enable: true, acceleration: -10 },
+            speed:     { min: 20, max: 40 }
+          },
+          color:   { value: ['#FFA500','#FF4500','#FFD700'] },
+          opacity: {
+            value: { min: 0.3, max: 0.7 },
+            animation: {
+              enable:       true,
+              speed:        1,
+              minimumValue: 0,
+              startValue:   'max',
+              destroy:      'min'
+            }
+          },
+          rotate: {
+            value: { min: -45, max: 45 },
+            animation: { enable: true, speed: 10, sync: false }
+          },
+          swirl: {
+            enable:       true,
+            radius:       50,
+            acceleration: 30
+          }
+        },
+        interactivity: {
+          detectsOn: 'canvas',
+          events:    { onClick: { enable: false }, onHover: { enable: false } }
+        }
+      }
     });
-
-    // On fait plusieurs petites impulsions successives
-    const bursts = 3;
-    for (let i = 0; i < bursts; i++) {
-      flame({
-        particleCount:  80,
-        angle:          90,        // vers le haut
-        spread:         30,        // peu dispersé
-        startVelocity:  40,        // vitesse initiale
-        decay:          0.95,      // s’éteint doucement
-        gravity:       -0.15,      // force vers le haut
-        drift:          0.02,      // légère dérive latérale
-        origin:         { x: 0.5, y: 1 },      // au bas-centre du canvas
-        shapes:         ['square'],            // forme “pixel”
-        colors: [
-          '#FF4500', // orange foncé
-          '#FF8C00', // orange vif
-          '#FFD700', // jaune or
-          '#FF6347', // rouge
-        ],
-        scalar:         0.6,       // taille un peu plus petite
-      });
-
-      // On espace les bursts pour rendre l’animation plus “ronde”
-      // Utile si vous appelez FlamesExtension plusieurs fois de suite
-      // sinon vous pouvez supprimer ce délai et tout enchaîner d’un coup.
-      // Ici on utilise setTimeout pour décaler chaque burst :
-      // (il faudra envelopper flame(...) dans un timeout si vous voulez)
-    }
   },
 };

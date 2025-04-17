@@ -1,5 +1,4 @@
-// flammes.js
-import confetti from 'https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.esm.min.js';
+// https://corentinhualpa.github.io/vf-extensions/flammes.js
 
 export const FlamesExtension = {
   name: 'Flames',
@@ -9,20 +8,26 @@ export const FlamesExtension = {
   effect: () => {
     const canvas = document.querySelector('#confetti-canvas');
     if (!canvas) return;
-    // on crée 4 “couleurs feu”
-    const my = confetti.create(canvas, { resize: true, useWorker: true });
-    my({
+
+    // On réutilise le global `confetti` chargé par le <script UMD>
+    const myFlames = confetti.create(canvas, {
+      resize: true,
+      useWorker: true,
+    });
+
+    myFlames({
       particleCount: 150,
       spread:        120,
       startVelocity: 80,
       ticks:         200,
       shapes:       ['circle'],
       gravity:       0.3,
+      // couleurs “flammes”
       colors: [
         '#FF4500', // orange brûlé
-        '#FF8C00', // orange
-        '#FFD700', // or jaune
-        '#FF6347', // tomate
+        '#FF8C00', // orange vif
+        '#FFD700', // jaune or
+        '#FF6347', // rouge tomate
       ],
     });
   },

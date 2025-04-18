@@ -6,9 +6,9 @@ export const MultiSelect = {
 
   render: ({ trace, element }) => {
     try {
-      console.log("Démarrage MultiSelect final");
+      console.log("▶️ Démarrage MultiSelect (fix cercles)");
 
-      // ─── 1) Payload ───────────────────────────
+      // 1) Récupère le payload
       const {
         sections = [],
         buttons = [],
@@ -18,27 +18,27 @@ export const MultiSelect = {
         multiselect = true,
       } = trace.payload;
 
-      // utilitaire pour vider du HTML échappé si besoin
+      // utilitaire pour nettoyer du HTML
       const stripHTML = html => {
         const tmp = document.createElement('div');
         tmp.innerHTML = html;
         return tmp.textContent || '';
       };
 
-      // ─── 2) Container & style ─────────────────
+      // 2) Container + style
       const container = document.createElement('div');
       container.classList.add('multiselect-container');
       if (sections.length === 1) container.classList.add('one-section');
 
       const styleEl = document.createElement('style');
       styleEl.textContent = `
-        /* RESET BOX-SIZING SEUL */
+        /* 2A) reset box-sizing */
         .multiselect-container,
         .multiselect-container * {
           box-sizing: border-box !important;
         }
 
-        /* CONTENEUR PRINCIPAL */
+        /* 2B) container principal */
         .multiselect-container {
           display: flex !important;
           flex-direction: column !important;
@@ -47,7 +47,7 @@ export const MultiSelect = {
           font-size: 0.9em !important;
         }
 
-        /* GRID SECTIONS (max 2 cols) */
+        /* 2C) grille des sections (max 2 cols) */
         .multiselect-container .sections-grid {
           display: grid !important;
           grid-template-columns: repeat(2, 1fr) !important;
@@ -57,16 +57,15 @@ export const MultiSelect = {
           grid-template-columns: 1fr !important;
         }
 
-        /* SECTION */
+        /* 2D) chaque section */
         .multiselect-container .section-container {
           display: flex !important;
           flex-direction: column !important;
           border-radius: 6px !important;
           overflow: hidden !important;
-          /* background-color vient de l'inline-style */
         }
 
-        /* TITRE */
+        /* 2E) titre de section */
         .multiselect-container .section-title {
           display: block !important;
           padding: 12px !important;
@@ -77,7 +76,7 @@ export const MultiSelect = {
           margin-bottom: 8px !important;
         }
 
-        /* OPTIONS LISTE (1 ou 2 colonnes si >10 items) */
+        /* 2F) liste d'options */
         .multiselect-container .options-list {
           display: grid !important;
           grid-template-columns: 1fr !important;
@@ -88,7 +87,7 @@ export const MultiSelect = {
           grid-template-columns: 1fr 1fr !important;
         }
 
-        /* BLOC NON-CLIQUABLE */
+        /* 2G) bloc non‑cliquable */
         .multiselect-container .non-selectable-block {
           background-color: rgba(0,0,0,0.3) !important;
           border: 1px solid rgba(255,255,255,0.2) !important;
@@ -103,7 +102,7 @@ export const MultiSelect = {
           margin: 4px 0 0 20px !important;
         }
 
-        /* OPTION CLIQUABLE */
+        /* 2H) option cliquable */
         .multiselect-container .option-container {
           display: flex !important;
           align-items: center !important;
@@ -125,15 +124,16 @@ export const MultiSelect = {
           transition: background 0.2s !important;
         }
         .multiselect-container .option-container label:hover {
-          background-color: rgba(0,0,0,${Math.min(backgroundOpacity + 0.1, 1)}) !important;
+          background-color: rgba(0,0,0,${Math.min(backgroundOpacity + 0.1,1)}) !important;
         }
 
-        /* CASES & RADIOS RONDS */
+        /* 2I) checkbox & radio — parfaitement ronds */
         .multiselect-container .option-container input[type="checkbox"],
         .multiselect-container .option-container input[type="radio"] {
           all: unset !important;
           appearance: none !important;
           -webkit-appearance: none !important;
+          flex: none !important;               /* ⇐ empêche l’étirement */
           width: 16px !important;
           height: 16px !important;
           border: 2px solid ${buttonColor} !important;
@@ -152,7 +152,7 @@ export const MultiSelect = {
           margin: auto !important;
         }
 
-        /* BOUTONS MULTI-SELECT */
+        /* 2J) boutons multi‑select */
         .multiselect-container .buttons-container {
           display: flex !important;
           justify-content: center !important;
@@ -166,15 +166,15 @@ export const MultiSelect = {
           padding: 8px 12px !important;
           border-radius: 4px !important;
           font-weight: 600 !important;
-          cursor: pointer !important;
           text-align: center !important;
+          cursor: pointer !important;
           transition: opacity 0.2s !important;
         }
         .multiselect-container .submit-btn:hover {
           opacity: 0.85 !important;
         }
 
-        /* LOCK UI */
+        /* 2K) lock UI */
         .multiselect-container.disabled-container {
           opacity: 0.5 !important;
           pointer-events: none !important;
@@ -182,33 +182,31 @@ export const MultiSelect = {
       `;
       container.appendChild(styleEl);
 
-      // ─── 3) Limitation du nombre de sélection ─────
+      // 3) gestion du totalMaxSelect
       const updateTotalChecked = () => {
         const inputs = Array.from(container.querySelectorAll('input'));
-        const cnt = inputs.filter(i => i.checked).length;
-        if (totalMaxSelect > 0 && cnt >= totalMaxSelect && multiselect) {
-          inputs.forEach(i => { if (!i.checked) i.disabled = true; });
+        const count = inputs.filter(i => i.checked).length;
+        if (totalMaxSelect>0 && count>=totalMaxSelect && multiselect) {
+          inputs.forEach(i=>{ if(!i.checked) i.disabled=true; });
         } else {
-          inputs.forEach(i => {
-            if (!i.closest('.greyed-out-option')) i.disabled = false;
-          });
+          inputs.forEach(i=>{ if(!i.closest('.greyed-out-option')) i.disabled=false; });
         }
       };
 
-      // ─── 4) Création récursive d'une OPTION ───────
+      // 4) création récursive d'une option
       const createOptionElement = opt => {
-        //  non‑cliquer
-        if (opt.children && opt.children.length) {
-          const block = document.createElement('div');
-          block.classList.add('non-selectable-block');
-          block.innerHTML = opt.name;
-          const cw = document.createElement('div');
-          cw.classList.add('children-options');
-          opt.children.forEach(ch => cw.appendChild(createOptionElement(ch)));
-          block.appendChild(cw);
-          return block;
+        // bloc non‑cliquable si children
+        if (opt.children?.length) {
+          const b = document.createElement('div');
+          b.classList.add('non-selectable-block');
+          b.innerHTML = opt.name;
+          const cc = document.createElement('div');
+          cc.classList.add('children-options');
+          opt.children.forEach(ch=> cc.appendChild(createOptionElement(ch)));
+          b.appendChild(cc);
+          return b;
         }
-        //  option cliquable
+        // sinon option cliquable
         const wrap = document.createElement('div');
         wrap.classList.add('option-container');
         if (opt.grey) wrap.classList.add('greyed-out-option');
@@ -216,13 +214,13 @@ export const MultiSelect = {
         const inp = document.createElement('input');
         inp.type = multiselect ? 'checkbox' : 'radio';
         if (opt.grey) inp.disabled = true;
-        inp.addEventListener('change', () => {
+        inp.addEventListener('change', ()=>{
           updateTotalChecked();
           if (!multiselect) {
             container.classList.add('disabled-container');
             window.voiceflow.chat.interact({
-              type: 'complete',
-              payload: { selection: opt.name, buttonPath: 'Default' }
+              type:'complete',
+              payload:{ selection:opt.name, buttonPath:'Default' }
             });
           }
         });
@@ -236,15 +234,15 @@ export const MultiSelect = {
         return wrap;
       };
 
-      // ─── 5) Montage des SECTIONS ─────────────────
+      // 5) montage des sections
       const grid = document.createElement('div');
       grid.classList.add('sections-grid');
-      sections.forEach(sec => {
+      sections.forEach(sec=>{
         const sc = document.createElement('div');
         sc.classList.add('section-container');
         if (sec.color) sc.style.backgroundColor = sec.color;
 
-        // label facultatif
+        // label s’il existe
         if (sec.label) {
           const h = document.createElement('div');
           h.classList.add('section-title');
@@ -254,39 +252,38 @@ export const MultiSelect = {
 
         const ol = document.createElement('div');
         ol.classList.add('options-list');
-        if (sec.options.length > 10) ol.classList.add('grid-2cols');
-        sec.options.forEach(opt => ol.appendChild(createOptionElement(opt)));
+        if (sec.options.length>10) ol.classList.add('grid-2cols');
+        sec.options.forEach(opt=> ol.appendChild(createOptionElement(opt)));
         sc.appendChild(ol);
 
         grid.appendChild(sc);
       });
       container.appendChild(grid);
 
-      // ─── 6) Boutons (multi) ───────────────────────
+      // 6) boutons (si multiselect)
       if (multiselect && buttons.length) {
         const bc = document.createElement('div');
         bc.classList.add('buttons-container');
-        buttons.forEach(cfg => {
+        buttons.forEach(cfg=>{
           const b = document.createElement('button');
           b.classList.add('submit-btn');
           b.textContent = cfg.text;
-          b.addEventListener('click', () => {
+          b.addEventListener('click', ()=>{
             container.classList.add('disabled-container');
-            // vous pouvez ici reconstruire & envoyer le payload…
+            // reconstruisez et envoyez votre payload ici si besoin
           });
           bc.appendChild(b);
         });
         container.appendChild(bc);
       }
 
-      // ─── 7) Injection ────────────────────────────
+      // 7) injecte
       element.appendChild(container);
-      console.log("✅ MultiSelect final prêt");
-    } catch (err) {
-      console.error("Erreur MultiSelect :", err);
+      console.log("✅ MultiSelect prêt (avec cercles)");
+    } catch(err) {
+      console.error("Erreur MultiSelect:",err);
       window.voiceflow.chat.interact({
-        type: 'complete',
-        payload: { error: true, message: err.message }
+        type:'complete', payload:{ error:true, message:err.message }
       });
     }
   }

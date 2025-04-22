@@ -106,10 +106,10 @@ export const FileUpload = {
         <div class="status-container"></div>
       `;
 
-      const uploadInput = container.querySelector('.upload-input');
+      const uploadInput    = container.querySelector('.upload-input');
       const statusContainer = container.querySelector('.status-container');
       const uploadContainer = container.querySelector('.upload-container');
-      const filePreview = container.querySelector('.file-preview');
+      const filePreview     = container.querySelector('.file-preview');
 
       const showStatus = (message, type) => {
         statusContainer.textContent = message;
@@ -118,14 +118,11 @@ export const FileUpload = {
       };
 
       const handleUpload = async (files) => {
-        if (!files || files.length === 0) {
-          return;
-        }
+        if (!files || files.length === 0) return;
 
         // Vérifier la taille des fichiers
         let totalSize = 0;
         const fileList = Array.from(files);
-        
         for (const file of fileList) {
           totalSize += file.size;
           if (file.size > maxSize * 1024 * 1024) {
@@ -147,120 +144,89 @@ export const FileUpload = {
           filePreview.appendChild(fileItem);
         });
 
-        showStatus(`Téléversement de ${files.length} fichier(s) en cours...`, 'loading');
+        showStatus(`Téléversement de ${files.length} fichier(s) en cours…`, 'loading');
 
         const formData = new FormData();
-        fileList.forEach((file) => {
-          formData.append('files', file);
-        });
+        fileList.forEach(file => formData.append('files', file));
 
         try {
-          const response = await fetch('https://chatinnov-api-dev.proudsky-cdf9333b.francecentral.azurecontainerapps.io/documents_upload/', {
-            method: 'POST',
-            body: formData
-          });
-
+          const response = await fetch(
+            'https://chatinnov-api-dev.proudsky-cdf9333b.francecentral.azurecontainerapps.io/documents_upload/',
+            { method: 'POST', body: formData }
+          );
           const data = await response.json();
           console.log('Upload response:', data);
 
-          if (response.ok) {
-            if (data.urls && data.urls.length > 0) {
-              const fileCount = data.urls.length;
-              
-              // Créer une liste des fichiers téléversés avec leurs liens
-              statusContainer.innerHTML = `<div>Téléversement réussi de ${fileCount} fichier(s) !</div>`;
-              statusContainer.className = 'status-container success';
-              statusContainer.style.display = 'block';
+          if (response.ok && Array.isArray(data.urls) && data.urls.length > 0) {
+            const fileCount = data.urls.length;
 
-              // Désactiver les interactions pour éviter des clics multiples
-              uploadContainer.style.pointerEvents = 'none';
-              uploadContainer.style.opacity = '0.7';
+            // Succès visuel
+            statusContainer.innerHTML = `<div>Téléversement réussi de ${fileCount} fichier(s) !</div>`;
+            statusContainer.className = 'status-container success';
+            uploadContainer.style.pointerEvents = 'none';
+            uploadContainer.style.opacity = '0.7';
 
-              // Envoyer le payload stringifié pour écraser les anciennes URLs
-              setTimeout(() => {
-                window.voiceflow.chat.interact({
-                  type: 'complete',
-                  payload: JSON.stringify({
-                    success: true,
-                    urls: data.urls
-                  })
-                });
-              }, 500);
-            } else {
-              throw new Error('Aucune URL retournée par le serveur');
-            }
+            // Envoi d'un objet payload valide
+            setTimeout(() => {
+              window.voiceflow.chat.interact({
+                type: 'complete',
+                payload: {
+                  success: true,
+                  urls: data.urls
+                }
+              });
+            }, 500);
+
           } else {
-            const errorMessage = data.detail || 'Échec du téléversement';
-            throw new Error(errorMessage);
+            throw new Error(data.detail || 'Aucune URL retournée par le serveur');
           }
         } catch (error) {
           console.error('Upload error:', error);
-          showStatus(`Erreur: ${error.message}`, 'error');
+          showStatus(`Erreur : ${error.message}`, 'error');
 
-          // Envoyer l'erreur stringifiée à Voiceflow
           setTimeout(() => {
             window.voiceflow.chat.interact({
               type: 'complete',
-              payload: JSON.stringify({
+              payload: {
                 success: false,
                 error: error.message
-              })
+              }
             });
           }, 1000);
         }
       };
 
-      // Handle file select
-      uploadInput.addEventListener('change', (event) => {
-        handleUpload(event.target.files);
-      });
-
-      // Handle drag and drop
-      uploadContainer.addEventListener('dragenter', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        uploadContainer.style.borderColor = '#2e7ff1';
-      });
-
-      uploadContainer.addEventListener('dragover', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        uploadContainer.style.borderColor = '#2e7ff1';
-      });
-
-      uploadContainer.addEventListener('dragleave', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        uploadContainer.style.borderColor = '#ccc';
-      });
-
-      uploadContainer.addEventListener('drop', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        uploadContainer.style.borderColor = '#ccc';
-        handleUpload(event.dataTransfer.files);
-      });
+      // Événements
+      uploadInput.addEventListener('change', e => handleUpload(e.target.files));
+      ['dragenter','dragover'].forEach(evt =>
+        uploadContainer.addEventListener(evt, e => {
+          e.preventDefault(); e.stopPropagation();
+          uploadContainer.style.borderColor = '#2e7ff1';
+        })
+      );
+      ['dragleave','drop'].forEach(evt =>
+        uploadContainer.addEventListener(evt, e => {
+          e.preventDefault(); e.stopPropagation();
+          uploadContainer.style.borderColor = '#ccc';
+          if (evt === 'drop') handleUpload(e.dataTransfer.files);
+        })
+      );
 
       element.appendChild(container);
 
-      // Fonction de nettoyage pour éviter les fuites de mémoire
+      // Cleanup
       return () => {
         uploadInput.removeEventListener('change', handleUpload);
-        uploadContainer.removeEventListener('dragenter', () => {});
-        uploadContainer.removeEventListener('dragover', () => {});
-        uploadContainer.removeEventListener('dragleave', () => {});
-        uploadContainer.removeEventListener('drop', () => {});
       };
+      
     } catch (error) {
       console.error('Error in FileUpload render:', error);
-      
-      // En cas d'erreur grave, continuer le flux plutôt que de bloquer
       window.voiceflow.chat.interact({
         type: 'complete',
-        payload: JSON.stringify({
+        payload: {
           success: false,
           error: 'Erreur interne de l\'extension FileUpload'
-        })
+        }
       });
     }
   }

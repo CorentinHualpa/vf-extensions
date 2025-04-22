@@ -1,122 +1,80 @@
 export const FileUpload = {
   name: 'FileUpload',
   type: 'response',
-  match: ({ trace }) => {
-    // On matche soit le type, soit le payload.name
-    return (
-      trace.type === 'ext_fileUpload' ||
-      trace.payload?.name === 'ext_fileUpload' ||
-      trace.payload?.name === 'file_upload'
-    );
-  },
+  match: ({ trace }) =>
+    trace.type === 'ext_fileUpload' ||
+    trace.payload?.name === 'ext_fileUpload' ||
+    trace.payload?.name === 'file_upload',
   render: ({ trace, element }) => {
     try {
-      console.log('FileUpload extension render');
+      console.log('FileUpload extension render', trace);
 
-      // Génération d'un ID unique
+      // 1) Génération d'un ID unique
       const uniqueId = 'fileUpload_' + Date.now();
-      console.log(`File upload id: ${uniqueId}`);
 
-      // Récupération des options éventuelles
-      const {
-        maxSize = 100,              // Mo
-        acceptedTypes = '*',        // ex: '.pdf,image/*'
-        buttonText =
-          'Cliquer pour téléverser ou glisser-déposer des fichiers',
-        multiple = true
-      } = trace.payload || {};
-
-      // Création du container et injection HTML + CSS
+      // 2) Container + styles
       const container = document.createElement('div');
-      container.classList.add('file-upload-extension-container');
       container.innerHTML = `
         <style>
-          .file-upload-extension-container { width:100%; box-sizing:border-box; }
           .upload-container {
             padding:20px; border:2px dashed #ccc; border-radius:5px;
-            text-align:center; margin-bottom:10px; cursor:pointer;
-            transition:border-color .3s ease;
+            text-align:center; cursor:pointer; transition:border-color .3s;
+            margin-bottom:10px;
           }
-          .upload-container:hover { border-color:#2e7ff1; }
-          .upload-input { display:none; }
-          .upload-label { display:block; margin-bottom:10px; color:#666; }
-          .status-container {
-            padding:10px; border-radius:5px; margin-top:10px; display:none;
-          }
-          .status-container.loading { background:#2196F3; color:#fff; }
-          .status-container.success { background:#4CAF50; color:#fff; }
-          .status-container.error { background:#f44336; color:#fff; }
-          .file-preview { margin-top:10px; max-height:200px; overflow-y:auto; }
-          .file-item {
-            display:flex; align-items:center; padding:5px; border-bottom:1px solid #eee;
-          }
-          .file-name { flex:1; margin-right:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-          .file-size { font-size:0.9em; color:#333; }
+          .upload-container:hover { border-color:#2e7ff1 }
+          .upload-input { display:none }
+          .upload-label { color:#666; margin-bottom:10px; display:block }
+          .status { padding:10px; border-radius:5px; margin-top:10px; display:none }
+          .status.loading { background:#2196F3; color:#fff }
+          .status.success { background:#4CAF50; color:#fff }
+          .status.error { background:#f44336; color:#fff }
+          .file-preview { margin-top:10px; max-height:200px; overflow-y:auto }
+          .file-item { display:flex; padding:5px; border-bottom:1px solid #eee }
+          .file-name { flex:1; margin-right:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+          .file-size { font-size:.9em; color:#333 }
         </style>
-
         <div class="upload-container">
           <input
-            type="file"
             id="${uniqueId}"
             class="upload-input"
-            ${multiple ? 'multiple' : ''}
-            accept="${acceptedTypes}"
+            type="file"
+            multiple
           />
           <label for="${uniqueId}" class="upload-label">
-            ${buttonText}
+            Cliquez ou glissez vos fichiers ici
           </label>
           <div class="file-preview"></div>
         </div>
-        <div class="status-container"></div>
+        <div class="status"></div>
       `;
       element.appendChild(container);
 
-      // Références DOM
+      // 3) Références
       const uploadInput     = container.querySelector('.upload-input');
       const uploadContainer = container.querySelector('.upload-container');
-      const statusContainer = container.querySelector('.status-container');
+      const statusEl        = container.querySelector('.status');
       const filePreview     = container.querySelector('.file-preview');
 
-      // Affichage du statut
       const showStatus = (msg, type) => {
-        statusContainer.textContent = msg;
-        statusContainer.className = 'status-container ' + type;
-        statusContainer.style.display = 'block';
+        statusEl.textContent   = msg;
+        statusEl.className     = 'status ' + type;
+        statusEl.style.display = 'block';
       };
 
-      // Fonction d'upload
+      // 4) Fonction d’upload
       const handleUpload = async (files) => {
         if (!files.length) return;
 
-        // Vérification taille
-        for (const f of files) {
-          if (f.size > maxSize * 1024 * 1024) {
-            return showStatus(`❌ ${f.name} > ${maxSize} Mo`, 'error');
-          }
-        }
-
-        // Preview
-        filePreview.innerHTML = '';
-        Array.from(files).forEach((f) => {
-          const item = document.createElement('div');
-          item.className = 'file-item';
-          item.innerHTML = `
-            <div class="file-name">${f.name}</div>
-            <div class="file-size">${(f.size/(1024*1024)).toFixed(2)} Mo</div>
-          `;
-          filePreview.appendChild(item);
-        });
-
+        // affiche loading
         showStatus(`🔄 Upload de ${files.length} fichier(s)…`, 'loading');
 
-        // Envoi au serveur
-        const formData = new FormData();
-        Array.from(files).forEach((f) => formData.append('files', f));
+        const form = new FormData();
+        Array.from(files).forEach((f) => form.append('files', f));
 
         try {
           const res  = await fetch(
             'https://chatinnov-api-dev.proudsky-cdf9333b.francecentral.azurecontainerapps.io/documents_upload/',
-            { method: 'POST', body: formData }
+            { method: 'POST', body: form }
           );
           const json = await res.json();
           console.log('Upload response:', json);
@@ -125,11 +83,18 @@ export const FileUpload = {
             throw new Error(json.detail || 'Aucune URL renvoyée');
           }
 
-          showStatus(`✅ ${json.urls.length} fichier(s) uploadés !`, 'success');
-          uploadContainer.style.pointerEvents = 'none';
-          uploadContainer.style.opacity       = '0.6';
+          // preview
+          filePreview.innerHTML = '';
+          json.urls.forEach((url) => {
+            const div = document.createElement('div');
+            div.className = 'file-item';
+            div.innerHTML = `<div class="file-name">${url}</div>`;
+            filePreview.appendChild(div);
+          });
 
-          // Envoi du résultat sous forme de JSON stringifié
+          showStatus(`✅ ${json.urls.length} fichier(s) uploadés !`, 'success');
+
+          // 5) Envoi du payload stringifié pour ta JS‑step
           window.voiceflow.chat.interact({
             type: 'complete',
             payload: JSON.stringify({
@@ -137,9 +102,15 @@ export const FileUpload = {
               urls: json.urls
             }),
           });
+
+          // 6) On pousse aussi un message proactif pour sortir le widget de son état “attente”
+          window.voiceflow.chat.proactive.push({
+            type: 'text',
+            payload: { message: 'Vos documents ont bien été reçus !' },
+          });
         } catch (err) {
           console.error('Upload error:', err);
-          showStatus(`❌ Erreur: ${err.message}`, 'error');
+          showStatus(`❌ Erreur : ${err.message}`, 'error');
 
           window.voiceflow.chat.interact({
             type: 'complete',
@@ -148,10 +119,16 @@ export const FileUpload = {
               error: err.message
             }),
           });
+
+          // on peut aussi afficher proactif un message d’erreur
+          window.voiceflow.chat.proactive.push({
+            type: 'text',
+            payload: { message: `Erreur lors de l’upload : ${err.message}` },
+          });
         }
       };
 
-      // Événements : change + drag&drop
+      // 7) Listeners pour select + drag&drop
       uploadInput.addEventListener('change', (e) => handleUpload(e.target.files));
       ['dragenter','dragover'].forEach((ev) =>
         uploadContainer.addEventListener(ev, (e) => {
@@ -166,10 +143,9 @@ export const FileUpload = {
           if (ev === 'drop') handleUpload(e.dataTransfer.files);
         })
       );
-
-    } catch (error) {
-      console.error('Error in FileUpload render:', error);
-      // En cas d’erreur fatale, on complète quand même pour ne pas bloquer le flow
+    } catch (e) {
+      console.error('Error in FileUpload render:', e);
+      // on force un complete même en erreur
       window.voiceflow.chat.interact({
         type: 'complete',
         payload: JSON.stringify({

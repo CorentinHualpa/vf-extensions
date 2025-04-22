@@ -3,7 +3,11 @@ export const FileUpload = {
   type: 'response',
   match: ({ trace }) => {
     // Standardisation du match pour être cohérent avec les autres extensions
-    return trace.type === 'ext_fileUpload' || trace.payload?.name === 'ext_fileUpload' || trace.payload?.name === 'file_upload';
+    return (
+      trace.type === 'ext_fileUpload' ||
+      trace.payload?.name === 'ext_fileUpload' ||
+      trace.payload?.name === 'file_upload'
+    );
   },
   render: ({ trace, element }) => {
     try {
@@ -172,14 +176,14 @@ export const FileUpload = {
               uploadContainer.style.pointerEvents = 'none';
               uploadContainer.style.opacity = '0.7';
 
-              // Délai court pour permettre à l'utilisateur de voir le succès
+              // Envoyer le payload stringifié pour écraser les anciennes URLs
               setTimeout(() => {
                 window.voiceflow.chat.interact({
                   type: 'complete',
-                  payload: {
+                  payload: JSON.stringify({
                     success: true,
                     urls: data.urls
-                  }
+                  })
                 });
               }, 500);
             } else {
@@ -193,14 +197,14 @@ export const FileUpload = {
           console.error('Upload error:', error);
           showStatus(`Erreur: ${error.message}`, 'error');
 
-          // Envoyer l'erreur à Voiceflow après un délai pour permettre à l'utilisateur de voir le message
+          // Envoyer l'erreur stringifiée à Voiceflow
           setTimeout(() => {
             window.voiceflow.chat.interact({
               type: 'complete',
-              payload: {
+              payload: JSON.stringify({
                 success: false,
                 error: error.message
-              }
+              })
             });
           }, 1000);
         }
@@ -253,10 +257,10 @@ export const FileUpload = {
       // En cas d'erreur grave, continuer le flux plutôt que de bloquer
       window.voiceflow.chat.interact({
         type: 'complete',
-        payload: {
+        payload: JSON.stringify({
           success: false,
           error: 'Erreur interne de l\'extension FileUpload'
-        }
+        })
       });
     }
   }

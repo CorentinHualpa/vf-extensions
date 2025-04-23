@@ -33,30 +33,34 @@ export const MultiSelect = {
       container.classList.add('multiselect-container');
       if (sections.length === 1) container.classList.add('one-section');
 
-      const styleEl = document.createElement('style');
-      styleEl.textContent = `
-  /* ────────────────────────────────────────────────────────── */
-  /*  VARIABLES GLOBALES (à ajuster une seule fois)           */
+const accentColor      = trace.payload.buttonColor      // si présent
+                       || trace.payload.color           // ou la couleur de section
+                       || '#4CAF50';                     // fallback
+const bgOpacityDefault = 0.8;                           // par défaut
+
+      
+const styleEl = document.createElement('style');
+
+styleEl.textContent = `
+  /* ─── VARIABLES CSS GLOBALES ────────────────────────── */
   .multiselect-container {
-    --ms-base-fs:         15px;             /* taille de base du texte */
-    --ms-heading-fs:      16px;             /* taille des titres */
-    --ms-small-fs:        14px;             /* labels secondaires */
-    --ms-gap:             8px;              /* espacement “général” */
-    --ms-radius:          6px;              /* arrondis */
-    --ms-shadow:          0 2px 6px rgba(0,0,0,0.15);
-    --ms-accent:          ${buttonColor};
-    --ms-bg-opacity:      ${backgroundOpacity};
+    --ms-accent:        ${accentColor} !important;
+    --ms-bg-opacity:    ${bgOpacityDefault} !important;
+    --ms-base-fs:       15px;
+    --ms-heading-fs:    16px;
+    --ms-small-fs:      14px;
+    --ms-gap:           8px;
+    --ms-radius:        6px;
+    --ms-shadow:        0 2px 6px rgba(0,0,0,0.15);
   }
 
-  /* ────────────────────────────────────────────────────────── */
-  /* 1. RESET / BOX-SIZING                                    */
+  /* ─── 1. RESET BOX-SIZING ───────────────────────────── */
   .multiselect-container,
   .multiselect-container * {
     box-sizing: border-box !important;
   }
 
-  /* ────────────────────────────────────────────────────────── */
-  /* 2. CONTENEUR PRINCIPAL                                   */
+  /* ─── 2. CONTENEUR PRINCIPAL ────────────────────────── */
   .multiselect-container {
     display: flex !important;
     flex-direction: column !important;
@@ -66,8 +70,7 @@ export const MultiSelect = {
     color: #fff;
   }
 
-  /* ────────────────────────────────────────────────────────── */
-  /* 3. GRILLE DES SECTIONS (2 COLS)                          */
+  /* ─── 3. GRILLE (2 COLS) ───────────────────────────── */
   .multiselect-container .sections-grid {
     display: grid !important;
     grid-template-columns: repeat(2,1fr) !important;
@@ -77,10 +80,9 @@ export const MultiSelect = {
     grid-template-columns: 1fr !important;
   }
 
-  /* ────────────────────────────────────────────────────────── */
-  /* 4. CHAQUE SECTION                                        */
+  /* ─── 4. SECTION ────────────────────────────────────── */
   .multiselect-container .section-container {
-    background: inherit;            /* laisse la couleur inline */
+    background: inherit;               /* palette inline via element.style.backgroundColor */
     border-radius: var(--ms-radius) !important;
     overflow: hidden !important;
     box-shadow: var(--ms-shadow) !important;
@@ -90,8 +92,7 @@ export const MultiSelect = {
     transform: translateY(-2px) !important;
   }
 
-  /* ────────────────────────────────────────────────────────── */
-  /* 5. TITRE DE SECTION                                       */
+  /* ─── 5. TITRE ─────────────────────────────────────── */
   .multiselect-container .section-title {
     padding: var(--ms-gap) !important;
     font-weight: 700 !important;
@@ -100,33 +101,30 @@ export const MultiSelect = {
     margin-bottom: var(--ms-gap) !important;
   }
 
-  /* ────────────────────────────────────────────────────────── */
-  /* 6. LISTE D'OPTIONS                                       */
+  /* ─── 6. OPTIONS-LIST ───────────────────────────────── */
   .multiselect-container .options-list {
     display: grid !important;
     grid-template-columns: 1fr !important;
-    gap: calc(var(--ms-gap) / 2) !important;
-    padding: calc(var(--ms-gap) / 2) !important;
+    gap: calc(var(--ms-gap)/2) !important;
+    padding: calc(var(--ms-gap)/2) !important;
   }
   .multiselect-container .options-list.grid-2cols {
     grid-template-columns: 1fr 1fr !important;
   }
 
-  /* ────────────────────────────────────────────────────────── */
-  /* 7. BLOC NON-CLIQUABLE                                     */
+  /* ─── 7. BLOC NON-CLIQUABLE ────────────────────────── */
   .multiselect-container .non-selectable-block {
     background-color: rgba(0,0,0,0.25) !important;
     border: 1px solid rgba(255,255,255,0.2) !important;
-    border-radius: calc(var(--ms-radius)-2px) !important;
+    border-radius: calc(var(--ms-radius) - 2px) !important;
     padding: 4px 8px !important;
     font-size: var(--ms-small-fs) !important;
   }
 
-  /* ────────────────────────────────────────────────────────── */
-  /* 8. OPTION CLIQUABLE                                       */
+  /* ─── 8. OPTION CLIQUABLE ─────────────────────────── */
   .multiselect-container .option-container {
     display: flex !important;
-    align-items: flex-start !important;  /* colle la checkbox sur la première ligne */
+    align-items: flex-start !important;
     gap: calc(var(--ms-gap)/2) !important;
   }
   .multiselect-container .option-container label {
@@ -149,8 +147,7 @@ export const MultiSelect = {
     cursor: not-allowed !important;
   }
 
-  /* ────────────────────────────────────────────────────────── */
-  /* 9. CHECKBOX & RADIO STYLING                               */
+  /* ─── 9. CHECKBOX & RADIO ──────────────────────────── */
   .multiselect-container .option-container input[type="checkbox"],
   .multiselect-container .option-container input[type="radio"] {
     all: unset !important;
@@ -158,9 +155,9 @@ export const MultiSelect = {
     -webkit-appearance: none !important;
     box-sizing: border-box !important;
 
-    width: 16px !important;                /* légèrement plus grand */
+    width: 16px !important;
     height: 16px !important;
-    aspect-ratio: 1/1 !important;          /* vrai cercle */
+    aspect-ratio: 1/1 !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -183,8 +180,7 @@ export const MultiSelect = {
     margin: auto !important;
   }
 
-  /* ────────────────────────────────────────────────────────── */
-  /* 10. CHAMP LIBRE (USER INPUT)                               */
+  /* ─── 10. USER INPUT ────────────────────────────────── */
   .multiselect-container .user-input-container {
     grid-column: 1/-1 !important;
     margin-top: var(--ms-gap) !important;
@@ -206,8 +202,7 @@ export const MultiSelect = {
     border-color: var(--ms-accent) !important;
   }
 
-  /* ────────────────────────────────────────────────────────── */
-  /* 11. BOUTONS MULTI-SELECT                                   */
+  /* ─── 11. BOUTONS ───────────────────────────────────── */
   .multiselect-container .buttons-container {
     display: flex !important;
     justify-content: center !important;
@@ -229,8 +224,7 @@ export const MultiSelect = {
     transform: translateY(-1px) !important;
   }
 
-  /* ────────────────────────────────────────────────────────── */
-  /* 12. LOCK UI (DÉSACTIVATION)                               */
+  /* ─── 12. LOCK UI ───────────────────────────────────── */
   .multiselect-container.disabled-container {
     opacity: 0.5 !important;
     pointer-events: none !important;

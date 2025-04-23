@@ -21,7 +21,7 @@ export const MultiSelect = {
       // Pour stocker la saisie libre
       const userInputValues = {};
 
-      // utilitaire pour nettoyer un HTML échappé
+      // utilitaire pour nettoyer un HTML échappé (uniquement pour existence de label)
       const stripHTML = (html = '') => {
         const tmp = document.createElement('div');
         tmp.innerHTML = html;
@@ -243,7 +243,11 @@ export const MultiSelect = {
             container.classList.add('disabled-container');
             window.voiceflow.chat.interact({
               type: 'complete',
-              payload: { selection: stripHTML(opt.name), buttonPath: 'Default' }
+              payload: {
+                // <-- on passe le HTML complet, sans stripHTML
+                selection: opt.name,
+                buttonPath: 'Default'
+              }
             });
           }
         });
@@ -251,7 +255,7 @@ export const MultiSelect = {
         const lbl = document.createElement('label');
         lbl.appendChild(inp);
         const sp = document.createElement('span');
-        sp.innerHTML = opt.name;
+        sp.innerHTML = opt.name; 
         lbl.appendChild(sp);
         wrap.appendChild(lbl);
         return wrap;
@@ -335,12 +339,13 @@ export const MultiSelect = {
           b.addEventListener('click', () => {
             // lock UI
             container.classList.add('disabled-container');
-            // reconstruire le payload
+            // reconstruire le payload selections[]
             const finalSections = sections.map((sec, idx) => {
               const domSec = grid.children[idx];
               const checked = Array.from(domSec.querySelectorAll('input:checked'));
               const sels = checked.map(cb =>
-                stripHTML(cb.parentElement.querySelector('span').innerHTML.trim())
+                // <-- on récupère le HTML, sans stripHTML
+                cb.parentElement.querySelector('span').innerHTML.trim()
               );
               return {
                 section: sec.label,
@@ -349,6 +354,7 @@ export const MultiSelect = {
               };
             }).filter(s => s.selections.length > 0 || s.userInput);
 
+            // payload complet
             const payload = {
               selections: finalSections,
               buttonText: cfg.text,
@@ -367,10 +373,8 @@ export const MultiSelect = {
       console.log("✅ MultiSelect prêt");
     } catch (err) {
       console.error("❌ Erreur MultiSelect :", err);
-      window.voiceflow.chat.interact({
-        type: 'complete',
-        payload: { error: true, message: err.message }
-      });
+      // en cas d’erreur on renvoie un complete pour ne pas bloquer le flow
+      window.voiceflow.chat.interact({ type: 'complete', payload: { error: true, message: err.message } });
     }
   }
 };

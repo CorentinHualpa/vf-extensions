@@ -1,10 +1,3 @@
-/**
- *  MultiSelect – Extension Voiceflow
- *  ───────────────────────────────────
- *  • payload minimal : sections[] (+ multiselect, totalMaxSelect)
- *  • toutes les couleurs / tailles sont gérées ici dans le <style>
- *  • commentaire détaillé pour chaque bloc, en particulier les tailles de texte
- */
 export const MultiSelect = {
   name: 'MultiSelect',
   type: 'response',
@@ -152,25 +145,37 @@ export const MultiSelect = {
 .multiselect-container .option-container{
   display:flex !important;
   align-items:flex-start !important;
-  gap:calc(var(--ms-gap)/2)!important;
+  gap:calc(var(--ms-gap)/2) !important;
 }
+
+/* ── 8-A  état normal ───────────────────────────────────── */
 .multiselect-container .option-container label{
   display:flex !important;
   align-items:center !important;
-  gap:calc(var(--ms-gap)/2)!important;
+  gap:calc(var(--ms-gap)/2) !important;
   width:100% !important;
-  padding:calc(var(--ms-gap)/2)!important;
-  background:var(--section-bg,rgba(0,0,0,var(--ms-bg-opacity)))!important;
-  border-radius:var(--ms-radius)!important;
+  padding:calc(var(--ms-gap)/2) !important;
+
+  /* ▼ Fond noir 80 % d’opacité (variable) */
+  background-color:rgba(0,0,0,var(--ms-bg-opacity)) !important; 
+  border-radius:var(--ms-radius) !important;
   cursor:pointer !important;
-  transition:background-color .2s, box-shadow .2s !important;
+  transition:background-color .2s ease, box-shadow .2s ease !important;
 }
+
+/* ── 8-B  état hover : +0.1 d’opacité ───────────────────── */
 .multiselect-container .option-container label:hover{
-  background:rgba(0,0,0,calc(var(--ms-bg-opacity)+.1))!important;
-  box-shadow:var(--ms-shadow)!important;
+  background-color:rgba(
+    0,0,0,
+    calc(var(--ms-bg-opacity) + 0.1)
+  ) !important;
+  box-shadow:var(--ms-shadow) !important;
 }
+
+/* ── 8-C  option grisée / inactive ───────────────────────── */
 .multiselect-container .option-container.greyed-out-option label{
-  opacity:.5 !important; cursor:not-allowed !important;
+  opacity:.5 !important;
+  cursor:not-allowed !important;
 }
 
 /* ╔══════════════════════╗ */

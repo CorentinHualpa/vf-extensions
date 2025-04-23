@@ -35,7 +35,6 @@ export const MultiSelect = {
 
       const styleEl = document.createElement('style');
       styleEl.textContent = `
-<style>
   /* ────────────────────────────────────────────────────────── */
   /*  VARIABLES GLOBALES (à ajuster une seule fois)           */
   .multiselect-container {
@@ -236,7 +235,6 @@ export const MultiSelect = {
     opacity: 0.5 !important;
     pointer-events: none !important;
   }
-</style>
 `;
 
       container.appendChild(styleEl);

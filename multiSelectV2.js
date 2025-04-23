@@ -218,29 +218,34 @@ export const MultiSelect = {
 
 /* ────────────────────────────────────────────────────────── */
 /* 10. CHAMP LIBRE (USER INPUT)                              */
-/*     ► label + field à petit texte                         */
+/*     ► Espacements ajustés entre le label et le champ      */
 /* ────────────────────────────────────────────────────────── */
 .multiselect-container .user-input-container {
   grid-column: 1 / -1 !important;
-  margin-top: var(--ms-gap) !important;
-  margin-bottom: 4px !important;
+  margin-top: var(--ms-gap) !important;    /* ► Espace au-dessus du texte d’instruction */
+  /* (on ne gère pas de margin-bottom ici pour éviter un vide sous le champ) */
 }
+
 .multiselect-container .user-input-label {
-  font-size: var(--ms-small-fs) !important; /* label input */
-  margin-bottom: 4px !important;
+  font-size: var(--ms-small-fs) !important; /* ► Taille du texte d’instruction */
+  margin-bottom: 16px !important;           /* ► Espace sous le label → entre texte et champ */
 }
+
 .multiselect-container .user-input-field {
+  margin-top: 8px !important;               /* ► Optionnel : espace au-dessus du champ */
   width: 100% !important;
   padding: 6px !important;
   border-radius: var(--ms-radius) !important;
   border: 1px solid rgba(255,255,255,0.3) !important;
-  font-size: var(--ms-small-fs) !important; /* texte input */
+  font-size: var(--ms-small-fs) !important; /* ► Taille du texte à l’intérieur du champ */
   transition: box-shadow .2s ease !important;
 }
+
 .multiselect-container .user-input-field:focus {
   box-shadow: 0 0 0 2px rgba(255,255,255,0.4) !important;
   border-color: var(--ms-accent) !important;
 }
+
 
 /* ────────────────────────────────────────────────────────── */
 /* 11. BOUTONS MULTI-SELECT                                  */

@@ -223,6 +223,7 @@ export const MultiSelect = {
 .multiselect-container .user-input-container {
   grid-column: 1 / -1 !important;
   margin-top: var(--ms-gap) !important;
+  margin-bottom: 4px !important;
 }
 .multiselect-container .user-input-label {
   font-size: var(--ms-small-fs) !important; /* label input */

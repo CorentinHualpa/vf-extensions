@@ -43,14 +43,14 @@ export const MultiSelect = {
   /* ► OPACITÉ FOND DES OPTIONS (valeur entre 0 et 1) */
   --ms-bg-opacity:   0.8;
 
-  /* ► TAILLE DE POLICE PAR DÉFAUT (texte général) */
-  --ms-base-fs:      15px;
-
   /* ► TAILLE DE POLICE POUR LES TITRES DE SECTION */
   --ms-heading-fs:   16px;
 
   /* ► TAILLE DE POLICE POUR LES LABELS SECONDAIRES ET CHAMPS */
-  --ms-small-fs:     14px;
+  --ms-small-fs:     15px;
+
+ /* ► TAILLE DE POLICE PAR DÉFAUT (texte général) */
+  --ms-base-fs:      14px;
 
   /* ► ESPACEMENT GÉNÉRAL ENTRE ÉLÉMENTS */
   --ms-gap:          8px;

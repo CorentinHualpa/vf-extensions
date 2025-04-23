@@ -35,217 +35,208 @@ export const MultiSelect = {
 
       const styleEl = document.createElement('style');
       styleEl.textContent = `
-  /* ============================= */
-  /* === 1. RESET BOX-SIZING ==== */
-  /* ============================= */
+<style>
+  /* ────────────────────────────────────────────────────────── */
+  /*  VARIABLES GLOBALES (à ajuster une seule fois)           */
+  .multiselect-container {
+    --ms-base-fs:         15px;             /* taille de base du texte */
+    --ms-heading-fs:      16px;             /* taille des titres */
+    --ms-small-fs:        14px;             /* labels secondaires */
+    --ms-gap:             8px;              /* espacement “général” */
+    --ms-radius:          6px;              /* arrondis */
+    --ms-shadow:          0 2px 6px rgba(0,0,0,0.15);
+    --ms-accent:          ${buttonColor};
+    --ms-bg-opacity:      ${backgroundOpacity};
+  }
+
+  /* ────────────────────────────────────────────────────────── */
+  /* 1. RESET / BOX-SIZING                                    */
   .multiselect-container,
   .multiselect-container * {
     box-sizing: border-box !important;
   }
 
-  /* ================================== */
-  /* === 2. CONTENEUR PRINCIPAL ======= */
-  /* ================================== */
+  /* ────────────────────────────────────────────────────────── */
+  /* 2. CONTENEUR PRINCIPAL                                   */
   .multiselect-container {
-    display: flex !important;               /* ► FLEX-COLONNE */
-    flex-direction: column !important;      /* ► ORIENTATION VERTICALE */
-    width: 100% !important;                 /* ► OCCUPE TOUTE LA LARGEUR */
-    font-family: 'Inter','Segoe UI',system-ui,-apple-system,sans-serif !important; /* ► POLICE */
-    font-size: 15px !important;             /* ► TAILLE DE BASE FIXE EN PX */
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    font-family: 'Inter','Segoe UI',system-ui,-apple-system,sans-serif !important;
+    font-size: var(--ms-base-fs) !important;
+    color: #fff;
   }
 
-  /* ===================================== */
-  /* === 3. GRILLE DES SECTIONS (2 COLS) == */
-  /* ===================================== */
+  /* ────────────────────────────────────────────────────────── */
+  /* 3. GRILLE DES SECTIONS (2 COLS)                          */
   .multiselect-container .sections-grid {
-    display: grid !important;               /* ► GRID LAYOUT */
-    grid-template-columns: repeat(2, 1fr) !important; /* ► 2 COLONNES ÉGALES */
-    gap: 12px !important;                   /* ► ÉCART ENTRE LES SECTIONS */
+    display: grid !important;
+    grid-template-columns: repeat(2,1fr) !important;
+    gap: var(--ms-gap) !important;
   }
   .multiselect-container.one-section .sections-grid {
-    grid-template-columns: 1fr !important;  /* ► CAS 1 SEULE SECTION */
+    grid-template-columns: 1fr !important;
   }
 
-  /* ===================================== */
-  /* === 4. CONTAINER DE CHAQUE SECTION == */
-  /* ===================================== */
+  /* ────────────────────────────────────────────────────────── */
+  /* 4. CHAQUE SECTION                                        */
   .multiselect-container .section-container {
-    display: flex !important;               /* ► FLEX-COLONNE */
-    flex-direction: column !important;
-    border-radius: 6px !important;          /* ► BORDS ARRONDIS */
-    overflow: hidden !important;            /* ► COUPE DÉPASSEMENTS */
+    background: inherit;            /* laisse la couleur inline */
+    border-radius: var(--ms-radius) !important;
+    overflow: hidden !important;
+    box-shadow: var(--ms-shadow) !important;
+    transition: transform .2s ease !important;
+  }
+  .multiselect-container .section-container:hover {
+    transform: translateY(-2px) !important;
   }
 
-  /* ===================================== */
-  /* === 5. TITRE DE SECTION ============= */
-  /* ===================================== */
+  /* ────────────────────────────────────────────────────────── */
+  /* 5. TITRE DE SECTION                                       */
   .multiselect-container .section-title {
-    display: block !important;              /* ► BLOC */
-    padding: 6px !important;                /* ► PADDING INTERNE */
-    color: #fff !important;                 /* ► COULEUR DU TEXTE */
-    font-weight: 700 !important;            /* ► GRAS */
-    font-size: 16px !important;             /* ► TAILLE DU TITRE */
-    border-bottom: 2px solid rgba(255,255,255,0.3) !important; /* ► SOULIGNEMENT */
-    margin-bottom: 6px !important;          /* ► MARGE BAS */
+    padding: var(--ms-gap) !important;
+    font-weight: 700 !important;
+    font-size: var(--ms-heading-fs) !important;
+    border-bottom: 2px solid rgba(255,255,255,0.3) !important;
+    margin-bottom: var(--ms-gap) !important;
   }
 
-  /* ===================================== */
-  /* === 6. LISTE D'OPTIONS ============= */
-  /* ===================================== */
+  /* ────────────────────────────────────────────────────────── */
+  /* 6. LISTE D'OPTIONS                                       */
   .multiselect-container .options-list {
-    display: grid !important;               /* ► GRID */
-    grid-template-columns: 1fr !important;  /* ► 1 COLONNE */
-    gap: 6px !important;                    /* ► ÉCART ENTRE OPTIONS */
-    padding: 6px !important;                /* ► PADDING INTÉRIEUR */
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: calc(var(--ms-gap) / 2) !important;
+    padding: calc(var(--ms-gap) / 2) !important;
   }
   .multiselect-container .options-list.grid-2cols {
-    grid-template-columns: 1fr 1fr !important; /* ► 2 COLONNES SI >10 OPTIONS */
+    grid-template-columns: 1fr 1fr !important;
   }
 
-  /* ===================================== */
-  /* === 7. BLOC NON-CLIQUABLE (CHILD) === */
-  /* ===================================== */
+  /* ────────────────────────────────────────────────────────── */
+  /* 7. BLOC NON-CLIQUABLE                                     */
   .multiselect-container .non-selectable-block {
-    background-color: rgba(0,0,0,0.3) !important; /* ► FOND GRIS TRANSPARENT */
-    border: 1px solid rgba(255,255,255,0.2) !important; /* ► BORDURE LÉGÈRE */
-    border-radius: 4px !important;           /* ► BORDS ARRONDIS */
-    padding: 4px 8px !important;             /* ► PADDING */
-    color: #fff !important;                  /* ► TEXTE BLANC */
-  }
-  .multiselect-container .children-options {
-    display: flex !important;                /* ► FLEX-COLONNE */
-    flex-direction: column !important;
-    gap: 4px !important;                     /* ► ÉCART ENTRE ENFANTS */
-    margin: 4px 0 0 16px !important;         /* ► DÉCALAGE À DROITE */
+    background-color: rgba(0,0,0,0.25) !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    border-radius: calc(var(--ms-radius)-2px) !important;
+    padding: 4px 8px !important;
+    font-size: var(--ms-small-fs) !important;
   }
 
-  /* ===================================== */
-  /* === 8. OPTION CLIQUABLE ============ */
-  /* ===================================== */
+  /* ────────────────────────────────────────────────────────── */
+  /* 8. OPTION CLIQUABLE                                       */
   .multiselect-container .option-container {
-    display: flex !important;               /* ► AFFICHE EN LIGNE */
-    align-items: center !important;         /* ► ALIGNEMENT VERTICAL */
-  }
-  .multiselect-container .option-container.greyed-out-option label {
-    opacity: 0.5 !important;                /* ► OPTION DÉSACTIVÉE */
-    cursor: not-allowed !important;         /* ► CURSEUR INTERDIT */
+    display: flex !important;
+    align-items: flex-start !important;  /* colle la checkbox sur la première ligne */
+    gap: calc(var(--ms-gap)/2) !important;
   }
   .multiselect-container .option-container label {
     display: flex !important;
     align-items: center !important;
-    gap: 6px !important;                    /* ► ESPACE ENTRE CHECK & TEXTE */
+    gap: calc(var(--ms-gap)/2) !important;
     width: 100% !important;
-    padding: 6px !important;                /* ► PADDING OPTION */
-    background-color: rgba(0,0,0,${backgroundOpacity}) !important; /* ► FOND */
-    color: #fff !important;
-    border-radius: 4px !important;
+    padding: calc(var(--ms-gap)/2) !important;
+    background-color: rgba(0,0,0,var(--ms-bg-opacity)) !important;
+    border-radius: var(--ms-radius) !important;
     cursor: pointer !important;
-    transition: background 0.2s !important; /* ► ANIMATION HOVER */
+    transition: background-color .2s ease, box-shadow .2s ease !important;
   }
   .multiselect-container .option-container label:hover {
-    background-color: rgba(0,0,0,${Math.min(backgroundOpacity + 0.1,1)}) !important; /* ► SURVOL */
+    background-color: rgba(0,0,0,calc(var(--ms-bg-opacity)+0.1)) !important;
+    box-shadow: var(--ms-shadow) !important;
+  }
+  .multiselect-container .option-container.greyed-out-option label {
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
   }
 
-  /* ===================================== */
-  /* === 9. CHECKBOX & RADIO STYLING ===== */
-  /* ===================================== */
+  /* ────────────────────────────────────────────────────────── */
+  /* 9. CHECKBOX & RADIO STYLING                               */
   .multiselect-container .option-container input[type="checkbox"],
   .multiselect-container .option-container input[type="radio"] {
-    all: unset !important;                  /* ► RESET COMPLET */
-    appearance: none !important;            /* ► SUPPRESSION STYLE NATIVE */
+    all: unset !important;
+    appearance: none !important;
     -webkit-appearance: none !important;
     box-sizing: border-box !important;
 
-    width: 14px !important;                 /* ► TAILLE FIXE */
-    height: 14px !important;                /* ► HAUTEUR FIXE */
-    aspect-ratio: 1 / 1 !important;         /* ► GARANTIT UN VRAI CERCLE */
-
-    display: inline-flex !important;        /* ► POUR CENTRER LA PASTILLE */
+    width: 16px !important;                /* légèrement plus grand */
+    height: 16px !important;
+    aspect-ratio: 1/1 !important;          /* vrai cercle */
+    display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
 
-    border: 2px solid ${buttonColor} !important; /* ► BORDURE COLORÉE */
-    border-radius: 50% !important;          /* ► ROND PARFAIT */
+    border: 2px solid var(--ms-accent) !important;
+    border-radius: 50% !important;
     background-color: #fff !important;
-    cursor: pointer !important;
-    vertical-align: middle !important;
+    transition: transform .1s ease !important;
+  }
+  .multiselect-container .option-container input:hover {
+    transform: scale(1.1) !important;
   }
   .multiselect-container .option-container input:checked::after {
     content: '' !important;
     display: block !important;
-    width: 6px !important;                  /* ► PASTILLE INTERNE */
-    height: 6px !important;
+    width: 8px !important;
+    height: 8px !important;
     border-radius: 50% !important;
-    background-color: ${buttonColor} !important;
+    background-color: var(--ms-accent) !important;
     margin: auto !important;
   }
 
-  /* BONUS: ALIGNEMENT SUR 2 LIGNES DE TEXTE */
-  .multiselect-container .option-container {
-    align-items: flex-start !important;     /* ► colle le cercle sur la 1ʳᵉ ligne */
-  }
-  .multiselect-container .option-container input {
-    margin-top: 2px !important;             /* ► léger offset vertical */
-  }
-
-  /* ===================================== */
-  /* === 10. CHAMP LIBRE (USER INPUT) ==== */
-  /* ===================================== */
+  /* ────────────────────────────────────────────────────────── */
+  /* 10. CHAMP LIBRE (USER INPUT)                               */
   .multiselect-container .user-input-container {
-    margin-top: 6px !important;             /* ► MARGE HAUT */
-    grid-column: 1 / -1 !important;         /* ► S’ETEND SUR TOUTES LES COLS */
+    grid-column: 1/-1 !important;
+    margin-top: var(--ms-gap) !important;
   }
   .multiselect-container .user-input-label {
-    display: block !important;
-    margin-bottom: 3px !important;          /* ► ESPACE AVEC LE CHAMP */
-    color: #fff !important;
-    font-weight: 500 !important;
-    font-size: 16px !important;             /* ► TAILLE DU LABEL */
+    font-size: var(--ms-small-fs) !important;
+    margin-bottom: 4px !important;
   }
   .multiselect-container .user-input-field {
     width: 100% !important;
-    padding: 4px !important;                /* ► PADDING INTERNE */
-    border-radius: 4px !important;
+    padding: 6px !important;
+    border-radius: var(--ms-radius) !important;
     border: 1px solid rgba(255,255,255,0.3) !important;
-    font-size: 16px !important;             /* ► TAILLE DU TEXTE */
+    font-size: var(--ms-small-fs) !important;
+    transition: box-shadow .2s ease !important;
   }
   .multiselect-container .user-input-field:focus {
-    outline: none !important;
-    box-shadow: 0 0 0 2px rgba(255,255,255,0.3) !important; /* ► MISE EN ÉVIDENCE */
-    border-color: ${buttonColor} !important;
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.4) !important;
+    border-color: var(--ms-accent) !important;
   }
 
-  /* ===================================== */
-  /* === 11. BOUTONS MULTI-SELECT ======== */
-  /* ===================================== */
+  /* ────────────────────────────────────────────────────────── */
+  /* 11. BOUTONS MULTI-SELECT                                   */
   .multiselect-container .buttons-container {
     display: flex !important;
-    justify-content: center !important;     /* ► CENTRAGE */
-    gap: 8px !important;                    /* ► ESPACE ENTRE BOUTONS */
-    padding: 8px !important;                /* ► PADDING GLOBAL */
+    justify-content: center !important;
+    gap: var(--ms-gap) !important;
+    padding: var(--ms-gap) !important;
   }
   .multiselect-container .submit-btn {
-    all: unset !important;
-    background-color: ${buttonColor} !important; /* ► COULEUR DU BOUTON */
+    background-color: var(--ms-accent) !important;
     color: #fff !important;
-    padding: 6px 10px !important;           /* ► PADDING INTERNE */
-    border-radius: 4px !important;
+    padding: 8px 14px !important;
+    border-radius: var(--ms-radius) !important;
     font-weight: 600 !important;
     text-align: center !important;
     cursor: pointer !important;
-    transition: opacity 0.2s !important;
+    transition: background-color .2s ease, transform .1s ease !important;
   }
   .multiselect-container .submit-btn:hover {
-    opacity: 0.85 !important;               /* ► HOVER FADE */
+    background-color: darken(var(--ms-accent),10%) !important;
+    transform: translateY(-1px) !important;
   }
 
-  /* ===================================== */
-  /* === 12. LOCK UI (DÉSACTIVATION) ===== */
-  /* ===================================== */
+  /* ────────────────────────────────────────────────────────── */
+  /* 12. LOCK UI (DÉSACTIVATION)                               */
   .multiselect-container.disabled-container {
-    opacity: 0.5 !important;                /* ► FADE OUT GLOBAL */
-    pointer-events: none !important;        /* ► PAS DE CLIC POSSIBLE */
+    opacity: 0.5 !important;
+    pointer-events: none !important;
   }
+</style>
 `;
 
       container.appendChild(styleEl);

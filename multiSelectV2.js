@@ -34,8 +34,7 @@ export const MultiSelect = {
       if (sections.length === 1) container.classList.add('one-section');
 
       const styleEl = document.createElement('style');
-
-styleEl.textContent = `
+      styleEl.textContent = `
   /* ============================= */
   /* === 1. RESET BOX-SIZING ==== */
   /* ============================= */
@@ -48,7 +47,7 @@ styleEl.textContent = `
   /* === 2. CONTENEUR PRINCIPAL ======= */
   /* ================================== */
   .multiselect-container {
-    display: flex !important;               /* ► AFFICHE EN FLEX-COLONNE */
+    display: flex !important;               /* ► FLEX-COLONNE */
     flex-direction: column !important;      /* ► ORIENTATION VERTICALE */
     width: 100% !important;                 /* ► OCCUPE TOUTE LA LARGEUR */
     font-family: 'Inter','Segoe UI',system-ui,-apple-system,sans-serif !important; /* ► POLICE */
@@ -155,8 +154,16 @@ styleEl.textContent = `
     all: unset !important;                  /* ► RESET COMPLET */
     appearance: none !important;            /* ► SUPPRESSION STYLE NATIVE */
     -webkit-appearance: none !important;
+    box-sizing: border-box !important;
+
     width: 14px !important;                 /* ► TAILLE FIXE */
-    height: 14px !important;
+    height: 14px !important;                /* ► HAUTEUR FIXE */
+    aspect-ratio: 1 / 1 !important;         /* ► GARANTIT UN VRAI CERCLE */
+
+    display: inline-flex !important;        /* ► POUR CENTRER LA PASTILLE */
+    align-items: center !important;
+    justify-content: center !important;
+
     border: 2px solid ${buttonColor} !important; /* ► BORDURE COLORÉE */
     border-radius: 50% !important;          /* ► ROND PARFAIT */
     background-color: #fff !important;
@@ -171,6 +178,14 @@ styleEl.textContent = `
     border-radius: 50% !important;
     background-color: ${buttonColor} !important;
     margin: auto !important;
+  }
+
+  /* BONUS: ALIGNEMENT SUR 2 LIGNES DE TEXTE */
+  .multiselect-container .option-container {
+    align-items: flex-start !important;     /* ► colle le cercle sur la 1ʳᵉ ligne */
+  }
+  .multiselect-container .option-container input {
+    margin-top: 2px !important;             /* ► léger offset vertical */
   }
 
   /* ===================================== */
@@ -233,7 +248,6 @@ styleEl.textContent = `
   }
 `;
 
-
       container.appendChild(styleEl);
 
       // ─── 3) Gestion du max de sélection ─────────────────────────
@@ -274,12 +288,10 @@ styleEl.textContent = `
         inp.addEventListener('change', () => {
           updateTotalChecked();
           if (!multiselect) {
-            // single-select → envoie immédiat + lock
             container.classList.add('disabled-container');
             window.voiceflow.chat.interact({
               type: 'complete',
               payload: {
-                // <-- on passe le HTML complet, sans stripHTML
                 selection: opt.name,
                 buttonPath: 'Default'
               }
@@ -304,7 +316,6 @@ styleEl.textContent = `
         sc.classList.add('section-container');
         if (sec.color) sc.style.backgroundColor = sec.color;
 
-        // titre de section (HTML autorisé dans label)
         if (sec.label && stripHTML(sec.label).trim()) {
           const h2 = document.createElement('div');
           h2.classList.add('section-title');
@@ -312,15 +323,12 @@ styleEl.textContent = `
           sc.appendChild(h2);
         }
 
-        // container des options
         const ol = document.createElement('div');
         ol.classList.add('options-list');
         if ((sec.options||[]).length > 10) ol.classList.add('grid-2cols');
 
-        // pour chaque option
         (sec.options||[]).forEach(opt => {
           if (opt.action === 'user_input') {
-            // champ libre
             userInputValues[sec.label] = '';
             const divUI = document.createElement('div');
             divUI.classList.add('user-input-container');
@@ -341,11 +349,7 @@ styleEl.textContent = `
                 container.classList.add('disabled-container');
                 window.voiceflow.chat.interact({
                   type: 'complete',
-                  payload: {
-                    isUserInput: true,
-                    userInput: v,
-                    buttonPath: 'Default'
-                  }
+                  payload: { isUserInput: true, userInput: v, buttonPath: 'Default' }
                 });
               }
             });
@@ -353,7 +357,6 @@ styleEl.textContent = `
             divUI.appendChild(inp);
             ol.appendChild(divUI);
           } else {
-            // option normale
             ol.appendChild(createOptionElement(opt));
           }
         });
@@ -363,7 +366,7 @@ styleEl.textContent = `
       });
       container.appendChild(grid);
 
-      // ─── 6) Bouton(s) pour multiselect=true ────────────────────
+      // ─── 6) Boutons pour multiselect=true ───────────────────────
       if (multiselect && buttons.length) {
         const bc = document.createElement('div');
         bc.classList.add('buttons-container');
@@ -372,31 +375,25 @@ styleEl.textContent = `
           b.classList.add('submit-btn');
           b.textContent = cfg.text;
           b.addEventListener('click', () => {
-            // lock UI
             container.classList.add('disabled-container');
-            // reconstruire le payload selections[]
-            const finalSections = sections.map((sec, idx) => {
-              const domSec = grid.children[idx];
-              const checked = Array.from(domSec.querySelectorAll('input:checked'));
-              const sels = checked.map(cb =>
-                // <-- on récupère le HTML, sans stripHTML
-                cb.parentElement.querySelector('span').innerHTML.trim()
-              );
-              return {
-                section: sec.label,
-                selections: sels,
-                userInput: userInputValues[sec.label] || ''
-              };
-            }).filter(s => s.selections.length > 0 || s.userInput);
+            const finalSections = sections
+              .map((sec, idx) => {
+                const domSec = grid.children[idx];
+                const sels = Array.from(domSec.querySelectorAll('input:checked'))
+                  .map(cb => cb.parentElement.querySelector('span').innerHTML.trim());
+                return { section: sec.label, selections: sels, userInput: userInputValues[sec.label] || '' };
+              })
+              .filter(s => s.selections.length > 0 || s.userInput);
 
-            // payload complet
-            const payload = {
-              selections: finalSections,
-              buttonText: cfg.text,
-              buttonPath: cfg.path || 'Default',
-              isEmpty: finalSections.every(s => s.selections.length === 0 && !s.userInput)
-            };
-            window.voiceflow.chat.interact({ type: 'complete', payload });
+            window.voiceflow.chat.interact({
+              type: 'complete',
+              payload: {
+                selections: finalSections,
+                buttonText: cfg.text,
+                buttonPath: cfg.path || 'Default',
+                isEmpty: finalSections.every(s => s.selections.length === 0 && !s.userInput)
+              },
+            });
           });
           bc.appendChild(b);
         });
@@ -408,7 +405,6 @@ styleEl.textContent = `
       console.log("✅ MultiSelect prêt");
     } catch (err) {
       console.error("❌ Erreur MultiSelect :", err);
-      // en cas d’erreur on renvoie un complete pour ne pas bloquer le flow
       window.voiceflow.chat.interact({ type: 'complete', payload: { error: true, message: err.message } });
     }
   }

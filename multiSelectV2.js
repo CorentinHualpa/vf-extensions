@@ -34,14 +34,18 @@ export const MultiSelect = {
       if (!chat) {
         const chatStyle = document.createElement('style');
         chatStyle.textContent = `
-          /* Hide Voiceflow chat input so user can only use this widget */
-          .vfrc-footer, .vfrc-input, .vfrc-chat-input--button {
+          /* Quand chat=false, on masque tout le footer et la zone de saisie */
+          .vfrc-footer,
+          .vfrc-input-container,
+          .vfrc-chat-input,
+          .vfrc-input-container button,
+          #vfrc-send-message {
             display: none !important;
           }
         `;
         document.head.appendChild(chatStyle);
       }
-
+      
       /* ══ 4. Patch chat.interact to auto-disable widget on user chat ══ */
       if (chat && window.voiceflow && window.voiceflow.chat && window.voiceflow.chat.interact) {
         const originalInteract = window.voiceflow.chat.interact.bind(window.voiceflow.chat);

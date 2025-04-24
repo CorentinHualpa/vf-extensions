@@ -441,4 +441,5 @@ export const MultiSelect = {
         payload: { error: true, message: err.message }
       });
     }
- 
+  }
+};

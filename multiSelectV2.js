@@ -1,25 +1,14 @@
-/**
- *  ╔═══════════════════════════════════════════════════════════╗
- *  ║  MultiSelect – Voiceflow Response Extension               ║
- *  ║                                                           ║
- *  ║  • 1 seul champ “color” par section                       ║
- *  ║  • style, hover, selected centralisés en CSS             ║
- *  ║  • active/désactive le chat selon `chat`                 ║
- *  ║  • grise le widget si l’utilisateur écrit dans le chat    ║
- *  ║  • single-select utilise `action` comme `buttonPath`     ║
- *  ╚═══════════════════════════════════════════════════════════╝
- */
 export const MultiSelect = {
   name: 'MultiSelect',
   type: 'response',
 
-  // Ne sʼactive que sur trace multi_select
+  // Ne s'active que sur trace multi_select
   match: ({ trace }) => trace.payload && trace.type === 'multi_select',
 
   render: ({ trace, element }) => {
     try {
       /* ────────────────────────────────────────────────────────── */
-      /* 0. lire le payload                                        */
+      /* 0. lecture du payload                                    */
       /* ────────────────────────────────────────────────────────── */
       const {
         sections       = [],
@@ -31,22 +20,22 @@ export const MultiSelect = {
       } = trace.payload;
 
       /* ────────────────────────────────────────────────────────── */
-      /* 1. utilitaires                                            */
+      /* 1. helpers : stripHTML, lightenColor                      */
       /* ────────────────────────────────────────────────────────── */
-      // retire tout HTML d’une chaîne
       const stripHTML = html => {
         const tmp = document.createElement('div');
         tmp.innerHTML = html || '';
         return tmp.textContent || tmp.innerText || '';
       };
-      // éclaircit un hex vers blanc de pct%
       const lightenColor = (hex, pct) => {
         const num = parseInt(hex.replace('#',''), 16);
-        let r = num >> 16, g = (num >> 8) & 0xFF, b = num & 0xFF;
+        let r = num >> 16,
+            g = (num >> 8) & 0xFF,
+            b = num & 0xFF;
         r = Math.min(255, Math.floor(r + (255 - r) * pct));
         g = Math.min(255, Math.floor(g + (255 - g) * pct));
         b = Math.min(255, Math.floor(b + (255 - b) * pct));
-        const toHex = c => c.toString(16).padStart(2,'0');
+        const toHex = c => c.toString(16).padStart(2, '0');
         return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
       };
 
@@ -78,29 +67,34 @@ export const MultiSelect = {
         if (snd) { snd.disabled = false; snd.removeAttribute('title'); }
       }
 
-      // si chat=false dans le payload, on désactive tout de suite
-      if (!chat) disableChat();
-
-      // patch interact pour griser au premier message libre
-      if (chat && window.voiceflow?.chat?.interact) {
-        const orig = window.voiceflow.chat.interact.bind(window.voiceflow.chat);
-        window.voiceflow.chat.interact = args => {
-          if (args.type === 'text' && typeof args.payload.text === 'string') {
-            // grise le widget extension
-            container.classList.add('disabled-container');
-          }
-          return orig(args);
-        };
-      }
-
       /* ────────────────────────────────────────────────────────── */
-      /* 3. construction du container + styles CSS                 */
+      /* 3. création immédiate du container                       */
       /* ────────────────────────────────────────────────────────── */
       const container = document.createElement('div');
       container.classList.add('multiselect-container');
       if (sections.length === 1) container.classList.add('one-section');
 
-      // CSS global de l’extension
+      // si chat=false dans le payload, on désactive tout de suite
+      if (!chat) disableChat();
+
+      // override interact pour griser extension et désactiver chat libre
+      if (chat && window.voiceflow?.chat?.interact) {
+        const orig = window.voiceflow.chat.interact.bind(window.voiceflow.chat);
+        window.voiceflow.chat.interact = args => {
+          if (args.type === 'text' && typeof args.payload.text === 'string') {
+            container.classList.add('disabled-container');
+            disableChat();
+          }
+          return orig(args);
+        };
+      }
+
+      // injection du container dans le DOM (sera rempli plus tard)
+      element.appendChild(container);
+
+      /* ────────────────────────────────────────────────────────── */
+      /* 4. injection du style CSS                                 */
+      /* ────────────────────────────────────────────────────────── */
       const styleEl = document.createElement('style');
       styleEl.textContent = `
 .multiselect-container {
@@ -228,12 +222,12 @@ export const MultiSelect = {
       container.appendChild(styleEl);
 
       /* ────────────────────────────────────────────────────────── */
-      /* 4. max-select                                              */
+      /* 5. gestion du max-select                                  */
       /* ────────────────────────────────────────────────────────── */
       const updateTotalChecked = () => {
         const inputs = Array.from(container.querySelectorAll('input'));
-        const c = inputs.filter(i => i.checked).length;
-        if (totalMaxSelect > 0 && c >= totalMaxSelect && multiselect) {
+        const count = inputs.filter(i => i.checked).length;
+        if (totalMaxSelect > 0 && count >= totalMaxSelect && multiselect) {
           inputs.forEach(i => { if (!i.checked) i.disabled = true; });
         } else {
           inputs.forEach(i => {
@@ -243,10 +237,10 @@ export const MultiSelect = {
       };
 
       /* ────────────────────────────────────────────────────────── */
-      /* 5. création récursive d’une option                        */
+      /* 6. création récursive d'une option                        */
       /* ────────────────────────────────────────────────────────── */
       const createOptionElement = opt => {
-        // enfant non-cliquable
+        // bloc non-cliquable
         if (Array.isArray(opt.children) && opt.children.length) {
           const blk = document.createElement('div');
           blk.classList.add('non-selectable-block');
@@ -257,7 +251,7 @@ export const MultiSelect = {
           blk.append(wrap);
           return blk;
         }
-        // feuille radio/checkbox
+        // feuille checkbox/radio
         const wrap = document.createElement('div');
         wrap.classList.add('option-container');
         if (opt.grey) wrap.classList.add('greyed-out-option');
@@ -270,10 +264,8 @@ export const MultiSelect = {
         lbl.append(inp, txt);
         wrap.append(lbl);
 
-        // sélection
         inp.addEventListener('change', () => {
           updateTotalChecked();
-          // toggle visuel
           const ol = wrap.closest('.options-list');
           Array.from(ol.querySelectorAll('.option-container label')).forEach(l =>
             l.classList.toggle('selected', l.querySelector('input').checked)
@@ -291,45 +283,36 @@ export const MultiSelect = {
             });
           }
         });
-
         return wrap;
       };
 
       /* ────────────────────────────────────────────────────────── */
-      /* 6. construction des sections                              */
+      /* 7. construction des sections et options                   */
       /* ────────────────────────────────────────────────────────── */
       const grid = document.createElement('div');
       grid.classList.add('sections-grid');
       sections.forEach(sec => {
         const sc = document.createElement('div');
         sc.classList.add('section-container');
-
-        // couleur + accent
         const bg = sec.backgroundColor || sec.color || '#673AB7';
         sc.style.backgroundColor = bg;
         sc.style.setProperty('--section-bg',
-          bg.replace(
-            /^#?([0-9A-F]{2})([0-9A-F]{2})([0-9A-F]{2})$/i,
+          bg.replace(/^#?([0-9A-F]{2})([0-9A-F]{2})([0-9A-F]{2})$/i,
             (_,r,g,b) => `rgba(${parseInt(r,16)},${parseInt(g,16)},${parseInt(b,16)},0.15)`
           )
         );
         sc.style.setProperty('--ms-accent', lightenColor(bg, 0.3));
-
-        // titre
         if (sec.label && stripHTML(sec.label).trim()) {
           const ttl = document.createElement('div');
           ttl.classList.add('section-title');
           ttl.innerHTML = sec.label;
           sc.append(ttl);
         }
-
-        // options + user_input
         const ol = document.createElement('div');
         ol.classList.add('options-list');
-        if ((sec.options||[]).length > 10) ol.classList.add('grid-2cols');
-
+        if ((sec.options || []).length > 10) ol.classList.add('grid-2cols');
         const userInputValues = {};
-        (sec.options||[]).forEach(opt => {
+        (sec.options || []).forEach(opt => {
           if (opt.action === 'user_input') {
             userInputValues[sec.label] = '';
             const uiWrap = document.createElement('div');
@@ -338,25 +321,17 @@ export const MultiSelect = {
             uiLbl.classList.add('user-input-label');
             uiLbl.textContent = opt.label;
             const uiInp = document.createElement('input');
-            uiInp.type = 'text';
-            uiInp.classList.add('user-input-field');
-            uiInp.placeholder = opt.placeholder||'';
-            uiInp.addEventListener('input', e => {
-              userInputValues[sec.label] = e.target.value;
-            });
+            uiInp.type = 'text'; uiInp.classList.add('user-input-field');
+            uiInp.placeholder = opt.placeholder || '';
+            uiInp.addEventListener('input', e => { userInputValues[sec.label] = e.target.value; });
             uiInp.addEventListener('keydown', e => {
-              if (e.key==='Enter') {
-                const v = e.target.value.trim();
-                if (!v) return;
+              if (e.key === 'Enter') {
+                const v = e.target.value.trim(); if (!v) return;
                 enableChat();
                 container.classList.add('disabled-container');
                 window.voiceflow.chat.interact({
-                  type:'complete',
-                  payload:{
-                    isUserInput:true,
-                    userInput:v,
-                    buttonPath:'Default'
-                  }
+                  type: 'complete',
+                  payload: { isUserInput: true, userInput: v, buttonPath: 'Default' }
                 });
               }
             });
@@ -366,14 +341,13 @@ export const MultiSelect = {
             ol.append(createOptionElement(opt));
           }
         });
-
         sc.append(ol);
         grid.append(sc);
       });
       container.append(grid);
 
       /* ────────────────────────────────────────────────────────── */
-      /* 7. boutons multi-select                                   */
+      /* 8. boutons multi-select                                  */
       /* ────────────────────────────────────────────────────────── */
       if (multiselect && buttons.length) {
         const bc = document.createElement('div');
@@ -389,19 +363,15 @@ export const MultiSelect = {
               const dom = grid.children[i];
               const sels = Array.from(dom.querySelectorAll('input:checked'))
                 .map(cb => cb.parentElement.querySelector('span').innerHTML.trim());
-              return {
-                section: s.label,
-                selections: sels,
-                userInput: (dom.querySelector('.user-input-field')?.value||'')
-              };
+              return { section: s.label, selections: sels, userInput: (dom.querySelector('.user-input-field')?.value || '') };
             }).filter(r => r.selections.length || r.userInput);
             window.voiceflow.chat.interact({
-              type:'complete',
-              payload:{
+              type: 'complete',
+              payload: {
                 selections: res,
                 buttonText: cfg.text,
                 buttonPath: cfg.path || 'Default',
-                isEmpty: res.every(r => !r.selections.length && !r.userInput)
+                isEmpty: res.every(r => r.selections.length === 0 && !r.userInput)
               }
             });
           });
@@ -410,16 +380,12 @@ export const MultiSelect = {
         container.append(bc);
       }
 
-      /* ────────────────────────────────────────────────────────── */
-      /* 8. on injecte dans le DOM                                 */
-      /* ────────────────────────────────────────────────────────── */
-      element.append(container);
       console.log('✅ MultiSelect prêt');
     } catch (err) {
       console.error('❌ MultiSelect Error :', err);
       window.voiceflow.chat.interact({
-        type:'complete',
-        payload:{ error:true, message:err.message }
+        type: 'complete',
+        payload: { error: true, message: err.message }
       });
     }
   }

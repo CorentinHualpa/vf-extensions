@@ -11,19 +11,17 @@ export const MultiSelect = {
   name: 'MultiSelect',
   type: 'response',
 
-  // Trigger only on Voiceflow trace type 'multi_select'
+  // Only trigger on Voiceflow trace type 'multi_select'
   match: ({ trace }) => trace.payload && trace.type === 'multi_select',
 
   render: ({ trace, element }) => {
     try {
-      /* ══ 0. Utility functions – MUST come first ═══════════════════════ */
-      // Strip HTML tags from a string
+      /* ══ 0. Utilities (must be first) ═══════════════════════════════════ */
       const stripHTML = (html) => {
         const tmp = document.createElement('div');
         tmp.innerHTML = html ?? '';
         return tmp.textContent || tmp.innerText || '';
       };
-      // Lighten a hex color by a percentage (0–1)
       const lightenColor = (hex, percent) => {
         const num = parseInt(hex.replace('#',''), 16);
         let r = num >> 16,
@@ -36,35 +34,38 @@ export const MultiSelect = {
         return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
       };
 
-      /* ══ 1. Read payload, including `chat` flag & hover text ═════════════ */
+      /* ══ 1. Read payload ═══════════════════════════════════════════════ */
       const {
         sections         = [],
         buttons          = [],
         totalMaxSelect   = 0,
         multiselect      = true,
         chat             = true,       // allow free-text chat?
-        chatDisabledText = '🚫'        // tooltip when chat disabled
+        chatDisabledText = '🚫'        // tooltip when disabled
       } = trace.payload;
 
-      /* ══ 2. Create container early so patchInteract can reference it ═══════ */
+      /* ══ 2. Create container early for interact patch ═══════════════════ */
       const container = document.createElement('div');
       container.classList.add('multiselect-container');
       if (sections.length === 1) container.classList.add('one-section');
 
-      /* ══ 3. Helpers to disable/enable the built-in chat input ═════════════ */
+      /* ══ 3. Helpers to lock/unlock built-in chat input ═════════════════ */
       const disableChatInput = () => {
         const root = element.getRootNode();
         const ic = root.querySelector('.vfrc-input-container');
         if (!ic) return;
-        ic.style.pointerEvents = 'none';
-        ic.style.opacity       = '.5';
-        ic.style.cursor        = 'not-allowed';
+        // grey-out & show not-allowed cursor
+        ic.style.opacity = '.5';
+        ic.style.cursor  = 'not-allowed';
+        // set tooltip
         ic.setAttribute('title', chatDisabledText);
-        const ta  = ic.querySelector('textarea, input');
+        // disable textarea
+        const ta = ic.querySelector('textarea, input');
         if (ta) {
           ta.disabled = true;
           ta.setAttribute('title', chatDisabledText);
         }
+        // set tooltip on send button
         const btn = root.querySelector('#vfrc-send-message');
         if (btn) btn.setAttribute('title', chatDisabledText);
       };
@@ -72,11 +73,10 @@ export const MultiSelect = {
         const root = element.getRootNode();
         const ic = root.querySelector('.vfrc-input-container');
         if (!ic) return;
-        ic.style.pointerEvents = '';
-        ic.style.opacity       = '';
-        ic.style.cursor        = '';
+        ic.style.opacity = '';
+        ic.style.cursor  = '';
         ic.removeAttribute('title');
-        const ta  = ic.querySelector('textarea, input');
+        const ta = ic.querySelector('textarea, input');
         if (ta) {
           ta.disabled = false;
           ta.removeAttribute('title');
@@ -85,21 +85,21 @@ export const MultiSelect = {
         if (btn) btn.removeAttribute('title');
       };
 
-      /* ══ 4. If chat is disabled in payload → lock the input ═══════════════ */
+      /* ══ 4. Initial chat lock if chat=false ═════════════════════════════ */
       if (!chat) disableChatInput();
 
-      /* ══ 5. Patch chat.interact to grey-out widget when user bypasses ═════ */
+      /* ══ 5. Patch chat.interact to grey-out this widget if user types ═════ */
       if (chat && window.voiceflow?.chat?.interact) {
-        const originalInteract = window.voiceflow.chat.interact.bind(window.voiceflow.chat);
+        const original = window.voiceflow.chat.interact.bind(window.voiceflow.chat);
         window.voiceflow.chat.interact = (args) => {
           if (args.type === 'text' && args.payload?.text) {
             container.classList.add('disabled-container');
           }
-          return originalInteract(args);
+          return original(args);
         };
       }
 
-      /* ══ 6. Inject our widget’s CSS (variables, layout, styles) ══════════ */
+      /* ══ 6. Inject widget CSS ═════════════════════════════════════════════ */
       const styleEl = document.createElement('style');
       styleEl.textContent = `
 /* GLOBAL VARS */
@@ -115,166 +115,81 @@ export const MultiSelect = {
   --ms-base-fs: 15px;
   --ms-small-fs: 14px;
 }
-.multiselect-container, .multiselect-container * {
-  box-sizing: border-box!important;
-}
-.multiselect-container {
-  display: flex!important;
-  flex-direction: column!important;
-  width: 100%!important;
+.multiselect-container, .multiselect-container * { box-sizing:border-box!important; }
+.multiselect-container { display:flex!important; flex-direction:column!important; width:100%!important;
   font-family:'Inter','Segoe UI',system-ui,-apple-system,sans-serif!important;
-  font-size:var(--ms-base-fs)!important;
-  color:#fff!important;
+  font-size:var(--ms-base-fs)!important; color:#fff!important;
 }
-/* GRID & SECTIONS */
-.multiselect-container .sections-grid {
-  display: grid!important;
-  grid-template-columns: repeat(2,1fr)!important;
-  gap: var(--ms-gap)!important;
+.multiselect-container .sections-grid { display:grid!important; grid-template-columns:repeat(2,1fr)!important;
+  gap:var(--ms-gap)!important;
 }
-.multiselect-container.one-section .sections-grid {
-  grid-template-columns: 1fr!important;
+.multiselect-container.one-section .sections-grid { grid-template-columns:1fr!important; }
+.multiselect-container .section-container { background:inherit; border-radius:var(--ms-radius)!important;
+  overflow:hidden!important; box-shadow:var(--ms-shadow)!important; transition:transform .2s ease!important;
 }
-.multiselect-container .section-container {
-  background: inherit;
-  border-radius: var(--ms-radius)!important;
-  overflow: hidden!important;
-  box-shadow: var(--ms-shadow)!important;
-  transition: transform .2s ease!important;
+.multiselect-container .section-container:hover { transform:translateY(-2px)!important; }
+.multiselect-container .section-title { padding:var(--ms-gap)!important; font-weight:700!important;
+  font-size:var(--ms-heading-fs)!important; border-bottom:2px solid rgba(255,255,255,.3)!important;
+  margin-bottom:var(--ms-gap)!important;
 }
-.multiselect-container .section-container:hover {
-  transform: translateY(-2px)!important;
+.multiselect-container .options-list { display:grid!important; grid-template-columns:1fr!important;
+  gap:calc(var(--ms-gap)/2)!important; padding:calc(var(--ms-gap)/2)!important;
 }
-/* TITLES */
-.multiselect-container .section-title {
-  padding: var(--ms-gap)!important;
-  font-weight: 700!important;
-  font-size: var(--ms-heading-fs)!important;
-  border-bottom: 2px solid rgba(255,255,255,.3)!important;
-  margin-bottom: var(--ms-gap)!important;
+.multiselect-container .options-list.grid-2cols { grid-template-columns:1fr 1fr!important; }
+.multiselect-container .non-selectable-block { background:rgba(0,0,0,.25)!important;
+  border:1px solid rgba(255,255,255,.2)!important; border-radius:calc(var(--ms-radius)-2px)!important;
+  padding:4px 8px!important; font-size:var(--ms-small-fs)!important;
 }
-/* OPTIONS */
-.multiselect-container .options-list {
-  display: grid!important;
-  grid-template-columns: 1fr!important;
-  gap: calc(var(--ms-gap)/2)!important;
-  padding: calc(var(--ms-gap)/2)!important;
+.multiselect-container .option-container { display:flex!important; align-items:flex-start!important;
+  gap:calc(var(--ms-gap)/2)!important;
 }
-.multiselect-container .options-list.grid-2cols {
-  grid-template-columns: 1fr 1fr!important;
+.multiselect-container .option-container label { display:flex!important; align-items:center!important;
+  gap:calc(var(--ms-gap)/2)!important; width:100%!important; padding:calc(var(--ms-gap)/2)!important;
+  background:rgba(0,0,0,var(--ms-bg-opacity))!important; border-radius:var(--ms-radius)!important;
+  cursor:pointer!important; transition:background-color .2s, box-shadow .2s!important;
 }
-/* NON-CLICKABLE */
-.multiselect-container .non-selectable-block {
-  background: rgba(0,0,0,.25)!important;
-  border: 1px solid rgba(255,255,255,.2)!important;
-  border-radius: calc(var(--ms-radius)-2px)!important;
-  padding: 4px 8px!important;
-  font-size: var(--ms-small-fs)!important;
+.multiselect-container .option-container label:hover { background:var(--ms-hover-bg)!important;
+  box-shadow:var(--ms-shadow)!important;
 }
-/* LABELS */
-.multiselect-container .option-container {
-  display: flex!important;
-  align-items: flex-start!important;
-  gap: calc(var(--ms-gap)/2)!important;
+.multiselect-container .option-container.greyed-out-option label { opacity:.5!important;
+  cursor:not-allowed!important;
 }
-.multiselect-container .option-container label {
-  display: flex!important;
-  align-items: center!important;
-  gap: calc(var(--ms-gap)/2)!important;
-  width: 100%!important;
-  padding: calc(var(--ms-gap)/2)!important;
-  background: rgba(0,0,0,var(--ms-bg-opacity))!important;
-  border-radius: var(--ms-radius)!important;
-  cursor: pointer!important;
-  transition: background-color .2s, box-shadow .2s!important;
-}
-.multiselect-container .option-container label:hover {
-  background: var(--ms-hover-bg)!important;
-  box-shadow: var(--ms-shadow)!important;
-}
-.multiselect-container .option-container.greyed-out-option label {
-  opacity: .5!important;
-  cursor: not-allowed!important;
-}
-.multiselect-container .option-container label.selected {
-  background: var(--ms-selected-bg)!important;
-}
-/* CHECKBOX / RADIO */
+.multiselect-container .option-container label.selected { background:var(--ms-selected-bg)!important; }
 .multiselect-container .option-container input[type="checkbox"],
 .multiselect-container .option-container input[type="radio"] {
-  all: unset!important;
-  width: 16px!important;
-  height: 16px!important;
-  min-width:16px!important;
-  min-height:16px!important;
-  flex-shrink:0!important;
-  display: inline-flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  border:2px solid var(--ms-accent)!important;
-  border-radius:50%!important;
-  background:#fff!important;
-  transition: transform .1s ease!important;
+  all:unset!important; width:16px!important; height:16px!important; min-width:16px!important;
+  min-height:16px!important; flex-shrink:0!important; display:inline-flex!important;
+  align-items:center!important; justify-content:center!important;
+  border:2px solid var(--ms-accent)!important; border-radius:50%!important;
+  background:#fff!important; transition:transform .1s ease!important;
 }
-.multiselect-container .option-container input:hover {
-  transform: scale(1.1)!important;
-}
+.multiselect-container .option-container input:hover { transform:scale(1.1)!important; }
 .multiselect-container .option-container input:checked::after {
-  content: ''!important;
-  width: 8px!important;
-  height: 8px!important;
-  border-radius:50%!important;
-  background: var(--ms-accent)!important;
+  content:''!important; width:8px!important; height:8px!important; border-radius:50%!important;
+  background:var(--ms-accent)!important;
 }
-/* USER INPUT */
-.multiselect-container .user-input-container {
-  grid-column: 1 / -1!important;
-  margin-top: var(--ms-gap)!important;
+.multiselect-container .user-input-container { grid-column:1/-1!important; margin-top:var(--ms-gap)!important; }
+.multiselect-container .user-input-label { font-size:var(--ms-small-fs)!important; margin-bottom:16px!important; }
+.multiselect-container .user-input-field { width:100%!important; padding:6px!important;
+  border-radius:var(--ms-radius)!important; border:1px solid rgba(255,255,255,.3)!important;
+  font-size:var(--ms-small-fs)!important; transition:box-shadow .2s!important;
 }
-.multiselect-container .user-input-label {
-  font-size: var(--ms-small-fs)!important;
-  margin-bottom: 16px!important;
-}
-.multiselect-container .user-input-field {
-  width:100%!important;
-  padding:6px!important;
-  border-radius:var(--ms-radius)!important;
-  border:1px solid rgba(255,255,255,.3)!important;
-  font-size:var(--ms-small-fs)!important;
-  transition: box-shadow .2s!important;
-}
-.multiselect-container .user-input-field:focus {
-  box-shadow:0 0 0 2px rgba(255,255,255,.4)!important;
+.multiselect-container .user-input-field:focus { box-shadow:0 0 0 2px rgba(255,255,255,.4)!important;
   border-color:var(--ms-accent)!important;
 }
-/* BUTTONS */
-.multiselect-container .buttons-container {
-  display:flex!important;
-  justify-content:center!important;
-  gap:var(--ms-gap)!important;
-  padding:var(--ms-gap)!important;
+.multiselect-container .buttons-container { display:flex!important; justify-content:center!important;
+  gap:var(--ms-gap)!important; padding:var(--ms-gap)!important;
 }
-.multiselect-container .submit-btn {
-  background: var(--ms-accent)!important;
-  color:#fff!important;
-  padding:8px 14px!important;
-  border-radius:var(--ms-radius)!important;
-  font-weight:600!important;
-  cursor:pointer!important;
-  transition: background-color .2s, transform .1s!important;
+.multiselect-container .submit-btn { background:var(--ms-accent)!important; color:#fff!important;
+  padding:8px 14px!important; border-radius:var(--ms-radius)!important; font-weight:600!important;
+  cursor:pointer!important; transition:background-color .2s, transform .1s!important;
 }
-.multiselect-container .submit-btn:hover {
-  transform: translateY(-1px)!important;
-}
-/* DISABLE WIDGET */
-.multiselect-container.disabled-container {
-  opacity:.5!important;
-  pointer-events:none!important;
-}
+.multiselect-container .submit-btn:hover { transform:translateY(-1px)!important; }
+.multiselect-container.disabled-container { opacity:.5!important; pointer-events:none!important; }
       `;
       container.appendChild(styleEl);
 
-      /* ══ 7. max-select logic ═════════════════════════════════════════════ */
+      /* ══ 7. max-select logic ═══════════════════════════════════════════ */
       const updateTotalChecked = () => {
         const inputs   = [...container.querySelectorAll('input')];
         const checkedN = inputs.filter(i => i.checked).length;
@@ -285,9 +200,8 @@ export const MultiSelect = {
         }
       };
 
-      /* ══ 8. Factory to create each option ═════════════════════════════════ */
+      /* ══ 8. Option factory (recursive) ═════════════════════════════════ */
       const createOptionElement = (opt) => {
-        // nested block?
         if (Array.isArray(opt.children) && opt.children.length) {
           const blk = document.createElement('div');
           blk.classList.add('non-selectable-block');
@@ -298,7 +212,6 @@ export const MultiSelect = {
           blk.appendChild(wrapCh);
           return blk;
         }
-        // leaf option
         const wrap = document.createElement('div');
         wrap.classList.add('option-container');
         if (opt.grey) wrap.classList.add('greyed-out-option');
@@ -331,14 +244,12 @@ export const MultiSelect = {
         return wrap;
       };
 
-      /* ══ 9. Build the sections grid ═══════════════════════════════════════ */
+      /* ══ 9. Build sections ═════════════════════════════════════════════ */
       const grid = document.createElement('div');
       grid.classList.add('sections-grid');
       sections.forEach((sec) => {
         const sc = document.createElement('div');
         sc.classList.add('section-container');
-
-        // background + chromatic accent
         const bg = sec.backgroundColor || sec.color || '#673AB7';
         sc.style.backgroundColor = bg;
         sc.style.setProperty('--section-bg',
@@ -395,7 +306,7 @@ export const MultiSelect = {
       });
       container.appendChild(grid);
 
-      /* ══ 10. Multiselect submission buttons ═════════════════════════════ */
+      /* ══ 10. Multiselect buttons ═════════════════════════════════════ */
       if (multiselect && buttons.length) {
         const bc = document.createElement('div');
         bc.classList.add('buttons-container');
@@ -413,16 +324,16 @@ export const MultiSelect = {
               return {
                 section: s.label,
                 selections: sels,
-                userInput: dom.querySelector('.user-input-field')?.value||''
+                userInput: dom.querySelector('.user-input-field')?.value || ''
               };
-            }).filter(r=>r.selections.length||r.userInput);
+            }).filter(r => r.selections.length || r.userInput);
             window.voiceflow.chat.interact({
               type: 'complete',
               payload: {
                 selections: res,
                 buttonText: cfg.text,
-                buttonPath: cfg.path||'Default',
-                isEmpty: res.every(r=>!r.selections.length&&!r.userInput)
+                buttonPath: cfg.path || 'Default',
+                isEmpty: res.every(r => !r.selections.length && !r.userInput)
               }
             });
           });
@@ -431,7 +342,7 @@ export const MultiSelect = {
         container.appendChild(bc);
       }
 
-      /* ══ 11. Append to the page ═════════════════════════════════════════ */
+      /* ══ 11. Insert widget ═════════════════════════════════════════════ */
       element.appendChild(container);
       console.log('✅ MultiSelect ready');
     } catch (err) {

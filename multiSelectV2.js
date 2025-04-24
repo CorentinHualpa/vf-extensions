@@ -30,7 +30,7 @@ export const MultiSelect = {
       container.classList.add('multiselect-container');
       if (sections.length === 1) container.classList.add('one-section');
 
-      /* ══ 3. If default chat is disabled, inject global CSS to hide it ══ */
+      /* ══ 3. If default chat is disabled, inject CSS inside the widget’s Shadow DOM ══ */
       if (!chat) {
         const chatStyle = document.createElement('style');
         chatStyle.textContent = `
@@ -43,9 +43,15 @@ export const MultiSelect = {
             display: none !important;
           }
         `;
-        document.head.appendChild(chatStyle);
+        // Récupère le ShadowRoot (ou retombe sur <head> si pas dispo)
+        const root = element.getRootNode();
+        if (root instanceof ShadowRoot) {
+          root.appendChild(chatStyle);
+        } else {
+          document.head.appendChild(chatStyle);
+        }
       }
-      
+
       /* ══ 4. Patch chat.interact to auto-disable widget on user chat ══ */
       if (chat && window.voiceflow && window.voiceflow.chat && window.voiceflow.chat.interact) {
         const originalInteract = window.voiceflow.chat.interact.bind(window.voiceflow.chat);

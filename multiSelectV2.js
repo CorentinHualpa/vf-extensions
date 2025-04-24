@@ -33,13 +33,11 @@ export const MultiSelect = {
       /* ────────────────────────────────────────────────────────── */
       /* 1. utilitaires                                            */
       /* ────────────────────────────────────────────────────────── */
-      // retire tout HTML d’une chaîne
       const stripHTML = html => {
         const tmp = document.createElement('div');
         tmp.innerHTML = html || '';
         return tmp.textContent || tmp.innerText || '';
       };
-      // éclaircit un hex vers blanc de pct%
       const lightenColor = (hex, pct) => {
         const num = parseInt(hex.replace('#',''), 16);
         let r = num >> 16, g = (num >> 8) & 0xFF, b = num & 0xFF;
@@ -51,7 +49,7 @@ export const MultiSelect = {
       };
 
       /* ────────────────────────────────────────────────────────── */
-      /* 2. fonctions pour désactiver / réactiver le chat libre    */
+      /* 2. functions to disable/enable chat                       */
       /* ────────────────────────────────────────────────────────── */
       const root = element.getRootNode();
       const host = root instanceof ShadowRoot ? root : document;
@@ -77,23 +75,20 @@ export const MultiSelect = {
         const snd = host.querySelector('#vfrc-send-message');
         if (snd) { snd.disabled = false; snd.removeAttribute('title'); }
       }
-
-      // si chat=false dans le payload, on désactive tout de suite
       if (!chat) disableChat();
 
       /* ────────────────────────────────────────────────────────── */
-      /* 3. création du container dès maintenant                   */
+      /* 3. créer le container dès maintenant                     */
       /* ────────────────────────────────────────────────────────── */
       const container = document.createElement('div');
       container.classList.add('multiselect-container');
       if (sections.length === 1) container.classList.add('one-section');
 
-      // patch interact pour griser et désactiver au premier message libre
+      // patch interact to grey & disable on first user text
       if (chat && window.voiceflow?.chat?.interact) {
         const orig = window.voiceflow.chat.interact.bind(window.voiceflow.chat);
         window.voiceflow.chat.interact = args => {
-          if (args.type === 'text' && typeof args.payload.text === 'string') {
-            // grise le widget extension
+          if (args.type === 'text') {
             container.classList.add('disabled-container');
             disableChat();
           }
@@ -101,10 +96,28 @@ export const MultiSelect = {
         };
       }
 
+      // grey/disable on Enter key
+      const chatInput = host.querySelector('textarea.vfrc-chat-input');
+      if (chatInput) {
+        chatInput.addEventListener('keydown', e => {
+          if (e.key === 'Enter') {
+            container.classList.add('disabled-container');
+            disableChat();
+          }
+        });
+      }
+      // grey/disable on Send button click
+      const sendBtn = host.querySelector('#vfrc-send-message');
+      if (sendBtn) {
+        sendBtn.addEventListener('click', () => {
+          container.classList.add('disabled-container');
+          disableChat();
+        });
+      }
+
       /* ────────────────────────────────────────────────────────── */
-      /* 4. construction du container + styles CSS                 */
+      /* 4. injecter le CSS global                                 */
       /* ────────────────────────────────────────────────────────── */
-      // CSS global de l’extension
       const styleEl = document.createElement('style');
       styleEl.textContent = `
 .multiselect-container {
@@ -250,7 +263,6 @@ export const MultiSelect = {
       /* 6. création récursive d’une option                        */
       /* ────────────────────────────────────────────────────────── */
       const createOptionElement = opt => {
-        // enfant non-cliquable
         if (Array.isArray(opt.children) && opt.children.length) {
           const blk = document.createElement('div');
           blk.classList.add('non-selectable-block');
@@ -261,7 +273,6 @@ export const MultiSelect = {
           blk.append(wrap);
           return blk;
         }
-        // feuille radio/checkbox
         const wrap = document.createElement('div');
         wrap.classList.add('option-container');
         if (opt.grey) wrap.classList.add('greyed-out-option');
@@ -274,15 +285,12 @@ export const MultiSelect = {
         lbl.append(inp, txt);
         wrap.append(lbl);
 
-        // sélection
         inp.addEventListener('change', () => {
           updateTotalChecked();
-          // toggle visuel
           const ol = wrap.closest('.options-list');
           Array.from(ol.querySelectorAll('.option-container label')).forEach(l =>
             l.classList.toggle('selected', l.querySelector('input').checked)
           );
-          // single-select → réponse immédiate
           if (!multiselect) {
             enableChat();
             container.classList.add('disabled-container');
@@ -307,8 +315,6 @@ export const MultiSelect = {
       sections.forEach(sec => {
         const sc = document.createElement('div');
         sc.classList.add('section-container');
-
-        // couleur + accent
         const bg = sec.backgroundColor || sec.color || '#673AB7';
         sc.style.backgroundColor = bg;
         sc.style.setProperty('--section-bg',
@@ -318,24 +324,17 @@ export const MultiSelect = {
           )
         );
         sc.style.setProperty('--ms-accent', lightenColor(bg, 0.3));
-
-        // titre
         if (sec.label && stripHTML(sec.label).trim()) {
           const ttl = document.createElement('div');
           ttl.classList.add('section-title');
           ttl.innerHTML = sec.label;
           sc.append(ttl);
         }
-
-        // options + user_input
         const ol = document.createElement('div');
         ol.classList.add('options-list');
         if ((sec.options||[]).length > 10) ol.classList.add('grid-2cols');
-
-        const userInputValues = {};
-        (sec.options||[]).forEach(opt => {
+        sec.options.forEach(opt => {
           if (opt.action === 'user_input') {
-            userInputValues[sec.label] = '';
             const uiWrap = document.createElement('div');
             uiWrap.classList.add('user-input-container');
             const uiLbl = document.createElement('label');
@@ -344,22 +343,17 @@ export const MultiSelect = {
             const uiInp = document.createElement('input');
             uiInp.type = 'text';
             uiInp.classList.add('user-input-field');
-            uiInp.placeholder = opt.placeholder||'';
-            uiInp.addEventListener('input', e => {
-              userInputValues[sec.label] = e.target.value;
-            });
+            uiInp.placeholder = opt.placeholder || '';
             uiInp.addEventListener('keydown', e => {
-              if (e.key==='Enter') {
-                const v = e.target.value.trim();
-                if (!v) return;
+              if (e.key === 'Enter' && e.target.value.trim()) {
                 enableChat();
                 container.classList.add('disabled-container');
                 window.voiceflow.chat.interact({
                   type:'complete',
                   payload:{
-                    isUserInput:true,
-                    userInput:v,
-                    buttonPath:'Default'
+                    isUserInput: true,
+                    userInput: e.target.value.trim(),
+                    buttonPath: 'Default'
                   }
                 });
               }
@@ -370,16 +364,15 @@ export const MultiSelect = {
             ol.append(createOptionElement(opt));
           }
         });
-
         sc.append(ol);
         grid.append(sc);
       });
       container.append(grid);
 
       /* ────────────────────────────────────────────────────────── */
-      /* 8. boutons multi-select                                   */
+      /* 8. afficher les boutons même si multiselect=false        */
       /* ────────────────────────────────────────────────────────── */
-      if (multiselect && buttons.length) {
+      if (buttons.length) {
         const bc = document.createElement('div');
         bc.classList.add('buttons-container');
         buttons.forEach(cfg => {
@@ -393,19 +386,16 @@ export const MultiSelect = {
               const dom = grid.children[i];
               const sels = Array.from(dom.querySelectorAll('input:checked'))
                 .map(cb => cb.parentElement.querySelector('span').innerHTML.trim());
-              return {
-                section: s.label,
-                selections: sels,
-                userInput: (dom.querySelector('.user-input-field')?.value||'')
-              };
+              const ui  = dom.querySelector('.user-input-field')?.value || '';
+              return { section: s.label, selections: sels, userInput: ui };
             }).filter(r => r.selections.length || r.userInput);
             window.voiceflow.chat.interact({
-              type:'complete',
-              payload:{
-                selections: res,
-                buttonText: cfg.text,
-                buttonPath: cfg.path || 'Default',
-                isEmpty: res.every(r => !r.selections.length && !r.userInput)
+              type: 'complete',
+              payload: {
+                selections:  res,
+                buttonText:  cfg.text,
+                buttonPath:  cfg.path || 'Default',
+                isEmpty:     res.every(r => !r.selections.length && !r.userInput)
               }
             });
           });
@@ -415,7 +405,7 @@ export const MultiSelect = {
       }
 
       /* ────────────────────────────────────────────────────────── */
-      /* 9. on injecte dans le DOM                                 */
+      /* 9. injecter dans le DOM                                   */
       /* ────────────────────────────────────────────────────────── */
       element.append(container);
       console.log('✅ MultiSelect prêt');

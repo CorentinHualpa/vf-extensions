@@ -97,23 +97,17 @@ export const MultiSelect = {
       }
 
       // grey/disable on Enter key
+      const chatInputListener = () => {
+        container.classList.add('disabled-container');
+        disableChat();
+      };
       const chatInput = host.querySelector('textarea.vfrc-chat-input');
-      if (chatInput) {
-        chatInput.addEventListener('keydown', e => {
-          if (e.key === 'Enter') {
-            container.classList.add('disabled-container');
-            disableChat();
-          }
-        });
-      }
+      if (chatInput) chatInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') chatInputListener();
+      });
       // grey/disable on Send button click
       const sendBtn = host.querySelector('#vfrc-send-message');
-      if (sendBtn) {
-        sendBtn.addEventListener('click', () => {
-          container.classList.add('disabled-container');
-          disableChat();
-        });
-      }
+      if (sendBtn) sendBtn.addEventListener('click', chatInputListener);
 
       /* ────────────────────────────────────────────────────────── */
       /* 4. injecter le CSS global                                 */
@@ -286,11 +280,20 @@ export const MultiSelect = {
         wrap.append(lbl);
 
         inp.addEventListener('change', () => {
+          // 🚀 si c'est l'option "all", coche tout le section
+          if (opt.action === 'all' && inp.checked) {
+            const sectionList = wrap.closest('.options-list');
+            const allCheckboxes = Array.from(
+              sectionList.querySelectorAll(`input[type="${multiselect ? 'checkbox' : 'radio'}"]`)
+            ).filter(cb => !cb.disabled);
+            allCheckboxes.forEach(cb => cb.checked = true);
+          }
           updateTotalChecked();
           const ol = wrap.closest('.options-list');
           Array.from(ol.querySelectorAll('.option-container label')).forEach(l =>
             l.classList.toggle('selected', l.querySelector('input').checked)
           );
+          // single-select : envoi immédiat
           if (!multiselect) {
             enableChat();
             container.classList.add('disabled-container');
@@ -344,6 +347,7 @@ export const MultiSelect = {
             uiInp.type = 'text';
             uiInp.classList.add('user-input-field');
             uiInp.placeholder = opt.placeholder || '';
+            // 🚀 Sur Enter : envoie + focus chat
             uiInp.addEventListener('keydown', e => {
               if (e.key === 'Enter' && e.target.value.trim()) {
                 enableChat();
@@ -356,6 +360,9 @@ export const MultiSelect = {
                     buttonPath: 'Default'
                   }
                 });
+                // 🔄 replacer le curseur dans le chat
+                const chatTa = host.querySelector('textarea.vfrc-chat-input');
+                if (chatTa) chatTa.focus();
               }
             });
             uiWrap.append(uiLbl, uiInp);

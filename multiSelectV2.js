@@ -97,17 +97,23 @@ export const MultiSelect = {
       }
 
       // grey/disable on Enter key
-      const chatInputListener = () => {
-        container.classList.add('disabled-container');
-        disableChat();
-      };
       const chatInput = host.querySelector('textarea.vfrc-chat-input');
-      if (chatInput) chatInput.addEventListener('keydown', e => {
-        if (e.key === 'Enter') chatInputListener();
-      });
+      if (chatInput) {
+        chatInput.addEventListener('keydown', e => {
+          if (e.key === 'Enter') {
+            container.classList.add('disabled-container');
+            disableChat();
+          }
+        });
+      }
       // grey/disable on Send button click
       const sendBtn = host.querySelector('#vfrc-send-message');
-      if (sendBtn) sendBtn.addEventListener('click', chatInputListener);
+      if (sendBtn) {
+        sendBtn.addEventListener('click', () => {
+          container.classList.add('disabled-container');
+          disableChat();
+        });
+      }
 
       /* ────────────────────────────────────────────────────────── */
       /* 4. injecter le CSS global                                 */
@@ -257,6 +263,7 @@ export const MultiSelect = {
       /* 6. création récursive d’une option                        */
       /* ────────────────────────────────────────────────────────── */
       const createOptionElement = opt => {
+        // Si bloc enfants…
         if (Array.isArray(opt.children) && opt.children.length) {
           const blk = document.createElement('div');
           blk.classList.add('non-selectable-block');
@@ -267,12 +274,18 @@ export const MultiSelect = {
           blk.append(wrap);
           return blk;
         }
+
+        // Sinon : case à cocher / radio
         const wrap = document.createElement('div');
         wrap.classList.add('option-container');
         if (opt.grey) wrap.classList.add('greyed-out-option');
+
         const inp = document.createElement('input');
         inp.type = multiselect ? 'checkbox' : 'radio';
         if (opt.grey) inp.disabled = true;
+        // taguer le “all”
+        if (opt.action === 'all') inp.dataset.all = 'true';
+
         const lbl = document.createElement('label');
         const txt = document.createElement('span');
         txt.innerHTML = opt.name;
@@ -280,20 +293,33 @@ export const MultiSelect = {
         wrap.append(lbl);
 
         inp.addEventListener('change', () => {
-          // 🚀 si c'est l'option "all", coche tout le section
-          if (opt.action === 'all' && inp.checked) {
-            const sectionList = wrap.closest('.options-list');
-            const allCheckboxes = Array.from(
-              sectionList.querySelectorAll(`input[type="${multiselect ? 'checkbox' : 'radio'}"]`)
-            ).filter(cb => !cb.disabled);
-            allCheckboxes.forEach(cb => cb.checked = true);
+          // ➊ gestion du “all”
+          const list = wrap.closest('.options-list');
+          if (inp.dataset.all === 'true') {
+            // cocher/décocher TOUS
+            Array.from(list.querySelectorAll('input[type="checkbox"]'))
+              .filter(cb => !cb.disabled)
+              .forEach(cb => { cb.checked = inp.checked; });
+          } else {
+            // si on décoche un normal, décocher le “all”
+            const allCb = list.querySelector('input[data-all="true"]');
+            if (allCb) {
+              const normals = Array.from(list.querySelectorAll('input[type="checkbox"]'))
+                .filter(cb => cb !== allCb && !cb.disabled);
+              allCb.checked = normals.length > 0 && normals.every(cb => cb.checked);
+            }
           }
+
+          // ➋ met à jour les limites
           updateTotalChecked();
-          const ol = wrap.closest('.options-list');
-          Array.from(ol.querySelectorAll('.option-container label')).forEach(l =>
-            l.classList.toggle('selected', l.querySelector('input').checked)
-          );
-          // single-select : envoi immédiat
+
+          // ➌ met à jour le style sélection
+          Array.from(wrap.closest('.options-list').querySelectorAll('label')).forEach(l => {
+            const cb = l.querySelector('input');
+            l.classList.toggle('selected', cb.checked);
+          });
+
+          // ➍ single-select complète
           if (!multiselect) {
             enableChat();
             container.classList.add('disabled-container');
@@ -327,17 +353,22 @@ export const MultiSelect = {
           )
         );
         sc.style.setProperty('--ms-accent', lightenColor(bg, 0.3));
+
         if (sec.label && stripHTML(sec.label).trim()) {
           const ttl = document.createElement('div');
           ttl.classList.add('section-title');
           ttl.innerHTML = sec.label;
           sc.append(ttl);
         }
+
         const ol = document.createElement('div');
         ol.classList.add('options-list');
         if ((sec.options||[]).length > 10) ol.classList.add('grid-2cols');
+
+        // options, y compris champ libre
         sec.options.forEach(opt => {
           if (opt.action === 'user_input') {
+            // ─ user-input
             const uiWrap = document.createElement('div');
             uiWrap.classList.add('user-input-container');
             const uiLbl = document.createElement('label');
@@ -347,7 +378,6 @@ export const MultiSelect = {
             uiInp.type = 'text';
             uiInp.classList.add('user-input-field');
             uiInp.placeholder = opt.placeholder || '';
-            // 🚀 Sur Enter : envoie + focus chat
             uiInp.addEventListener('keydown', e => {
               if (e.key === 'Enter' && e.target.value.trim()) {
                 enableChat();
@@ -360,17 +390,23 @@ export const MultiSelect = {
                     buttonPath: 'Default'
                   }
                 });
-                // 🔄 replacer le curseur dans le chat
-                const chatTa = host.querySelector('textarea.vfrc-chat-input');
-                if (chatTa) chatTa.focus();
+                // **correctif 1** : enlever le focus et renvoyer au chat
+                e.target.blur();
+                setTimeout(() => {
+                  const chatTa = host.querySelector('textarea.vfrc-chat-input');
+                  if (chatTa) chatTa.focus();
+                }, 0);
               }
             });
             uiWrap.append(uiLbl, uiInp);
             ol.append(uiWrap);
+
           } else {
+            // ─ option normale
             ol.append(createOptionElement(opt));
           }
         });
+
         sc.append(ol);
         grid.append(sc);
       });

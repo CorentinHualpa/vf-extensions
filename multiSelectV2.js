@@ -15,6 +15,7 @@ export const MultiSelect = {
   name: 'MultiSelect',
   type: 'response',
 
+  // Ne sʼactive que sur trace multi_select
   match: ({ trace }) => trace.payload && trace.type === 'multi_select',
 
   render: ({ trace, element }) => {
@@ -129,7 +130,112 @@ export const MultiSelect = {
   --ms-base-fs: 15px;
   --ms-small-fs: 14px;
 }
-/* ... Tout le reste de votre CSS inchangé ... */
+.multiselect-container, .multiselect-container * { box-sizing:border-box!important; }
+.multiselect-container {
+  display:flex!important; flex-direction:column!important; width:100%!important;
+  font-family:'Inter','Segoe UI',system-ui,-apple-system,sans-serif!important;
+  font-size:var(--ms-base-fs)!important; color:#fff!important;
+}
+.multiselect-container .sections-grid {
+  display:grid!important; grid-template-columns:repeat(2,1fr)!important;
+  gap:var(--ms-gap)!important;
+}
+.multiselect-container.one-section .sections-grid {
+  grid-template-columns:1fr!important;
+}
+.multiselect-container .section-container {
+  background:inherit; border-radius:var(--ms-radius)!important;
+  overflow:hidden!important; box-shadow:var(--ms-shadow)!important;
+  transition:transform .2s ease!important;
+}
+.multiselect-container .section-container:hover {
+  transform:translateY(-2px)!important;
+}
+.multiselect-container .section-title {
+  padding:var(--ms-gap)!important; font-weight:700!important;
+  font-size:var(--ms-heading-fs)!important;
+  border-bottom:2px solid rgba(255,255,255,.3)!important;
+  margin-bottom:var(--ms-gap)!important;
+}
+.multiselect-container .options-list {
+  display:grid!important; grid-template-columns:1fr!important;
+  gap:calc(var(--ms-gap)/2)!important; padding:calc(var(--ms-gap)/2)!important;
+}
+.multiselect-container .options-list.grid-2cols {
+  grid-template-columns:1fr 1fr!important;
+}
+.multiselect-container .non-selectable-block {
+  background:rgba(0,0,0,.25)!important;
+  border:1px solid rgba(255,255,255,.2)!important;
+  border-radius:calc(var(--ms-radius)-2px)!important;
+  padding:4px 8px!important; font-size:var(--ms-small-fs)!important;
+}
+.multiselect-container .option-container {
+  display:flex!important; align-items:flex-start!important;
+  gap:calc(var(--ms-gap)/2)!important;
+}
+.multiselect-container .option-container label {
+  display:flex!important; align-items:center!important;
+  gap:calc(var(--ms-gap)/2)!important; width:100%!important;
+  padding:calc(var(--ms-gap)/2)!important;
+  background:rgba(0,0,0,var(--ms-bg-opacity))!important;
+  border-radius:var(--ms-radius)!important; cursor:pointer!important;
+  transition:background-color .2s, box-shadow .2s!important;
+}
+.multiselect-container .option-container label:hover {
+  background:var(--ms-hover-bg)!important; box-shadow:var(--ms-shadow)!important;
+}
+.multiselect-container .option-container.greyed-out-option label {
+  opacity:.5!important; cursor:not-allowed!important;
+}
+.multiselect-container .option-container label.selected {
+  background:var(--ms-selected-bg)!important;
+}
+.multiselect-container .option-container input[type="checkbox"],
+.multiselect-container .option-container input[type="radio"] {
+  all:unset!important; width:16px!important; height:16px!important;
+  min-width:16px!important; min-height:16px!important;
+  display:inline-flex!important; align-items:center!important;
+  justify-content:center!important; border:2px solid var(--ms-accent)!important;
+  border-radius:50%!important; background:#fff!important;
+  transition:transform .1s ease!important;
+}
+.multiselect-container .option-container input:hover {
+  transform:scale(1.1)!important;
+}
+.multiselect-container .option-container input:checked::after {
+  content:''!important; width:8px!important; height:8px!important;
+  border-radius:50%!important; background:var(--ms-accent)!important;
+}
+.multiselect-container .user-input-container {
+  grid-column:1/-1!important; margin-top:var(--ms-gap)!important;
+}
+.multiselect-container .user-input-label {
+  font-size:var(--ms-small-fs)!important; margin-bottom:16px!important;
+}
+.multiselect-container .user-input-field {
+  width:100%!important; padding:6px!important;
+  border-radius:var(--ms-radius)!important;
+  border:1px solid rgba(255,255,255,.3)!important;
+  font-size:var(--ms-small-fs)!important; transition:box-shadow .2s!important;
+}
+.multiselect-container .user-input-field:focus {
+  box-shadow:0 0 0 2px rgba(255,255,255,.4)!important;
+  border-color:var(--ms-accent)!important;
+}
+.multiselect-container .buttons-container {
+  display:flex!important; justify-content:center!important;
+  gap:var(--ms-gap)!important; padding:var(--ms-gap)!important;
+}
+.multiselect-container .submit-btn {
+  background:var(--ms-accent)!important; color:#fff!important;
+  padding:8px 14px!important; border-radius:var(--ms-radius)!important;
+  font-weight:600!important; cursor:pointer!important;
+  transition:background-color .2s, transform .1s!important;
+}
+.multiselect-container .submit-btn:hover {
+  transform:translateY(-1px)!important;
+}
 .multiselect-container.disabled-container {
   opacity:.5!important; pointer-events:none!important;
 }
@@ -137,28 +243,23 @@ export const MultiSelect = {
       container.appendChild(styleEl);
 
       /* ────────────────────────────────────────────────────────── */
-      /* 5. gestion max-select + toggle “all”                     */
+      /* 5. max-select + all toggle                                 */
       /* ────────────────────────────────────────────────────────── */
-      let grid;  // on y stockera la grille des sections
+      let grid;
 
       const updateTotalChecked = () => {
         const inputs = Array.from(container.querySelectorAll('input[type="checkbox"], input[type="radio"]'));
         const checkedCount = inputs.filter(i => i.checked).length;
-
-        // désactiver au-delà de la limite
         if (totalMaxSelect > 0 && checkedCount >= totalMaxSelect && multiselect) {
           inputs.forEach(i => { if (!i.checked) i.disabled = true; });
         } else {
           inputs.forEach(i => { if (!i.closest('.greyed-out-option')) i.disabled = false; });
         }
-
-        // 🚩 toggle automatique du “all” de chaque section
+        // sync “all” box
         sections.forEach((_, idx) => {
           const secDom = grid.children[idx];
-          if (!secDom) return;
           const allInput = secDom.querySelector('input[data-action="all"]');
           if (!allInput) return;
-          // les autres inputs (action="")
           const others = Array.from(secDom.querySelectorAll('input[data-action=""]'));
           const everyChecked = others.length > 0 && others.every(i => i.checked);
           allInput.checked = everyChecked;
@@ -167,10 +268,9 @@ export const MultiSelect = {
       };
 
       /* ────────────────────────────────────────────────────────── */
-      /* 6. création d’une option (avec sectionIdx pour “all”)    */
+      /* 6. createOptionElement                                     */
       /* ────────────────────────────────────────────────────────── */
       const createOptionElement = (opt, sectionIdx) => {
-        // bloc non-sélectionnable si children
         if (Array.isArray(opt.children) && opt.children.length) {
           const blk = document.createElement('div');
           blk.classList.add('non-selectable-block');
@@ -181,7 +281,6 @@ export const MultiSelect = {
           blk.append(wrap);
           return blk;
         }
-
         const wrap = document.createElement('div');
         wrap.classList.add('option-container');
         if (opt.grey) wrap.classList.add('greyed-out-option');
@@ -199,7 +298,7 @@ export const MultiSelect = {
         wrap.append(lbl);
 
         inp.addEventListener('change', () => {
-          // 🚩 si action="all" : coche/décoche tout
+          // all toggle
           if (opt.action === 'all') {
             const secDom = grid.children[sectionIdx];
             const others = Array.from(secDom.querySelectorAll('input[data-action=""]'));
@@ -208,13 +307,9 @@ export const MultiSelect = {
               i.parentElement.classList.toggle('selected', inp.checked);
             });
           }
-
           updateTotalChecked();
+          lbl.classList.toggle('selected', inp.checked);
 
-          // toggle visuel
-          wrap.querySelector('label').classList.toggle('selected', inp.checked);
-
-          // single-select ?
           if (!multiselect) {
             enableChat();
             container.classList.add('disabled-container');
@@ -237,11 +332,10 @@ export const MultiSelect = {
       };
 
       /* ────────────────────────────────────────────────────────── */
-      /* 7. construction des sections                              */
+      /* 7. build sections                                          */
       /* ────────────────────────────────────────────────────────── */
       grid = document.createElement('div');
       grid.classList.add('sections-grid');
-
       sections.forEach((sec, i) => {
         const sc = document.createElement('div');
         sc.classList.add('section-container');
@@ -268,7 +362,6 @@ export const MultiSelect = {
 
         sec.options.forEach(opt => {
           if (opt.action === 'user_input') {
-            // champ libre
             const uiWrap = document.createElement('div');
             uiWrap.classList.add('user-input-container');
             const uiLbl = document.createElement('label');
@@ -290,7 +383,6 @@ export const MultiSelect = {
                     buttonPath: 'Default'
                   }
                 });
-                // retour focus
                 setTimeout(() => {
                   const ta = host.querySelector('textarea.vfrc-chat-input');
                   if (ta) ta.focus();
@@ -307,7 +399,6 @@ export const MultiSelect = {
         sc.append(ol);
         grid.append(sc);
       });
-
       container.append(grid);
 
       /* ────────────────────────────────────────────────────────── */
@@ -339,7 +430,6 @@ export const MultiSelect = {
                 isEmpty:     res.every(r => !r.selections.length && !r.userInput)
               }
             });
-            // retour focus chat
             setTimeout(() => {
               const ta = host.querySelector('textarea.vfrc-chat-input');
               if (ta) ta.focus();

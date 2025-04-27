@@ -1,5 +1,5 @@
 export const VideoExtension = {
-  name: 'Video',
+  name: 'VideoExtension',
   type: 'response',
   match: ({ trace }) =>
     trace.type === 'ext_video' || trace.payload?.name === 'ext_video',

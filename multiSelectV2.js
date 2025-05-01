@@ -14,7 +14,7 @@ export const MultiSelect = {
         sections         = [],
         buttons          = [],
         totalMaxSelect   = 0,
-        minSelectDefault = 0,     // valeur par défaut si non fourni sur le bouton
+        minSelectDefault = 0,
         multiselect      = true,
         chat             = true,
         chatDisabledText = '🚫'
@@ -102,12 +102,11 @@ export const MultiSelect = {
       }
 
       /* ────────────────────────────────────────────────────────── */
-      /* 4. CSS global (avec shake + erreur minSelect)            */
+      /* 4. CSS global                                             */
       /* ────────────────────────────────────────────────────────── */
       const styleEl = document.createElement('style');
       styleEl.textContent = `
 .multiselect-container {
-  /* variables par défaut */
   --ms-accent: #4CAF50;
   --ms-selected-bg: #3778F4;
   --ms-hover-bg: rgba(55,120,244,0.3);
@@ -121,23 +120,154 @@ export const MultiSelect = {
 }
 .multiselect-container, .multiselect-container * { box-sizing:border-box!important; }
 .multiselect-container {
-  display:flex!important; flex-direction:column!important; width:100%!important;
+  display:flex!important;
+  flex-direction:column!important;
+  width:100%!important;
   font-family:'Inter','Segoe UI',system-ui,-apple-system,sans-serif!important;
-  font-size:var(--ms-base-fs)!important; color:#fff!important;
+  font-size:var(--ms-base-fs)!important;
+  color:#fff!important;
 }
 .multiselect-container .sections-grid {
-  display:grid!important; grid-template-columns:repeat(2,1fr)!important;
+  display:grid!important;
+  grid-template-columns:repeat(2,1fr)!important;
   gap:var(--ms-gap)!important;
 }
 .multiselect-container.one-section .sections-grid {
   grid-template-columns:1fr!important;
 }
-/* … autres styles originaux pour section-container, options-list, etc. … */
-/* Styles pour animation “shake” et message d’erreur */
+.multiselect-container .section-container {
+  background:inherit;
+  border-radius:var(--ms-radius)!important;
+  overflow:hidden!important;
+  box-shadow:var(--ms-shadow)!important;
+  transition:transform .2s ease!important;
+}
+.multiselect-container .section-container:hover {
+  transform:translateY(-2px)!important;
+}
+.multiselect-container .section-title {
+  padding:var(--ms-gap)!important;
+  font-weight:700!important;
+  font-size:var(--ms-heading-fs)!important;
+  border-bottom:2px solid rgba(255,255,255,.3)!important;
+  margin-bottom:var(--ms-gap)!important;
+}
+.multiselect-container .options-list {
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  gap:calc(var(--ms-gap)/2)!important;
+  padding:calc(var(--ms-gap)/2)!important;
+}
+.multiselect-container .options-list.grid-2cols {
+  grid-template-columns:1fr 1fr!important;
+}
+.multiselect-container .non-selectable-block {
+  background:rgba(0,0,0,.25)!important;
+  border:1px solid rgba(255,255,255,.2)!important;
+  border-radius:calc(var(--ms-radius)-2px)!important;
+  padding:4px 8px!important;
+  font-size:var(--ms-small-fs)!important;
+}
+.multiselect-container .option-container {
+  display:flex!important;
+  align-items:flex-start!important;
+  gap:calc(var(--ms-gap)/2)!important;
+}
+.multiselect-container .option-container label {
+  display:flex!important;
+  align-items:center!important;
+  gap:calc(var(--ms-gap)/2)!important;
+  width:100%!important;
+  padding:calc(var(--ms-gap)/2)!important;
+  background:rgba(0,0,0,var(--ms-bg-opacity))!important;
+  border-radius:var(--ms-radius)!important;
+  cursor:pointer!important;
+  transition:background-color .2s, box-shadow .2s!important;
+}
+.multiselect-container .option-container label:hover {
+  background:var(--ms-hover-bg)!important;
+  box-shadow:var(--ms-shadow)!important;
+}
+.multiselect-container .option-container.greyed-out-option label {
+  opacity:.5!important;
+  cursor:not-allowed!important;
+}
+.multiselect-container .option-container label.selected {
+  background:var(--ms-selected-bg)!important;
+}
+.multiselect-container .option-container input[type="checkbox"],
+.multiselect-container .option-container input[type="radio"] {
+  all:unset!important;
+  width:16px!important;
+  height:16px!important;
+  min-width:16px!important;
+  min-height:16px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  border:2px solid var(--ms-accent)!important;
+  border-radius:50%!important;
+  background:#fff!important;
+  transition:transform .1s ease!important;
+}
+.multiselect-container .option-container input:hover {
+  transform:scale(1.1)!important;
+}
+.multiselect-container .option-container input:checked::after {
+  content:''!important;
+  width:8px!important;
+  height:8px!important;
+  border-radius:50%!important;
+  background:var(--ms-accent)!important;
+}
+.multiselect-container .user-input-container {
+  grid-column:1/-1!important;
+  margin-top:var(--ms-gap)!important;
+}
+.multiselect-container .user-input-label {
+  font-size:var(--ms-small-fs)!important;
+  margin-bottom:16px!important;
+}
+.multiselect-container .user-input-field {
+  width:100%!important;
+  padding:6px!important;
+  border-radius:var(--ms-radius)!important;
+  border:1px solid rgba(255,255,255,.3)!important;
+  font-size:var(--ms-small-fs)!important;
+  transition:box-shadow .2s!important;
+}
+.multiselect-container .user-input-field:focus {
+  box-shadow:0 0 0 2px rgba(255,255,255,.4)!important;
+  border-color:var(--ms-accent)!important;
+}
+.multiselect-container .buttons-container {
+  display:flex!important;
+  justify-content:center!important;
+  gap:var(--ms-gap)!important;
+  padding:var(--ms-gap)!important;
+}
+.multiselect-container .submit-btn {
+  background:var(--ms-accent)!important;
+  color:#fff!important;
+  padding:8px 14px!important;
+  border-radius:var(--ms-radius)!important;
+  font-weight:600!important;
+  cursor:pointer!important;
+  transition:background-color .2s, transform .1s!important;
+}
+.multiselect-container .submit-btn:hover {
+  transform:translateY(-1px)!important;
+}
+/* état désactivé du container */
+.multiselect-container.disabled-container {
+  opacity:.5!important;
+  pointer-events:none!important;
+}
+/* animation shake + message d’erreur */
 @keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  20%, 60% { transform: translateX(-4px); }
-  40%, 80% { transform: translateX(4px); }
+  0%,100% { transform: translateX(0); }
+  20%,60% { transform: translateX(-4px); }
+  40%,80% { transform: translateX(4px); }
 }
 .submit-btn.shake {
   animation: shake 0.3s ease;
@@ -158,26 +288,20 @@ export const MultiSelect = {
         const inputs = Array.from(
           container.querySelectorAll('input[type="checkbox"], input[type="radio"]')
         );
-        const checkedCount = inputs.filter((i) => i.checked).length;
+        const checkedCount = inputs.filter(i => i.checked).length;
 
-        // bloquer au-delà de totalMaxSelect
         if (totalMaxSelect > 0 && checkedCount >= totalMaxSelect && multiselect) {
-          inputs.forEach((i) => {
-            if (!i.checked) i.disabled = true;
-          });
+          inputs.forEach(i => { if (!i.checked) i.disabled = true; });
         } else {
-          inputs.forEach((i) => {
-            if (!i.closest('.greyed-out-option')) i.disabled = false;
-          });
+          inputs.forEach(i => { if (!i.closest('.greyed-out-option')) i.disabled = false; });
         }
 
-        // synchroniser le "all" de chaque section
         sections.forEach((_, idx) => {
-          const secDom    = grid.children[idx];
-          const allInput  = secDom.querySelector('input[data-action="all"]');
+          const secDom = grid.children[idx];
+          const allInput = secDom.querySelector('input[data-action="all"]');
           if (!allInput) return;
-          const others    = Array.from(secDom.querySelectorAll('input[data-action=""]'));
-          const everyChecked = others.length > 0 && others.every((i) => i.checked);
+          const others = Array.from(secDom.querySelectorAll('input[data-action=""]'));
+          const everyChecked = others.length > 0 && others.every(i => i.checked);
           allInput.checked = everyChecked;
           allInput.parentElement.classList.toggle('selected', everyChecked);
         });
@@ -193,18 +317,17 @@ export const MultiSelect = {
           blk.innerHTML = opt.name;
           const wrap = document.createElement('div');
           wrap.classList.add('children-options');
-          opt.children.forEach((ch) => wrap.append(createOptionElement(ch, sectionIdx)));
+          opt.children.forEach(ch => wrap.append(createOptionElement(ch, sectionIdx)));
           blk.append(wrap);
           return blk;
         }
-
         const wrap = document.createElement('div');
         wrap.classList.add('option-container');
         if (opt.grey) wrap.classList.add('greyed-out-option');
 
         const inp = document.createElement('input');
-        inp.type = multiselect ? 'checkbox' : 'radio';
-        inp.dataset.action     = opt.action || '';
+        inp.type             = multiselect ? 'checkbox' : 'radio';
+        inp.dataset.action   = opt.action || '';
         inp.dataset.sectionIdx = sectionIdx;
         if (opt.grey) inp.disabled = true;
 
@@ -215,11 +338,10 @@ export const MultiSelect = {
         wrap.append(lbl);
 
         inp.addEventListener('change', () => {
-          // "all" toggle
           if (opt.action === 'all') {
             const secDom = grid.children[sectionIdx];
             const others = Array.from(secDom.querySelectorAll('input[data-action=""]'));
-            others.forEach((i) => {
+            others.forEach(i => {
               i.checked = inp.checked;
               i.parentElement.classList.toggle('selected', inp.checked);
             });
@@ -227,18 +349,16 @@ export const MultiSelect = {
           updateTotalChecked();
           lbl.classList.toggle('selected', inp.checked);
 
-          // si single-select, envoi direct
           if (!multiselect) {
             enableChat();
             container.classList.add('disabled-container');
             window.voiceflow.chat.interact({
               type: 'complete',
               payload: {
-                selection:   opt.name,
-                buttonPath:  opt.action || 'Default'
+                selection:  opt.name,
+                buttonPath: opt.action || 'Default'
               }
             });
-            // retour focus chat
             setTimeout(() => {
               const ta = host.querySelector('textarea.vfrc-chat-input');
               if (ta) ta.focus();
@@ -254,7 +374,6 @@ export const MultiSelect = {
       /* ────────────────────────────────────────────────────────── */
       grid = document.createElement('div');
       grid.classList.add('sections-grid');
-
       sections.forEach((sec, i) => {
         const sc = document.createElement('div');
         sc.classList.add('section-container');
@@ -264,7 +383,7 @@ export const MultiSelect = {
           '--section-bg',
           bg.replace(
             /^#?([0-9A-F]{2})([0-9A-F]{2})([0-9A-F]{2})$/i,
-            (_, r, g, b) => `rgba(${parseInt(r, 16)},${parseInt(g, 16)},${parseInt(b, 16)},0.15)`
+            (_, r, g, b) => `rgba(${parseInt(r,16)},${parseInt(g,16)},${parseInt(b,16)},0.15)`
           )
         );
         sc.style.setProperty('--ms-accent', lightenColor(bg, 0.3));
@@ -278,11 +397,10 @@ export const MultiSelect = {
 
         const ol = document.createElement('div');
         ol.classList.add('options-list');
-        if ((sec.options || []).length > 10) ol.classList.add('grid-2cols');
+        if ((sec.options||[]).length > 10) ol.classList.add('grid-2cols');
 
-        sec.options.forEach((opt) => {
+        sec.options.forEach(opt => {
           if (opt.action === 'user_input') {
-            // champ libre
             const uiWrap = document.createElement('div');
             uiWrap.classList.add('user-input-container');
             const uiLbl = document.createElement('label');
@@ -292,16 +410,16 @@ export const MultiSelect = {
             uiInp.type = 'text';
             uiInp.classList.add('user-input-field');
             uiInp.placeholder = opt.placeholder || '';
-            uiInp.addEventListener('keydown', (e) => {
+            uiInp.addEventListener('keydown', e => {
               if (e.key === 'Enter' && e.target.value.trim()) {
                 enableChat();
                 container.classList.add('disabled-container');
                 window.voiceflow.chat.interact({
-                  type: 'complete',
-                  payload: {
+                  type:'complete',
+                  payload:{
                     isUserInput: true,
                     userInput:   e.target.value.trim(),
-                    buttonPath: 'Default'
+                    buttonPath:  'Default'
                   }
                 });
                 setTimeout(() => {
@@ -320,31 +438,37 @@ export const MultiSelect = {
         sc.append(ol);
         grid.append(sc);
       });
-
       container.append(grid);
 
       /* ────────────────────────────────────────────────────────── */
-      /* 8. buttons (avec minSelect)                              */
+      /* 8. buttons (avec minSelect + couleur cfg.color)          */
       /* ────────────────────────────────────────────────────────── */
       if (buttons.length) {
         const bc = document.createElement('div');
         bc.classList.add('buttons-container');
 
-        buttons.forEach((cfg) => {
+        buttons.forEach(cfg => {
           const btn = document.createElement('button');
           btn.classList.add('submit-btn');
           btn.textContent = cfg.text;
-          // déterminer minSelect pour ce bouton
-          const minSel = typeof cfg.minSelect === 'number' ? cfg.minSelect : minSelectDefault;
+
+          // couleur personnalisée si fournie
+          if (cfg.color) {
+            btn.style.backgroundColor = cfg.color;
+          }
+
+          // minSelect pour ce bouton
+          const minSel = typeof cfg.minSelect === 'number'
+            ? cfg.minSelect
+            : minSelectDefault;
 
           btn.addEventListener('click', () => {
-            // compter les cases cochées
             const totalSelected = Array.from(
               container.querySelectorAll('input[type="checkbox"]:checked')
             ).length;
 
-            // si moins que minSelect → shake + message
             if (totalSelected < minSel) {
+              // shake + message d’erreur
               btn.classList.add('shake');
               setTimeout(() => btn.classList.remove('shake'), 300);
 
@@ -354,36 +478,32 @@ export const MultiSelect = {
                 err.className = 'minselect-error';
                 bc.append(err);
               }
-              err.textContent = `Vous devez sélectionner au moins ${minSel} option${minSel > 1 ? 's' : ''}.`;
+              err.textContent = \`Vous devez sélectionner au moins \${minSel} option\${minSel>1?'s':''}.\`;
               return;
             }
 
-            // validation OK → on envoie
+            // OK, on envoie
             enableChat();
             container.classList.add('disabled-container');
 
-            const res = sections
-              .map((s, i) => {
-                const dom = grid.children[i];
-                const sels = Array.from(dom.querySelectorAll('input:checked')).map(
-                  (cb) => cb.parentElement.querySelector('span').innerHTML.trim()
-                );
-                const ui = dom.querySelector('.user-input-field')?.value || '';
-                return { section: s.label, selections: sels, userInput: ui };
-              })
-              .filter((r) => r.selections.length || r.userInput);
+            const res = sections.map((s,i) => {
+              const dom = grid.children[i];
+              const sels = Array.from(dom.querySelectorAll('input:checked'))
+                .map(cb => cb.parentElement.querySelector('span').innerHTML.trim());
+              const ui  = dom.querySelector('.user-input-field')?.value || '';
+              return { section: s.label, selections: sels, userInput: ui };
+            }).filter(r => r.selections.length || r.userInput);
 
             window.voiceflow.chat.interact({
               type: 'complete',
               payload: {
-                selections: res,
-                buttonText: cfg.text,
-                buttonPath: cfg.path || 'Default',
-                isEmpty: res.every((r) => !r.selections.length && !r.userInput),
-              },
+                selections:  res,
+                buttonText:  cfg.text,
+                buttonPath:  cfg.path || 'Default',
+                isEmpty:     res.every(r=>!r.selections.length && !r.userInput)
+              }
             });
 
-            // retour focus chat
             setTimeout(() => {
               const ta = host.querySelector('textarea.vfrc-chat-input');
               if (ta) ta.focus();
@@ -400,13 +520,13 @@ export const MultiSelect = {
       /* 9. injecter dans le DOM                                   */
       /* ────────────────────────────────────────────────────────── */
       element.append(container);
-      console.log('✅ MultiSelect prêt avec minSelect');
+      console.log('✅ MultiSelect prêt');
     } catch (err) {
       console.error('❌ MultiSelect Error :', err);
       window.voiceflow.chat.interact({
-        type: 'complete',
-        payload: { error: true, message: err.message },
+        type:'complete',
+        payload:{ error:true, message:err.message }
       });
     }
-  },
+  }
 };

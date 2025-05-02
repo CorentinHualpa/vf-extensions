@@ -20,9 +20,7 @@ export const MultiSelect = {
 
   render: ({ trace, element }) => {
     try {
-      /* ────────────────────────────────────────────────────────── */
-      /* 0. lire le payload                                        */
-      /* ────────────────────────────────────────────────────────── */
+      /* 0. lire le payload */
       const {
         sections        = [],
         buttons         = [],
@@ -32,9 +30,7 @@ export const MultiSelect = {
         chatDisabledText= '🚫'
       } = trace.payload;
 
-      /* ────────────────────────────────────────────────────────── */
-      /* 1. utilitaires                                            */
-      /* ────────────────────────────────────────────────────────── */
+      /* 1. utilitaires */
       const stripHTML = html => {
         const tmp = document.createElement('div');
         tmp.innerHTML = html || '';
@@ -50,9 +46,7 @@ export const MultiSelect = {
         return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
       };
 
-      /* ────────────────────────────────────────────────────────── */
-      /* 2. chat on/off                                            */
-      /* ────────────────────────────────────────────────────────── */
+      /* 2. chat on/off */
       const root = element.getRootNode();
       const host = root instanceof ShadowRoot ? root : document;
       function disableChat() {
@@ -79,9 +73,7 @@ export const MultiSelect = {
       }
       if (!chat) disableChat();
 
-      /* ────────────────────────────────────────────────────────── */
-      /* 3. container + disable on chat interact                   */
-      /* ────────────────────────────────────────────────────────── */
+      /* 3. container + disable on chat interact */
       const container = document.createElement('div');
       container.classList.add('multiselect-container');
       if (sections.length === 1) container.classList.add('one-section');
@@ -113,9 +105,7 @@ export const MultiSelect = {
         });
       }
 
-      /* ────────────────────────────────────────────────────────── */
-      /* 4. CSS global                                             */
-      /* ────────────────────────────────────────────────────────── */
+      /* 4. CSS global */
       const styleEl = document.createElement('style');
       styleEl.textContent = `
 .multiselect-container {
@@ -236,7 +226,6 @@ export const MultiSelect = {
 .multiselect-container .submit-btn:hover {
   transform:translateY(-1px)!important;
 }
-/* vibration & error for minSelect */
 @keyframes shake {
   0%,100% { transform: translateX(0); }
   20%,60% { transform: translateX(-4px); }
@@ -256,37 +245,34 @@ export const MultiSelect = {
       `;
       container.appendChild(styleEl);
 
-      /* ────────────────────────────────────────────────────────── */
-      /* 5. max-select + all toggle                                 */
-      /* ────────────────────────────────────────────────────────── */
+      /* 5. max-select + all toggle */
       let grid;
       const updateTotalChecked = () => {
-        const inputs = Array.from(
+        const allInputs = Array.from(
           container.querySelectorAll('input[type="checkbox"], input[type="radio"]')
         );
-        const checkedCount = inputs.filter(i => i.checked).length;
+        const checkedCount = allInputs.filter(i => i.checked).length;
         if (totalMaxSelect > 0 && checkedCount >= totalMaxSelect && multiselect) {
-          inputs.forEach(i => { if (!i.checked) i.disabled = true; });
+          allInputs.forEach(i => { if (!i.checked) i.disabled = true; });
         } else {
-          inputs.forEach(i => { if (!i.closest('.greyed-out-option')) i.disabled = false; });
+          allInputs.forEach(i => { if (!i.closest('.greyed-out-option')) i.disabled = false; });
         }
         // sync “all” box per section
         sections.forEach((_, idx) => {
           const secDom = grid.children[idx];
           const allInput = secDom.querySelector('input[data-action="all"]');
           if (!allInput) return;
-          const others = Array.from(secDom.querySelectorAll('input[data-action=""]'));
+          const others = Array.from(
+            secDom.querySelectorAll('input[type="checkbox"], input[type="radio"]')
+          ).filter(i => i.dataset.action !== 'all');
           const everyChecked = others.length > 0 && others.every(i => i.checked);
           allInput.checked = everyChecked;
           allInput.parentElement.classList.toggle('selected', everyChecked);
         });
       };
 
-      /* ────────────────────────────────────────────────────────── */
-      /* 6. createOptionElement                                     */
-      /* ────────────────────────────────────────────────────────── */
+      /* 6. createOptionElement */
       const createOptionElement = (opt, sectionIdx) => {
-        // children-group
         if (Array.isArray(opt.children) && opt.children.length) {
           const blk = document.createElement('div');
           blk.classList.add('non-selectable-block');
@@ -297,7 +283,6 @@ export const MultiSelect = {
           blk.append(wrap);
           return blk;
         }
-        // single option
         const wrap = document.createElement('div');
         wrap.classList.add('option-container');
         if (opt.grey) wrap.classList.add('greyed-out-option');
@@ -315,10 +300,11 @@ export const MultiSelect = {
         wrap.append(lbl);
 
         inp.addEventListener('change', () => {
-          // all toggle logic
           if (opt.action === 'all') {
             const secDom = grid.children[sectionIdx];
-            const others = Array.from(secDom.querySelectorAll('input[data-action=""]'));
+            const others = Array.from(
+              secDom.querySelectorAll('input[type="checkbox"], input[type="radio"]')
+            ).filter(i => i.dataset.action !== 'all');
             others.forEach(i => {
               i.checked = inp.checked;
               i.parentElement.classList.toggle('selected', inp.checked);
@@ -337,7 +323,6 @@ export const MultiSelect = {
                 buttonPath: opt.action || 'Default'
               }
             });
-            // retour focus chat
             setTimeout(() => {
               const ta = host.querySelector('textarea.vfrc-chat-input');
               if (ta) ta.focus();
@@ -348,9 +333,7 @@ export const MultiSelect = {
         return wrap;
       };
 
-      /* ────────────────────────────────────────────────────────── */
-      /* 7. build sections                                          */
-      /* ────────────────────────────────────────────────────────── */
+      /* 7. build sections */
       grid = document.createElement('div');
       grid.classList.add('sections-grid');
       sections.forEach((sec, i) => {
@@ -380,7 +363,6 @@ export const MultiSelect = {
 
         sec.options.forEach(opt => {
           if (opt.action === 'user_input') {
-            // free text input
             const uiWrap = document.createElement('div');
             uiWrap.classList.add('user-input-container');
             const uiLbl = document.createElement('label');
@@ -420,31 +402,25 @@ export const MultiSelect = {
       });
       container.append(grid);
 
-      /* ────────────────────────────────────────────────────────── */
-      /* 8. buttons (avec minSelect)                               */
-      /* ────────────────────────────────────────────────────────── */
+      /* 8. buttons */
       if (buttons.length) {
         const bc = document.createElement('div');
         bc.classList.add('buttons-container');
         buttons.forEach(cfg => {
           const btn = document.createElement('button');
           btn.classList.add('submit-btn');
-          // bouton "previous" peut avoir couleur spécifique
           if (cfg.color) btn.style.background = cfg.color;
           btn.textContent = cfg.text;
 
           btn.addEventListener('click', () => {
-            // compter sélections (hors case "all")
+            // compter sélections hors "all"
             const checked = Array.from(
               container.querySelectorAll('input[type="checkbox"]:checked')
             ).filter(i => i.dataset.action !== 'all').length;
-
             const min = cfg.minSelect || 0;
             if (checked < min) {
-              // vibration et message
               btn.classList.add('shake');
               setTimeout(() => btn.classList.remove('shake'), 300);
-              // erreur
               let err = btn.nextElementSibling;
               if (!err || !err.classList.contains('minselect-error')) {
                 err = document.createElement('div');
@@ -455,11 +431,9 @@ export const MultiSelect = {
               return;
             }
 
-            // on disable le chat et widget
             enableChat();
             container.classList.add('disabled-container');
 
-            // collecte réponses
             const res = sections.map((s,i) => {
               const dom = grid.children[i];
               const sels = Array.from(dom.querySelectorAll('input:checked'))
@@ -469,7 +443,6 @@ export const MultiSelect = {
               return { section: s.label, selections: sels, userInput: ui };
             }).filter(r => r.selections.length || r.userInput);
 
-            // envoi vers Voiceflow
             window.voiceflow.chat.interact({
               type: 'complete',
               payload: {
@@ -479,7 +452,6 @@ export const MultiSelect = {
                 isEmpty:     res.every(r => !r.selections.length && !r.userInput)
               }
             });
-            // focus retour chat
             setTimeout(() => {
               const ta = host.querySelector('textarea.vfrc-chat-input');
               if (ta) ta.focus();
@@ -491,9 +463,7 @@ export const MultiSelect = {
         container.append(bc);
       }
 
-      /* ────────────────────────────────────────────────────────── */
-      /* 9. injecter dans le DOM                                   */
-      /* ────────────────────────────────────────────────────────── */
+      /* 9. injecter dans le DOM */
       element.append(container);
       console.log('✅ MultiSelect prêt');
     } catch (err) {

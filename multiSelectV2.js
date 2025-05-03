@@ -206,21 +206,115 @@ export const MultiSelect = {
   display:flex!important; justify-content:center!important;
   gap:var(--ms-gap)!important; padding:var(--ms-gap)!important;
 }
+
+/* BOUTONS CORPORATE/SCI-FI */
 .multiselect-container .submit-btn {
-  background:var(--ms-accent)!important; color:#fff!important;
-  padding:8px 14px!important; border-radius:var(--ms-radius)!important;
-  font-weight:600!important; cursor:pointer!important;
-  border:1px solid rgba(0,0,0,.1)!important;                /* biseau léger */
-  transition:background-color .2s, transform .1s!important;
+  position: relative!important;
+  background: #0066ff!important; /* bleu corporate */
+  color: #fff!important;
+  padding: 10px 24px!important; 
+  border-radius: 8px!important;
+  font-weight: 700!important; 
+  letter-spacing: 0.5px!important;
+  text-transform: uppercase!important;
+  font-size: 14px!important;
+  cursor: pointer!important;
+  border: none!important;
+  overflow: hidden!important;
+  transition: all 0.3s ease!important;
+  box-shadow: 0 4px 12px rgba(0,102,255,0.3),
+              inset 0 3px 0 rgba(255,255,255,0.2),
+              inset 0 -3px 0 rgba(0,0,0,0.2)!important;
 }
-.multiselect-container .submit-btn:hover { transform:translateY(-1px)!important; }
-@keyframes shake {
-  0%,100% { transform: translateX(0); }
-  20%,60% { transform: translateX(-4px); }
-  40%,80% { transform: translateX(4px); }
+
+/* Effet hover */
+.multiselect-container .submit-btn:hover {
+  transform: translateY(-2px)!important;
+  box-shadow: 0 6px 20px rgba(0,102,255,0.4),
+              inset 0 3px 0 rgba(255,255,255,0.3),
+              inset 0 -3px 0 rgba(0,0,0,0.3)!important;
 }
+
+/* Effet active (clic) */
+.multiselect-container .submit-btn:active {
+  transform: translateY(1px)!important;
+  box-shadow: 0 2px 6px rgba(0,102,255,0.3),
+              inset 0 1px 0 rgba(255,255,255,0.1),
+              inset 0 -1px 0 rgba(0,0,0,0.1)!important;
+}
+
+/* Effet de scan sci-fi */
+.multiselect-container .submit-btn::before {
+  content: ''!important;
+  position: absolute!important;
+  top: -2px!important;
+  left: -2px!important;
+  width: calc(100% + 4px)!important;
+  height: calc(100% + 4px)!important;
+  background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent)!important;
+  transform: translateX(-100%) rotate(45deg)!important;
+  transition: transform 0.8s ease!important;
+}
+
+.multiselect-container .submit-btn:hover::before {
+  transform: translateX(100%) rotate(45deg)!important;
+}
+
+/* Animation de scan horizontal*/
+.multiselect-container .submit-btn::after {
+  content: ''!important;
+  position: absolute!important;
+  top: 50%!important;
+  left: 0!important;
+  width: 100%!important;
+  height: 1px!important;
+  background: rgba(255,255,255,0.4)!important;
+  transform: translateY(-50%)!important;
+  opacity: 0!important;
+  transition: opacity 0.3s ease!important;
+}
+
+.multiselect-container .submit-btn:hover::after {
+  opacity: 1!important;
+}
+
+/* Animation shake améliorée */
+@keyframes shake-enhanced {
+  0%, 100% { transform: translateX(0); }
+  15%, 45%, 75% { transform: translateX(-6px); }
+  30%, 60%, 90% { transform: translateX(6px); }
+}
+
 .multiselect-container .submit-btn.shake {
-  animation: shake 0.3s ease!important;
+  animation: shake-enhanced 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97)!important;
+  box-shadow: 0 0 0 4px rgba(255,68,68,0.5)!important;
+}
+
+/* Effet de glow pour les erreurs */
+.multiselect-container .submit-btn.shake {
+  background: #ff4433!important;
+  box-shadow: 0 0 10px #ff4433,
+              0 0 20px rgba(255,68,68,0.5),
+              inset 0 3px 0 rgba(255,255,255,0.2),
+              inset 0 -3px 0 rgba(0,0,0,0.2)!important;
+}
+
+/* Effet de pulse */
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(0,102,255,0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(0,102,255,0); }
+  100% { box-shadow: 0 0 0 0 rgba(0,102,255,0); }
+}
+
+.multiselect-container .submit-btn:focus {
+  animation: pulse 1.5s infinite!important;
+}
+
+/* Style pour boutons avec couleurs personnalisées */
+.multiselect-container .submit-btn[style*="background-color"] {
+  box-shadow: 0 4px 12px rgba(var(--btn-r),var(--btn-g),var(--btn-b),0.3),
+              inset 0 3px 0 rgba(255,255,255,0.2),
+              inset 0 -3px 0 rgba(0,0,0,0.2)!important;
 }
 
 .multiselect-container.disabled-container {
@@ -395,6 +489,14 @@ export const MultiSelect = {
           if (cfg.color) {
             btn.style.setProperty('background-color', cfg.color, 'important');
             btn.style.setProperty('border-color',     cfg.color, 'important');
+            // Extraire les valeurs RGB pour le box-shadow
+            const rgb = parseInt(cfg.color.replace('#',''), 16);
+            const r = (rgb >> 16) & 255;
+            const g = (rgb >> 8) & 255;
+            const b = rgb & 255;
+            btn.style.setProperty('--btn-r', r);
+            btn.style.setProperty('--btn-g', g);
+            btn.style.setProperty('--btn-b', b);
           }
           btn.textContent = cfg.text;
 
@@ -413,7 +515,7 @@ export const MultiSelect = {
             // si seuil ≥1 et non atteint → shake+erreur
             if (min > 0 && checked < min) {
               btn.classList.add('shake');
-              setTimeout(() => btn.classList.remove('shake'), 300);
+              setTimeout(() => btn.classList.remove('shake'), 400);
               err.textContent = `Vous devez sélectionner au moins ${min} option${min>1?'s':''}.`;
               err.style.visibility = 'visible';
               return;

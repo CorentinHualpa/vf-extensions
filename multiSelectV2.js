@@ -282,14 +282,18 @@ export const MultiSelect = {
   animation:shake 0.3s ease!important;
 }
 /* message d’erreur minSelect */
-.multiselect-container .minselect-error {
-  color:#ffdddd!important;
-  font-size:var(--ms-small-fs)!important;
-  margin-top:4px!important;
+.multiselect-container .button-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  flex: 0 0 auto;        /* n’autorise pas le flex à shrink */
 }
-.multiselect-container.disabled-container {
-  opacity:.5!important;
-  pointer-events:none!important;
+.multiselect-container .button-wrapper .minselect-error {
+  visibility: hidden;     /* caché tant qu’on ne l’affiche pas */
+  margin-top: 4px;
+  color: #ffdddd!important;
+  font-size: var(--ms-small-fs)!important;
+  white-space: nowrap;    /* ne pas wrap le message */
 }
       `;
       container.appendChild(styleEl);
@@ -400,47 +404,58 @@ export const MultiSelect = {
       container.append(grid);
 
       /* 8. buttons */
-      if (buttons.length) {
+     if (buttons.length) {
         const bc = document.createElement('div');
         bc.classList.add('buttons-container');
+
         buttons.forEach(cfg => {
+          // 1) wrapper pour chaque bouton + son message d’erreur
+          const wrapper = document.createElement('div');
+          wrapper.classList.add('button-wrapper');
+
           const btn = document.createElement('button');
           btn.classList.add('submit-btn');
           if (cfg.color) {
-            btn.setAttribute('data-has-color','1');
-            btn.style.setProperty('background-color', cfg.color,'important');
-            btn.style.setProperty('border-color',     cfg.color,'important');
+            // applique seulement le fond et le contour, PAS --ms-accent
+            btn.style.setProperty('background-color', cfg.color, 'important');
+            btn.style.setProperty('border-color',     cfg.color, 'important');
           }
           btn.textContent = cfg.text;
 
+          // 2) zone d’erreur réservée sous le bouton
+          const err = document.createElement('div');
+          err.className = 'minselect-error';
+
           btn.addEventListener('click', () => {
-            const min = cfg.minSelect||0;
-            // si minSelect=0 → shake le bouton seul
+            const min = cfg.minSelect || 0;
+
+            // si minSelect === 0 → on shake simplement ce bouton
             if (min === 0) {
               btn.classList.add('shake');
-              setTimeout(()=>btn.classList.remove('shake'),300);
+              setTimeout(() => btn.classList.remove('shake'), 300);
               return;
             }
-            // sinon compter sélections hors "all"
+
+            // sinon on compte les checkbox cochées hors “all”
             const checked = Array.from(
               container.querySelectorAll('input[type="checkbox"]:checked')
-            ).filter(i=>i.dataset.action!=='all').length;
+            ).filter(i => i.dataset.action !== 'all').length;
 
             if (checked < min) {
+              // défaut : shake + afficher l’erreur sous ce bouton
               btn.classList.add('shake');
-              setTimeout(()=>btn.classList.remove('shake'),300);
-              let err = btn.nextElementSibling;
-              if (!err || !err.classList.contains('minselect-error')) {
-                err = document.createElement('div');
-                err.className = 'minselect-error';
-                btn.insertAdjacentElement('afterend', err);
-              }
+              setTimeout(() => btn.classList.remove('shake'), 300);
+
               err.textContent = `Vous devez sélectionner au moins ${min} option${min>1?'s':''}.`;
+              err.style.visibility = 'visible';
               return;
             }
 
+            // sélection valide → on efface l’erreur et on envoie
+            err.style.visibility = 'hidden';
             enableChat();
             container.classList.add('disabled-container');
+
             const res = sections.map((s,i) => {
               const dom = grid.children[i];
               const sels = Array.from(dom.querySelectorAll('input:checked'))
@@ -453,20 +468,24 @@ export const MultiSelect = {
             window.voiceflow.chat.interact({
               type:'complete',
               payload:{
-                selections:res,
-                buttonText:cfg.text,
-                buttonPath:cfg.path||'Default',
-                isEmpty:res.every(r=>!r.selections.length&&!r.userInput)
+                selections:  res,
+                buttonText:  cfg.text,
+                buttonPath:  cfg.path || 'Default',
+                isEmpty:     res.every(r=>!r.selections.length&&!r.userInput)
               }
             });
             setTimeout(()=>{
               const ta = host.querySelector('textarea.vfrc-chat-input');
-              if(ta) ta.focus();
+              if (ta) ta.focus();
             },0);
           });
 
-          bc.append(btn);
+          // on assemble dans le wrapper
+          wrapper.append(btn);
+          wrapper.append(err);
+          bc.append(wrapper);
         });
+
         container.append(bc);
       }
 

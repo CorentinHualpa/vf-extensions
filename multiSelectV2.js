@@ -2,20 +2,20 @@
  *  ╔═══════════════════════════════════════════════════════════╗
  *  ║  MultiSelect – Voiceflow Response Extension               ║
  *  ║                                                           ║
- *  ║  • 1 seul champ “color” par section                       ║
+ *  ║  • 1 seul champ "color" par section                       ║
  *  ║  • style, hover, selected centralisés en CSS             ║
  *  ║  • active/désactive le chat selon `chat`                 ║
- *  ║  • grise le widget si l’utilisateur écrit dans le chat    ║
+ *  ║  • grise le widget si l'utilisateur écrit dans le chat    ║
  *  ║  • single-select utilise `action` comme `buttonPath`     ║
  *  ║  • champ libre bascule focus retour dans le chat         ║
- *  ║  • action="all" coche/décoche l’intégralité de la section║
+ *  ║  • action="all" coche/décoche l'intégralité de la section║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 export const MultiSelect = {
   name: 'MultiSelect',
   type: 'response',
 
-  // Ne sʼactive que sur trace multi_select
+  // Ne s'active que sur trace multi_select
   match: ({ trace }) => trace.payload && trace.type === 'multi_select',
 
   render: ({ trace, element }) => {
@@ -241,7 +241,7 @@ export const MultiSelect = {
         } else {
           allInputs.forEach(i => { if (!i.closest('.greyed-out-option')) i.disabled = false; });
         }
-        // sync “all” box per section
+        // sync "all" box per section
         sections.forEach((_, idx) => {
           const secDom = grid.children[idx];
           const allInput = secDom.querySelector('input[data-action="all"]');
@@ -284,6 +284,9 @@ export const MultiSelect = {
         wrap.append(lbl);
 
         inp.addEventListener('change', () => {
+          // Gestion du toggle visuel
+          lbl.classList.toggle('selected', inp.checked);
+          
           if (opt.action === 'all') {
             const secDom = grid.children[sectionIdx];
             const others = Array.from(
@@ -295,10 +298,12 @@ export const MultiSelect = {
             });
           }
           updateTotalChecked();
+        });
 
-      /* ────────────────────────────────────────────────────────── */
-      /* 7. build sections                                          */
-      /* ────────────────────────────────────────────────────────── */
+        return wrap;
+      };
+
+      /* 7. build sections */
       grid = document.createElement('div');
       grid.classList.add('sections-grid');
       sections.forEach((sec, i) => {
@@ -323,7 +328,7 @@ export const MultiSelect = {
           sc.append(ttl);
         }
 
-        // liste d’options
+        // liste d'options
         const ol = document.createElement('div');
         ol.classList.add('options-list');
         if ((sec.options || []).length > 10) ol.classList.add('grid-2cols');
@@ -375,15 +380,13 @@ export const MultiSelect = {
       });
       container.append(grid);
 
-      /* ────────────────────────────────────────────────────────── */
-      /* 8. buttons                                                */
-      /* ────────────────────────────────────────────────────────── */
+      /* 8. buttons */
       if (buttons.length) {
         const bc = document.createElement('div');
         bc.classList.add('buttons-container');
 
         buttons.forEach(cfg => {
-          // wrapper vertical : bouton + msg d’erreur
+          // wrapper vertical : bouton + msg d'erreur
           const wrapper = document.createElement('div');
           wrapper.classList.add('button-wrapper');
 
@@ -395,14 +398,14 @@ export const MultiSelect = {
           }
           btn.textContent = cfg.text;
 
-          // zone d’erreur sous le bouton
+          // zone d'erreur sous le bouton
           const err = document.createElement('div');
           err.className = 'minselect-error';
 
           btn.addEventListener('click', () => {
             const min = cfg.minSelect || 0;
 
-            // nombre de checkbox cochées hors “all”
+            // nombre de checkbox cochées hors "all"
             const checked = Array.from(
               container.querySelectorAll('input[type="checkbox"]:checked')
             ).filter(i => i.dataset.action !== 'all').length;
@@ -416,7 +419,7 @@ export const MultiSelect = {
               return;
             }
 
-            // sinon sélection OK → on cache l’erreur, on grise tout et on envoie
+            // sinon sélection OK → on cache l'erreur, on grise tout et on envoie
             err.style.visibility = 'hidden';
             enableChat();
             container.classList.add('disabled-container');
@@ -453,9 +456,7 @@ export const MultiSelect = {
         container.append(bc);
       }
 
-      /* ────────────────────────────────────────────────────────── */
-      /* 9. injecter dans le DOM                                   */
-      /* ────────────────────────────────────────────────────────── */
+      /* 9. injecter dans le DOM */
       element.append(container);
       console.log('✅ MultiSelect prêt');
     } catch (err) {

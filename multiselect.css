@@ -37,7 +37,7 @@
   grid-template-columns:1fr!important; 
 }
 
-/* Sections avec glassmorphism */
+/* Sections avec glassmorphism dynamique selon la couleur */
 .multiselect-container .section-container { 
   background: linear-gradient(135deg, rgba(0,0,0,0.8), rgba(0,0,0,0.5))!important;
   backdrop-filter: blur(10px)!important;
@@ -49,6 +49,17 @@
               inset 0 1px 0 rgba(255, 255, 255, 0.1)!important;
   transition: all .3s ease!important;
   margin-bottom: 16px!important;
+}
+
+/* Gestion spéciale pour la section violette (#7928CA) */
+.multiselect-container .section-container[style*="#7928CA"],
+.multiselect-container .section-container[style*="#7926CA"],
+.multiselect-container .section-container[style*="#7926ca"],
+.multiselect-container .section-container[style*="#7928ca"] {
+  background: linear-gradient(135deg, rgba(121, 40, 202, 0.9), rgba(121, 40, 202, 0.7))!important;
+  border: 1px solid rgba(255,255,255,0.25)!important;
+  box-shadow: 0 8px 32px rgba(121, 40, 202, 0.3), 
+              inset 0 1px 0 rgba(255, 255, 255, 0.2)!important;
 }
 
 .multiselect-container .section-container:hover { 
@@ -78,6 +89,14 @@
   height: 2px!important;
   background: var(--ms-accent)!important;
   transition: width 0.3s ease!important;
+}
+
+/* Ligne blanche pour la section violette */
+.multiselect-container .section-container[style*="#7928CA"] .section-title::before,
+.multiselect-container .section-container[style*="#7926CA"] .section-title::before,
+.multiselect-container .section-container[style*="#7926ca"] .section-title::before,
+.multiselect-container .section-container[style*="#7928ca"] .section-title::before {
+  background: #FFFFFF!important;
 }
 
 .multiselect-container .section-container:hover .section-title::before {

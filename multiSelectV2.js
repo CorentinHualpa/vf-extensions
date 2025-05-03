@@ -132,16 +132,53 @@ export const MultiSelect = {
   gap:var(--ms-gap)!important;
 }
 .multiselect-container.one-section .sections-grid { grid-template-columns:1fr!important; }
-.multiselect-container .section-container { background:inherit; border-radius:var(--ms-radius)!important;
-  overflow:hidden!important; box-shadow:var(--ms-shadow)!important;
-  transition:transform .2s ease!important;
+
+/* Sections avec glassmorphism */
+.multiselect-container .section-container { 
+  background: linear-gradient(135deg, rgba(0,0,0,0.8), rgba(0,0,0,0.5))!important;
+  backdrop-filter: blur(10px)!important;
+  -webkit-backdrop-filter: blur(10px)!important;
+  border: 1px solid rgba(255,255,255,0.15)!important;
+  border-radius: 12px!important;
+  overflow:hidden!important; 
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), 
+              inset 0 1px 0 rgba(255, 255, 255, 0.1)!important;
+  transition: all .3s ease!important;
+  margin-bottom: 16px!important;
 }
-.multiselect-container .section-container:hover { transform:translateY(-2px)!important; }
-.multiselect-container .section-title { padding:var(--ms-gap)!important; font-weight:700!important;
-  font-size:var(--ms-heading-fs)!important;
-  border-bottom:2px solid rgba(255,255,255,.3)!important;
-  margin-bottom:var(--ms-gap)!important;
+.multiselect-container .section-container:hover { 
+  transform: translateY(-4px)!important; 
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3)!important;
 }
+
+/* Titres de section améliorés */
+.multiselect-container .section-title { 
+  padding: 16px 20px!important; 
+  font-weight: 700!important;
+  font-size: 18px!important;
+  letter-spacing: -0.3px!important;
+  background: linear-gradient(to right, rgba(255,255,255,0.1), transparent)!important;
+  border-bottom: 1px solid rgba(255,255,255,0.1)!important;
+  margin-bottom: 8px!important;
+  position: relative!important;
+  overflow: hidden!important;
+}
+
+.multiselect-container .section-title::before {
+  content: ''!important;
+  position: absolute!important;
+  left: 0!important;
+  bottom: 0!important;
+  width: 60px!important;
+  height: 2px!important;
+  background: var(--ms-accent)!important;
+  transition: width 0.3s ease!important;
+}
+
+.multiselect-container .section-container:hover .section-title::before {
+  width: 100%!important;
+}
+
 .multiselect-container .options-list { display:grid!important; grid-template-columns:1fr!important;
   gap:calc(var(--ms-gap)/2)!important; padding:calc(var(--ms-gap)/2)!important;
 }
@@ -207,10 +244,10 @@ export const MultiSelect = {
   gap:var(--ms-gap)!important; padding:var(--ms-gap)!important;
 }
 
-/* BOUTONS CORPORATE/SCI-FI */
+/* BOUTONS CORPORATE/SCI-FI - VERT PAR DÉFAUT */
 .multiselect-container .submit-btn {
   position: relative!important;
-  background: #0066ff!important; /* bleu corporate */
+  background: #4CAF50!important; /* vert par défaut */
   color: #fff!important;
   padding: 10px 24px!important; 
   border-radius: 8px!important;
@@ -222,7 +259,7 @@ export const MultiSelect = {
   border: none!important;
   overflow: hidden!important;
   transition: all 0.3s ease!important;
-  box-shadow: 0 4px 12px rgba(0,102,255,0.3),
+  box-shadow: 0 4px 12px rgba(76,175,80,0.3),
               inset 0 3px 0 rgba(255,255,255,0.2),
               inset 0 -3px 0 rgba(0,0,0,0.2)!important;
 }
@@ -230,7 +267,7 @@ export const MultiSelect = {
 /* Effet hover */
 .multiselect-container .submit-btn:hover {
   transform: translateY(-2px)!important;
-  box-shadow: 0 6px 20px rgba(0,102,255,0.4),
+  box-shadow: 0 6px 20px rgba(76,175,80,0.4),
               inset 0 3px 0 rgba(255,255,255,0.3),
               inset 0 -3px 0 rgba(0,0,0,0.3)!important;
 }
@@ -238,7 +275,7 @@ export const MultiSelect = {
 /* Effet active (clic) */
 .multiselect-container .submit-btn:active {
   transform: translateY(1px)!important;
-  box-shadow: 0 2px 6px rgba(0,102,255,0.3),
+  box-shadow: 0 2px 6px rgba(76,175,80,0.3),
               inset 0 1px 0 rgba(255,255,255,0.1),
               inset 0 -1px 0 rgba(0,0,0,0.1)!important;
 }
@@ -258,24 +295,6 @@ export const MultiSelect = {
 
 .multiselect-container .submit-btn:hover::before {
   transform: translateX(100%) rotate(45deg)!important;
-}
-
-/* Animation de scan horizontal*/
-.multiselect-container .submit-btn::after {
-  content: ''!important;
-  position: absolute!important;
-  top: 50%!important;
-  left: 0!important;
-  width: 100%!important;
-  height: 1px!important;
-  background: rgba(255,255,255,0.4)!important;
-  transform: translateY(-50%)!important;
-  opacity: 0!important;
-  transition: opacity 0.3s ease!important;
-}
-
-.multiselect-container .submit-btn:hover::after {
-  opacity: 1!important;
 }
 
 /* Animation shake améliorée */
@@ -301,9 +320,9 @@ export const MultiSelect = {
 
 /* Effet de pulse */
 @keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(0,102,255,0.7); }
-  70% { box-shadow: 0 0 0 10px rgba(0,102,255,0); }
-  100% { box-shadow: 0 0 0 0 rgba(0,102,255,0); }
+  0% { box-shadow: 0 0 0 0 rgba(76,175,80,0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(76,175,80,0); }
+  100% { box-shadow: 0 0 0 0 rgba(76,175,80,0); }
 }
 
 .multiselect-container .submit-btn:focus {

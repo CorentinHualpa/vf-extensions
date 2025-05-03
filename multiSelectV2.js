@@ -15,7 +15,6 @@ export const MultiSelect = {
   name: 'MultiSelect',
   type: 'response',
 
-  // Ne sʼactive que sur trace multi_select
   match: ({ trace }) => trace.payload && trace.type === 'multi_select',
 
   render: ({ trace, element }) => {
@@ -105,7 +104,7 @@ export const MultiSelect = {
         });
       }
 
-      /* 4. CSS global */
+      /* 4. CSS global (button background no longer !important + no shrink on :active) */
       const styleEl = document.createElement('style');
       styleEl.textContent = `
 .multiselect-container {
@@ -214,17 +213,23 @@ export const MultiSelect = {
   border-color:var(--ms-accent)!important;
 }
 .multiselect-container .buttons-container {
-  display:flex!important; justify-content:center!important;
+  display:flex!important; flex-wrap:wrap!important; justify-content:center!important;
   gap:var(--ms-gap)!important; padding:var(--ms-gap)!important;
 }
 .multiselect-container .submit-btn {
-  background:var(--ms-accent)!important; color:#fff!important;
-  padding:8px 14px!important; border-radius:var(--ms-radius)!important;
-  font-weight:600!important; cursor:pointer!important;
+  background:var(--ms-accent);
+  color:#fff!important;
+  padding:8px 14px!important;
+  border-radius:var(--ms-radius)!important;
+  font-weight:600!important;
+  cursor:pointer!important;
   transition:background-color .2s, transform .1s!important;
 }
 .multiselect-container .submit-btn:hover {
   transform:translateY(-1px)!important;
+}
+.multiselect-container .submit-btn:active {
+  transform:none!important;
 }
 @keyframes shake {
   0%,100% { transform: translateX(0); }
@@ -232,12 +237,12 @@ export const MultiSelect = {
   40%,80% { transform: translateX(4px); }
 }
 .multiselect-container .submit-btn.shake {
-  animation: shake 0.3s ease!important;
+  animation:shake 0.3s ease!important;
 }
 .multiselect-container .minselect-error {
-  color: #ffdddd!important;
-  font-size: var(--ms-small-fs)!important;
-  margin-top: 4px!important;
+  color:#ffdddd!important;
+  font-size:var(--ms-small-fs)!important;
+  margin-top:4px!important;
 }
 .multiselect-container.disabled-container {
   opacity:.5!important; pointer-events:none!important;
@@ -317,16 +322,13 @@ export const MultiSelect = {
             enableChat();
             container.classList.add('disabled-container');
             window.voiceflow.chat.interact({
-              type: 'complete',
-              payload: {
-                selection: opt.name,
-                buttonPath: opt.action || 'Default'
-              }
+              type:'complete',
+              payload:{ selection:opt.name, buttonPath:opt.action || 'Default' }
             });
-            setTimeout(() => {
+            setTimeout(()=>{
               const ta = host.querySelector('textarea.vfrc-chat-input');
-              if (ta) ta.focus();
-            }, 0);
+              if(ta) ta.focus();
+            },0);
           }
         });
 
@@ -373,27 +375,27 @@ export const MultiSelect = {
             uiInp.classList.add('user-input-field');
             uiInp.placeholder = opt.placeholder || '';
             uiInp.addEventListener('keydown', e => {
-              if (e.key === 'Enter' && e.target.value.trim()) {
+              if(e.key==='Enter'&&e.target.value.trim()){
                 enableChat();
                 container.classList.add('disabled-container');
                 window.voiceflow.chat.interact({
                   type:'complete',
                   payload:{
-                    isUserInput: true,
-                    userInput: e.target.value.trim(),
-                    buttonPath: 'Default'
+                    isUserInput:true,
+                    userInput:e.target.value.trim(),
+                    buttonPath:'Default'
                   }
                 });
-                setTimeout(() => {
-                  const ta = host.querySelector('textarea.vfrc-chat-input');
-                  if (ta) ta.focus();
-                }, 0);
+                setTimeout(()=>{
+                  const ta=host.querySelector('textarea.vfrc-chat-input');
+                  if(ta)ta.focus();
+                },0);
               }
             });
-            uiWrap.append(uiLbl, uiInp);
+            uiWrap.append(uiLbl,uiInp);
             ol.append(uiWrap);
           } else {
-            ol.append(createOptionElement(opt, i));
+            ol.append(createOptionElement(opt,i));
           }
         });
 
@@ -409,53 +411,54 @@ export const MultiSelect = {
         buttons.forEach(cfg => {
           const btn = document.createElement('button');
           btn.classList.add('submit-btn');
-          if (cfg.color) btn.style.background = cfg.color;
-          btn.textContent = cfg.text;
 
+          // override per-button color (must use !important override)
+          if (cfg.color) {
+            btn.style.setProperty('background-color', cfg.color, 'important');
+            btn.style.setProperty('border-color',    cfg.color, 'important');
+          }
+
+          btn.textContent = cfg.text;
           btn.addEventListener('click', () => {
-            // compter sélections hors "all"
             const checked = Array.from(
               container.querySelectorAll('input[type="checkbox"]:checked')
-            ).filter(i => i.dataset.action !== 'all').length;
-            const min = cfg.minSelect || 0;
-            if (checked < min) {
+            ).filter(i => i.dataset.action!=='all').length;
+            const min = cfg.minSelect||0;
+            if (checked<min) {
               btn.classList.add('shake');
-              setTimeout(() => btn.classList.remove('shake'), 300);
-              let err = btn.nextElementSibling;
-              if (!err || !err.classList.contains('minselect-error')) {
-                err = document.createElement('div');
-                err.className = 'minselect-error';
-                btn.insertAdjacentElement('afterend', err);
+              setTimeout(()=>btn.classList.remove('shake'),300);
+              let err=btn.nextElementSibling;
+              if(!err||!err.classList.contains('minselect-error')){
+                err=document.createElement('div');
+                err.className='minselect-error';
+                btn.insertAdjacentElement('afterend',err);
               }
-              err.textContent = `Vous devez sélectionner au moins ${min} option${min > 1 ? 's' : ''}.`;
+              err.textContent=`Vous devez sélectionner au moins ${min} option${min>1?'s':''}.`;
               return;
             }
-
             enableChat();
             container.classList.add('disabled-container');
-
-            const res = sections.map((s,i) => {
-              const dom = grid.children[i];
-              const sels = Array.from(dom.querySelectorAll('input:checked'))
-                .filter(i => i.dataset.action !== 'all')
-                .map(cb => cb.parentElement.querySelector('span').innerHTML.trim());
-              const ui  = dom.querySelector('.user-input-field')?.value || '';
-              return { section: s.label, selections: sels, userInput: ui };
-            }).filter(r => r.selections.length || r.userInput);
-
+            const res=sections.map((s,i)=>{
+              const dom=grid.children[i];
+              const sels=Array.from(dom.querySelectorAll('input:checked'))
+                .filter(i=>i.dataset.action!=='all')
+                .map(cb=>cb.parentElement.querySelector('span').innerHTML.trim());
+              const ui=dom.querySelector('.user-input-field')?.value||'';
+              return {section:s.label,selections:sels,userInput:ui};
+            }).filter(r=>r.selections.length||r.userInput);
             window.voiceflow.chat.interact({
-              type: 'complete',
-              payload: {
-                selections:  res,
-                buttonText:  cfg.text,
-                buttonPath:  cfg.path || 'Default',
-                isEmpty:     res.every(r => !r.selections.length && !r.userInput)
+              type:'complete',
+              payload:{
+                selections:res,
+                buttonText:cfg.text,
+                buttonPath:cfg.path||'Default',
+                isEmpty:res.every(r=>!r.selections.length&&!r.userInput)
               }
             });
-            setTimeout(() => {
-              const ta = host.querySelector('textarea.vfrc-chat-input');
-              if (ta) ta.focus();
-            }, 0);
+            setTimeout(()=>{
+              const ta=host.querySelector('textarea.vfrc-chat-input');
+              if(ta)ta.focus();
+            },0);
           });
 
           bc.append(btn);

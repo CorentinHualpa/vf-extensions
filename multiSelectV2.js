@@ -47,6 +47,15 @@ export const MultiSelect = {
         return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
       };
 
+      // Fonction pour convertir hex en rgba
+      const hexToRgba = (hex, opacity) => {
+        const num = parseInt(hex.replace('#',''), 16);
+        const r = num >> 16;
+        const g = (num >> 8) & 0xFF;
+        const b = num & 0xFF;
+        return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+      };
+
       /* 2. chat on/off */
       const root = element.getRootNode();
       const host = root instanceof ShadowRoot ? root : document;
@@ -153,7 +162,6 @@ export const MultiSelect = {
 
 /* Sections avec glassmorphism dynamique selon la couleur */
 .multiselect-container .section-container { 
-  background: linear-gradient(135deg, rgba(0,0,0,0.8), rgba(0,0,0,0.5))!important;
   backdrop-filter: blur(10px)!important;
   -webkit-backdrop-filter: blur(10px)!important;
   border: 1px solid rgba(255,255,255,0.15)!important;
@@ -163,17 +171,7 @@ export const MultiSelect = {
               inset 0 1px 0 rgba(255, 255, 255, 0.1)!important;
   transition: all .3s ease!important;
   margin-bottom: 16px!important;
-}
-
-/* Gestion spéciale pour la section violette (#7928CA) */
-.multiselect-container .section-container[style*="#7928CA"],
-.multiselect-container .section-container[style*="#7926CA"],
-.multiselect-container .section-container[style*="#7926ca"],
-.multiselect-container .section-container[style*="#7928ca"] {
-  background: linear-gradient(135deg, rgba(121, 40, 202, 0.9), rgba(121, 40, 202, 0.7))!important;
-  border: 1px solid rgba(255,255,255,0.25)!important;
-  box-shadow: 0 8px 32px rgba(121, 40, 202, 0.3), 
-              inset 0 1px 0 rgba(255, 255, 255, 0.2)!important;
+  /* Le background est défini dynamiquement dans JavaScript */
 }
 
 .multiselect-container .section-container:hover { 
@@ -201,16 +199,8 @@ export const MultiSelect = {
   bottom: 0!important;
   width: 60px!important;
   height: 2px!important;
-  background: var(--ms-accent)!important;
-  transition: width 0.3s ease!important;
-}
-
-/* Ligne blanche pour la section violette */
-.multiselect-container .section-container[style*="#7928CA"] .section-title::before,
-.multiselect-container .section-container[style*="#7926CA"] .section-title::before,
-.multiselect-container .section-container[style*="#7926ca"] .section-title::before,
-.multiselect-container .section-container[style*="#7928ca"] .section-title::before {
   background: #FFFFFF!important;
+  transition: width 0.3s ease!important;
 }
 
 .multiselect-container .section-container:hover .section-title::before {
@@ -530,6 +520,12 @@ export const MultiSelect = {
         sc.classList.add('section-container');
         const bg = sec.backgroundColor || sec.color || '#673AB7';
         sc.style.backgroundColor = bg;
+        
+        // Définir un dégradé dynamique basé sur la couleur de la section
+        const rgba1 = hexToRgba(bg, 0.9);
+        const rgba2 = hexToRgba(bg, 0.7);
+        sc.style.background = `linear-gradient(135deg, ${rgba1}, ${rgba2})`;
+        
         sc.style.setProperty(
           '--section-bg',
           bg.replace(
@@ -537,6 +533,7 @@ export const MultiSelect = {
             (_m, r, g, b) => `rgba(${parseInt(r,16)},${parseInt(g,16)},${parseInt(b,16)},0.15)`
           )
         );
+        // Utiliser la couleur de la section comme accent
         sc.style.setProperty('--ms-accent', lightenColor(bg, 0.3));
 
         // titre de section

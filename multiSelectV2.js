@@ -15,7 +15,6 @@ export const MultiSelect = {
   name: 'MultiSelect',
   type: 'response',
 
-  // Ne sʼactive que sur trace multi_select
   match: ({ trace }) => trace.payload && trace.type === 'multi_select',
 
   render: ({ trace, element }) => {
@@ -73,7 +72,7 @@ export const MultiSelect = {
       }
       if (!chat) disableChat();
 
-      /* 3. container + disable on chat interact */
+      /* 3. container + désactiver chat si l’utilisateur écrit */
       const container = document.createElement('div');
       container.classList.add('multiselect-container');
       if (sections.length === 1) container.classList.add('one-section');
@@ -105,7 +104,7 @@ export const MultiSelect = {
         });
       }
 
-      /* 4. CSS global */
+      /* 4. CSS global (strictement identique à avant) */
       const styleEl = document.createElement('style');
       styleEl.textContent = `
 .multiselect-container {
@@ -224,12 +223,9 @@ export const MultiSelect = {
   font-weight:600!important; cursor:pointer!important;
   transition:background-color .2s, transform .1s!important;
 }
-.multiselect-container .submit-btn:hover {
-  transform:translateY(-1px)!important;
-}
-/* override couleur par bouton */
+/* override couleur inline si cfg.color présent */
 .multiselect-container .submit-btn[data-has-color] {
-  /* inline-style background prend le dessus */
+  /* inline-style backgroundColor/borderColor prend le dessus */
 }
 /* stop shrink au clic */
 .multiselect-container .submit-btn:active {
@@ -248,20 +244,22 @@ export const MultiSelect = {
       /* 5. max-select + all toggle */
       let grid;
       const updateTotalChecked = () => {
-        const allInputs = Array.from(container.querySelectorAll('input[type="checkbox"], input[type="radio"]'));
+        const allInputs = Array.from(
+          container.querySelectorAll('input[type="checkbox"], input[type="radio"]')
+        );
         const checkedCount = allInputs.filter(i => i.checked).length;
         if (totalMaxSelect > 0 && checkedCount >= totalMaxSelect && multiselect) {
           allInputs.forEach(i => { if (!i.checked) i.disabled = true; });
         } else {
           allInputs.forEach(i => { if (!i.closest('.greyed-out-option')) i.disabled = false; });
         }
-        // sync “all”
         sections.forEach((_, idx) => {
           const secDom = grid.children[idx];
           const allInput = secDom.querySelector('input[data-action="all"]');
           if (!allInput) return;
-          const others = Array.from(secDom.querySelectorAll('input[type="checkbox"], input[type="radio"]'))
-            .filter(i => i.dataset.action !== 'all');
+          const others = Array.from(
+            secDom.querySelectorAll('input[type="checkbox"], input[type="radio"]')
+          ).filter(i => i.dataset.action !== 'all');
           const everyChecked = others.length > 0 && others.every(i => i.checked);
           allInput.checked = everyChecked;
           allInput.parentElement.classList.toggle('selected', everyChecked);
@@ -297,8 +295,9 @@ export const MultiSelect = {
         inp.addEventListener('change', () => {
           if (opt.action === 'all') {
             const secDom = grid.children[sectionIdx];
-            const others = Array.from(secDom.querySelectorAll('input[type="checkbox"], input[type="radio"]'))
-              .filter(i => i.dataset.action !== 'all');
+            const others = Array.from(
+              secDom.querySelectorAll('input[type="checkbox"], input[type="radio"]')
+            ).filter(i => i.dataset.action !== 'all');
             others.forEach(i => {
               i.checked = inp.checked;
               i.parentElement.classList.toggle('selected', inp.checked);
@@ -355,9 +354,9 @@ export const MultiSelect = {
           const btn = document.createElement('button');
           btn.classList.add('submit-btn');
           if (cfg.color) {
-            btn.setAttribute('data-has-color', '1');
+            btn.setAttribute('data-has-color','1');
             btn.style.backgroundColor = cfg.color;
-            btn.style.borderColor = cfg.color;
+            btn.style.borderColor     = cfg.color;
           }
           btn.textContent = cfg.text;
           btn.addEventListener('click', () => {
@@ -365,8 +364,8 @@ export const MultiSelect = {
               container.querySelectorAll('input[type="checkbox"]:checked')
             ).filter(i => i.dataset.action !== 'all').length;
             const min = cfg.minSelect || 0;
-            // ne shake et n'affiche l'erreur que si min > 0
             if (min > 0 && checked < min) {
+              // shake + message seulement si min > 0
               btn.classList.add('shake');
               setTimeout(() => btn.classList.remove('shake'), 300);
               let err = btn.nextElementSibling;
@@ -375,7 +374,7 @@ export const MultiSelect = {
                 err.className = 'minselect-error';
                 btn.insertAdjacentElement('afterend', err);
               }
-              err.textContent = \`Vous devez sélectionner au moins \${min} option\${min>1?'s':''}.\`;
+              err.textContent = `Vous devez sélectionner au moins ${min} option${min>1?'s':''}.`;
               return;
             }
             enableChat();
@@ -413,8 +412,7 @@ export const MultiSelect = {
     } catch (err) {
       console.error('❌ MultiSelect Error :', err);
       window.voiceflow.chat.interact({
-        type:'complete',
-        payload:{ error:true, message:err.message }
+        type:'complete', payload:{ error:true, message:err.message }
       });
     }
   }

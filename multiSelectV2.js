@@ -507,6 +507,25 @@ export const MultiSelect = {
             });
           }
           updateTotalChecked();
+
+          // Gestion du mode single-select (radio) pour soumission automatique
+          if (!multiselect) {
+            enableChat();
+            container.classList.add('disabled-container');
+            disableChat();
+            
+            window.voiceflow.chat.interact({
+              type: 'complete',
+              payload: {
+                selection: opt.name,
+                buttonPath: opt.action || 'Default'
+              }
+            });
+            setTimeout(() => {
+              const ta = host.querySelector('textarea.vfrc-chat-input');
+              if (ta) ta.focus();
+            }, 0);
+          }
         });
 
         return wrap;

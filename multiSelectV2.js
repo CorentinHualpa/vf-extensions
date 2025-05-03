@@ -28,7 +28,7 @@ export const MultiSelect = {
         chatDisabledText= '🚫'
       } = trace.payload;
 
-      // ─── utilitaires ───────────────────────────────────────────────
+      // ─── utilitaires ─────────────────────────────────────────────
       const stripHTML = html => {
         const tmp = document.createElement('div');
         tmp.innerHTML = html || '';
@@ -44,7 +44,7 @@ export const MultiSelect = {
         return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
       };
 
-      // ─── chat on/off ────────────────────────────────────────────────
+      // ─── chat on/off ──────────────────────────────────────────────
       const root = element.getRootNode();
       const host = root instanceof ShadowRoot ? root : document;
       function disableChat() {
@@ -71,7 +71,7 @@ export const MultiSelect = {
       }
       if (!chat) disableChat();
 
-      // ─── wrapper + event chat ───────────────────────────────────────
+      // ─── container + désactiver chat si on écrit ─────────────────
       const container = document.createElement('div');
       container.classList.add('multiselect-container');
       if (sections.length === 1) container.classList.add('one-section');
@@ -84,7 +84,7 @@ export const MultiSelect = {
         };
       }
 
-      // ─── CSS global ────────────────────────────────────────────────
+      // ─── CSS global ───────────────────────────────────────────────
       const styleEl = document.createElement('style');
       styleEl.textContent = `
 .multiselect-container {
@@ -196,34 +196,33 @@ export const MultiSelect = {
 /* boutons */
 .multiselect-container .buttons-container {
   display:flex!important;
-  flex-wrap:nowrap!important;
   justify-content:center!important;
   gap:var(--ms-gap)!important;
   padding:var(--ms-gap)!important;
 }
 .multiselect-container .submit-btn {
-  background-color:var(--ms-accent);
+  background-color: var(--ms-accent);
   border:2px solid var(--ms-accent);
   color:#fff!important;
   padding:8px 14px!important;
   border-radius:var(--ms-radius)!important;
   font-weight:600!important;
   cursor:pointer!important;
-  min-width:140px;
+  flex-shrink: 0;          /* pour qu’ils ne rétrécissent jamais */
   transition:background-color .2s, transform .1s!important;
+}
+/* stop shrink au clic */
+.multiselect-container .submit-btn:active {
+  transform: none!important;
 }
 .multiselect-container .submit-btn:hover {
   transform:translateY(-1px)!important;
 }
-.multiselect-container .submit-btn:active {
-  transform:none!important;
-}
 
-/* shake & message */
 @keyframes shake {
-  0%,100% { transform: translateX(0); }
-  20%,60% { transform: translateX(-4px); }
-  40%,80% { transform: translateX(4px); }
+  0%,100% { transform:translateX(0); }
+  20%,60% { transform:translateX(-4px); }
+  40%,80% { transform:translateX(4px); }
 }
 .multiselect-container .submit-btn.shake {
   animation:shake 0.3s ease!important;
@@ -234,14 +233,15 @@ export const MultiSelect = {
   margin-top:4px!important;
 }
 
-/* ne gris plus les boutons */
+/* on ne grise plus les boutons quand container.disabled */
 .multiselect-container.disabled-container {
-  pointer-events:none!important;
+  opacity: .5!important;   /* on ne mute que le fond / chat */
+  pointer-events: none!important;
 }
       `;
       container.appendChild(styleEl);
 
-      // ─── max-select + “all” toggle ─────────────────────────────────
+      // ─── toggle max-select & “all” ─────────────────────────────────
       let grid;
       const updateTotalChecked = () => {
         const inputs = Array.from(
@@ -253,21 +253,20 @@ export const MultiSelect = {
         } else {
           inputs.forEach(i => { if (!i.closest('.greyed-out-option')) i.disabled = false; });
         }
-        // sync “all” box
         sections.forEach((_, idx) => {
           const secDom = grid.children[idx];
           const allInp = secDom.querySelector('input[data-action="all"]');
           if (!allInp) return;
           const others = Array.from(
             secDom.querySelectorAll('input[type="checkbox"], input[type="radio"]')
-          ).filter(i => i.dataset.action!=='all');
+          ).filter(i=>i.dataset.action!=='all');
           const every = others.length>0 && others.every(i=>i.checked);
           allInp.checked = every;
           allInp.parentElement.classList.toggle('selected', every);
         });
       };
 
-      // ─── createOptionElement ───────────────────────────────────────
+      // ─── création des options ───────────────────────────────────────
       const createOptionElement = (opt, sectionIdx) => {
         if (Array.isArray(opt.children) && opt.children.length) {
           const blk = document.createElement('div');
@@ -281,8 +280,9 @@ export const MultiSelect = {
         }
         const wrap = document.createElement('div');
         wrap.classList.add('option-container');
-        const inp  = document.createElement('input');
-        inp.type           = multiselect ? 'checkbox' : 'radio';
+        if (opt.grey) wrap.classList.add('greyed-out-option');
+        const inp = document.createElement('input');
+        inp.type = multiselect ? 'checkbox' : 'radio';
         inp.dataset.action = opt.action||'';
         inp.dataset.sectionIdx = sectionIdx;
         if (opt.grey) inp.disabled = true;
@@ -326,10 +326,10 @@ export const MultiSelect = {
         return wrap;
       };
 
-      // ─── build sections ─────────────────────────────────────────────
+      // ─── construction des sections ──────────────────────────────────
       grid = document.createElement('div');
       grid.classList.add('sections-grid');
-      sections.forEach((sec,i)=>{
+      sections.forEach((sec,i) => {
         const sc = document.createElement('div');
         sc.classList.add('section-container');
         const bg = sec.backgroundColor||sec.color||'#673AB7';
@@ -343,26 +343,25 @@ export const MultiSelect = {
         }
         const ol = document.createElement('div');
         ol.classList.add((sec.options||[]).length>10?'options-list grid-2cols':'options-list');
-        sec.options.forEach(opt=> ol.append(createOptionElement(opt,i)));
+        sec.options.forEach(opt => ol.append(createOptionElement(opt,i)));
         sc.append(ol);
         grid.append(sc);
       });
       container.append(grid);
 
-      // ─── buttons ────────────────────────────────────────────────────
+      // ─── boutons ────────────────────────────────────────────────────
       if (buttons.length) {
         const bc = document.createElement('div');
         bc.classList.add('buttons-container');
         buttons.forEach(cfg => {
           const btn = document.createElement('button');
           btn.classList.add('submit-btn');
-          // override couleur si fournie
           if (cfg.color) {
             btn.style.setProperty('background-color', cfg.color, 'important');
             btn.style.setProperty('border-color',     cfg.color, 'important');
           }
           btn.textContent = cfg.text;
-          btn.addEventListener('click', ()=>{
+          btn.addEventListener('click', () => {
             const checked = Array.from(
               container.querySelectorAll('input[type="checkbox"]:checked')
             ).filter(i=>i.dataset.action!=='all').length;
@@ -381,7 +380,7 @@ export const MultiSelect = {
             }
             enableChat();
             container.classList.add('disabled-container');
-            const res = sections.map((s,i)=>{
+            const res = sections.map((s,i) => {
               const dom = grid.children[i];
               const sels = Array.from(dom.querySelectorAll('input:checked'))
                 .filter(i=>i.dataset.action!=='all')
@@ -414,8 +413,7 @@ export const MultiSelect = {
     } catch (err) {
       console.error('❌ MultiSelect Error :', err);
       window.voiceflow.chat.interact({
-        type:'complete',
-        payload:{ error:true, message:err.message }
+        type:'complete', payload:{ error:true, message:err.message }
       });
     }
   }

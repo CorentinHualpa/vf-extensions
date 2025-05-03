@@ -296,4 +296,174 @@ export const MultiSelect = {
           }
           updateTotalChecked();
 
-(Le script continue sans autre modification jusqu’à la fin de votre `render()`.)
+      /* ────────────────────────────────────────────────────────── */
+      /* 7. build sections                                          */
+      /* ────────────────────────────────────────────────────────── */
+      grid = document.createElement('div');
+      grid.classList.add('sections-grid');
+      sections.forEach((sec, i) => {
+        const sc = document.createElement('div');
+        sc.classList.add('section-container');
+        const bg = sec.backgroundColor || sec.color || '#673AB7';
+        sc.style.backgroundColor = bg;
+        sc.style.setProperty(
+          '--section-bg',
+          bg.replace(
+            /^#?([0-9A-F]{2})([0-9A-F]{2})([0-9A-F]{2})$/i,
+            (_m, r, g, b) => `rgba(${parseInt(r,16)},${parseInt(g,16)},${parseInt(b,16)},0.15)`
+          )
+        );
+        sc.style.setProperty('--ms-accent', lightenColor(bg, 0.3));
+
+        // titre de section
+        if (sec.label && stripHTML(sec.label).trim()) {
+          const ttl = document.createElement('div');
+          ttl.classList.add('section-title');
+          ttl.innerHTML = sec.label;
+          sc.append(ttl);
+        }
+
+        // liste d’options
+        const ol = document.createElement('div');
+        ol.classList.add('options-list');
+        if ((sec.options || []).length > 10) ol.classList.add('grid-2cols');
+
+        sec.options.forEach(opt => {
+          if (opt.action === 'user_input') {
+            // champ libre
+            const uiWrap = document.createElement('div');
+            uiWrap.classList.add('user-input-container');
+            const uiLbl = document.createElement('label');
+            uiLbl.classList.add('user-input-label');
+            uiLbl.textContent = opt.label;
+            const uiInp = document.createElement('input');
+            uiInp.type = 'text';
+            uiInp.classList.add('user-input-field');
+            uiInp.placeholder = opt.placeholder || '';
+            uiInp.addEventListener('keydown', e => {
+              if (e.key === 'Enter' && e.target.value.trim()) {
+                // griser le widget & chat
+                enableChat();
+                container.classList.add('disabled-container');
+                disableChat();
+                // envoi
+                window.voiceflow.chat.interact({
+                  type: 'complete',
+                  payload: {
+                    isUserInput: true,
+                    userInput: e.target.value.trim(),
+                    buttonPath: 'Default'
+                  }
+                });
+                // focus chat après
+                setTimeout(() => {
+                  const ta = host.querySelector('textarea.vfrc-chat-input');
+                  if (ta) ta.focus();
+                }, 0);
+              }
+            });
+            uiWrap.append(uiLbl, uiInp);
+            ol.append(uiWrap);
+          } else {
+            // case / radio standard
+            ol.append(createOptionElement(opt, i));
+          }
+        });
+
+        sc.append(ol);
+        grid.append(sc);
+      });
+      container.append(grid);
+
+      /* ────────────────────────────────────────────────────────── */
+      /* 8. buttons                                                */
+      /* ────────────────────────────────────────────────────────── */
+      if (buttons.length) {
+        const bc = document.createElement('div');
+        bc.classList.add('buttons-container');
+
+        buttons.forEach(cfg => {
+          // wrapper vertical : bouton + msg d’erreur
+          const wrapper = document.createElement('div');
+          wrapper.classList.add('button-wrapper');
+
+          const btn = document.createElement('button');
+          btn.classList.add('submit-btn');
+          if (cfg.color) {
+            btn.style.setProperty('background-color', cfg.color, 'important');
+            btn.style.setProperty('border-color',     cfg.color, 'important');
+          }
+          btn.textContent = cfg.text;
+
+          // zone d’erreur sous le bouton
+          const err = document.createElement('div');
+          err.className = 'minselect-error';
+
+          btn.addEventListener('click', () => {
+            const min = cfg.minSelect || 0;
+
+            // nombre de checkbox cochées hors “all”
+            const checked = Array.from(
+              container.querySelectorAll('input[type="checkbox"]:checked')
+            ).filter(i => i.dataset.action !== 'all').length;
+
+            // si seuil ≥1 et non atteint → shake+erreur
+            if (min > 0 && checked < min) {
+              btn.classList.add('shake');
+              setTimeout(() => btn.classList.remove('shake'), 300);
+              err.textContent = `Vous devez sélectionner au moins ${min} option${min>1?'s':''}.`;
+              err.style.visibility = 'visible';
+              return;
+            }
+
+            // sinon sélection OK → on cache l’erreur, on grise tout et on envoie
+            err.style.visibility = 'hidden';
+            enableChat();
+            container.classList.add('disabled-container');
+            disableChat();
+
+            const res = sections.map((s, i) => {
+              const dom = grid.children[i];
+              const sels = Array.from(dom.querySelectorAll('input:checked'))
+                .filter(i => i.dataset.action !== 'all')
+                .map(cb => cb.parentElement.querySelector('span').innerHTML.trim());
+              const ui = dom.querySelector('.user-input-field')?.value || '';
+              return { section: s.label, selections: sels, userInput: ui };
+            }).filter(r => r.selections.length || r.userInput);
+
+            window.voiceflow.chat.interact({
+              type: 'complete',
+              payload: {
+                selections:  res,
+                buttonText:  cfg.text,
+                buttonPath:  cfg.path || 'Default',
+                isEmpty:     res.every(r => !r.selections.length && !r.userInput)
+              }
+            });
+            setTimeout(() => {
+              const ta = host.querySelector('textarea.vfrc-chat-input');
+              if (ta) ta.focus();
+            }, 0);
+          });
+
+          wrapper.append(btn, err);
+          bc.append(wrapper);
+        });
+
+        container.append(bc);
+      }
+
+      /* ────────────────────────────────────────────────────────── */
+      /* 9. injecter dans le DOM                                   */
+      /* ────────────────────────────────────────────────────────── */
+      element.append(container);
+      console.log('✅ MultiSelect prêt');
+    } catch (err) {
+      console.error('❌ MultiSelect Error :', err);
+      window.voiceflow.chat.interact({
+        type: 'complete',
+        payload: { error: true, message: err.message }
+      });
+    }
+  }
+};

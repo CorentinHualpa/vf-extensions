@@ -15,6 +15,7 @@ export const MultiSelect = {
   name: 'MultiSelect',
   type: 'response',
 
+  // Ne sʼactive que sur trace multi_select
   match: ({ trace }) => trace.payload && trace.type === 'multi_select',
 
   render: ({ trace, element }) => {
@@ -72,7 +73,7 @@ export const MultiSelect = {
       }
       if (!chat) disableChat();
 
-      /* 3. container + désactiver chat si l’utilisateur écrit */
+      /* 3. container + disable on chat interact */
       const container = document.createElement('div');
       container.classList.add('multiselect-container');
       if (sections.length === 1) container.classList.add('one-section');
@@ -104,7 +105,7 @@ export const MultiSelect = {
         });
       }
 
-      /* 4. CSS global (strictement identique à avant) */
+      /* 4. CSS global */
       const styleEl = document.createElement('style');
       styleEl.textContent = `
 .multiselect-container {
@@ -183,7 +184,6 @@ export const MultiSelect = {
 .multiselect-container .option-container input[type="checkbox"],
 .multiselect-container .option-container input[type="radio"] {
   all:unset!important; width:16px!important; height:16px!important;
-  min-width:16px!important; min-height:16px!important;
   display:inline-flex!important; align-items:center!important;
   justify-content:center!important; border:2px solid var(--ms-accent)!important;
   border-radius:50%!important; background:#fff!important;
@@ -218,22 +218,29 @@ export const MultiSelect = {
   gap:var(--ms-gap)!important; padding:var(--ms-gap)!important;
 }
 .multiselect-container .submit-btn {
-  background:var(--ms-accent)!important; color:#fff!important;
+  /* plus de !important pour laisser l’inline-style override */
+  background: var(--ms-accent);
+  border: 2px solid var(--ms-accent);
+  color:#fff!important;
   padding:8px 14px!important; border-radius:var(--ms-radius)!important;
   font-weight:600!important; cursor:pointer!important;
   transition:background-color .2s, transform .1s!important;
 }
-/* override couleur inline si cfg.color présent */
+.multiselect-container .submit-btn:hover {
+  transform:translateY(-1px)!important;
+}
+/* override couleur si cfg.color fourni */
 .multiselect-container .submit-btn[data-has-color] {
-  /* inline-style backgroundColor/borderColor prend le dessus */
+  /* inline backgroundColor/borderColor l’emporte */
 }
 /* stop shrink au clic */
 .multiselect-container .submit-btn:active {
   transform:none!important;
 }
 .multiselect-container .minselect-error {
-  color:#ffdddd!important; font-size:var(--ms-small-fs)!important;
-  margin-top:4px!important;
+  color: #ffdddd!important;
+  font-size: var(--ms-small-fs)!important;
+  margin-top: 4px!important;
 }
 .multiselect-container.disabled-container {
   opacity:.5!important; pointer-events:none!important;
@@ -281,11 +288,13 @@ export const MultiSelect = {
         const wrap = document.createElement('div');
         wrap.classList.add('option-container');
         if (opt.grey) wrap.classList.add('greyed-out-option');
+
         const inp = document.createElement('input');
         inp.type = multiselect ? 'checkbox' : 'radio';
         inp.dataset.action = opt.action || '';
         inp.dataset.sectionIdx = sectionIdx;
         if (opt.grey) inp.disabled = true;
+
         const lbl = document.createElement('label');
         const txt = document.createElement('span');
         txt.innerHTML = opt.name;
@@ -311,12 +320,12 @@ export const MultiSelect = {
             container.classList.add('disabled-container');
             window.voiceflow.chat.interact({
               type:'complete',
-              payload:{ selection:opt.name, buttonPath:opt.action||'Default' }
+              payload:{ selection: opt.name, buttonPath: opt.action||'Default' }
             });
             setTimeout(() => {
               const ta = host.querySelector('textarea.vfrc-chat-input');
               if (ta) ta.focus();
-            }, 0);
+            },0);
           }
         });
 
@@ -326,12 +335,12 @@ export const MultiSelect = {
       /* 7. build sections */
       grid = document.createElement('div');
       grid.classList.add('sections-grid');
-      sections.forEach((sec, i) => {
+      sections.forEach((sec,i) => {
         const sc = document.createElement('div');
         sc.classList.add('section-container');
         const bg = sec.backgroundColor || sec.color || '#673AB7';
         sc.style.backgroundColor = bg;
-        sc.style.setProperty('--ms-accent', lightenColor(bg, 0.3));
+        sc.style.setProperty('--ms-accent', lightenColor(bg,0.3));
         if (sec.label && stripHTML(sec.label).trim()) {
           const ttl = document.createElement('div');
           ttl.classList.add('section-title');
@@ -339,8 +348,8 @@ export const MultiSelect = {
           sc.append(ttl);
         }
         const ol = document.createElement('div');
-        ol.classList.add((sec.options||[]).length > 10 ? 'options-list grid-2cols' : 'options-list');
-        sec.options.forEach(opt => ol.append(createOptionElement(opt, i)));
+        ol.classList.add((sec.options||[]).length>10?'options-list grid-2cols':'options-list');
+        sec.options.forEach(opt => ol.append(createOptionElement(opt,i)));
         sc.append(ol);
         grid.append(sc);
       });
@@ -355,17 +364,23 @@ export const MultiSelect = {
           btn.classList.add('submit-btn');
           if (cfg.color) {
             btn.setAttribute('data-has-color','1');
-            btn.style.backgroundColor = cfg.color;
-            btn.style.borderColor     = cfg.color;
+            btn.style.setProperty('background-color', cfg.color, 'important');
+            btn.style.setProperty('border-color',     cfg.color, 'important');
           }
           btn.textContent = cfg.text;
           btn.addEventListener('click', () => {
             const checked = Array.from(
               container.querySelectorAll('input[type="checkbox"]:checked')
-            ).filter(i => i.dataset.action !== 'all').length;
-            const min = cfg.minSelect || 0;
-            if (min > 0 && checked < min) {
-              // shake + message seulement si min > 0
+            ).filter(i=>i.dataset.action!=='all').length;
+            const min = cfg.minSelect||0;
+            // si minSelect === 0 → shake + aucun autre effet
+            if (min === 0) {
+              btn.classList.add('shake');
+              setTimeout(() => btn.classList.remove('shake'), 300);
+              return;
+            }
+            // sinon, si sélection insuffisante → shake + message
+            if (checked < min) {
               btn.classList.add('shake');
               setTimeout(() => btn.classList.remove('shake'), 300);
               let err = btn.nextElementSibling;
@@ -377,6 +392,7 @@ export const MultiSelect = {
               err.textContent = `Vous devez sélectionner au moins ${min} option${min>1?'s':''}.`;
               return;
             }
+            // sinon → exécution normale
             enableChat();
             container.classList.add('disabled-container');
             const res = sections.map((s,i) => {
@@ -384,7 +400,7 @@ export const MultiSelect = {
               const sels = Array.from(dom.querySelectorAll('input:checked'))
                 .filter(i=>i.dataset.action!=='all')
                 .map(cb=>cb.parentElement.querySelector('span').innerHTML.trim());
-              const ui = dom.querySelector('.user-input-field')?.value || '';
+              const ui  = dom.querySelector('.user-input-field')?.value || '';
               return { section:s.label, selections:sels, userInput:ui };
             }).filter(r=>r.selections.length||r.userInput);
             window.voiceflow.chat.interact({
@@ -396,10 +412,10 @@ export const MultiSelect = {
                 isEmpty:res.every(r=>!r.selections.length&&!r.userInput)
               }
             });
-            setTimeout(() => {
+            setTimeout(()=>{
               const ta = host.querySelector('textarea.vfrc-chat-input');
-              if (ta) ta.focus();
-            }, 0);
+              if(ta) ta.focus();
+            },0);
           });
           bc.append(btn);
         });
@@ -412,7 +428,8 @@ export const MultiSelect = {
     } catch (err) {
       console.error('❌ MultiSelect Error :', err);
       window.voiceflow.chat.interact({
-        type:'complete', payload:{ error:true, message:err.message }
+        type:'complete',
+        payload:{ error:true, message:err.message }
       });
     }
   }

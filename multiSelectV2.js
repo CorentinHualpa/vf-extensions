@@ -510,9 +510,10 @@ export const MultiSelect = {
 
           // Gestion du mode single-select (radio) pour soumission automatique
           if (!multiselect) {
+            // Réactiver le chat avant de désactiver le container
             enableChat();
             container.classList.add('disabled-container');
-            disableChat();
+            // Ne pas désactiver le chat à nouveau - laisser juste le container grisé
             
             window.voiceflow.chat.interact({
               type: 'complete',
@@ -521,10 +522,7 @@ export const MultiSelect = {
                 buttonPath: opt.action || 'Default'
               }
             });
-            setTimeout(() => {
-              const ta = host.querySelector('textarea.vfrc-chat-input');
-              if (ta) ta.focus();
-            }, 0);
+            // Ne pas appeler setTimeout for focus ici - le chat est activé
           }
         });
 
@@ -582,10 +580,11 @@ export const MultiSelect = {
             uiInp.placeholder = opt.placeholder || '';
             uiInp.addEventListener('keydown', e => {
               if (e.key === 'Enter' && e.target.value.trim()) {
-                // griser le widget & chat
+                // Réactiver le chat avant de griser le container
                 enableChat();
                 container.classList.add('disabled-container');
-                disableChat();
+                // Ne pas désactiver le chat - laisser uniquement le container grisé
+                
                 // envoi
                 window.voiceflow.chat.interact({
                   type: 'complete',
@@ -595,11 +594,7 @@ export const MultiSelect = {
                     buttonPath: 'Default'
                   }
                 });
-                // focus chat après
-                setTimeout(() => {
-                  const ta = host.querySelector('textarea.vfrc-chat-input');
-                  if (ta) ta.focus();
-                }, 0);
+                // Ne pas appeler setTimeout for focus - le chat est déjà activé
               }
             });
             uiWrap.append(uiLbl, uiInp);
@@ -662,11 +657,11 @@ export const MultiSelect = {
               return;
             }
 
-            // sinon sélection OK → on cache l'erreur, on grise tout et on envoie
+            // sinon sélection OK → on cache l'erreur, on réactive le chat, on grise le container
             err.style.visibility = 'hidden';
-            enableChat();
-            container.classList.add('disabled-container');
-            disableChat();
+            enableChat();  // Réactiver le chat
+            container.classList.add('disabled-container');  // Griser uniquement le container
+            // Ne pas désactiver le chat ici - laisser l'utilisateur interagir avec le chat
 
             const res = sections.map((s, i) => {
               const dom = grid.children[i];
@@ -686,10 +681,7 @@ export const MultiSelect = {
                 isEmpty:     res.every(r => !r.selections.length && !r.userInput)
               }
             });
-            setTimeout(() => {
-              const ta = host.querySelector('textarea.vfrc-chat-input');
-              if (ta) ta.focus();
-            }, 0);
+            // Ne pas appeler setTimeout for focus - le chat reste activé
           });
 
           wrapper.append(btn, err);

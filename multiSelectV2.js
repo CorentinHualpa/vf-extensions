@@ -121,25 +121,28 @@ export const MultiSelect = {
       /* 4. CSS global - intégré */
       const styleEl = document.createElement('style');
       styleEl.textContent = `
-/* Variables CSS principales */
+/* ===== CONFIGURATION GÉNÉRALE DES VARIABLES ===== */
+/* Ces variables permettent de personnaliser facilement les couleurs, espacements et autres styles du composant */
 .multiselect-container {
-  --ms-accent: #4CAF50;
-  --ms-selected-bg: #3778F4;
-  --ms-hover-bg: rgba(55,120,244,0.3);
-  --ms-bg-opacity: 0.8;
-  --ms-gap: 8px;
-  --ms-radius: 6px;
-  --ms-shadow: 0 2px 6px rgba(0,0,0,.15);
-  --ms-heading-fs: 16px;
-  --ms-base-fs: 15px;
-  --ms-small-fs: 14px;
+  --ms-accent: #4CAF50;         /* Couleur d'accent principale, utilisée pour les bordures des checkboxes et points de sélection */
+  --ms-selected-bg: #3778F4;    /* Couleur de fond des options sélectionnées */
+  --ms-hover-bg: rgba(55,120,244,0.3); /* Couleur de survol des options */
+  --ms-bg-opacity: 0.8;         /* Opacité du fond des options non sélectionnées */
+  --ms-gap: 8px;                /* Espacement standard entre les éléments */
+  --ms-radius: 6px;             /* Rayon de bordure pour les éléments arrondis */
+  --ms-shadow: 0 2px 6px rgba(0,0,0,.15); /* Ombre standard pour effets de profondeur */
+  --ms-heading-fs: 16px;        /* Taille de police pour les titres */
+  --ms-base-fs: 15px;           /* Taille de police de base */
+  --ms-small-fs: 14px;          /* Taille de police réduite pour textes secondaires */
 }
 
-/* Reset et styles de base */
+/* ===== STYLES DE BASE ET RESET ===== */
+/* Assure que tous les éléments utilisent la même méthode de dimensionnement */
 .multiselect-container, .multiselect-container * { 
   box-sizing:border-box!important; 
 }
 
+/* Configuration du conteneur principal - structure en colonne pour empiler les sections */
 .multiselect-container { 
   display:flex!important; 
   flex-direction:column!important; 
@@ -149,77 +152,87 @@ export const MultiSelect = {
   color:#fff!important;
 }
 
-/* Layout des sections */
+/* ===== LAYOUT GLOBAL DES SECTIONS ===== */
+/* Configuration de la grille pour organiser les sections sur deux colonnes */
 .multiselect-container .sections-grid { 
   display:grid!important; 
-  grid-template-columns:repeat(2,1fr)!important;
+  grid-template-columns:repeat(2,1fr)!important; /* Par défaut, deux colonnes de largeur égale */
   gap:var(--ms-gap)!important;
 }
 
+/* Modification pour une seule colonne si une seule section est présente */
 .multiselect-container.one-section .sections-grid { 
   grid-template-columns:1fr!important; 
 }
 
-/* Sections avec glassmorphism dynamique selon la couleur */
+/* ===== STYLES DES CONTENEURS DE SECTION ===== */
+/* Effet glassmorphism (fond translucide) avec bordures et ombres */
 .multiselect-container .section-container { 
-  backdrop-filter: blur(10px)!important;
-  -webkit-backdrop-filter: blur(10px)!important;
+  backdrop-filter: blur(10px)!important;          /* Effet de flou pour le glassmorphism */
+  -webkit-backdrop-filter: blur(10px)!important;  /* Support pour Safari */
   border: 1px solid rgba(255,255,255,0.15)!important;
   border-radius: 12px!important;
   overflow:hidden!important; 
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), 
               inset 0 1px 0 rgba(255, 255, 255, 0.1)!important;
-  transition: all .3s ease!important;
+  transition: all .3s ease!important;             /* Animation fluide pour les interactions */
   margin-bottom: 16px!important;
   /* Le background est défini dynamiquement dans JavaScript */
 }
 
+/* Animation de survol pour les sections - légère élévation et ombre plus prononcée */
 .multiselect-container .section-container:hover { 
-  transform: translateY(-4px)!important; 
+  transform: translateY(-4px)!important;          /* Effet d'élévation au survol */
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3)!important;
 }
 
-/* Titres de section améliorés */
+/* ===== STYLES DES TITRES DE SECTION ===== */
+/* Design moderne avec dégradé subtil et animation de soulignement */
 .multiselect-container .section-title { 
   padding: 16px 20px!important; 
   font-weight: 700!important;
   font-size: 18px!important;
   letter-spacing: -0.3px!important;
-  background: linear-gradient(to right, rgba(255,255,255,0.1), transparent)!important;
+  background: linear-gradient(to right, rgba(255,255,255,0.1), transparent)!important; /* Dégradé léger */
   border-bottom: 1px solid rgba(255,255,255,0.1)!important;
   margin-bottom: 8px!important;
-  position: relative!important;
+  position: relative!important;                  /* Nécessaire pour le pseudo-élément */
   overflow: hidden!important;
 }
 
+/* Ligne d'accentuation animée sous le titre */
 .multiselect-container .section-title::before {
   content: ''!important;
   position: absolute!important;
   left: 0!important;
   bottom: 0!important;
-  width: 60px!important;
+  width: 60px!important;                         /* Largeur initiale de la ligne */
   height: 2px!important;
   background: #FFFFFF!important;
-  transition: width 0.3s ease!important;
+  transition: width 0.3s ease!important;         /* Animation de la largeur */
 }
 
+/* Animation d'extension complète de la ligne au survol */
 .multiselect-container .section-container:hover .section-title::before {
-  width: 100%!important;
+  width: 100%!important;                         /* Extension à 100% de la largeur */
 }
 
-/* Liste d'options */
+/* ===== STYLES DES LISTES D'OPTIONS ===== */
+/* Grille flexible pour organiser les options */
 .multiselect-container .options-list { 
   display:grid!important; 
-  grid-template-columns:1fr!important;
-  gap:calc(var(--ms-gap)/2)!important; 
+  grid-template-columns:1fr!important;           /* Par défaut, une seule colonne */
+  gap:calc(var(--ms-gap)/2)!important;           /* Espacement réduit entre options */
   padding:calc(var(--ms-gap)/2)!important;
 }
 
+/* Passage à deux colonnes pour les listes avec beaucoup d'options */
 .multiselect-container .options-list.grid-2cols { 
-  grid-template-columns:1fr 1fr!important; 
+  grid-template-columns:1fr 1fr!important;       /* Deux colonnes de largeur égale */
 }
 
-/* Blocs non-sélectionnables */
+/* ===== STYLES DES BLOCS NON-SÉLECTIONNABLES ===== */
+/* Conteneurs pour les titres de groupes et options enfants */
 .multiselect-container .non-selectable-block { 
   background:rgba(0,0,0,.25)!important;
   border:1px solid rgba(255,255,255,.2)!important;
@@ -228,13 +241,15 @@ export const MultiSelect = {
   font-size:var(--ms-small-fs)!important;
 }
 
-/* Options conteneurs */
+/* ===== STYLES DES CONTENEURS D'OPTIONS ===== */
+/* Alignement et espacement des options individuelles */
 .multiselect-container .option-container { 
   display:flex!important; 
   align-items:flex-start!important;
   gap:calc(var(--ms-gap)/2)!important;
 }
 
+/* Style des labels contenant les checkboxes/radios et le texte */
 .multiselect-container .option-container label { 
   display:flex!important; 
   align-items:center!important;
@@ -244,44 +259,50 @@ export const MultiSelect = {
   background:rgba(0,0,0,var(--ms-bg-opacity))!important;
   border-radius:var(--ms-radius)!important; 
   cursor:pointer!important;
-  transition:background-color .2s, box-shadow .2s!important;
+  transition:background-color .2s, box-shadow .2s!important; /* Animation au survol */
 }
 
+/* Effet de survol pour les options */
 .multiselect-container .option-container label:hover { 
   background:var(--ms-hover-bg)!important;
   box-shadow:var(--ms-shadow)!important;
 }
 
+/* Style pour les options désactivées (grisées) */
 .multiselect-container .option-container.greyed-out-option label { 
   opacity:.5!important;
   cursor:not-allowed!important;
 }
 
+/* Style pour les options sélectionnées */
 .multiselect-container .option-container label.selected { 
   background:var(--ms-selected-bg)!important; 
 }
 
-/* Checkbox/Radio styles */
+/* ===== STYLES DES CHECKBOXES ET RADIOS ===== */
+/* Personnalisation complète des inputs avec reset et redéfinition */
 .multiselect-container .option-container input[type="checkbox"],
 .multiselect-container .option-container input[type="radio"] {
-  all:unset!important; 
+  all:unset!important;                           /* Reset complet des styles par défaut */
   width:16px!important; 
   height:16px!important;
-  min-width:16px!important; 
+  min-width:16px!important;                      /* Évite la compression sur petits écrans */
   min-height:16px!important;
   display:inline-flex!important; 
   align-items:center!important;
   justify-content:center!important; 
   border:2px solid var(--ms-accent)!important;
-  border-radius:50%!important; 
+  border-radius:50%!important;                   /* Forme ronde pour checkbox et radio */
   background:#fff!important;
-  transition:transform .1s ease!important;
+  transition:transform .1s ease!important;       /* Animation de grossissement au survol */
 }
 
+/* Animation de grossissement au survol */
 .multiselect-container .option-container input:hover { 
   transform:scale(1.1)!important; 
 }
 
+/* Indicateur pour l'état checked - point central */
 .multiselect-container .option-container input:checked::after {
   content:''!important; 
   width:8px!important; 
@@ -290,47 +311,53 @@ export const MultiSelect = {
   background:var(--ms-accent)!important;
 }
 
-/* Champs de saisie utilisateur */
+/* ===== STYLES DES CHAMPS DE SAISIE LIBRE ===== */
+/* Conteneur pour les champs texte utilisateur */
 .multiselect-container .user-input-container { 
-  grid-column:1/-1!important; 
+  grid-column:1/-1!important;                    /* S'étend sur toutes les colonnes */
   margin-top:var(--ms-gap)!important; 
 }
 
+/* Étiquette du champ */
 .multiselect-container .user-input-label { 
   font-size:var(--ms-small-fs)!important; 
   margin-bottom:16px!important; 
 }
 
+/* Style du champ de saisie */
 .multiselect-container .user-input-field { 
   width:100%!important; 
   padding:6px!important;
   border-radius:var(--ms-radius)!important; 
   border:1px solid rgba(255,255,255,.3)!important;
   font-size:var(--ms-small-fs)!important; 
-  transition:box-shadow .2s!important;
+  transition:box-shadow .2s!important;           /* Animation lors du focus */
 }
 
+/* État focus du champ avec outline lumineux */
 .multiselect-container .user-input-field:focus { 
   box-shadow:0 0 0 2px rgba(255,255,255,.4)!important;
   border-color:var(--ms-accent)!important;
 }
 
-/* Wrapper boutons et erreurs */
+/* ===== STYLES DES ZONES DE BOUTONS ===== */
+/* Conteneur vertical pour bouton + message d'erreur */
 .multiselect-container .button-wrapper { 
   display:flex; 
   flex-direction:column; 
   align-items:flex-start; 
 }
 
+/* Style du message d'erreur (invisible par défaut) */
 .multiselect-container .minselect-error {
   color: #ff4444!important;
   font-size: var(--ms-small-fs)!important;
   margin-top:4px!important;
-  visibility:hidden;
+  visibility:hidden;                             /* Masqué par défaut, rendu visible en JS si besoin */
   white-space:nowrap!important;
 }
 
-/* Container des boutons */
+/* Conteneur horizontal pour les boutons d'action */
 .multiselect-container .buttons-container {
   display:flex!important; 
   justify-content:center!important;
@@ -338,10 +365,11 @@ export const MultiSelect = {
   padding:var(--ms-gap)!important;
 }
 
-/* BOUTONS CORPORATE/SCI-FI - VERT PAR DÉFAUT */
+/* ===== STYLES DES BOUTONS D'ACTION ===== */
+/* Design moderne style sci-fi/corporate avec effets */
 .multiselect-container .submit-btn {
-  position: relative!important;
-  background: #4CAF50!important;
+  position: relative!important;                  /* Nécessaire pour les effets de scan */
+  background: #4CAF50!important;                 /* Vert par défaut */
   color: #fff!important;
   padding: 10px 24px!important; 
   border-radius: 8px!important;
@@ -351,30 +379,30 @@ export const MultiSelect = {
   font-size: 14px!important;
   cursor: pointer!important;
   border: none!important;
-  overflow: hidden!important;
+  overflow: hidden!important;                    /* Pour contenir l'effet de scan */
   transition: all 0.3s ease!important;
-  box-shadow: 0 4px 12px rgba(76,175,80,0.3),
-              inset 0 3px 0 rgba(255,255,255,0.2),
-              inset 0 -3px 0 rgba(0,0,0,0.2)!important;
+  box-shadow: 0 4px 12px rgba(76,175,80,0.3),    /* Ombre extérieure */
+              inset 0 3px 0 rgba(255,255,255,0.2), /* Highlight supérieur */
+              inset 0 -3px 0 rgba(0,0,0,0.2)!important; /* Ombre inférieure pour effet 3D */
 }
 
-/* Effet hover */
+/* Animation d'élévation au survol */
 .multiselect-container .submit-btn:hover {
-  transform: translateY(-2px)!important;
-  box-shadow: 0 6px 20px rgba(76,175,80,0.4),
+  transform: translateY(-2px)!important;         /* Effet de flottement */
+  box-shadow: 0 6px 20px rgba(76,175,80,0.4),    /* Ombre plus prononcée */
               inset 0 3px 0 rgba(255,255,255,0.3),
               inset 0 -3px 0 rgba(0,0,0,0.3)!important;
 }
 
-/* Effet active (clic) */
+/* Animation au clic */
 .multiselect-container .submit-btn:active {
-  transform: translateY(1px)!important;
-  box-shadow: 0 2px 6px rgba(76,175,80,0.3),
+  transform: translateY(1px)!important;          /* Effet d'enfoncement */
+  box-shadow: 0 2px 6px rgba(76,175,80,0.3),     /* Ombre réduite */
               inset 0 1px 0 rgba(255,255,255,0.1),
               inset 0 -1px 0 rgba(0,0,0,0.1)!important;
 }
 
-/* Effet de scan sci-fi */
+/* Effet de scan lumineux qui traverse le bouton */
 .multiselect-container .submit-btn::before {
   content: ''!important;
   position: absolute!important;
@@ -383,64 +411,70 @@ export const MultiSelect = {
   width: calc(100% + 4px)!important;
   height: calc(100% + 4px)!important;
   background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent)!important;
-  transform: translateX(-100%) rotate(45deg)!important;
+  transform: translateX(-100%) rotate(45deg)!important; /* Position initiale hors vue */
   transition: transform 0.8s ease!important;
 }
 
+/* Animation de scan au survol - traversée complète */
 .multiselect-container .submit-btn:hover::before {
-  transform: translateX(100%) rotate(45deg)!important;
+  transform: translateX(100%) rotate(45deg)!important; /* Déplacement complet */
 }
 
-/* Animation shake améliorée */
+/* ===== ANIMATIONS SPÉCIALES ===== */
+/* Animation de secousse pour erreur */
 @keyframes shake-enhanced {
   0%, 100% { transform: translateX(0); }
-  15%, 45%, 75% { transform: translateX(-6px); }
-  30%, 60%, 90% { transform: translateX(6px); }
+  15%, 45%, 75% { transform: translateX(-6px); } /* Mouvement gauche */
+  30%, 60%, 90% { transform: translateX(6px); }  /* Mouvement droite */
 }
 
+/* Style du bouton pendant l'animation de secousse */
 .multiselect-container .submit-btn.shake {
   animation: shake-enhanced 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97)!important;
   box-shadow: 0 0 0 4px rgba(255,68,68,0.5)!important;
 }
 
-/* Effet de glow pour les erreurs */
+/* Effet de lueur rouge pour les erreurs */
 .multiselect-container .submit-btn.shake {
-  background: #ff4433!important;
-  box-shadow: 0 0 10px #ff4433,
-              0 0 20px rgba(255,68,68,0.5),
+  background: #ff4433!important;                 /* Rouge pour signaler l'erreur */
+  box-shadow: 0 0 10px #ff4433,                  /* Lueur externe */
+              0 0 20px rgba(255,68,68,0.5),      /* Lueur secondaire */
               inset 0 3px 0 rgba(255,255,255,0.2),
               inset 0 -3px 0 rgba(0,0,0,0.2)!important;
 }
 
-/* Effet de pulse */
+/* Animation de pulsation pour focus */
 @keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(76,175,80,0.7); }
-  70% { box-shadow: 0 0 0 10px rgba(76,175,80,0); }
-  100% { box-shadow: 0 0 0 0 rgba(76,175,80,0); }
+  0% { box-shadow: 0 0 0 0 rgba(76,175,80,0.7); }   /* État initial */
+  70% { box-shadow: 0 0 0 10px rgba(76,175,80,0); } /* Expansion maximale */
+  100% { box-shadow: 0 0 0 0 rgba(76,175,80,0); }   /* Retour à l'état initial */
 }
 
+/* Application de l'animation de pulsation */
 .multiselect-container .submit-btn:focus {
-  animation: pulse 1.5s infinite!important;
+  animation: pulse 1.5s infinite!important;      /* Répétition infinie */
 }
 
-/* Style pour boutons avec couleurs personnalisées */
+/* Style pour boutons avec couleurs personnalisées (définies en JS) */
 .multiselect-container .submit-btn[style*="background-color"] {
   box-shadow: 0 4px 12px rgba(var(--btn-r),var(--btn-g),var(--btn-b),0.3),
               inset 0 3px 0 rgba(255,255,255,0.2),
               inset 0 -3px 0 rgba(0,0,0,0.2)!important;
 }
 
-/* État désactivé */
+/* ===== ÉTATS SPÉCIAUX ===== */
+/* État désactivé pour tout le conteneur */
 .multiselect-container.disabled-container {
-  opacity:.5!important; 
-  pointer-events:none!important;
+  opacity:.5!important;                          /* Semi-transparent */
+  pointer-events:none!important;                 /* Désactive les interactions */
 }
 
-/* Style pour container de groupe */
+/* ===== STYLE DES CONTENEURS D'OPTIONS ENFANTS ===== */
+/* Mise en forme hiérarchique pour les options de niveau 3 */
 .multiselect-container .children-options {
-  padding-left: 10px!important;
+  padding-left: 10px!important;                  /* Indentation pour visualiser la hiérarchie */
   margin-top: 5px!important;
-  border-left: 1px dashed rgba(255,255,255,0.3)!important;
+  border-left: 1px dashed rgba(255,255,255,0.3)!important; /* Ligne verticale pour visualiser le groupe */
 }
       `;
       container.appendChild(styleEl);

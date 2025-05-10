@@ -10,6 +10,7 @@
  *  ║  • champ libre bascule focus retour dans le chat         ║
  *  ║  • action="all" coche/décoche l'intégralité de la section║
  *  ║  • gridColumns=1 force l'affichage sur une seule colonne ║
+ *  ║  • optionsGap=14 contrôle l'espacement entre les options ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 
@@ -30,7 +31,8 @@ export const MultiSelect = {
         multiselect     = true,
         chat            = true,
         chatDisabledText= '🚫',
-        gridColumns     = 0  // Nouveau paramètre, 0 = auto (par défaut), 1 = force une colonne
+        gridColumns     = 0,  // 0 = auto (par défaut), 1 = force une colonne
+        optionsGap      = 8   // Nouveau paramètre: contrôle l'espacement entre les options (en px)
       } = trace.payload;
 
       /* 1. utilitaires */
@@ -89,7 +91,7 @@ export const MultiSelect = {
       const container = document.createElement('div');
       container.classList.add('multiselect-container');
       
-      // Modification ici : Appliquer la classe one-section soit si gridColumns=1 ou s'il n'y a qu'une section
+      // Appliquer la classe one-section soit si gridColumns=1 ou s'il n'y a qu'une section
       if (gridColumns === 1 || sections.length === 1) container.classList.add('one-section');
 
       // si l'utilisateur écrit dans le chat, on grise tout
@@ -131,7 +133,7 @@ export const MultiSelect = {
   --ms-selected-bg: #3778F4;
   --ms-hover-bg: rgba(55,120,244,0.3);
   --ms-bg-opacity: 0.8;
-  --ms-gap: 8px;
+  --ms-gap: ${optionsGap}px;
   --ms-radius: 6px;
   --ms-shadow: 0 2px 6px rgba(0,0,0,.15);
   --ms-heading-fs: 16px;
@@ -215,7 +217,7 @@ export const MultiSelect = {
 .multiselect-container .options-list { 
   display:grid!important; 
   grid-template-columns:1fr!important;
-  gap:calc(var(--ms-gap)/2)!important; 
+  gap:var(--ms-gap)!important; 
   padding:calc(var(--ms-gap)/2)!important;
 }
 
@@ -230,6 +232,7 @@ export const MultiSelect = {
   border-radius:calc(var(--ms-radius)-2px)!important;
   padding:4px 8px!important; 
   font-size:var(--ms-small-fs)!important;
+  margin-bottom: var(--ms-gap)!important;
 }
 
 /* Options conteneurs */
@@ -237,6 +240,7 @@ export const MultiSelect = {
   display:flex!important; 
   align-items:flex-start!important;
   gap:calc(var(--ms-gap)/2)!important;
+  margin-bottom: calc(var(--ms-gap)/2)!important;
 }
 
 .multiselect-container .option-container label { 

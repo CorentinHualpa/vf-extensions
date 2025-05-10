@@ -40,8 +40,41 @@ export const ValueSlider = {
         steps = [0, 250, 500, 750, 1000],
         defaultValue = min,
         primaryColor = '#3778F4',
-        unit = ''
+        unit = '',
+        chatDisabledText = '🚫 Veuillez faire une sélection'
       } = payload;
+      
+      // Récupérer le root pour accéder au chat
+      const root = element.getRootNode();
+      const host = root instanceof ShadowRoot ? root : document;
+      
+      // Fonctions pour gérer le chat
+      function disableChat() {
+        const ic = host.querySelector('.vfrc-input-container');
+        if (!ic) return;
+        ic.style.opacity = '.5';
+        ic.style.cursor = 'not-allowed';
+        ic.setAttribute('title', chatDisabledText);
+        const ta = ic.querySelector('textarea.vfrc-chat-input');
+        if (ta) { ta.disabled = true; ta.setAttribute('title', chatDisabledText); }
+        const snd = host.querySelector('#vfrc-send-message');
+        if (snd) { snd.disabled = true; snd.setAttribute('title', chatDisabledText); }
+      }
+      
+      function enableChat() {
+        const ic = host.querySelector('.vfrc-input-container');
+        if (!ic) return;
+        ic.style.opacity = '';
+        ic.style.cursor = '';
+        ic.removeAttribute('title');
+        const ta = ic.querySelector('textarea.vfrc-chat-input');
+        if (ta) { ta.disabled = false; ta.removeAttribute('title'); }
+        const snd = host.querySelector('#vfrc-send-message');
+        if (snd) { snd.disabled = false; snd.removeAttribute('title'); }
+      }
+      
+      // Désactiver le chat dès l'affichage du slider
+      disableChat();
       
       // Création du conteneur principal
       const container = document.createElement('div');
@@ -131,6 +164,16 @@ export const ValueSlider = {
           box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
           width: 100%;
           box-sizing: border-box;
+          max-width: 100%;
+          transition: opacity 0.3s ease;
+        }
+        
+        /* État désactivé après confirmation */
+        .value-slider-container.disabled {
+          opacity: 0.6;
+          pointer-events: none;
+          filter: grayscale(70%);
+          user-select: none;
         }
         
         .value-slider-header {
@@ -150,6 +193,7 @@ export const ValueSlider = {
           font-size: 1.5rem;
           line-height: 1.5;
           text-align: center;
+          width: 100%;
         }
         
         .value-slider-subtitle {
@@ -180,6 +224,8 @@ export const ValueSlider = {
           background-color: #E0E5EC;
           border-radius: 10px;
           margin: 2rem 0;
+          width: 100%;
+          box-sizing: border-box;
         }
         
         .value-slider-progress {
@@ -190,6 +236,8 @@ export const ValueSlider = {
           background-color: ${primaryColor};
           border-radius: 10px;
           pointer-events: none;
+          width: 0; /* Sera défini dynamiquement */
+          max-width: 100%;
         }
         
         .value-slider-input {
@@ -199,14 +247,17 @@ export const ValueSlider = {
           width: 100%;
           height: 20px;
           appearance: none;
+          -webkit-appearance: none;
           background: transparent;
           outline: none;
           margin: 0;
           z-index: 2;
+          box-sizing: border-box;
         }
         
         .value-slider-input::-webkit-slider-thumb {
           appearance: none;
+          -webkit-appearance: none;
           width: 24px;
           height: 24px;
           background-color: white;
@@ -243,6 +294,8 @@ export const ValueSlider = {
           margin-bottom: 2rem;
           position: relative;
           padding: 0 12px;
+          width: 100%;
+          box-sizing: border-box;
         }
         
         .value-slider-step {
@@ -250,6 +303,7 @@ export const ValueSlider = {
           flex-direction: column;
           align-items: center;
           position: relative;
+          flex: 1;
         }
         
         .value-slider-step-label {
@@ -273,6 +327,7 @@ export const ValueSlider = {
           cursor: pointer;
           transition: all 0.2s ease;
           box-shadow: 0 2px 8px rgba(55, 120, 244, 0.25);
+          position: relative;
         }
         
         .value-slider-submit:hover {
@@ -320,6 +375,16 @@ export const ValueSlider = {
       submitBtn.addEventListener('click', () => {
         const selectedValue = parseInt(sliderInput.value, 10);
         const selectedDescription = getClosestDescription(selectedValue);
+        
+        // Désactiver le slider (ajouter la classe disabled)
+        container.classList.add('disabled');
+        
+        // Désactiver explicitement les éléments interactifs
+        sliderInput.disabled = true;
+        submitBtn.disabled = true;
+        
+        // Réactiver le chat
+        enableChat();
         
         // Envoi des données à Voiceflow
         window.voiceflow.chat.interact({

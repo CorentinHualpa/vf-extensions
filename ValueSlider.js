@@ -250,3 +250,117 @@ export const ValueSlider = {
           flex-direction: column;
           align-items: center;
           position: relative;
+        }
+        
+        .value-slider-step-label {
+          font-size: 0.85rem;
+          color: #666;
+          padding-top: 0.5rem;
+        }
+        
+        .value-slider-submit {
+          display: block;
+          width: 100%;
+          max-width: 200px;
+          margin: 1rem auto 0;
+          padding: 0.75rem 1.5rem;
+          background-color: ${primaryColor};
+          color: white;
+          border: none;
+          border-radius: 50px;
+          font-weight: 600;
+          font-size: 1rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          box-shadow: 0 2px 8px rgba(55, 120, 244, 0.25);
+        }
+        
+        .value-slider-submit:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(55, 120, 244, 0.35);
+        }
+        
+        .value-slider-submit:active {
+          transform: translateY(0);
+        }
+      `;
+      
+      container.appendChild(style);
+      
+      // Fonctions de mise à jour
+      function updateSliderProgress() {
+        const percentage = ((sliderInput.value - min) / (max - min)) * 100;
+        progressBar.style.width = `${percentage}%`;
+      }
+      
+      function getClosestDescription(value) {
+        if (!descriptions.length) return '';
+        
+        // Trier les descriptions par différence absolue avec la valeur actuelle
+        const closest = [...descriptions].sort((a, b) => {
+          return Math.abs(a.value - value) - Math.abs(b.value - value);
+        })[0];
+        
+        return closest.text;
+      }
+      
+      function updateDisplay() {
+        const value = parseInt(sliderInput.value, 10);
+        valueEl.textContent = value;
+        descriptionEl.textContent = getClosestDescription(value);
+        updateSliderProgress();
+      }
+      
+      // Initialisation
+      updateDisplay();
+      
+      // Événements
+      sliderInput.addEventListener('input', updateDisplay);
+      
+      submitBtn.addEventListener('click', () => {
+        const selectedValue = parseInt(sliderInput.value, 10);
+        const selectedDescription = getClosestDescription(selectedValue);
+        
+        // Envoi des données à Voiceflow
+        window.voiceflow.chat.interact({
+          type: 'complete',
+          payload: {
+            value: selectedValue,
+            description: selectedDescription,
+            unit: unit,
+            formatted: `${selectedValue} ${unit} ${selectedDescription}`
+          }
+        });
+      });
+      
+      // Ajout au DOM
+      element.appendChild(container);
+      
+    } catch (error) {
+      console.error('Erreur dans l\'extension ValueSlider:', error);
+      
+      // Formulaire de secours en cas d'erreur
+      const errorMsg = document.createElement('div');
+      errorMsg.innerHTML = `
+        <div style="color: #721c24; background-color: #f8d7da; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+          <p>Une erreur est survenue lors du chargement du slider. Veuillez saisir votre valeur manuellement:</p>
+          <input type="number" id="value-slider-fallback" style="width: 100%; padding: 0.5rem; margin: 0.5rem 0; border: 1px solid #ccc; border-radius: 4px;">
+          <button id="value-slider-fallback-btn" style="background: #3778F4; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Confirmer</button>
+        </div>
+      `;
+      
+      element.appendChild(errorMsg);
+      
+      document.getElementById('value-slider-fallback-btn').addEventListener('click', () => {
+        const value = document.getElementById('value-slider-fallback').value;
+        window.voiceflow.chat.interact({
+          type: 'complete',
+          payload: { value: parseInt(value, 10) }
+        });
+      });
+    }
+  }
+};
+
+// Exportation par défaut également
+export default ValueSlider;

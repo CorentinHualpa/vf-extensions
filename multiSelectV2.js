@@ -480,7 +480,9 @@ export const MultiSelect = {
       container.appendChild(styleEl);
 
       /* 5. max-select + all toggle */
+      // Correction de l'erreur : déclarer à l'avance la variable grid sans l'initialiser
       let grid;
+      
       const updateTotalChecked = () => {
         const allInputs = Array.from(
           container.querySelectorAll('input[type="checkbox"], input[type="radio"]')
@@ -599,99 +601,100 @@ export const MultiSelect = {
       };
 
 
-/* 7. build sections */
-grid = document.createElement('div');
-grid.classList.add('sections-grid');
+      /* 7. build sections */
+      // Correction de l'erreur : utiliser la variable grid déjà déclarée sans la redéclarer
+      grid = document.createElement('div');
+      grid.classList.add('sections-grid');
 
-// Configurer le nombre de colonnes en fonction du paramètre grid dans le payload
-// (On utilise trace.payload.grid pour éviter la collision avec la variable grid)
-if (typeof trace.payload.grid === 'number' && trace.payload.grid > 0) {
-  // Si grid est spécifié dans le payload, appliquer ce nombre de colonnes
-  grid.style.gridTemplateColumns = `repeat(${trace.payload.grid}, 1fr)`;
-  // Ajouter une classe pour référence facile dans le CSS si nécessaire
-  grid.classList.add(`grid-cols-${trace.payload.grid}`);
-} else if (sections.length === 1) {
-  // Si une seule section, maintenir le comportement existant
-  container.classList.add('one-section');
-}
+      // Configurer le nombre de colonnes en fonction du paramètre grid dans le payload
+      // (On utilise trace.payload.grid pour éviter la collision avec la variable grid)
+      if (typeof trace.payload.grid === 'number' && trace.payload.grid > 0) {
+        // Si grid est spécifié dans le payload, appliquer ce nombre de colonnes
+        grid.style.gridTemplateColumns = `repeat(${trace.payload.grid}, 1fr)`;
+        // Ajouter une classe pour référence facile dans le CSS si nécessaire
+        grid.classList.add(`grid-cols-${trace.payload.grid}`);
+      } else if (sections.length === 1) {
+        // Si une seule section, maintenir le comportement existant
+        container.classList.add('one-section');
+      }
 
-sections.forEach((sec, i) => {
-  const sc = document.createElement('div');
-  sc.classList.add('section-container');
-  const bg = sec.backgroundColor || sec.color || '#673AB7';
-  sc.style.backgroundColor = bg;
-  
-  // Définir un dégradé dynamique basé sur la couleur de la section
-  const rgba1 = hexToRgba(bg, 0.9);
-  const rgba2 = hexToRgba(bg, 0.7);
-  sc.style.background = `linear-gradient(135deg, ${rgba1}, ${rgba2})`;
-  
-  sc.style.setProperty(
-    '--section-bg',
-    bg.replace(
-      /^#?([0-9A-F]{2})([0-9A-F]{2})([0-9A-F]{2})$/i,
-      (_m, r, g, b) => `rgba(${parseInt(r,16)},${parseInt(g,16)},${parseInt(b,16)},0.15)`
-    )
-  );
-  // Utiliser la couleur de la section comme accent
-  sc.style.setProperty('--ms-accent', lightenColor(bg, 0.3));
+      sections.forEach((sec, i) => {
+        const sc = document.createElement('div');
+        sc.classList.add('section-container');
+        const bg = sec.backgroundColor || sec.color || '#673AB7';
+        sc.style.backgroundColor = bg;
+        
+        // Définir un dégradé dynamique basé sur la couleur de la section
+        const rgba1 = hexToRgba(bg, 0.9);
+        const rgba2 = hexToRgba(bg, 0.7);
+        sc.style.background = `linear-gradient(135deg, ${rgba1}, ${rgba2})`;
+        
+        sc.style.setProperty(
+          '--section-bg',
+          bg.replace(
+            /^#?([0-9A-F]{2})([0-9A-F]{2})([0-9A-F]{2})$/i,
+            (_m, r, g, b) => `rgba(${parseInt(r,16)},${parseInt(g,16)},${parseInt(b,16)},0.15)`
+          )
+        );
+        // Utiliser la couleur de la section comme accent
+        sc.style.setProperty('--ms-accent', lightenColor(bg, 0.3));
 
-  // titre de section
-  if (sec.label && stripHTML(sec.label).trim()) {
-    const ttl = document.createElement('div');
-    ttl.classList.add('section-title');
-    ttl.innerHTML = sec.label;
-    sc.append(ttl);
-  }
-
-  // liste d'options
-  const ol = document.createElement('div');
-  ol.classList.add('options-list');
-  if ((sec.options || []).length > 10) ol.classList.add('grid-2cols');
-
-  sec.options.forEach(opt => {
-    if (opt.action === 'user_input') {
-      // champ libre
-      const uiWrap = document.createElement('div');
-      uiWrap.classList.add('user-input-container');
-      const uiLbl = document.createElement('label');
-      uiLbl.classList.add('user-input-label');
-      uiLbl.textContent = opt.label;
-      const uiInp = document.createElement('input');
-      uiInp.type = 'text';
-      uiInp.classList.add('user-input-field');
-      uiInp.placeholder = opt.placeholder || '';
-      uiInp.addEventListener('keydown', e => {
-        if (e.key === 'Enter' && e.target.value.trim()) {
-          // Réactiver le chat avant de griser le container
-          enableChat();
-          container.classList.add('disabled-container');
-          // Ne pas désactiver le chat - laisser uniquement le container grisé
-          
-          // envoi
-          window.voiceflow.chat.interact({
-            type: 'complete',
-            payload: {
-              isUserInput: true,
-              userInput: e.target.value.trim(),
-              buttonPath: 'Default'
-            }
-          });
-          // Ne pas appeler setTimeout for focus - le chat est déjà activé
+        // titre de section
+        if (sec.label && stripHTML(sec.label).trim()) {
+          const ttl = document.createElement('div');
+          ttl.classList.add('section-title');
+          ttl.innerHTML = sec.label;
+          sc.append(ttl);
         }
-      });
-      uiWrap.append(uiLbl, uiInp);
-      ol.append(uiWrap);
-    } else {
-      // case / radio standard
-      ol.append(createOptionElement(opt, i));
-    }
-  });
 
-  sc.append(ol);
-  grid.append(sc);
-});
-container.append(grid);
+        // liste d'options
+        const ol = document.createElement('div');
+        ol.classList.add('options-list');
+        if ((sec.options || []).length > 10) ol.classList.add('grid-2cols');
+
+        sec.options.forEach(opt => {
+          if (opt.action === 'user_input') {
+            // champ libre
+            const uiWrap = document.createElement('div');
+            uiWrap.classList.add('user-input-container');
+            const uiLbl = document.createElement('label');
+            uiLbl.classList.add('user-input-label');
+            uiLbl.textContent = opt.label;
+            const uiInp = document.createElement('input');
+            uiInp.type = 'text';
+            uiInp.classList.add('user-input-field');
+            uiInp.placeholder = opt.placeholder || '';
+            uiInp.addEventListener('keydown', e => {
+              if (e.key === 'Enter' && e.target.value.trim()) {
+                // Réactiver le chat avant de griser le container
+                enableChat();
+                container.classList.add('disabled-container');
+                // Ne pas désactiver le chat - laisser uniquement le container grisé
+                
+                // envoi
+                window.voiceflow.chat.interact({
+                  type: 'complete',
+                  payload: {
+                    isUserInput: true,
+                    userInput: e.target.value.trim(),
+                    buttonPath: 'Default'
+                  }
+                });
+                // Ne pas appeler setTimeout for focus - le chat est déjà activé
+              }
+            });
+            uiWrap.append(uiLbl, uiInp);
+            ol.append(uiWrap);
+          } else {
+            // case / radio standard
+            ol.append(createOptionElement(opt, i));
+          }
+        });
+
+        sc.append(ol);
+        grid.append(sc);
+      });
+      container.append(grid);
 
       /* 8. buttons */
       if (buttons.length) {

@@ -9,7 +9,7 @@
  *  ║  • single-select utilise `action` comme `buttonPath`     ║
  *  ║  • champ libre bascule focus retour dans le chat         ║
  *  ║  • action="all" coche/décoche l'intégralité de la section║
- *  ║  • grid=1 force l'affichage sur une seule colonne        ║
+ *  ║  • gridColumns=1 force l'affichage sur une seule colonne ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 
@@ -30,7 +30,7 @@ export const MultiSelect = {
         multiselect     = true,
         chat            = true,
         chatDisabledText= '🚫',
-        grid            = 0  // Nouveau paramètre, 0 = auto (par défaut), 1 = force une colonne
+        gridColumns     = 0  // Nouveau paramètre, 0 = auto (par défaut), 1 = force une colonne
       } = trace.payload;
 
       /* 1. utilitaires */
@@ -89,8 +89,8 @@ export const MultiSelect = {
       const container = document.createElement('div');
       container.classList.add('multiselect-container');
       
-      // Modification ici : Appliquer la classe one-section soit si grid=1 ou s'il n'y a qu'une section
-      if (grid === 1 || sections.length === 1) container.classList.add('one-section');
+      // Modification ici : Appliquer la classe one-section soit si gridColumns=1 ou s'il n'y a qu'une section
+      if (gridColumns === 1 || sections.length === 1) container.classList.add('one-section');
 
       // si l'utilisateur écrit dans le chat, on grise tout
       if (chat && window.voiceflow?.chat?.interact) {

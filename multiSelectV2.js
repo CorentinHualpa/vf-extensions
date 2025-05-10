@@ -480,8 +480,6 @@ export const MultiSelect = {
       container.appendChild(styleEl);
 
       /* 5. max-select + all toggle */
-      // Correction de l'erreur : déclarer à l'avance la variable grid sans l'initialiser
-      let grid;
       
       const updateTotalChecked = () => {
         const allInputs = Array.from(

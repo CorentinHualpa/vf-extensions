@@ -39,7 +39,7 @@ export const ValueSlider = {
         max = 1000,
         steps = [0, 250, 500, 750, 1000],
         defaultValue = min,
-        primaryColor = '#7928CA',
+        primaryColor = '#3778F4',
         unit = '',
         chatDisabledText = '🚫 Veuillez faire une sélection'
       } = payload;
@@ -92,6 +92,10 @@ export const ValueSlider = {
       subtitleEl.className = 'value-slider-subtitle';
       subtitleEl.textContent = subtitle;
       
+      // Créer un conteneur à largeur fixe pour la valeur
+      const valueContainer = document.createElement('div');
+      valueContainer.className = 'value-slider-value-container';
+      
       const valueEl = document.createElement('span');
       valueEl.className = 'value-slider-value';
       
@@ -139,7 +143,8 @@ export const ValueSlider = {
       
       // Construction de la hiérarchie des éléments
       valueDisplayContainer.appendChild(subtitleEl);
-      valueDisplayContainer.appendChild(valueEl);
+      valueContainer.appendChild(valueEl); // Mettre valueEl dans valueContainer
+      valueDisplayContainer.appendChild(valueContainer);
       valueDisplayContainer.appendChild(unitEl);
       valueDisplayContainer.appendChild(descriptionEl);
       
@@ -200,12 +205,23 @@ export const ValueSlider = {
           margin-right: 0.5rem;
         }
         
+        /* Conteneur de valeur à largeur fixe */
+        .value-slider-value-container {
+          display: inline-block;
+          min-width: 100px; /* Largeur minimale fixe */
+          text-align: center;
+        }
+        
         .value-slider-value {
+          font-family: 'Roboto Mono', monospace; /* Police monospace pour que tous les chiffres aient la même largeur */
           font-weight: 700;
           background-color: #F0F2F5;
           padding: 0.25rem 0.75rem;
           border-radius: 50px;
           margin: 0 0.35rem;
+          display: inline-block;
+          min-width: 60px; /* Largeur minimale pour contenir les plus grands nombres */
+          text-align: center;
         }
         
         .value-slider-description {

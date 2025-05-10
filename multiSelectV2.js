@@ -603,19 +603,18 @@ export const MultiSelect = {
 grid = document.createElement('div');
 grid.classList.add('sections-grid');
 
-// Appliquer le nombre de colonnes spécifié par le paramètre grid
-// Si grid est défini comme un nombre, l'appliquer directement
-if (typeof grid === 'number' && grid > 0) {
-  // Application directe de la valeur grid au style CSS
-  grid.style.gridTemplateColumns = `repeat(${grid}, 1fr)`;
-  // Ajouter une classe pour faciliter la sélection CSS
-  grid.classList.add(`grid-cols-${grid}`);
+// Configurer le nombre de colonnes en fonction du paramètre grid dans le payload
+// (On utilise trace.payload.grid pour éviter la collision avec la variable grid)
+if (typeof trace.payload.grid === 'number' && trace.payload.grid > 0) {
+  // Si grid est spécifié dans le payload, appliquer ce nombre de colonnes
+  grid.style.gridTemplateColumns = `repeat(${trace.payload.grid}, 1fr)`;
+  // Ajouter une classe pour référence facile dans le CSS si nécessaire
+  grid.classList.add(`grid-cols-${trace.payload.grid}`);
 } else if (sections.length === 1) {
-  // Comportement existant pour une seule section
+  // Si une seule section, maintenir le comportement existant
   container.classList.add('one-section');
 }
 
-// Création des sections
 sections.forEach((sec, i) => {
   const sc = document.createElement('div');
   sc.classList.add('section-container');
@@ -648,11 +647,8 @@ sections.forEach((sec, i) => {
   // liste d'options
   const ol = document.createElement('div');
   ol.classList.add('options-list');
-  // Configuration des colonnes dans les listes d'options
-  // Si plus de 10 options, passer à deux colonnes pour cette liste d'options
   if ((sec.options || []).length > 10) ol.classList.add('grid-2cols');
 
-  // Création des options
   sec.options.forEach(opt => {
     if (opt.action === 'user_input') {
       // champ libre
@@ -695,8 +691,6 @@ sections.forEach((sec, i) => {
   sc.append(ol);
   grid.append(sc);
 });
-
-// Ajouter la grille au conteneur principal
 container.append(grid);
 
       /* 8. buttons */

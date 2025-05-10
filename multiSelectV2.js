@@ -435,6 +435,13 @@ export const MultiSelect = {
   opacity:.5!important; 
   pointer-events:none!important;
 }
+
+/* Style pour container de groupe */
+.multiselect-container .children-options {
+  padding-left: 10px!important;
+  margin-top: 5px!important;
+  border-left: 1px dashed rgba(255,255,255,0.3)!important;
+}
       `;
       container.appendChild(styleEl);
 
@@ -450,14 +457,14 @@ export const MultiSelect = {
         } else {
           allInputs.forEach(i => { if (!i.closest('.greyed-out-option')) i.disabled = false; });
         }
-        // sync "all" box per section
+        // sync "all" box per section - maintenu pour rétrocompatibilité
         sections.forEach((_, idx) => {
           const secDom = grid.children[idx];
-          const allInput = secDom.querySelector('input[data-action="all"]');
+          const allInput = secDom.querySelector('input[data-action="all"]:not([data-parent-block])');
           if (!allInput) return;
           const others = Array.from(
             secDom.querySelectorAll('input[type="checkbox"], input[type="radio"]')
-          ).filter(i => i.dataset.action !== 'all');
+          ).filter(i => i.dataset.action !== 'all' && !i.dataset.parentBlock);
           const everyChecked = others.length > 0 && others.every(i => i.checked);
           allInput.checked = everyChecked;
           allInput.parentElement.classList.toggle('selected', everyChecked);
@@ -465,14 +472,18 @@ export const MultiSelect = {
       };
 
       /* 6. createOptionElement */
-      const createOptionElement = (opt, sectionIdx) => {
+      const createOptionElement = (opt, sectionIdx, parentBlock = null) => {
         if (Array.isArray(opt.children) && opt.children.length) {
           const blk = document.createElement('div');
           blk.classList.add('non-selectable-block');
+          blk.setAttribute('data-block-id', `block-${sectionIdx}-${Math.random().toString(36).substring(2, 9)}`);
           blk.innerHTML = opt.name;
           const wrap = document.createElement('div');
           wrap.classList.add('children-options');
-          opt.children.forEach(ch => wrap.append(createOptionElement(ch, sectionIdx)));
+          opt.children.forEach(ch => {
+            // Passer l'ID du bloc parent pour les enfants
+            wrap.append(createOptionElement(ch, sectionIdx, blk.getAttribute('data-block-id')));
+          });
           blk.append(wrap);
           return blk;
         }
@@ -484,6 +495,12 @@ export const MultiSelect = {
         inp.type = multiselect ? 'checkbox' : 'radio';
         inp.dataset.action = opt.action || '';
         inp.dataset.sectionIdx = sectionIdx;
+        
+        // Stocker l'ID du bloc parent si présent
+        if (parentBlock) {
+          inp.dataset.parentBlock = parentBlock;
+        }
+        
         if (opt.grey) inp.disabled = true;
 
         const lbl = document.createElement('label');
@@ -497,14 +514,32 @@ export const MultiSelect = {
           lbl.classList.toggle('selected', inp.checked);
           
           if (opt.action === 'all') {
-            const secDom = grid.children[sectionIdx];
-            const others = Array.from(
-              secDom.querySelectorAll('input[type="checkbox"], input[type="radio"]')
-            ).filter(i => i.dataset.action !== 'all');
-            others.forEach(i => {
-              i.checked = inp.checked;
-              i.parentElement.classList.toggle('selected', inp.checked);
-            });
+            // Logique pour gérer les différents niveaux de "all"
+            if (parentBlock) {
+              // Si le bouton "all" a un parent bloc, il ne doit sélectionner que les options de ce bloc
+              const parentElement = container.querySelector(`[data-block-id="${parentBlock}"]`);
+              if (parentElement) {
+                const blockOptions = Array.from(
+                  parentElement.querySelectorAll('input[type="checkbox"], input[type="radio"]')
+                ).filter(i => i.dataset.action !== 'all');
+                
+                blockOptions.forEach(i => {
+                  i.checked = inp.checked;
+                  i.parentElement.classList.toggle('selected', inp.checked);
+                });
+              }
+            } else {
+              // Comportement traditionnel - sélectionne tous les éléments de la section
+              const secDom = grid.children[sectionIdx];
+              const others = Array.from(
+                secDom.querySelectorAll('input[type="checkbox"], input[type="radio"]')
+              ).filter(i => i.dataset.action !== 'all');
+              
+              others.forEach(i => {
+                i.checked = inp.checked;
+                i.parentElement.classList.toggle('selected', inp.checked);
+              });
+            }
           }
           updateTotalChecked();
 

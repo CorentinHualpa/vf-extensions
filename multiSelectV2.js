@@ -12,6 +12,8 @@
  *  ║  • gridColumns=1 force l'affichage sur une seule colonne ║
  *  ║  • optionsGap=14 contrôle l'espacement entre les options ║
  *  ║  • global_button_color définit la couleur par défaut     ║
+ *  ║  • NOUVEAU: style distinctive pour options "all"         ║
+ *  ║  • NOUVEAU: option "global-all" pour toutes les sections ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 
@@ -34,7 +36,9 @@ export const MultiSelect = {
         chatDisabledText= '🚫',
         gridColumns     = 0,  // 0 = auto (par défaut), 1 = force une colonne
         optionsGap      = 8,  // Contrôle l'espacement entre les options (en px)
-        global_button_color = '#3778F4' // Couleur par défaut pour tous les boutons (bleu)
+        global_button_color = '#3778F4', // Couleur par défaut pour tous les boutons (bleu)
+        useGlobalAll    = false,  // NOUVEAU: option pour activer/désactiver l'option global-all
+        globalAllText   = "Tout sélectionner / désélectionner" // NOUVEAU: texte pour l'option global-all
       } = trace.payload;
 
       /* 1. utilitaires */
@@ -282,6 +286,119 @@ export const MultiSelect = {
   background:var(--ms-selected-bg)!important; 
 }
 
+/* NOUVEAU: Styles spécifiques pour les options "all" */
+.multiselect-container .option-container.all-option label {
+  background: rgba(0, 0, 0, 0.5)!important;
+  border: 1px dashed rgba(255, 255, 255, 0.3)!important;
+  font-weight: 700!important;
+  font-style: italic!important;
+  padding: 8px 12px!important;
+  border-radius: 8px!important;
+  transition: all 0.3s ease!important;
+}
+
+.multiselect-container .option-container.all-option label:hover {
+  background: var(--ms-hover-bg)!important;
+  border-style: solid!important;
+  transform: scale(1.02)!important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2)!important;
+}
+
+.multiselect-container .option-container.all-option label.selected {
+  background: var(--ms-selected-bg)!important;
+  border-color: rgba(255, 255, 255, 0.6)!important;
+}
+
+.multiselect-container .option-container.all-option label:before {
+  content: "✓ "!important;
+  font-weight: bold!important;
+  opacity: 0.8!important;
+}
+
+/* NOUVEAU: Styles pour le global-all */
+.multiselect-container .global-all-container {
+  width: 100%!important;
+  display: flex!important;
+  justify-content: center!important;
+  margin: 15px 0!important;
+  padding: 10px!important;
+  position: relative!important;
+}
+
+.multiselect-container .global-all-container:before,
+.multiselect-container .global-all-container:after {
+  content: ""!important;
+  position: absolute!important;
+  height: 1px!important;
+  background: linear-gradient(to right, transparent, rgba(255,255,255,0.3), transparent)!important;
+  width: 80%!important;
+  left: 10%!important;
+}
+
+.multiselect-container .global-all-container:before {
+  top: 0!important;
+}
+
+.multiselect-container .global-all-container:after {
+  bottom: 0!important;
+}
+
+.multiselect-container .global-all-button {
+  background: linear-gradient(145deg, var(--ms-global-btn-color), 
+              rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b), 0.8))!important;
+  color: white!important;
+  border: none!important;
+  border-radius: 8px!important;
+  padding: 10px 20px!important;
+  font-weight: bold!important;
+  font-size: 14px!important;
+  cursor: pointer!important;
+  transition: all 0.3s ease!important;
+  box-shadow: 0 4px 12px rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b), 0.3),
+              inset 0 1px 0 rgba(255,255,255,0.2)!important;
+  position: relative!important;
+  overflow: hidden!important;
+  display: flex!important;
+  align-items: center!important;
+  justify-content: center!important;
+  gap: 8px!important;
+}
+
+.multiselect-container .global-all-button:hover {
+  transform: translateY(-2px)!important;
+  box-shadow: 0 6px 16px rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b), 0.4),
+              inset 0 1px 0 rgba(255,255,255,0.3)!important;
+}
+
+.multiselect-container .global-all-button:active {
+  transform: translateY(1px)!important;
+  box-shadow: 0 2px 8px rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b), 0.3)!important;
+}
+
+.multiselect-container .global-all-button::before {
+  content: ''!important;
+  position: absolute!important;
+  top: -10px!important;
+  left: -10px!important;
+  width: calc(100% + 20px)!important;
+  height: calc(100% + 20px)!important;
+  background: linear-gradient(45deg, transparent, rgba(255,255,255,0.2), transparent)!important;
+  transform: translateX(-100%) rotate(45deg)!important;
+  transition: transform 0.6s ease!important;
+}
+
+.multiselect-container .global-all-button:hover::before {
+  transform: translateX(100%) rotate(45deg)!important;
+}
+
+.multiselect-container .global-all-button .icon {
+  font-size: 18px!important;
+}
+
+.multiselect-container .global-all-button.active {
+  background: linear-gradient(145deg, #4CAF50, #2E7D32)!important;
+}
+
 /* Checkbox/Radio styles */
 .multiselect-container .option-container input[type="checkbox"],
 .multiselect-container .option-container input[type="radio"] {
@@ -478,6 +595,7 @@ export const MultiSelect = {
         } else {
           allInputs.forEach(i => { if (!i.closest('.greyed-out-option')) i.disabled = false; });
         }
+        
         // sync "all" box per section - maintenu pour rétrocompatibilité
         sections.forEach((_, idx) => {
           const secDom = grid.children[idx];
@@ -490,6 +608,25 @@ export const MultiSelect = {
           allInput.checked = everyChecked;
           allInput.parentElement.classList.toggle('selected', everyChecked);
         });
+        
+        // NOUVEAU: mise à jour du bouton global-all
+        if (useGlobalAll) {
+          const globalAllBtn = container.querySelector('.global-all-button');
+          if (globalAllBtn) {
+            const allCheckboxes = Array.from(
+              container.querySelectorAll('input[type="checkbox"]:not([data-action="all"])')
+            );
+            const allChecked = allCheckboxes.length > 0 && allCheckboxes.every(i => i.checked);
+            
+            if (allChecked) {
+              globalAllBtn.classList.add('active');
+              globalAllBtn.innerHTML = '<span class="icon">☑</span> Tout désélectionner';
+            } else {
+              globalAllBtn.classList.remove('active');
+              globalAllBtn.innerHTML = '<span class="icon">☐</span> Tout sélectionner';
+            }
+          }
+        }
       };
 
       /* 6. createOptionElement */
@@ -510,6 +647,12 @@ export const MultiSelect = {
         }
         const wrap = document.createElement('div');
         wrap.classList.add('option-container');
+        
+        // NOUVEAU: Ajouter la classe all-option pour les options "all"
+        if (opt.action === 'all') {
+          wrap.classList.add('all-option');
+        }
+        
         if (opt.grey) wrap.classList.add('greyed-out-option');
 
         const inp = document.createElement('input');
@@ -665,6 +808,38 @@ export const MultiSelect = {
         grid.append(sc);
       });
       container.append(grid);
+      
+      /* NOUVEAU: Option global-all */
+      if (useGlobalAll && multiselect) {
+        const globalAllContainer = document.createElement('div');
+        globalAllContainer.classList.add('global-all-container');
+        
+        const globalAllBtn = document.createElement('button');
+        globalAllBtn.classList.add('global-all-button');
+        globalAllBtn.innerHTML = '<span class="icon">☐</span> ' + globalAllText;
+        
+        globalAllBtn.addEventListener('click', () => {
+          // Récupérer toutes les checkboxes (sauf les options "all")
+          const allCheckboxes = Array.from(
+            container.querySelectorAll('input[type="checkbox"]:not([data-action="all"])')
+          ).filter(cb => !cb.disabled);
+          
+          // Déterminer l'état actuel (tous cochés ou non)
+          const allChecked = allCheckboxes.length > 0 && allCheckboxes.every(cb => cb.checked);
+          
+          // Inverser l'état
+          allCheckboxes.forEach(cb => {
+            cb.checked = !allChecked;
+            cb.parentElement.classList.toggle('selected', !allChecked);
+          });
+          
+          // Mettre à jour les options "all" de chaque section
+          updateTotalChecked();
+        });
+        
+        globalAllContainer.appendChild(globalAllBtn);
+        container.appendChild(globalAllContainer);
+      }
 
       /* 8. buttons */
       if (buttons.length) {
@@ -749,6 +924,12 @@ export const MultiSelect = {
 
       /* 9. injecter dans le DOM */
       element.append(container);
+      
+      // Mise à jour de l'état initial du bouton global-all
+      if (useGlobalAll && multiselect) {
+        updateTotalChecked();
+      }
+      
       console.log('✅ MultiSelect prêt');
     } catch (err) {
       console.error('❌ MultiSelect Error :', err);

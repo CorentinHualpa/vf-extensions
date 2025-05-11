@@ -11,6 +11,7 @@
  *  ║  • action="all" coche/décoche l'intégralité de la section║
  *  ║  • gridColumns=1 force l'affichage sur une seule colonne ║
  *  ║  • optionsGap=14 contrôle l'espacement entre les options ║
+ *  ║  • global_button_color définit la couleur par défaut     ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 
@@ -32,7 +33,8 @@ export const MultiSelect = {
         chat            = true,
         chatDisabledText= '🚫',
         gridColumns     = 0,  // 0 = auto (par défaut), 1 = force une colonne
-        optionsGap      = 8   // Nouveau paramètre: contrôle l'espacement entre les options (en px)
+        optionsGap      = 8,  // Contrôle l'espacement entre les options (en px)
+        global_button_color = '#3778F4' // Couleur par défaut pour tous les boutons (bleu)
       } = trace.payload;
 
       /* 1. utilitaires */
@@ -126,6 +128,13 @@ export const MultiSelect = {
 
       /* 4. CSS global - intégré */
       const styleEl = document.createElement('style');
+      
+      // Extraction des valeurs RGB pour les variables CSS
+      const globalBtnRgb = parseInt(global_button_color.replace('#',''), 16);
+      const globalBtnR = (globalBtnRgb >> 16) & 255;
+      const globalBtnG = (globalBtnRgb >> 8) & 255;
+      const globalBtnB = globalBtnRgb & 255;
+      
       styleEl.textContent = `
 /* Variables CSS principales */
 .multiselect-container {
@@ -139,6 +148,10 @@ export const MultiSelect = {
   --ms-heading-fs: 16px;
   --ms-base-fs: 15px;
   --ms-small-fs: 14px;
+  --ms-global-btn-color: ${global_button_color};
+  --ms-global-btn-r: ${globalBtnR};
+  --ms-global-btn-g: ${globalBtnG};
+  --ms-global-btn-b: ${globalBtnB};
 }
 
 /* Reset et styles de base */
@@ -346,10 +359,10 @@ export const MultiSelect = {
   padding:var(--ms-gap)!important;
 }
 
-/* BOUTONS CORPORATE/SCI-FI - VERT PAR DÉFAUT */
+/* BOUTONS CORPORATE/SCI-FI - COULEUR GLOBALE PAR DÉFAUT */
 .multiselect-container .submit-btn {
   position: relative!important;
-  background: #4CAF50!important;
+  background: var(--ms-global-btn-color)!important;
   color: #fff!important;
   padding: 10px 24px!important; 
   border-radius: 8px!important;
@@ -361,7 +374,7 @@ export const MultiSelect = {
   border: none!important;
   overflow: hidden!important;
   transition: all 0.3s ease!important;
-  box-shadow: 0 4px 12px rgba(76,175,80,0.3),
+  box-shadow: 0 4px 12px rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b),0.3),
               inset 0 3px 0 rgba(255,255,255,0.2),
               inset 0 -3px 0 rgba(0,0,0,0.2)!important;
 }
@@ -369,7 +382,7 @@ export const MultiSelect = {
 /* Effet hover */
 .multiselect-container .submit-btn:hover {
   transform: translateY(-2px)!important;
-  box-shadow: 0 6px 20px rgba(76,175,80,0.4),
+  box-shadow: 0 6px 20px rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b),0.4),
               inset 0 3px 0 rgba(255,255,255,0.3),
               inset 0 -3px 0 rgba(0,0,0,0.3)!important;
 }
@@ -377,7 +390,7 @@ export const MultiSelect = {
 /* Effet active (clic) */
 .multiselect-container .submit-btn:active {
   transform: translateY(1px)!important;
-  box-shadow: 0 2px 6px rgba(76,175,80,0.3),
+  box-shadow: 0 2px 6px rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b),0.3),
               inset 0 1px 0 rgba(255,255,255,0.1),
               inset 0 -1px 0 rgba(0,0,0,0.1)!important;
 }
@@ -422,9 +435,9 @@ export const MultiSelect = {
 
 /* Effet de pulse */
 @keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(76,175,80,0.7); }
-  70% { box-shadow: 0 0 0 10px rgba(76,175,80,0); }
-  100% { box-shadow: 0 0 0 0 rgba(76,175,80,0); }
+  0% { box-shadow: 0 0 0 0 rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b),0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b),0); }
+  100% { box-shadow: 0 0 0 0 rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b),0); }
 }
 
 .multiselect-container .submit-btn:focus {

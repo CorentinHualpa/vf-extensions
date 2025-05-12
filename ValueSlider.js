@@ -80,6 +80,13 @@ export const ValueSlider = {
       const container = document.createElement('div');
       container.className = 'value-slider-container';
       
+      // Définir la largeur à 100% sur l'élément parent
+      if (element && element.parentElement) {
+        element.style.width = '100%';
+        element.style.maxWidth = '100%';
+        element.style.boxSizing = 'border-box';
+      }
+      
       // Création des éléments HTML
       const headerEl = document.createElement('h2');
       headerEl.className = 'value-slider-header';
@@ -167,10 +174,15 @@ export const ValueSlider = {
           border-radius: 12px;
           background-color: #FFFFFF;
           box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-          width: 100%;
+          width: 100% !important;
+          min-width: 100% !important;
+          max-width: 100% !important;
           box-sizing: border-box;
-          max-width: 100%;
+          margin: 0;
+          padding: 1.5rem;
           transition: opacity 0.3s ease;
+          display: block;
+          overflow: hidden;
         }
         
         /* État désactivé après confirmation */
@@ -187,6 +199,8 @@ export const ValueSlider = {
           margin: 0 0 1.5rem 0;
           text-align: center;
           color: #222;
+          width: 100%;
+          display: block;
         }
         
         .value-slider-value-display {
@@ -241,7 +255,10 @@ export const ValueSlider = {
           border-radius: 10px;
           margin: 2rem 0;
           width: 100%;
+          left: 0;
+          right: 0;
           box-sizing: border-box;
+          overflow: visible;
         }
         
         .value-slider-progress {
@@ -267,6 +284,7 @@ export const ValueSlider = {
           background: transparent;
           outline: none;
           margin: 0;
+          padding: 0;
           z-index: 2;
           box-sizing: border-box;
         }
@@ -312,6 +330,7 @@ export const ValueSlider = {
           padding: 0 12px;
           width: 100%;
           box-sizing: border-box;
+          overflow: visible;
         }
         
         .value-slider-step {
@@ -414,8 +433,25 @@ export const ValueSlider = {
         });
       });
       
+      // Gestion de la largeur totale
+      function updateSliderWidth() {
+        // Forcer la largeur à 100% du parent
+        if (container.parentElement) {
+          container.style.width = '100%';
+        }
+      }
+      
+      // Appliquer immédiatement et à chaque redimensionnement
+      updateSliderWidth();
+      window.addEventListener('resize', updateSliderWidth);
+      
       // Ajout au DOM
       element.appendChild(container);
+      
+      // Retourner une fonction de nettoyage pour supprimer l'écouteur d'événements
+      return () => {
+        window.removeEventListener('resize', updateSliderWidth);
+      };
       
     } catch (error) {
       console.error('Erreur dans l\'extension ValueSlider:', error);

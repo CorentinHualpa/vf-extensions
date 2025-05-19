@@ -14,6 +14,8 @@
  *  ║  • global_button_color définit la couleur par défaut     ║
  *  ║  • NOUVEAU: style distinctive pour options "all"         ║
  *  ║  • NOUVEAU: option "global-all" pour toutes les sections ║
+ *  ║  • NOUVEAU: génération d'ID unique pour chaque instance  ║
+ *  ║  • NOUVEAU: réactivation fiable du chat après actions    ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 
@@ -38,9 +40,13 @@ export const MultiSelect = {
         optionsGap      = 8,  // Contrôle l'espacement entre les options (en px)
         global_button_color = '#3778F4', // Couleur par défaut pour tous les boutons (bleu)
         useGlobalAll    = false,  // NOUVEAU: option pour activer/désactiver l'option global-all
-        globalAllText   = "Tout sélectionner / désélectionner" // NOUVEAU: texte pour l'option global-all
+        globalAllText   = "Tout sélectionner / désélectionner", // NOUVEAU: texte pour l'option global-all
+        instanceId      = null // Identifiant fourni dans le payload (facultatif)
       } = trace.payload;
 
+      // NOUVEAU: Générer un identifiant unique pour cette instance
+      const uniqueInstanceId = instanceId || `ms_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      
       /* 1. utilitaires */
       const stripHTML = html => {
         const tmp = document.createElement('div');
@@ -69,6 +75,10 @@ export const MultiSelect = {
       /* 2. chat on/off */
       const root = element.getRootNode();
       const host = root instanceof ShadowRoot ? root : document;
+      
+      // AMÉLIORÉ: Variable pour suivre l'état d'activation du chat
+      let chatEnabled = chat; // Initialiser avec l'état défini dans le payload
+      
       function disableChat() {
         const ic = host.querySelector('.vfrc-input-container');
         if (!ic) return;
@@ -79,7 +89,9 @@ export const MultiSelect = {
         if (ta) { ta.disabled = true; ta.setAttribute('title', chatDisabledText); }
         const snd = host.querySelector('#vfrc-send-message');
         if (snd) { snd.disabled = true; snd.setAttribute('title', chatDisabledText); }
+        chatEnabled = false; // Mettre à jour l'état du chat
       }
+      
       function enableChat() {
         const ic = host.querySelector('.vfrc-input-container');
         if (!ic) return;
@@ -90,12 +102,25 @@ export const MultiSelect = {
         if (ta) { ta.disabled = false; ta.removeAttribute('title'); }
         const snd = host.querySelector('#vfrc-send-message');
         if (snd) { snd.disabled = false; snd.removeAttribute('title'); }
+        chatEnabled = true; // Mettre à jour l'état du chat
+        
+        // NOUVEAU: Vérification additionnelle pour s'assurer que le chat est activé
+        setTimeout(() => {
+          if (!chatEnabled) {
+            enableChat(); // Réessayer l'activation si nécessaire
+          }
+        }, 100);
       }
+      
       if (!chat) disableChat();
 
       /* 3. container + disable on chat interact */
       const container = document.createElement('div');
       container.classList.add('multiselect-container');
+      
+      // Ajouter l'ID unique à l'élément container
+      container.id = uniqueInstanceId;
+      container.setAttribute('data-instance-id', uniqueInstanceId);
       
       // Appliquer la classe one-section soit si gridColumns=1 ou s'il n'y a qu'une section
       if (gridColumns === 1 || sections.length === 1) container.classList.add('one-section');
@@ -107,10 +132,16 @@ export const MultiSelect = {
           if (args.type === 'text') {
             container.classList.add('disabled-container');
             disableChat();
+            
+            // AMÉLIORÉ: Réactiver le chat après soumission du texte
+            setTimeout(() => {
+              enableChat();
+            }, 300);
           }
           return orig(args);
         };
       }
+      
       // touche Entrée dans champ libre
       const chatInput = host.querySelector('textarea.vfrc-chat-input');
       if (chatInput) {
@@ -118,15 +149,26 @@ export const MultiSelect = {
           if (e.key === 'Enter') {
             container.classList.add('disabled-container');
             disableChat();
+            
+            // AMÉLIORÉ: Réactiver le chat après soumission par touche Entrée
+            setTimeout(() => {
+              enableChat();
+            }, 300);
           }
         });
       }
+      
       // clique sur icône envoyer
       const sendBtn = host.querySelector('#vfrc-send-message');
       if (sendBtn) {
         sendBtn.addEventListener('click', () => {
           container.classList.add('disabled-container');
           disableChat();
+          
+          // AMÉLIORÉ: Réactiver le chat après le clic sur envoyer
+          setTimeout(() => {
+            enableChat();
+          }, 300);
         });
       }
 
@@ -634,7 +676,8 @@ export const MultiSelect = {
         if (Array.isArray(opt.children) && opt.children.length) {
           const blk = document.createElement('div');
           blk.classList.add('non-selectable-block');
-          blk.setAttribute('data-block-id', `block-${sectionIdx}-${Math.random().toString(36).substring(2, 9)}`);
+          // AMÉLIORÉ: Utilisation de l'ID unique dans la génération des IDs des blocs
+          blk.setAttribute('data-block-id', `block-${uniqueInstanceId}-${sectionIdx}-${Math.random().toString(36).substring(2, 9)}`);
           blk.innerHTML = opt.name;
           const wrap = document.createElement('div');
           wrap.classList.add('children-options');
@@ -660,6 +703,10 @@ export const MultiSelect = {
         inp.dataset.action = opt.action || '';
         inp.dataset.sectionIdx = sectionIdx;
         
+        // NOUVEAU: Ajouter l'ID unique à l'input pour éviter les conflits
+        inp.id = `ms-${uniqueInstanceId}-${sectionIdx}-${Math.random().toString(36).substring(2, 9)}`;
+        inp.name = multiselect ? `ms-group-${uniqueInstanceId}-${sectionIdx}` : `ms-group-${uniqueInstanceId}`;
+        
         // Stocker l'ID du bloc parent si présent
         if (parentBlock) {
           inp.dataset.parentBlock = parentBlock;
@@ -668,6 +715,7 @@ export const MultiSelect = {
         if (opt.grey) inp.disabled = true;
 
         const lbl = document.createElement('label');
+        lbl.setAttribute('for', inp.id); // Associer le label à l'input par son ID
         const txt = document.createElement('span');
         txt.innerHTML = opt.name;
         lbl.append(inp, txt);
@@ -709,19 +757,26 @@ export const MultiSelect = {
 
           // Gestion du mode single-select (radio) pour soumission automatique
           if (!multiselect) {
-            // Réactiver le chat avant de désactiver le container
+            // AMÉLIORÉ: S'assurer que le chat est réactivé avant d'interagir
             enableChat();
-            container.classList.add('disabled-container');
-            // Ne pas désactiver le chat à nouveau - laisser juste le container grisé
             
+            // Désactiver le conteneur pour empêcher d'autres interactions
+            container.classList.add('disabled-container');
+            
+            // Envoyer la réponse à Voiceflow
             window.voiceflow.chat.interact({
               type: 'complete',
               payload: {
                 selection: opt.name,
-                buttonPath: opt.action || 'Default'
+                buttonPath: opt.action || 'Default',
+                instanceId: uniqueInstanceId // Ajouter l'ID unique dans le payload
               }
             });
-            // Ne pas appeler setTimeout for focus ici - le chat est activé
+            
+            // Vérifier à nouveau que le chat est activé après la soumission
+            setTimeout(() => {
+              enableChat();
+            }, 300);
           }
         });
 
@@ -731,9 +786,16 @@ export const MultiSelect = {
       /* 7. build sections */
       grid = document.createElement('div');
       grid.classList.add('sections-grid');
+      
+      // NOUVEAU: Ajouter l'ID unique au grid
+      grid.id = `grid-${uniqueInstanceId}`;
+      
       sections.forEach((sec, i) => {
         const sc = document.createElement('div');
         sc.classList.add('section-container');
+        // NOUVEAU: Ajouter l'ID unique à la section
+        sc.id = `section-${uniqueInstanceId}-${i}`;
+        
         const bg = sec.backgroundColor || sec.color || '#673AB7';
         sc.style.backgroundColor = bg;
         
@@ -763,39 +825,56 @@ export const MultiSelect = {
         // liste d'options
         const ol = document.createElement('div');
         ol.classList.add('options-list');
+        // NOUVEAU: Ajouter l'ID unique à la liste d'options
+        ol.id = `options-list-${uniqueInstanceId}-${i}`;
+        
         if ((sec.options || []).length > 10) ol.classList.add('grid-2cols');
 
-        sec.options.forEach(opt => {
+        sec.options.forEach((opt, optIdx) => {
           if (opt.action === 'user_input') {
             // champ libre
             const uiWrap = document.createElement('div');
             uiWrap.classList.add('user-input-container');
+            // NOUVEAU: Ajouter l'ID unique au conteneur de l'input utilisateur
+            uiWrap.id = `ui-container-${uniqueInstanceId}-${i}-${optIdx}`;
+            
             const uiLbl = document.createElement('label');
             uiLbl.classList.add('user-input-label');
             uiLbl.textContent = opt.label;
+            
             const uiInp = document.createElement('input');
             uiInp.type = 'text';
             uiInp.classList.add('user-input-field');
+            // NOUVEAU: Ajouter l'ID unique à l'input
+            uiInp.id = `ui-input-${uniqueInstanceId}-${i}-${optIdx}`;
             uiInp.placeholder = opt.placeholder || '';
+            
             uiInp.addEventListener('keydown', e => {
               if (e.key === 'Enter' && e.target.value.trim()) {
-                // Réactiver le chat avant de griser le container
+                // AMÉLIORÉ: S'assurer que le chat est réactivé
                 enableChat();
-                container.classList.add('disabled-container');
-                // Ne pas désactiver le chat - laisser uniquement le container grisé
                 
-                // envoi
+                // Désactiver le conteneur
+                container.classList.add('disabled-container');
+                
+                // Envoyer la réponse à Voiceflow
                 window.voiceflow.chat.interact({
                   type: 'complete',
                   payload: {
                     isUserInput: true,
                     userInput: e.target.value.trim(),
-                    buttonPath: 'Default'
+                    buttonPath: 'Default',
+                    instanceId: uniqueInstanceId // Ajouter l'ID unique dans le payload
                   }
                 });
-                // Ne pas appeler setTimeout for focus - le chat est déjà activé
+                
+                // Vérifier à nouveau que le chat est activé
+                setTimeout(() => {
+                  enableChat();
+                }, 300);
               }
             });
+            
             uiWrap.append(uiLbl, uiInp);
             ol.append(uiWrap);
           } else {
@@ -813,9 +892,13 @@ export const MultiSelect = {
       if (useGlobalAll && multiselect) {
         const globalAllContainer = document.createElement('div');
         globalAllContainer.classList.add('global-all-container');
+        // NOUVEAU: Ajouter l'ID unique au conteneur global-all
+        globalAllContainer.id = `global-all-container-${uniqueInstanceId}`;
         
         const globalAllBtn = document.createElement('button');
         globalAllBtn.classList.add('global-all-button');
+        // NOUVEAU: Ajouter l'ID unique au bouton
+        globalAllBtn.id = `global-all-btn-${uniqueInstanceId}`;
         globalAllBtn.innerHTML = '<span class="icon">☐</span> ' + globalAllText;
         
         globalAllBtn.addEventListener('click', () => {
@@ -845,14 +928,21 @@ export const MultiSelect = {
       if (buttons.length) {
         const bc = document.createElement('div');
         bc.classList.add('buttons-container');
+        // NOUVEAU: Ajouter l'ID unique au conteneur de boutons
+        bc.id = `buttons-container-${uniqueInstanceId}`;
 
-        buttons.forEach(cfg => {
+        buttons.forEach((cfg, btnIdx) => {
           // wrapper vertical : bouton + msg d'erreur
           const wrapper = document.createElement('div');
           wrapper.classList.add('button-wrapper');
+          // NOUVEAU: Ajouter l'ID unique au wrapper
+          wrapper.id = `button-wrapper-${uniqueInstanceId}-${btnIdx}`;
 
           const btn = document.createElement('button');
           btn.classList.add('submit-btn');
+          // NOUVEAU: Ajouter l'ID unique au bouton
+          btn.id = `submit-btn-${uniqueInstanceId}-${btnIdx}`;
+          
           if (cfg.color) {
             btn.style.setProperty('background-color', cfg.color, 'important');
             btn.style.setProperty('border-color',     cfg.color, 'important');
@@ -870,6 +960,8 @@ export const MultiSelect = {
           // zone d'erreur sous le bouton
           const err = document.createElement('div');
           err.className = 'minselect-error';
+          // NOUVEAU: Ajouter l'ID unique à la zone d'erreur
+          err.id = `error-${uniqueInstanceId}-${btnIdx}`;
 
           btn.addEventListener('click', () => {
             const min = cfg.minSelect || 0;
@@ -890,9 +982,12 @@ export const MultiSelect = {
 
             // sinon sélection OK → on cache l'erreur, on réactive le chat, on grise le container
             err.style.visibility = 'hidden';
-            enableChat();  // Réactiver le chat
-            container.classList.add('disabled-container');  // Griser uniquement le container
-            // Ne pas désactiver le chat ici - laisser l'utilisateur interagir avec le chat
+            
+            // AMÉLIORÉ: S'assurer que le chat est réactivé
+            enableChat();
+            
+            // Désactiver uniquement le container
+            container.classList.add('disabled-container');
 
             const res = sections.map((s, i) => {
               const dom = grid.children[i];
@@ -903,16 +998,22 @@ export const MultiSelect = {
               return { section: s.label, selections: sels, userInput: ui };
             }).filter(r => r.selections.length || r.userInput);
 
+            // Envoyer la réponse à Voiceflow
             window.voiceflow.chat.interact({
               type: 'complete',
               payload: {
                 selections:  res,
                 buttonText:  cfg.text,
                 buttonPath:  cfg.path || 'Default',
-                isEmpty:     res.every(r => !r.selections.length && !r.userInput)
+                isEmpty:     res.every(r => !r.selections.length && !r.userInput),
+                instanceId:  uniqueInstanceId // Ajouter l'ID unique dans le payload
               }
             });
-            // Ne pas appeler setTimeout for focus - le chat reste activé
+            
+            // Vérifier à nouveau que le chat est activé
+            setTimeout(() => {
+              enableChat();
+            }, 300);
           });
 
           wrapper.append(btn, err);
@@ -925,12 +1026,38 @@ export const MultiSelect = {
       /* 9. injecter dans le DOM */
       element.append(container);
       
+      // NOUVEAU: Observer pour maintenir le chat actif
+      const chatStateObserver = new MutationObserver((mutations) => {
+        // Si le MultiSelect est toujours actif (n'a pas la classe disabled-container)
+        // mais que le chat est désactivé, alors réactiver le chat
+        if (!container.classList.contains('disabled-container') && !chatEnabled) {
+          setTimeout(() => {
+            enableChat();
+          }, 100);
+        }
+      });
+      
+      // Observer les changements d'attributs sur les éléments d'entrée du chat
+      const chatInputContainer = host.querySelector('.vfrc-input-container');
+      if (chatInputContainer) {
+        chatStateObserver.observe(chatInputContainer, { 
+          attributes: true, 
+          subtree: true,
+          childList: true
+        });
+      }
+      
       // Mise à jour de l'état initial du bouton global-all
       if (useGlobalAll && multiselect) {
         updateTotalChecked();
       }
       
-      console.log('✅ MultiSelect prêt');
+      // Nettoyer l'observateur lorsque la composante est détruite
+      return () => {
+        chatStateObserver.disconnect();
+      };
+      
+      console.log(`✅ MultiSelect prêt (ID: ${uniqueInstanceId})`);
     } catch (err) {
       console.error('❌ MultiSelect Error :', err);
       window.voiceflow.chat.interact({
@@ -940,3 +1067,5 @@ export const MultiSelect = {
     }
   }
 };
+
+export default MultiSelect;

@@ -11,9 +11,6 @@
  *  ║  • action="all" coche/décoche l'intégralité de la section║
  *  ║  • gridColumns=1 force l'affichage sur une seule colonne ║
  *  ║  • optionsGap=14 contrôle l'espacement entre les options ║
- *  ║  • global_button_color définit la couleur par défaut     ║
- *  ║  • NOUVEAU: style distinctive pour options "all"         ║
- *  ║  • NOUVEAU: option "global-all" pour toutes les sections ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 
@@ -35,15 +32,8 @@ export const MultiSelect = {
         chat            = true,
         chatDisabledText= '🚫',
         gridColumns     = 0,  // 0 = auto (par défaut), 1 = force une colonne
-        optionsGap      = 8,  // Contrôle l'espacement entre les options (en px)
-        global_button_color = '#3778F4', // Couleur par défaut pour tous les boutons (bleu)
-        useGlobalAll    = false,  // NOUVEAU: option pour activer/désactiver l'option global-all
-        globalAllText   = "Tout sélectionner / désélectionner" // NOUVEAU: texte pour l'option global-all
+        optionsGap      = 8   // Nouveau paramètre: contrôle l'espacement entre les options (en px)
       } = trace.payload;
-
-      // Variable pour suivre si le formulaire a été soumis
-      let isSubmitted = false;
-      let reactivationInterval = null;
 
       /* 1. utilitaires */
       const stripHTML = html => {
@@ -73,168 +63,28 @@ export const MultiSelect = {
       /* 2. chat on/off */
       const root = element.getRootNode();
       const host = root instanceof ShadowRoot ? root : document;
-      
-      // Version ultra-robuste de disableChat
       function disableChat() {
-        // Ne pas désactiver si déjà soumis
-        if (isSubmitted) return;
-        
-        try {
-          const ic = host.querySelector('.vfrc-input-container');
-          if (!ic) return;
-          
-          ic.style.opacity = '.5';
-          ic.style.cursor = 'not-allowed';
-          ic.setAttribute('title', chatDisabledText);
-          
-          // Désactiver le textarea
-          const ta = ic.querySelector('textarea.vfrc-chat-input');
-          if (ta) { 
-            ta.disabled = true; 
-            ta.setAttribute('title', chatDisabledText); 
-          }
-          
-          // Désactiver le bouton d'envoi
-          const snd = host.querySelector('#vfrc-send-message');
-          if (snd) { 
-            snd.disabled = true; 
-            snd.setAttribute('title', chatDisabledText); 
-          }
-          
-          // Désactiver les éléments interactifs supplémentaires
-          const inputs = host.querySelectorAll('.vfrc-input-container input, .vfrc-input-container button, .vfrc-input-container textarea');
-          inputs.forEach(input => {
-            input.disabled = true;
-            input.style.pointerEvents = 'none';
-          });
-        } catch (e) {
-          console.warn('Erreur lors de la désactivation du chat:', e);
-        }
+        const ic = host.querySelector('.vfrc-input-container');
+        if (!ic) return;
+        ic.style.opacity = '.5';
+        ic.style.cursor  = 'not-allowed';
+        ic.setAttribute('title', chatDisabledText);
+        const ta = ic.querySelector('textarea.vfrc-chat-input');
+        if (ta) { ta.disabled = true; ta.setAttribute('title', chatDisabledText); }
+        const snd = host.querySelector('#vfrc-send-message');
+        if (snd) { snd.disabled = true; snd.setAttribute('title', chatDisabledText); }
       }
-      
-      // Version ultra-robuste de enableChat
-      function forceEnableChat() {
-        try {
-          isSubmitted = true;
-          
-          // Réinitialiser tous les intervalles précédents
-          if (reactivationInterval) {
-            clearInterval(reactivationInterval);
-          }
-          
-          // Cibler tous les conteneurs d'input possibles
-          const containers = [
-            host.querySelector('.vfrc-input-container'),
-            host.querySelector('.vfrc-footer'),
-            host.querySelector('.vfrc-chat-footer'),
-            ...Array.from(host.querySelectorAll('[class*="input"], [class*="chat"]'))
-          ].filter(Boolean);
-          
-          // Parcourir chaque conteneur et réactiver tous ses éléments enfants
-          containers.forEach(container => {
-            // Réinitialiser les styles du conteneur
-            if (container) {
-              container.style.removeProperty('opacity');
-              container.style.removeProperty('cursor');
-              container.style.opacity = '';
-              container.style.cursor = '';
-              container.style.pointerEvents = 'auto';
-              container.removeAttribute('title');
-              container.removeAttribute('disabled');
-            }
-            
-            // Réactiver tous les contrôles interactifs à l'intérieur
-            const interactiveElements = Array.from(container?.querySelectorAll('input, textarea, button, [role="button"]') || []);
-            interactiveElements.forEach(el => {
-              el.disabled = false;
-              el.style.removeProperty('opacity');
-              el.style.removeProperty('cursor');
-              el.style.removeProperty('pointer-events');
-              el.style.opacity = '';
-              el.style.cursor = '';
-              el.style.pointerEvents = 'auto';
-              el.removeAttribute('disabled');
-              el.removeAttribute('title');
-            });
-          });
-          
-          // Cibler spécifiquement le textarea et le bouton d'envoi
-          const textarea = host.querySelector('textarea.vfrc-chat-input');
-          if (textarea) {
-            textarea.disabled = false;
-            textarea.style.pointerEvents = 'auto';
-            textarea.removeAttribute('disabled');
-            textarea.removeAttribute('title');
-          }
-          
-          const sendButton = host.querySelector('#vfrc-send-message');
-          if (sendButton) {
-            sendButton.disabled = false;
-            sendButton.style.pointerEvents = 'auto';
-            sendButton.removeAttribute('disabled');
-            sendButton.removeAttribute('title');
-          }
-          
-          // Dernière mesure - forcer le focus sur le textarea
-          if (textarea) {
-            // Force un focus temporaire pour "réveiller" le textarea
-            setTimeout(() => {
-              try {
-                textarea.focus();
-                setTimeout(() => textarea.blur(), 10);
-              } catch (e) {
-                // Ignorer les erreurs de focus
-              }
-            }, 100);
-          }
-          
-          // Mettre en place une réactivation périodique
-          reactivationInterval = setInterval(() => {
-            const stillDisabled = Array.from(
-              host.querySelectorAll('textarea.vfrc-chat-input, #vfrc-send-message, .vfrc-input-container')
-            ).some(el => 
-              el.disabled || 
-              el.style.pointerEvents === 'none' || 
-              el.style.opacity === '0.5'
-            );
-            
-            if (stillDisabled) {
-              // Les contrôles sont encore désactivés, forcer la réactivation à nouveau
-              const allInteractive = host.querySelectorAll('textarea, button, input, [role="button"]');
-              allInteractive.forEach(el => {
-                el.disabled = false;
-                el.style.pointerEvents = 'auto';
-                el.style.opacity = '';
-              });
-            } else {
-              // Tout est réactivé, arrêter l'intervalle
-              clearInterval(reactivationInterval);
-              reactivationInterval = null;
-            }
-          }, 300);
-          
-          // Arrêter l'intervalle après 3 secondes dans tous les cas
-          setTimeout(() => {
-            if (reactivationInterval) {
-              clearInterval(reactivationInterval);
-              reactivationInterval = null;
-            }
-          }, 3000);
-        } catch (e) {
-          console.warn('Erreur lors de la réactivation du chat:', e);
-          
-          // En cas d'erreur, tenter une approche radicale
-          try {
-            Array.from(host.querySelectorAll('*')).forEach(el => {
-              if (el.disabled === true) el.disabled = false;
-              if (el.style && el.style.pointerEvents === 'none') el.style.pointerEvents = 'auto';
-            });
-          } catch (err) {
-            // Ignorer les erreurs de cette tentative de dernier recours
-          }
-        }
+      function enableChat() {
+        const ic = host.querySelector('.vfrc-input-container');
+        if (!ic) return;
+        ic.style.opacity = '';
+        ic.style.cursor  = '';
+        ic.removeAttribute('title');
+        const ta = ic.querySelector('textarea.vfrc-chat-input');
+        if (ta) { ta.disabled = false; ta.removeAttribute('title'); }
+        const snd = host.querySelector('#vfrc-send-message');
+        if (snd) { snd.disabled = false; snd.removeAttribute('title'); }
       }
-      
       if (!chat) disableChat();
 
       /* 3. container + disable on chat interact */
@@ -276,13 +126,6 @@ export const MultiSelect = {
 
       /* 4. CSS global - intégré */
       const styleEl = document.createElement('style');
-      
-      // Extraction des valeurs RGB pour les variables CSS
-      const globalBtnRgb = parseInt(global_button_color.replace('#',''), 16);
-      const globalBtnR = (globalBtnRgb >> 16) & 255;
-      const globalBtnG = (globalBtnRgb >> 8) & 255;
-      const globalBtnB = globalBtnRgb & 255;
-      
       styleEl.textContent = `
 /* Variables CSS principales */
 .multiselect-container {
@@ -296,10 +139,6 @@ export const MultiSelect = {
   --ms-heading-fs: 16px;
   --ms-base-fs: 15px;
   --ms-small-fs: 14px;
-  --ms-global-btn-color: ${global_button_color};
-  --ms-global-btn-r: ${globalBtnR};
-  --ms-global-btn-g: ${globalBtnG};
-  --ms-global-btn-b: ${globalBtnB};
 }
 
 /* Reset et styles de base */
@@ -430,119 +269,6 @@ export const MultiSelect = {
   background:var(--ms-selected-bg)!important; 
 }
 
-/* NOUVEAU: Styles spécifiques pour les options "all" */
-.multiselect-container .option-container.all-option label {
-  background: rgba(0, 0, 0, 0.5)!important;
-  border: 1px dashed rgba(255, 255, 255, 0.3)!important;
-  font-weight: 700!important;
-  font-style: italic!important;
-  padding: 8px 12px!important;
-  border-radius: 8px!important;
-  transition: all 0.3s ease!important;
-}
-
-.multiselect-container .option-container.all-option label:hover {
-  background: var(--ms-hover-bg)!important;
-  border-style: solid!important;
-  transform: scale(1.02)!important;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2)!important;
-}
-
-.multiselect-container .option-container.all-option label.selected {
-  background: var(--ms-selected-bg)!important;
-  border-color: rgba(255, 255, 255, 0.6)!important;
-}
-
-.multiselect-container .option-container.all-option label:before {
-  content: "✓ "!important;
-  font-weight: bold!important;
-  opacity: 0.8!important;
-}
-
-/* NOUVEAU: Styles pour le global-all */
-.multiselect-container .global-all-container {
-  width: 100%!important;
-  display: flex!important;
-  justify-content: center!important;
-  margin: 15px 0!important;
-  padding: 10px!important;
-  position: relative!important;
-}
-
-.multiselect-container .global-all-container:before,
-.multiselect-container .global-all-container:after {
-  content: ""!important;
-  position: absolute!important;
-  height: 1px!important;
-  background: linear-gradient(to right, transparent, rgba(255,255,255,0.3), transparent)!important;
-  width: 80%!important;
-  left: 10%!important;
-}
-
-.multiselect-container .global-all-container:before {
-  top: 0!important;
-}
-
-.multiselect-container .global-all-container:after {
-  bottom: 0!important;
-}
-
-.multiselect-container .global-all-button {
-  background: linear-gradient(145deg, var(--ms-global-btn-color), 
-              rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b), 0.8))!important;
-  color: white!important;
-  border: none!important;
-  border-radius: 8px!important;
-  padding: 10px 20px!important;
-  font-weight: bold!important;
-  font-size: 14px!important;
-  cursor: pointer!important;
-  transition: all 0.3s ease!important;
-  box-shadow: 0 4px 12px rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b), 0.3),
-              inset 0 1px 0 rgba(255,255,255,0.2)!important;
-  position: relative!important;
-  overflow: hidden!important;
-  display: flex!important;
-  align-items: center!important;
-  justify-content: center!important;
-  gap: 8px!important;
-}
-
-.multiselect-container .global-all-button:hover {
-  transform: translateY(-2px)!important;
-  box-shadow: 0 6px 16px rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b), 0.4),
-              inset 0 1px 0 rgba(255,255,255,0.3)!important;
-}
-
-.multiselect-container .global-all-button:active {
-  transform: translateY(1px)!important;
-  box-shadow: 0 2px 8px rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b), 0.3)!important;
-}
-
-.multiselect-container .global-all-button::before {
-  content: ''!important;
-  position: absolute!important;
-  top: -10px!important;
-  left: -10px!important;
-  width: calc(100% + 20px)!important;
-  height: calc(100% + 20px)!important;
-  background: linear-gradient(45deg, transparent, rgba(255,255,255,0.2), transparent)!important;
-  transform: translateX(-100%) rotate(45deg)!important;
-  transition: transform 0.6s ease!important;
-}
-
-.multiselect-container .global-all-button:hover::before {
-  transform: translateX(100%) rotate(45deg)!important;
-}
-
-.multiselect-container .global-all-button .icon {
-  font-size: 18px!important;
-}
-
-.multiselect-container .global-all-button.active {
-  background: linear-gradient(145deg, #4CAF50, #2E7D32)!important;
-}
-
 /* Checkbox/Radio styles */
 .multiselect-container .option-container input[type="checkbox"],
 .multiselect-container .option-container input[type="radio"] {
@@ -620,10 +346,10 @@ export const MultiSelect = {
   padding:var(--ms-gap)!important;
 }
 
-/* BOUTONS CORPORATE/SCI-FI - COULEUR GLOBALE PAR DÉFAUT */
+/* BOUTONS CORPORATE/SCI-FI - VERT PAR DÉFAUT */
 .multiselect-container .submit-btn {
   position: relative!important;
-  background: var(--ms-global-btn-color)!important;
+  background: #4CAF50!important;
   color: #fff!important;
   padding: 10px 24px!important; 
   border-radius: 8px!important;
@@ -635,7 +361,7 @@ export const MultiSelect = {
   border: none!important;
   overflow: hidden!important;
   transition: all 0.3s ease!important;
-  box-shadow: 0 4px 12px rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b),0.3),
+  box-shadow: 0 4px 12px rgba(76,175,80,0.3),
               inset 0 3px 0 rgba(255,255,255,0.2),
               inset 0 -3px 0 rgba(0,0,0,0.2)!important;
 }
@@ -643,7 +369,7 @@ export const MultiSelect = {
 /* Effet hover */
 .multiselect-container .submit-btn:hover {
   transform: translateY(-2px)!important;
-  box-shadow: 0 6px 20px rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b),0.4),
+  box-shadow: 0 6px 20px rgba(76,175,80,0.4),
               inset 0 3px 0 rgba(255,255,255,0.3),
               inset 0 -3px 0 rgba(0,0,0,0.3)!important;
 }
@@ -651,7 +377,7 @@ export const MultiSelect = {
 /* Effet active (clic) */
 .multiselect-container .submit-btn:active {
   transform: translateY(1px)!important;
-  box-shadow: 0 2px 6px rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b),0.3),
+  box-shadow: 0 2px 6px rgba(76,175,80,0.3),
               inset 0 1px 0 rgba(255,255,255,0.1),
               inset 0 -1px 0 rgba(0,0,0,0.1)!important;
 }
@@ -696,9 +422,9 @@ export const MultiSelect = {
 
 /* Effet de pulse */
 @keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b),0.7); }
-  70% { box-shadow: 0 0 0 10px rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b),0); }
-  100% { box-shadow: 0 0 0 0 rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b),0); }
+  0% { box-shadow: 0 0 0 0 rgba(76,175,80,0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(76,175,80,0); }
+  100% { box-shadow: 0 0 0 0 rgba(76,175,80,0); }
 }
 
 .multiselect-container .submit-btn:focus {
@@ -739,7 +465,6 @@ export const MultiSelect = {
         } else {
           allInputs.forEach(i => { if (!i.closest('.greyed-out-option')) i.disabled = false; });
         }
-        
         // sync "all" box per section - maintenu pour rétrocompatibilité
         sections.forEach((_, idx) => {
           const secDom = grid.children[idx];
@@ -752,25 +477,6 @@ export const MultiSelect = {
           allInput.checked = everyChecked;
           allInput.parentElement.classList.toggle('selected', everyChecked);
         });
-        
-        // NOUVEAU: mise à jour du bouton global-all
-        if (useGlobalAll) {
-          const globalAllBtn = container.querySelector('.global-all-button');
-          if (globalAllBtn) {
-            const allCheckboxes = Array.from(
-              container.querySelectorAll('input[type="checkbox"]:not([data-action="all"])')
-            );
-            const allChecked = allCheckboxes.length > 0 && allCheckboxes.every(i => i.checked);
-            
-            if (allChecked) {
-              globalAllBtn.classList.add('active');
-              globalAllBtn.innerHTML = '<span class="icon">☑</span> Tout désélectionner';
-            } else {
-              globalAllBtn.classList.remove('active');
-              globalAllBtn.innerHTML = '<span class="icon">☐</span> Tout sélectionner';
-            }
-          }
-        }
       };
 
       /* 6. createOptionElement */
@@ -791,12 +497,6 @@ export const MultiSelect = {
         }
         const wrap = document.createElement('div');
         wrap.classList.add('option-container');
-        
-        // NOUVEAU: Ajouter la classe all-option pour les options "all"
-        if (opt.action === 'all') {
-          wrap.classList.add('all-option');
-        }
-        
         if (opt.grey) wrap.classList.add('greyed-out-option');
 
         const inp = document.createElement('input');
@@ -853,25 +553,19 @@ export const MultiSelect = {
 
           // Gestion du mode single-select (radio) pour soumission automatique
           if (!multiselect) {
-            // CORRECTION: Utiliser la nouvelle méthode robuste pour réactiver le chat
-            forceEnableChat();
-            
-            // Griser le container
+            // Réactiver le chat avant de désactiver le container
+            enableChat();
             container.classList.add('disabled-container');
+            // Ne pas désactiver le chat à nouveau - laisser juste le container grisé
             
-            // Envoi avec délai pour s'assurer que le chat est réactivé
-            setTimeout(() => {
-              window.voiceflow.chat.interact({
-                type: 'complete',
-                payload: {
-                  selection: opt.name,
-                  buttonPath: opt.action || 'Default'
-                }
-              });
-              
-              // Double vérification après l'envoi
-              setTimeout(forceEnableChat, 500);
-            }, 100);
+            window.voiceflow.chat.interact({
+              type: 'complete',
+              payload: {
+                selection: opt.name,
+                buttonPath: opt.action || 'Default'
+              }
+            });
+            // Ne pas appeler setTimeout for focus ici - le chat est activé
           }
         });
 
@@ -929,28 +623,21 @@ export const MultiSelect = {
             uiInp.placeholder = opt.placeholder || '';
             uiInp.addEventListener('keydown', e => {
               if (e.key === 'Enter' && e.target.value.trim()) {
-                // CORRECTION: Nouvelle méthode de gestion complète
-                
-                // Griser le container
+                // Réactiver le chat avant de griser le container
+                enableChat();
                 container.classList.add('disabled-container');
+                // Ne pas désactiver le chat - laisser uniquement le container grisé
                 
-                // Force réactivation complète du chat
-                forceEnableChat();
-                
-                // Envoi avec délai pour s'assurer que le chat est réactivé
-                setTimeout(() => {
-                  window.voiceflow.chat.interact({
-                    type: 'complete',
-                    payload: {
-                      isUserInput: true,
-                      userInput: e.target.value.trim(),
-                      buttonPath: 'Default'
-                    }
-                  });
-                  
-                  // Réactive le chat après l'interaction aussi
-                  setTimeout(forceEnableChat, 500);
-                }, 100);
+                // envoi
+                window.voiceflow.chat.interact({
+                  type: 'complete',
+                  payload: {
+                    isUserInput: true,
+                    userInput: e.target.value.trim(),
+                    buttonPath: 'Default'
+                  }
+                });
+                // Ne pas appeler setTimeout for focus - le chat est déjà activé
               }
             });
             uiWrap.append(uiLbl, uiInp);
@@ -965,38 +652,6 @@ export const MultiSelect = {
         grid.append(sc);
       });
       container.append(grid);
-      
-      /* NOUVEAU: Option global-all */
-      if (useGlobalAll && multiselect) {
-        const globalAllContainer = document.createElement('div');
-        globalAllContainer.classList.add('global-all-container');
-        
-        const globalAllBtn = document.createElement('button');
-        globalAllBtn.classList.add('global-all-button');
-        globalAllBtn.innerHTML = '<span class="icon">☐</span> ' + globalAllText;
-        
-        globalAllBtn.addEventListener('click', () => {
-          // Récupérer toutes les checkboxes (sauf les options "all")
-          const allCheckboxes = Array.from(
-            container.querySelectorAll('input[type="checkbox"]:not([data-action="all"])')
-          ).filter(cb => !cb.disabled);
-          
-          // Déterminer l'état actuel (tous cochés ou non)
-          const allChecked = allCheckboxes.length > 0 && allCheckboxes.every(cb => cb.checked);
-          
-          // Inverser l'état
-          allCheckboxes.forEach(cb => {
-            cb.checked = !allChecked;
-            cb.parentElement.classList.toggle('selected', !allChecked);
-          });
-          
-          // Mettre à jour les options "all" de chaque section
-          updateTotalChecked();
-        });
-        
-        globalAllContainer.appendChild(globalAllBtn);
-        container.appendChild(globalAllContainer);
-      }
 
       /* 8. buttons */
       if (buttons.length) {
@@ -1047,38 +702,29 @@ export const MultiSelect = {
 
             // sinon sélection OK → on cache l'erreur, on réactive le chat, on grise le container
             err.style.visibility = 'hidden';
-            
-            // CORRECTION: Utiliser la nouvelle méthode robuste pour réactiver le chat
-            forceEnableChat();
-            
-            // Griser le container
-            container.classList.add('disabled-container');
+            enableChat();  // Réactiver le chat
+            container.classList.add('disabled-container');  // Griser uniquement le container
+            // Ne pas désactiver le chat ici - laisser l'utilisateur interagir avec le chat
 
-            // Attendre un court moment pour s'assurer que le chat est bien réactivé
-            setTimeout(() => {
-              // Envoi des données
-              const res = sections.map((s, i) => {
-                const dom = grid.children[i];
-                const sels = Array.from(dom.querySelectorAll('input:checked'))
-                  .filter(i => i.dataset.action !== 'all')
-                  .map(cb => cb.parentElement.querySelector('span').innerHTML.trim());
-                const ui = dom.querySelector('.user-input-field')?.value || '';
-                return { section: s.label, selections: sels, userInput: ui };
-              }).filter(r => r.selections.length || r.userInput);
-  
-              window.voiceflow.chat.interact({
-                type: 'complete',
-                payload: {
-                  selections:  res,
-                  buttonText:  cfg.text,
-                  buttonPath:  cfg.path || 'Default',
-                  isEmpty:     res.every(r => !r.selections.length && !r.userInput)
-                }
-              });
-              
-              // Double vérification après l'envoi
-              setTimeout(forceEnableChat, 500);
-            }, 100);
+            const res = sections.map((s, i) => {
+              const dom = grid.children[i];
+              const sels = Array.from(dom.querySelectorAll('input:checked'))
+                .filter(i => i.dataset.action !== 'all')
+                .map(cb => cb.parentElement.querySelector('span').innerHTML.trim());
+              const ui = dom.querySelector('.user-input-field')?.value || '';
+              return { section: s.label, selections: sels, userInput: ui };
+            }).filter(r => r.selections.length || r.userInput);
+
+            window.voiceflow.chat.interact({
+              type: 'complete',
+              payload: {
+                selections:  res,
+                buttonText:  cfg.text,
+                buttonPath:  cfg.path || 'Default',
+                isEmpty:     res.every(r => !r.selections.length && !r.userInput)
+              }
+            });
+            // Ne pas appeler setTimeout for focus - le chat reste activé
           });
 
           wrapper.append(btn, err);
@@ -1090,61 +736,9 @@ export const MultiSelect = {
 
       /* 9. injecter dans le DOM */
       element.append(container);
-      
-      // Mise à jour de l'état initial du bouton global-all
-      if (useGlobalAll && multiselect) {
-        updateTotalChecked();
-      }
-      
-      // NOUVELLE ÉTAPE: S'assurer que le chat est réactivé quand le composant est détruit
-      const observer = new MutationObserver((mutations) => {
-        for (const mutation of mutations) {
-          if (mutation.type === 'childList' && Array.from(mutation.removedNodes).includes(container)) {
-            // Le conteneur a été supprimé du DOM, assurons-nous que le chat est réactivé
-            if (reactivationInterval) {
-              clearInterval(reactivationInterval);
-            }
-            forceEnableChat();
-            observer.disconnect();
-            break;
-          }
-        }
-      });
-      
-      // Observer les changements dans le parent du conteneur
-      if (container.parentNode) {
-        observer.observe(container.parentNode, { childList: true });
-      }
-      
       console.log('✅ MultiSelect prêt');
-      
-      // Fonction de nettoyage à retourner
-      return () => {
-        // Nettoyer les intervalles et observers au démontage
-        if (reactivationInterval) {
-          clearInterval(reactivationInterval);
-        }
-        observer.disconnect();
-        
-        // S'assurer que le chat est bien réactivé lors du démontage
-        forceEnableChat();
-      };
     } catch (err) {
       console.error('❌ MultiSelect Error :', err);
-      
-      // En cas d'erreur, s'assurer que le chat est réactivé
-      try {
-        const root = element.getRootNode();
-        const host = root instanceof ShadowRoot ? root : document;
-        
-        Array.from(host.querySelectorAll('*')).forEach(el => {
-          if (el.disabled === true) el.disabled = false;
-          if (el.style && el.style.pointerEvents === 'none') el.style.pointerEvents = 'auto';
-        });
-      } catch (e) {
-        // Ignorer les erreurs de cette tentative de dernier recours
-      }
-      
       window.voiceflow.chat.interact({
         type: 'complete',
         payload: { error: true, message: err.message }

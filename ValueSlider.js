@@ -44,12 +44,18 @@ export const ValueSlider = {
         chatDisabledText = '🚫 Veuillez faire une sélection'
       } = payload;
       
+      // Variable pour suivre si le slider a été soumis
+      let isSubmitted = false;
+      
       // Récupérer le root pour accéder au chat
       const root = element.getRootNode();
       const host = root instanceof ShadowRoot ? root : document;
       
       // Fonctions pour gérer le chat
       function disableChat() {
+        // Ne pas désactiver si déjà soumis
+        if (isSubmitted) return;
+        
         const ic = host.querySelector('.vfrc-input-container');
         if (!ic) return;
         ic.style.opacity = '.5';
@@ -62,21 +68,52 @@ export const ValueSlider = {
       }
       
       function enableChat() {
+        // Marquer comme soumis pour éviter une désactivation future
+        isSubmitted = true;
+        
         const ic = host.querySelector('.vfrc-input-container');
         if (!ic) return;
-        ic.style.opacity = '';
-        ic.style.cursor = '';
+        
+        // Force réinitialisation complète des styles
+        ic.style.removeProperty('opacity');
+        ic.style.removeProperty('cursor');
         ic.removeAttribute('title');
+        
         const ta = ic.querySelector('textarea.vfrc-chat-input');
-        if (ta) { ta.disabled = false; ta.removeAttribute('title'); }
+        if (ta) { 
+          ta.disabled = false; 
+          ta.removeAttribute('title');
+          // Assure-toi que le textarea est prêt à recevoir la saisie
+          ta.style.pointerEvents = 'auto';
+        }
+        
         const snd = host.querySelector('#vfrc-send-message');
-        if (snd) { snd.disabled = false; snd.removeAttribute('title'); }
+        if (snd) { 
+          snd.disabled = false;
+          snd.removeAttribute('title');
+          // Assure-toi que le bouton est prêt à être cliqué
+          snd.style.pointerEvents = 'auto';
+        }
+        
+        // S'assurer que tous les contrôles sont vraiment activés
+        setTimeout(() => {
+          if (ta) ta.disabled = false;
+          if (snd) snd.disabled = false;
+          // Vérifier aussi si d'autres éléments du chat sont désactivés
+          const chatElements = host.querySelectorAll('.vfrc-chat-input, #vfrc-send-message, .vfrc-input-container *');
+          chatElements.forEach(elem => {
+            if (elem) {
+              elem.disabled = false;
+              elem.style.pointerEvents = 'auto';
+            }
+          });
+        }, 100);
       }
       
       // Désactiver le chat dès l'affichage du slider
       disableChat();
-      
-      // Création du conteneur principal
+
+   // Création du conteneur principal
       const container = document.createElement('div');
       container.className = 'value-slider-container';
       
@@ -129,7 +166,8 @@ export const ValueSlider = {
       sliderInput.max = max;
       sliderInput.value = defaultValue;
       sliderInput.className = 'value-slider-input';
-            // Création des marqueurs pour les steps
+      
+      // Création des marqueurs pour les steps
       const stepsContainer = document.createElement('div');
       stepsContainer.className = 'value-slider-steps';
       
@@ -145,8 +183,9 @@ export const ValueSlider = {
         stepEl.appendChild(stepLabel);
         stepsContainer.appendChild(stepEl);
       });
-      
-      // Bouton de validation
+
+
+       // Bouton de validation
       const submitBtn = document.createElement('button');
       submitBtn.className = 'value-slider-submit';
       submitBtn.textContent = 'Confirmer';
@@ -379,8 +418,8 @@ export const ValueSlider = {
       `;
       
       container.appendChild(style);
-      
-      // Fonctions de mise à jour
+
+          // Fonctions de mise à jour
       function updateSliderProgress() {
         const percentage = ((sliderInput.value - min) / (max - min)) * 100;
         progressBar.style.width = `${percentage}%`;
@@ -404,8 +443,8 @@ export const ValueSlider = {
         descriptionEl.innerHTML = getClosestDescription(value);
         updateSliderProgress();
       }
-
-       // Initialisation
+      
+      // Initialisation
       updateDisplay();
       
       // Événements
@@ -422,19 +461,25 @@ export const ValueSlider = {
         sliderInput.disabled = true;
         submitBtn.disabled = true;
         
-        // Réactiver le chat
+        // IMPORTANT: Réactiver le chat AVANT d'envoyer l'interaction
         enableChat();
         
-        // Envoi des données à Voiceflow
-        window.voiceflow.chat.interact({
-          type: 'complete',
-          payload: {
-            value: selectedValue,
-            description: selectedDescription,
-            unit: unit,
-            formatted: `${selectedValue} ${unit} ${selectedDescription}`
-          }
-        });
+        // Attendre un court moment pour s'assurer que le chat est bien réactivé
+        setTimeout(() => {
+          // Envoi des données à Voiceflow
+          window.voiceflow.chat.interact({
+            type: 'complete',
+            payload: {
+              value: selectedValue,
+              description: selectedDescription,
+              unit: unit,
+              formatted: `${selectedValue} ${unit} ${selectedDescription}`
+            }
+          });
+          
+          // S'assurer à nouveau que le chat est réactivé après l'envoi
+          setTimeout(enableChat, 300);
+        }, 100);
       });
       
       // Gestion de la largeur totale

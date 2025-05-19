@@ -37,12 +37,13 @@ export const MultiSelect = {
         gridColumns     = 0,  // 0 = auto (par défaut), 1 = force une colonne
         optionsGap      = 8,  // Contrôle l'espacement entre les options (en px)
         global_button_color = '#3778F4', // Couleur par défaut pour tous les boutons (bleu)
-        useGlobalAll    = false,  // NOUVEAU: option pour activer/désactiver l'option global-all
-        globalAllText   = "Tout sélectionner / désélectionner" // NOUVEAU: texte pour l'option global-all
+        useGlobalAll    = false,  // Option pour activer/désactiver l'option global-all
+        globalAllText   = "Tout sélectionner / désélectionner" // Texte pour l'option global-all
       } = trace.payload;
 
       // Variable pour suivre si le formulaire a été soumis
       let isSubmitted = false;
+      let chatEnabledInterval = null;
 
       /* 1. utilitaires */
       const stripHTML = html => {
@@ -69,66 +70,165 @@ export const MultiSelect = {
         return `rgba(${r}, ${g}, ${b}, ${opacity})`;
       };
 
-      /* 2. chat on/off */
+      /* 2. chat on/off - système amélioré */
       const root = element.getRootNode();
       const host = root instanceof ShadowRoot ? root : document;
+      
+      // Fonction pour vérifier si le chat est activé
+      function isChatEnabled() {
+        const ic = host.querySelector('.vfrc-input-container');
+        if (!ic) return false;
+        const ta = ic.querySelector('textarea.vfrc-chat-input');
+        if (!ta) return false;
+        return !ta.disabled;
+      }
+      
+      // Version améliorée de disableChat
       function disableChat() {
+        // Arrêter l'intervalle de vérification s'il existe
+        if (chatEnabledInterval) {
+          clearInterval(chatEnabledInterval);
+          chatEnabledInterval = null;
+        }
+        
         // Ne pas désactiver si déjà soumis
         if (isSubmitted) return;
         
         const ic = host.querySelector('.vfrc-input-container');
         if (!ic) return;
+        
+        // Appliquer les styles de désactivation
         ic.style.opacity = '.5';
-        ic.style.cursor  = 'not-allowed';
+        ic.style.cursor = 'not-allowed';
         ic.setAttribute('title', chatDisabledText);
-        const ta = ic.querySelector('textarea.vfrc-chat-input');
-        if (ta) { ta.disabled = true; ta.setAttribute('title', chatDisabledText); }
-        const snd = host.querySelector('#vfrc-send-message');
-        if (snd) { snd.disabled = true; snd.setAttribute('title', chatDisabledText); }
+        
+        // Désactiver tous les éléments interactifs du chat
+        const interactiveElements = [
+          ic.querySelector('textarea.vfrc-chat-input'),
+          host.querySelector('#vfrc-send-message'),
+          ...Array.from(ic.querySelectorAll('button, input, textarea'))
+        ];
+        
+        interactiveElements.forEach(el => {
+          if (el) {
+            el.disabled = true;
+            el.setAttribute('title', chatDisabledText);
+            el.style.pointerEvents = 'none';
+          }
+        });
+        
+        console.log('✅ Chat désactivé');
       }
       
-      function enableChat() {
-        // Marquer comme soumis pour éviter une désactivation future
+      // Version améliorée et agressive de enableChat
+      function enableChat(force = false) {
+        // Marquer comme soumis si force est vrai
+        if (force) isSubmitted = true;
+        
+        // Si déjà soumis ou force est vrai, on réactive
+        if (isSubmitted || force) {
+          const ic = host.querySelector('.vfrc-input-container');
+          if (!ic) return;
+          
+          // Réinitialisation complète des styles
+          ic.style.removeProperty('opacity');
+          ic.style.removeProperty('cursor');
+          ic.removeAttribute('title');
+          
+          // Réactiver tous les éléments interactifs du chat
+          const interactiveElements = [
+            ic.querySelector('textarea.vfrc-chat-input'),
+            host.querySelector('#vfrc-send-message'),
+            ...Array.from(ic.querySelectorAll('button, input, textarea'))
+          ];
+          
+          interactiveElements.forEach(el => {
+            if (el) {
+              el.disabled = false;
+              el.removeAttribute('title');
+              el.style.pointerEvents = 'auto';
+            }
+          });
+          
+          // Mettre en place un intervalle pour vérifier si le chat reste activé
+          if (!chatEnabledInterval) {
+            chatEnabledInterval = setInterval(() => {
+              if (!isChatEnabled() && isSubmitted) {
+                console.log('🔄 Réactivation forcée du chat');
+                enableChatAggressively();
+              } else if (isSubmitted) {
+                console.log('✅ Chat reste activé');
+                // Si le chat est activé pendant 5 secondes consécutives, on arrête la vérification
+                clearInterval(chatEnabledInterval);
+                chatEnabledInterval = null;
+              }
+            }, 500); // Vérifier toutes les 500ms
+            
+            // Limiter la durée de l'intervalle à 10 secondes maximum
+            setTimeout(() => {
+              if (chatEnabledInterval) {
+                clearInterval(chatEnabledInterval);
+                chatEnabledInterval = null;
+              }
+            }, 10000);
+          }
+          
+          console.log('✅ Chat réactivé');
+        }
+      }
+      
+      // Fonction ultra-agressive pour réactiver le chat dans tous les cas
+      function enableChatAggressively() {
+        // Marquer comme définitivement soumis
         isSubmitted = true;
         
         const ic = host.querySelector('.vfrc-input-container');
         if (!ic) return;
         
-        // Force réinitialisation complète des styles
-        ic.style.removeProperty('opacity');
-        ic.style.removeProperty('cursor');
+        // Réinitialisation complète avec !important
+        ic.setAttribute('style', 'opacity: 1 !important; cursor: auto !important; pointer-events: auto !important;');
         ic.removeAttribute('title');
         
-        const ta = ic.querySelector('textarea.vfrc-chat-input');
-        if (ta) { 
-          ta.disabled = false; 
-          ta.removeAttribute('title');
-          ta.style.pointerEvents = 'auto';
-        }
+        // Liste exhaustive des sélecteurs pour trouver TOUS les éléments de chat
+        const selectors = [
+          '.vfrc-chat-input',
+          '#vfrc-send-message',
+          '.vfrc-input-container input',
+          '.vfrc-input-container textarea',
+          '.vfrc-input-container button',
+          '.vfrc-chat-controls *',
+          '[class*="chat"]:not(.disabled)',
+          '[id*="chat"]:not(.disabled)',
+          '[class*="input"]:not(.disabled)',
+          '[id*="input"]:not(.disabled)'
+        ];
         
-        const snd = host.querySelector('#vfrc-send-message');
-        if (snd) { 
-          snd.disabled = false;
-          snd.removeAttribute('title');
-          snd.style.pointerEvents = 'auto';
-        }
+        // Appliquer à TOUS les éléments trouvés
+        selectors.forEach(selector => {
+          try {
+            const elements = host.querySelectorAll(selector);
+            elements.forEach(el => {
+              if (el) {
+                el.disabled = false;
+                el.setAttribute('style', 'pointer-events: auto !important; opacity: 1 !important;');
+                el.removeAttribute('title');
+                el.removeAttribute('disabled');
+                
+                // Si c'est un élément contentEditable
+                if (el.hasAttribute('contenteditable')) {
+                  el.setAttribute('contenteditable', 'true');
+                }
+              }
+            });
+          } catch (e) {
+            // Ignorer les erreurs de sélecteur invalide
+          }
+        });
         
-        // S'assurer que tous les contrôles sont vraiment activés
-        setTimeout(() => {
-          if (ta) ta.disabled = false;
-          if (snd) snd.disabled = false;
-          
-          // Vérifier aussi si d'autres éléments du chat sont désactivés
-          const chatElements = host.querySelectorAll('.vfrc-chat-input, #vfrc-send-message, .vfrc-input-container *');
-          chatElements.forEach(elem => {
-            if (elem) {
-              elem.disabled = false;
-              elem.style.pointerEvents = 'auto';
-            }
-          });
-        }, 100);
+        console.log('⚡ Chat réactivé de manière agressive');
       }
       
+      // Désactiver le chat au démarrage si nécessaire
       if (!chat) disableChat();
 
       /* 3. container + disable on chat interact */
@@ -324,7 +424,7 @@ export const MultiSelect = {
   background:var(--ms-selected-bg)!important; 
 }
 
-/* NOUVEAU: Styles spécifiques pour les options "all" */
+/* Styles pour les options "all" */
 .multiselect-container .option-container.all-option label {
   background: rgba(0, 0, 0, 0.5)!important;
   border: 1px dashed rgba(255, 255, 255, 0.3)!important;
@@ -353,7 +453,7 @@ export const MultiSelect = {
   opacity: 0.8!important;
 }
 
-/* NOUVEAU: Styles pour le global-all */
+/* Styles pour le global-all */
 .multiselect-container .global-all-container {
   width: 100%!important;
   display: flex!important;
@@ -634,7 +734,7 @@ export const MultiSelect = {
           allInputs.forEach(i => { if (!i.closest('.greyed-out-option')) i.disabled = false; });
         }
         
-        // sync "all" box per section - maintenu pour rétrocompatibilité
+        // sync "all" box per section
         sections.forEach((_, idx) => {
           const secDom = grid.children[idx];
           const allInput = secDom.querySelector('input[data-action="all"]:not([data-parent-block])');
@@ -647,7 +747,7 @@ export const MultiSelect = {
           allInput.parentElement.classList.toggle('selected', everyChecked);
         });
         
-        // NOUVEAU: mise à jour du bouton global-all
+        // mise à jour du bouton global-all
         if (useGlobalAll) {
           const globalAllBtn = container.querySelector('.global-all-button');
           if (globalAllBtn) {
@@ -686,7 +786,7 @@ export const MultiSelect = {
         const wrap = document.createElement('div');
         wrap.classList.add('option-container');
         
-        // NOUVEAU: Ajouter la classe all-option pour les options "all"
+        // Ajouter la classe all-option pour les options "all"
         if (opt.action === 'all') {
           wrap.classList.add('all-option');
         }
@@ -747,19 +847,30 @@ export const MultiSelect = {
 
           // Gestion du mode single-select (radio) pour soumission automatique
           if (!multiselect) {
-            // Réactiver le chat avant de désactiver le container
-            enableChat();
-            container.classList.add('disabled-container');
-            // Ne pas désactiver le chat à nouveau - laisser juste le container grisé
+            // Marquer comme soumis immédiatement
+            isSubmitted = true;
             
-            window.voiceflow.chat.interact({
-              type: 'complete',
-              payload: {
-                selection: opt.name,
-                buttonPath: opt.action || 'Default'
-              }
-            });
-            // Ne pas appeler setTimeout for focus ici - le chat est activé
+            // Griser le conteneur
+            container.classList.add('disabled-container');
+            
+            // Réactiver le chat de manière force et agressive AVANT d'envoyer l'interaction
+            enableChat(true);
+            setTimeout(enableChatAggressively, 100);
+            
+            // Attendre un court moment pour s'assurer que le chat est bien réactivé
+            setTimeout(() => {
+              // Envoyer l'interaction
+              window.voiceflow.chat.interact({
+                type: 'complete',
+                payload: {
+                  selection: opt.name,
+                  buttonPath: opt.action || 'Default'
+                }
+              });
+              
+              // Réactiver une dernière fois
+              setTimeout(enableChatAggressively, 500);
+            }, 200);
           }
         });
 
@@ -815,21 +926,23 @@ export const MultiSelect = {
             uiInp.type = 'text';
             uiInp.classList.add('user-input-field');
             uiInp.placeholder = opt.placeholder || '';
+            
+            // Gérer l'envoi du champ libre de manière robuste
             uiInp.addEventListener('keydown', e => {
               if (e.key === 'Enter' && e.target.value.trim()) {
-                // Réactiver le chat avant de griser le container
-                container.classList.add('disabled-container');
-                
-                // CORRECTION: Utilisation de enableChat avec un délai pour s'assurer de sa réactivation
                 // Marquer comme soumis immédiatement
                 isSubmitted = true;
                 
-                // Réactiver le chat
-                enableChat();
+                // Griser le conteneur
+                container.classList.add('disabled-container');
+                
+                // Réactiver le chat de manière force et agressive AVANT d'envoyer l'interaction
+                enableChat(true);
+                setTimeout(enableChatAggressively, 100);
                 
                 // Attendre un court moment pour s'assurer que le chat est bien réactivé
                 setTimeout(() => {
-                  // Envoi des données à Voiceflow
+                  // Envoyer l'interaction
                   window.voiceflow.chat.interact({
                     type: 'complete',
                     payload: {
@@ -839,11 +952,14 @@ export const MultiSelect = {
                     }
                   });
                   
-                  // S'assurer à nouveau que le chat est réactivé après l'envoi
-                  setTimeout(enableChat, 300);
-                }, 100);
+                  // Force la réactivation du chat et s'assure qu'il reste activé
+                  setTimeout(enableChatAggressively, 300);
+                  setTimeout(enableChatAggressively, 1000);
+                  setTimeout(enableChatAggressively, 2000);
+                }, 200);
               }
             });
+            
             uiWrap.append(uiLbl, uiInp);
             ol.append(uiWrap);
           } else {
@@ -939,18 +1055,19 @@ export const MultiSelect = {
             // sinon sélection OK → on cache l'erreur, on réactive le chat, on grise le container
             err.style.visibility = 'hidden';
             
-            // CORRECTION: Marquer comme soumis avant de réactiver le chat
+            // Marquer comme soumis immédiatement
             isSubmitted = true;
             
-            // Réactiver le chat
-            enableChat();
-            
-            // Griser uniquement le container  
+            // Griser uniquement le container
             container.classList.add('disabled-container');
-
+            
+            // Réactiver le chat de manière force et agressive AVANT d'envoyer l'interaction
+            enableChat(true);
+            setTimeout(enableChatAggressively, 100);
+            
             // Attendre un court moment pour s'assurer que le chat est bien réactivé
             setTimeout(() => {
-              // Envoi des données
+              // Préparer les données
               const res = sections.map((s, i) => {
                 const dom = grid.children[i];
                 const sels = Array.from(dom.querySelectorAll('input:checked'))
@@ -959,7 +1076,8 @@ export const MultiSelect = {
                 const ui = dom.querySelector('.user-input-field')?.value || '';
                 return { section: s.label, selections: sels, userInput: ui };
               }).filter(r => r.selections.length || r.userInput);
-  
+
+              // Envoyer l'interaction
               window.voiceflow.chat.interact({
                 type: 'complete',
                 payload: {
@@ -970,9 +1088,11 @@ export const MultiSelect = {
                 }
               });
               
-              // S'assurer à nouveau que le chat est réactivé après l'envoi
-              setTimeout(enableChat, 300);
-            }, 100);
+              // Forcer la réactivation du chat à plusieurs reprises
+              setTimeout(enableChatAggressively, 300);
+              setTimeout(enableChatAggressively, 1000);
+              setTimeout(enableChatAggressively, 2000);
+            }, 200);
           });
 
           wrapper.append(btn, err);
@@ -990,9 +1110,47 @@ export const MultiSelect = {
         updateTotalChecked();
       }
       
+      // Fonction pour nettoyer les ressources lors de la suppression du composant
+      return () => {
+        // Supprimer l'intervalle de vérification s'il existe
+        if (chatEnabledInterval) {
+          clearInterval(chatEnabledInterval);
+          chatEnabledInterval = null;
+        }
+        
+        // Réactiver le chat une dernière fois
+        if (isSubmitted) {
+          enableChatAggressively();
+        }
+      };
+      
       console.log('✅ MultiSelect prêt');
     } catch (err) {
       console.error('❌ MultiSelect Error :', err);
+      
+      // En cas d'erreur, réactiver le chat de manière agressive
+      try {
+        const root = element.getRootNode();
+        const host = root instanceof ShadowRoot ? root : document;
+        const ic = host.querySelector('.vfrc-input-container');
+        if (ic) {
+          ic.style.opacity = '1';
+          ic.style.cursor = 'auto';
+          ic.removeAttribute('title');
+          
+          // Réactiver tous les contrôles
+          const controls = host.querySelectorAll('.vfrc-chat-input, #vfrc-send-message');
+          controls.forEach(el => {
+            if (el) {
+              el.disabled = false;
+              el.removeAttribute('title');
+            }
+          });
+        }
+      } catch (error) {
+        // Ignorer les erreurs supplémentaires
+      }
+      
       window.voiceflow.chat.interact({
         type: 'complete',
         payload: { error: true, message: err.message }

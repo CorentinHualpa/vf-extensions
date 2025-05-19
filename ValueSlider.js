@@ -5,15 +5,15 @@
  * et de voir une description correspondante.
  * 
  * Paramètres du payload:
- * - title: Titre principal
- * - subtitle: Texte avant la valeur sélectionnée (ex: "J'ai besoin de")
- * - descriptions: Tableau d'objets {value, text} pour les descriptions selon la valeur
+ * - title: Titre principal (peut contenir du HTML)
+ * - subtitle: Texte avant la valeur sélectionnée (peut contenir du HTML)
+ * - descriptions: Tableau d'objets {value, text} pour les descriptions selon la valeur (text peut contenir du HTML)
  * - min: Valeur minimale
  * - max: Valeur maximale
  * - steps: Tableau des valeurs à afficher sous le slider
  * - defaultValue: Valeur par défaut sélectionnée
  * - primaryColor: Couleur principale (par défaut: #3778F4)
- * - unit: Unité à afficher après la valeur (ex: "mots", "€", etc.)
+ * - unit: Unité à afficher après la valeur (peut contenir du HTML)
  */
 
 export const ValueSlider = {
@@ -90,14 +90,16 @@ export const ValueSlider = {
       // Création des éléments HTML
       const headerEl = document.createElement('h2');
       headerEl.className = 'value-slider-header';
-      headerEl.textContent = title;
+      // Utiliser innerHTML pour interpréter le HTML dans le titre
+      headerEl.innerHTML = title;
       
       const valueDisplayContainer = document.createElement('div');
       valueDisplayContainer.className = 'value-slider-value-display';
       
       const subtitleEl = document.createElement('span');
       subtitleEl.className = 'value-slider-subtitle';
-      subtitleEl.textContent = subtitle;
+      // Utiliser innerHTML pour interpréter le HTML dans le sous-titre
+      subtitleEl.innerHTML = subtitle;
       
       // Créer un conteneur à largeur fixe pour la valeur
       const valueContainer = document.createElement('div');
@@ -111,7 +113,8 @@ export const ValueSlider = {
       
       const unitEl = document.createElement('span');
       unitEl.className = 'value-slider-unit';
-      unitEl.textContent = unit;
+      // Utiliser innerHTML pour interpréter le HTML dans l'unité
+      unitEl.innerHTML = unit;
       
       // Création du slider
       const sliderContainer = document.createElement('div');
@@ -126,8 +129,7 @@ export const ValueSlider = {
       sliderInput.max = max;
       sliderInput.value = defaultValue;
       sliderInput.className = 'value-slider-input';
-      
-      // Création des marqueurs pour les steps
+            // Création des marqueurs pour les steps
       const stepsContainer = document.createElement('div');
       stepsContainer.className = 'value-slider-steps';
       
@@ -137,6 +139,7 @@ export const ValueSlider = {
         
         const stepLabel = document.createElement('span');
         stepLabel.className = 'value-slider-step-label';
+        // Pour les steps, on peut garder textContent car ce sont des valeurs numériques
         stepLabel.textContent = step;
         
         stepEl.appendChild(stepLabel);
@@ -397,11 +400,12 @@ export const ValueSlider = {
       function updateDisplay() {
         const value = parseInt(sliderInput.value, 10);
         valueEl.textContent = value;
-        descriptionEl.textContent = getClosestDescription(value);
+        // Utiliser innerHTML pour interpréter le HTML dans la description
+        descriptionEl.innerHTML = getClosestDescription(value);
         updateSliderProgress();
       }
-      
-      // Initialisation
+
+       // Initialisation
       updateDisplay();
       
       // Événements

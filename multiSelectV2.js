@@ -37,7 +37,7 @@ export const MultiSelect = {
         chat            = true,
         chatDisabledText= '🚫',
         gridColumns     = 0,  // 0 = auto (par défaut), 1 = force une colonne
-        optionsGap      = 8,  // Contrôle l'espacement entre les options (en px)
+        optionsGap      = 4,  // Contrôle l'espacement entre les options (en px)
         global_button_color = '#3778F4', // Couleur par défaut pour tous les boutons (bleu)
         useGlobalAll    = false,  // NOUVEAU: option pour activer/désactiver l'option global-all
         globalAllText   = "Tout sélectionner / désélectionner", // NOUVEAU: texte pour l'option global-all

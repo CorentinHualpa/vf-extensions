@@ -16,6 +16,7 @@
  *  ║  • NOUVEAU: option "global-all" pour toutes les sections ║
  *  ║  • NOUVEAU: génération d'ID unique pour chaque instance  ║
  *  ║  • NOUVEAU: réactivation fiable du chat après actions    ║
+ *  ║  • NOUVEAU: disposition harmonieuse des boutons          ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 
@@ -499,7 +500,8 @@ export const MultiSelect = {
 .multiselect-container .button-wrapper { 
   display:flex; 
   flex-direction:column; 
-  align-items:flex-start; 
+  align-items:center!important; /* ✅ MODIFIÉ: centrer les boutons */
+  width: 100%!important; /* ✅ AJOUTÉ: largeur complète pour les wrappers */
 }
 
 .multiselect-container .minselect-error {
@@ -508,27 +510,59 @@ export const MultiSelect = {
   margin-top:4px!important;
   visibility:hidden;
   white-space:nowrap!important;
+  text-align: center!important; /* ✅ AJOUTÉ: centrer le texte d'erreur */
 }
 
-/* Container des boutons */
+/* ✅ MODIFIÉ: Container des boutons pour disposition harmonieuse */
 .multiselect-container .buttons-container {
-  display:flex!important; 
-  justify-content:center!important;
-  gap:var(--ms-gap)!important; 
-  padding:var(--ms-gap)!important;
+  display: grid!important;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr))!important;
+  gap: 12px!important;
+  padding: 16px!important;
+  width: 100%!important;
+  max-width: 1200px!important;
+  margin: 0 auto!important;
 }
 
-/* BOUTONS CORPORATE/SCI-FI - COULEUR GLOBALE PAR DÉFAUT */
+/* ✅ Responsive: adapter selon le nombre de boutons */
+.multiselect-container .buttons-container[data-button-count="1"] {
+  grid-template-columns: 1fr!important;
+  max-width: 400px!important;
+}
+
+.multiselect-container .buttons-container[data-button-count="2"] {
+  grid-template-columns: repeat(2, 1fr)!important;
+  max-width: 800px!important;
+}
+
+.multiselect-container .buttons-container[data-button-count="3"] {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr))!important;
+}
+
+.multiselect-container .buttons-container[data-button-count="4"] {
+  grid-template-columns: repeat(2, 1fr)!important;
+}
+
+/* ✅ Responsive mobile */
+@media (max-width: 768px) {
+  .multiselect-container .buttons-container {
+    grid-template-columns: 1fr!important;
+    gap: 10px!important;
+    padding: 12px!important;
+  }
+}
+
+/* ✅ MODIFIÉ: BOUTONS HARMONIEUX */
 .multiselect-container .submit-btn {
   position: relative!important;
   background: var(--ms-global-btn-color)!important;
   color: #fff!important;
-  padding: 10px 24px!important; 
-  border-radius: 8px!important;
-  font-weight: 700!important; 
-  letter-spacing: 0.5px!important;
-  text-transform: uppercase!important;
-  font-size: 14px!important;
+  padding: 14px 18px!important; /* ✅ MODIFIÉ: padding plus équilibré */
+  border-radius: 10px!important; /* ✅ MODIFIÉ: coins plus arrondis */
+  font-weight: 600!important; /* ✅ MODIFIÉ: poids de police moins gras */
+  letter-spacing: 0.3px!important; /* ✅ MODIFIÉ: espacement réduit */
+  text-transform: none!important; /* ✅ MODIFIÉ: pas de majuscules forcées */
+  font-size: 13px!important; /* ✅ MODIFIÉ: taille de police réduite */
   cursor: pointer!important;
   border: none!important;
   overflow: hidden!important;
@@ -536,6 +570,15 @@ export const MultiSelect = {
   box-shadow: 0 4px 12px rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b),0.3),
               inset 0 3px 0 rgba(255,255,255,0.2),
               inset 0 -3px 0 rgba(0,0,0,0.2)!important;
+  width: 100%!important; /* ✅ AJOUTÉ: largeur identique pour tous */
+  min-height: 60px!important; /* ✅ AJOUTÉ: hauteur minimale identique */
+  display: flex!important; /* ✅ AJOUTÉ: flexbox pour centrage */
+  align-items: center!important; /* ✅ AJOUTÉ: centrage vertical */
+  justify-content: center!important; /* ✅ AJOUTÉ: centrage horizontal */
+  text-align: center!important; /* ✅ AJOUTÉ: texte centré */
+  line-height: 1.3!important; /* ✅ AJOUTÉ: espacement de ligne optimal */
+  word-wrap: break-word!important; /* ✅ AJOUTÉ: retour à la ligne si nécessaire */
+  hyphens: auto!important; /* ✅ AJOUTÉ: césure automatique */
 }
 
 /* Effet hover */
@@ -930,6 +973,9 @@ export const MultiSelect = {
         bc.classList.add('buttons-container');
         // NOUVEAU: Ajouter l'ID unique au conteneur de boutons
         bc.id = `buttons-container-${uniqueInstanceId}`;
+        
+        // ✅ NOUVEAU: Ajouter un attribut data pour le nombre de boutons (responsive)
+        bc.setAttribute('data-button-count', buttons.length.toString());
 
         buttons.forEach((cfg, btnIdx) => {
           // wrapper vertical : bouton + msg d'erreur

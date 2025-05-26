@@ -16,7 +16,7 @@
  *  ║  • NOUVEAU: option "global-all" pour toutes les sections ║
  *  ║  • NOUVEAU: génération d'ID unique pour chaque instance  ║
  *  ║  • NOUVEAU: réactivation fiable du chat après actions    ║
- *  ║  • NOUVEAU: disposition harmonieuse des boutons          ║
+ *  ║  • AMÉLIORÉ: boutons harmonieux et responsives           ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 
@@ -500,8 +500,7 @@ export const MultiSelect = {
 .multiselect-container .button-wrapper { 
   display:flex; 
   flex-direction:column; 
-  align-items:center!important; /* ✅ MODIFIÉ: centrer les boutons */
-  width: 100%!important; /* ✅ AJOUTÉ: largeur complète pour les wrappers */
+  align-items:flex-start; 
 }
 
 .multiselect-container .minselect-error {
@@ -510,111 +509,83 @@ export const MultiSelect = {
   margin-top:4px!important;
   visibility:hidden;
   white-space:nowrap!important;
-  text-align: center!important; /* ✅ AJOUTÉ: centrer le texte d'erreur */
 }
 
-/* ✅ MODIFIÉ: Container des boutons pour disposition harmonieuse */
+/* ✅ NOUVEAU: Container des boutons harmonieux et responsive */
 .multiselect-container .buttons-container {
   display: grid!important;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr))!important;
   gap: 12px!important;
   padding: 16px!important;
   width: 100%!important;
-  max-width: 1200px!important;
+}
+
+/* ✅ NOUVEAU: Adaptation pour 1-2 boutons */
+.multiselect-container .buttons-container:has(.button-wrapper:nth-child(1):last-child) {
+  grid-template-columns: 1fr!important;
+  max-width: 400px!important;
   margin: 0 auto!important;
 }
 
-/* ✅ Responsive: adapter selon le nombre de boutons */
-.multiselect-container .buttons-container[data-button-count="1"] {
-  grid-template-columns: 1fr!important;
-  max-width: 400px!important;
+.multiselect-container .buttons-container:has(.button-wrapper:nth-child(2):last-child) {
+  grid-template-columns: 1fr 1fr!important;
 }
 
-.multiselect-container .buttons-container[data-button-count="2"] {
-  grid-template-columns: repeat(2, 1fr)!important;
-  max-width: 800px!important;
-}
-
-.multiselect-container .buttons-container[data-button-count="3"] {
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr))!important;
-}
-
-.multiselect-container .buttons-container[data-button-count="4"] {
-  grid-template-columns: repeat(2, 1fr)!important;
-}
-
-/* ✅ Responsive mobile */
+/* ✅ NOUVEAU: Pour 3+ boutons, s'adapter intelligemment */
 @media (max-width: 768px) {
   .multiselect-container .buttons-container {
     grid-template-columns: 1fr!important;
-    gap: 10px!important;
-    padding: 12px!important;
   }
 }
 
-/* ✅ MODIFIÉ: BOUTONS HARMONIEUX */
+@media (min-width: 769px) and (max-width: 1200px) {
+  .multiselect-container .buttons-container {
+    grid-template-columns: repeat(2, 1fr)!important;
+  }
+}
+
+/* ✅ BOUTONS HARMONIEUX - Style épuré et moderne */
 .multiselect-container .submit-btn {
   position: relative!important;
   background: var(--ms-global-btn-color)!important;
   color: #fff!important;
-  padding: 14px 18px!important; /* ✅ MODIFIÉ: padding plus équilibré */
-  border-radius: 10px!important; /* ✅ MODIFIÉ: coins plus arrondis */
-  font-weight: 600!important; /* ✅ MODIFIÉ: poids de police moins gras */
-  letter-spacing: 0.3px!important; /* ✅ MODIFIÉ: espacement réduit */
-  text-transform: none!important; /* ✅ MODIFIÉ: pas de majuscules forcées */
-  font-size: 13px!important; /* ✅ MODIFIÉ: taille de police réduite */
+  padding: 8px 16px!important; /* ✅ RÉDUIT: était 10px 24px */
+  border-radius: 6px!important; /* ✅ RÉDUIT: était 8px */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif!important; /* ✅ NOUVELLE police système */
+  font-weight: 500!important; /* ✅ RÉDUIT: était 700 */
+  font-size: 13px!important; /* ✅ RÉDUIT: était 14px */
+  line-height: 1.4!important; /* ✅ NOUVEAU: meilleure lisibilité */
   cursor: pointer!important;
   border: none!important;
   overflow: hidden!important;
-  transition: all 0.3s ease!important;
-  box-shadow: 0 4px 12px rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b),0.3),
-              inset 0 3px 0 rgba(255,255,255,0.2),
-              inset 0 -3px 0 rgba(0,0,0,0.2)!important;
-  width: 100%!important; /* ✅ AJOUTÉ: largeur identique pour tous */
-  min-height: 60px!important; /* ✅ AJOUTÉ: hauteur minimale identique */
-  display: flex!important; /* ✅ AJOUTÉ: flexbox pour centrage */
-  align-items: center!important; /* ✅ AJOUTÉ: centrage vertical */
-  justify-content: center!important; /* ✅ AJOUTÉ: centrage horizontal */
-  text-align: center!important; /* ✅ AJOUTÉ: texte centré */
-  line-height: 1.3!important; /* ✅ AJOUTÉ: espacement de ligne optimal */
-  word-wrap: break-word!important; /* ✅ AJOUTÉ: retour à la ligne si nécessaire */
-  hyphens: auto!important; /* ✅ AJOUTÉ: césure automatique */
+  transition: all 0.2s ease!important; /* ✅ ACCÉLÉRÉ: était 0.3s */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1)!important; /* ✅ SIMPLIFIÉ */
+  text-align: center!important;
+  display: flex!important;
+  align-items: center!important;
+  justify-content: center!important;
+  min-height: 40px!important; /* ✅ NOUVEAU: hauteur minimale cohérente */
+  max-width: 100%!important;
+  word-wrap: break-word!important;
+  white-space: normal!important; /* ✅ NOUVEAU: permet le retour à la ligne */
 }
 
-/* Effet hover */
+/* ✅ Effet hover épuré */
 .multiselect-container .submit-btn:hover {
-  transform: translateY(-2px)!important;
-  box-shadow: 0 6px 20px rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b),0.4),
-              inset 0 3px 0 rgba(255,255,255,0.3),
-              inset 0 -3px 0 rgba(0,0,0,0.3)!important;
+  transform: translateY(-1px)!important; /* ✅ RÉDUIT: était -2px */
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15)!important; /* ✅ SIMPLIFIÉ */
+  filter: brightness(1.05)!important; /* ✅ NOUVEAU: éclairci au hover */
 }
 
-/* Effet active (clic) */
+/* ✅ Effet active (clic) épuré */
 .multiselect-container .submit-btn:active {
-  transform: translateY(1px)!important;
-  box-shadow: 0 2px 6px rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b),0.3),
-              inset 0 1px 0 rgba(255,255,255,0.1),
-              inset 0 -1px 0 rgba(0,0,0,0.1)!important;
+  transform: translateY(0px)!important; /* ✅ RÉDUIT: était 1px */
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1)!important; /* ✅ SIMPLIFIÉ */
 }
 
-/* Effet de scan sci-fi */
-.multiselect-container .submit-btn::before {
-  content: ''!important;
-  position: absolute!important;
-  top: -2px!important;
-  left: -2px!important;
-  width: calc(100% + 4px)!important;
-  height: calc(100% + 4px)!important;
-  background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent)!important;
-  transform: translateX(-100%) rotate(45deg)!important;
-  transition: transform 0.8s ease!important;
-}
+/* ✅ SUPPRIMÉ: Effet de scan sci-fi trop chargé */
 
-.multiselect-container .submit-btn:hover::before {
-  transform: translateX(100%) rotate(45deg)!important;
-}
-
-/* Animation shake améliorée */
+/* Animation shake améliorée - conservée */
 @keyframes shake-enhanced {
   0%, 100% { transform: translateX(0); }
   15%, 45%, 75% { transform: translateX(-6px); }
@@ -623,34 +594,20 @@ export const MultiSelect = {
 
 .multiselect-container .submit-btn.shake {
   animation: shake-enhanced 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97)!important;
-  box-shadow: 0 0 0 4px rgba(255,68,68,0.5)!important;
+  box-shadow: 0 0 0 2px rgba(255,68,68,0.5)!important; /* ✅ RÉDUIT: était 4px */
 }
 
-/* Effet de glow pour les erreurs */
+/* Effet de glow pour les erreurs - simplifié */
 .multiselect-container .submit-btn.shake {
   background: #ff4433!important;
-  box-shadow: 0 0 10px #ff4433,
-              0 0 20px rgba(255,68,68,0.5),
-              inset 0 3px 0 rgba(255,255,255,0.2),
-              inset 0 -3px 0 rgba(0,0,0,0.2)!important;
+  box-shadow: 0 0 8px rgba(255,68,68,0.3)!important; /* ✅ SIMPLIFIÉ */
 }
 
-/* Effet de pulse */
-@keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b),0.7); }
-  70% { box-shadow: 0 0 0 10px rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b),0); }
-  100% { box-shadow: 0 0 0 0 rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b),0); }
-}
+/* ✅ SUPPRIMÉ: Effet de pulse trop chargé */
 
-.multiselect-container .submit-btn:focus {
-  animation: pulse 1.5s infinite!important;
-}
-
-/* Style pour boutons avec couleurs personnalisées */
+/* Style pour boutons avec couleurs personnalisées - simplifié */
 .multiselect-container .submit-btn[style*="background-color"] {
-  box-shadow: 0 4px 12px rgba(var(--btn-r),var(--btn-g),var(--btn-b),0.3),
-              inset 0 3px 0 rgba(255,255,255,0.2),
-              inset 0 -3px 0 rgba(0,0,0,0.2)!important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1)!important; /* ✅ SIMPLIFIÉ */
 }
 
 /* État désactivé */
@@ -973,9 +930,6 @@ export const MultiSelect = {
         bc.classList.add('buttons-container');
         // NOUVEAU: Ajouter l'ID unique au conteneur de boutons
         bc.id = `buttons-container-${uniqueInstanceId}`;
-        
-        // ✅ NOUVEAU: Ajouter un attribut data pour le nombre de boutons (responsive)
-        bc.setAttribute('data-button-count', buttons.length.toString());
 
         buttons.forEach((cfg, btnIdx) => {
           // wrapper vertical : bouton + msg d'erreur

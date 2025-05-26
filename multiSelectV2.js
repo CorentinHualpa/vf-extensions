@@ -2,21 +2,11 @@
  *  ╔═══════════════════════════════════════════════════════════╗
  *  ║  MultiSelect – Voiceflow Response Extension               ║
  *  ║                                                           ║
- *  ║  • 1 seul champ "color" par section                       ║
- *  ║  • style, hover, selected centralisés en CSS             ║
- *  ║  • active/désactive le chat selon `chat`                 ║
- *  ║  • grise le widget si l'utilisateur écrit dans le chat    ║
- *  ║  • single-select utilise `action` comme `buttonPath`     ║
- *  ║  • champ libre bascule focus retour dans le chat         ║
- *  ║  • action="all" coche/décoche l'intégralité de la section║
- *  ║  • gridColumns=1 force l'affichage sur une seule colonne ║
- *  ║  • optionsGap=14 contrôle l'espacement entre les options ║
- *  ║  • global_button_color définit la couleur par défaut     ║
- *  ║  • NOUVEAU: style distinctive pour options "all"         ║
- *  ║  • NOUVEAU: option "global-all" pour toutes les sections ║
- *  ║  • NOUVEAU: génération d'ID unique pour chaque instance  ║
- *  ║  • NOUVEAU: réactivation fiable du chat après actions    ║
- *  ║  • AMÉLIORÉ: boutons harmonieux et responsives           ║
+ *  ║  • Support pour 1, 2, 3, 4, 5, 6+ colonnes              ║
+ *  ║  • Boutons harmonieux et responsive                       ║
+ *  ║  • Taille de texte des boutons ajustable                 ║
+ *  ║  • Text-shadow pour visibilité optimale                  ║
+ *  ║  • Tous les effets visuels conservés                     ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 
@@ -37,10 +27,10 @@ export const MultiSelect = {
         multiselect     = true,
         chat            = true,
         chatDisabledText= '🚫',
-        gridColumns     = 0,  // 0 = auto (par défaut), 1 = force une colonne
+        gridColumns     = 0,  // 0 = auto (par défaut), 1 = force une colonne, 2,3,4,5,6+ = nombre de colonnes
         optionsGap      = 4,  // Contrôle l'espacement entre les options (en px)
         global_button_color = '#3778F4', // Couleur par défaut pour tous les boutons (bleu)
-        buttonFontSize  = 13, // ✅ NOUVEAU: Taille du texte des boutons (ajustable facilement)
+        buttonFontSize  = 15, // ✅ NOUVEAU: Taille du texte des boutons (ajustable facilement)
         useGlobalAll    = false,  // NOUVEAU: option pour activer/désactiver l'option global-all
         globalAllText   = "Tout sélectionner / désélectionner", // NOUVEAU: texte pour l'option global-all
         instanceId      = null // Identifiant fourni dans le payload (facultatif)
@@ -124,8 +114,13 @@ export const MultiSelect = {
       container.id = uniqueInstanceId;
       container.setAttribute('data-instance-id', uniqueInstanceId);
       
-      // Appliquer la classe one-section soit si gridColumns=1 ou s'il n'y a qu'une section
-      if (gridColumns === 1 || sections.length === 1) container.classList.add('one-section');
+      // ✅ NOUVEAU: Support complet pour n'importe quel nombre de colonnes
+      if (gridColumns === 1 || sections.length === 1) {
+        container.classList.add('one-section');
+      } else if (gridColumns >= 2) {
+        container.classList.add(`grid-${gridColumns}-cols`);
+        container.setAttribute('data-grid-columns', gridColumns);
+      }
 
       // si l'utilisateur écrit dans le chat, on grise tout
       if (chat && window.voiceflow?.chat?.interact) {
@@ -217,15 +212,53 @@ export const MultiSelect = {
   color:#fff!important;
 }
 
-/* Layout des sections */
+/* ✅ NOUVEAU: Layout des sections - Support pour n'importe quel nombre de colonnes */
 .multiselect-container .sections-grid { 
   display:grid!important; 
-  grid-template-columns:repeat(2,1fr)!important;
+  grid-template-columns:repeat(2,1fr)!important; /* Par défaut : 2 colonnes */
   gap:var(--ms-gap)!important;
 }
 
 .multiselect-container.one-section .sections-grid { 
   grid-template-columns:1fr!important; 
+}
+
+/* ✅ NOUVEAU: Support spécifique pour chaque nombre de colonnes */
+.multiselect-container.grid-3-cols .sections-grid { 
+  grid-template-columns:repeat(3,1fr)!important; 
+}
+
+.multiselect-container.grid-4-cols .sections-grid { 
+  grid-template-columns:repeat(4,1fr)!important; 
+}
+
+.multiselect-container.grid-5-cols .sections-grid { 
+  grid-template-columns:repeat(5,1fr)!important; 
+}
+
+.multiselect-container.grid-6-cols .sections-grid { 
+  grid-template-columns:repeat(6,1fr)!important; 
+}
+
+/* ✅ NOUVEAU: Solution générique avec CSS custom properties pour 7+ colonnes */
+.multiselect-container[data-grid-columns] .sections-grid {
+  grid-template-columns: repeat(var(--grid-cols, 2), 1fr)!important;
+}
+
+/* ✅ NOUVEAU: Responsive design pour 3+ colonnes */
+@media (max-width: 768px) {
+  .multiselect-container[data-grid-columns] .sections-grid {
+    grid-template-columns: 1fr!important; /* 1 colonne sur mobile */
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .multiselect-container[data-grid-columns="3"] .sections-grid,
+  .multiselect-container[data-grid-columns="4"] .sections-grid,
+  .multiselect-container[data-grid-columns="5"] .sections-grid,
+  .multiselect-container[data-grid-columns="6"] .sections-grid {
+    grid-template-columns: repeat(2, 1fr)!important; /* 2 colonnes sur tablette */
+  }
 }
 
 /* Sections avec glassmorphism dynamique selon la couleur */
@@ -840,6 +873,11 @@ export const MultiSelect = {
       // NOUVEAU: Ajouter l'ID unique au grid
       grid.id = `grid-${uniqueInstanceId}`;
       
+      // ✅ NOUVEAU: Définir le nombre de colonnes via CSS custom property
+      if (gridColumns >= 2) {
+        grid.style.setProperty('--grid-cols', gridColumns);
+      }
+      
       sections.forEach((sec, i) => {
         const sc = document.createElement('div');
         sc.classList.add('section-container');
@@ -1107,7 +1145,7 @@ export const MultiSelect = {
         chatStateObserver.disconnect();
       };
       
-      console.log(`✅ MultiSelect prêt (ID: ${uniqueInstanceId})`);
+      console.log(`✅ MultiSelect prêt (ID: ${uniqueInstanceId}) avec ${gridColumns} colonnes`);
     } catch (err) {
       console.error('❌ MultiSelect Error :', err);
       window.voiceflow.chat.interact({

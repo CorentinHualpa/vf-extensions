@@ -40,6 +40,7 @@ export const MultiSelect = {
         gridColumns     = 0,  // 0 = auto (par défaut), 1 = force une colonne
         optionsGap      = 4,  // Contrôle l'espacement entre les options (en px)
         global_button_color = '#3778F4', // Couleur par défaut pour tous les boutons (bleu)
+        buttonFontSize  = 15, // ✅ NOUVEAU: Taille du texte des boutons (ajustable facilement)
         useGlobalAll    = false,  // NOUVEAU: option pour activer/désactiver l'option global-all
         globalAllText   = "Tout sélectionner / désélectionner", // NOUVEAU: texte pour l'option global-all
         instanceId      = null // Identifiant fourni dans le payload (facultatif)
@@ -199,6 +200,7 @@ export const MultiSelect = {
   --ms-global-btn-r: ${globalBtnR};
   --ms-global-btn-g: ${globalBtnG};
   --ms-global-btn-b: ${globalBtnB};
+  --ms-btn-font-size: ${buttonFontSize}px;
 }
 
 /* Reset et styles de base */
@@ -514,13 +516,14 @@ export const MultiSelect = {
 /* ✅ NOUVEAU: Container des boutons harmonieux et responsive */
 .multiselect-container .buttons-container {
   display: grid!important;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr))!important;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr))!important;
   gap: 12px!important;
   padding: 16px!important;
   width: 100%!important;
+  align-items: stretch!important;
 }
 
-/* ✅ NOUVEAU: Adaptation pour 1-2 boutons */
+/* ✅ Adaptation intelligente selon le nombre de boutons */
 .multiselect-container .buttons-container:has(.button-wrapper:nth-child(1):last-child) {
   grid-template-columns: 1fr!important;
   max-width: 400px!important;
@@ -529,61 +532,87 @@ export const MultiSelect = {
 
 .multiselect-container .buttons-container:has(.button-wrapper:nth-child(2):last-child) {
   grid-template-columns: 1fr 1fr!important;
+  max-width: 600px!important;
+  margin: 0 auto!important;
 }
 
-/* ✅ NOUVEAU: Pour 3+ boutons, s'adapter intelligemment */
+/* ✅ Responsive design */
 @media (max-width: 768px) {
   .multiselect-container .buttons-container {
     grid-template-columns: 1fr!important;
+    gap: 8px!important;
+    padding: 12px!important;
   }
 }
 
-@media (min-width: 769px) and (max-width: 1200px) {
+@media (min-width: 769px) and (max-width: 1024px) {
   .multiselect-container .buttons-container {
     grid-template-columns: repeat(2, 1fr)!important;
   }
 }
 
-/* ✅ BOUTONS HARMONIEUX - Style épuré et moderne */
+/* ✅ BOUTONS HARMONIEUX - Tous les effets stylés conservés + améliorations */
 .multiselect-container .submit-btn {
   position: relative!important;
   background: var(--ms-global-btn-color)!important;
   color: #fff!important;
-  padding: 8px 16px!important; /* ✅ RÉDUIT: était 10px 24px */
-  border-radius: 6px!important; /* ✅ RÉDUIT: était 8px */
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif!important; /* ✅ NOUVELLE police système */
-  font-weight: 500!important; /* ✅ RÉDUIT: était 700 */
-  font-size: 13px!important; /* ✅ RÉDUIT: était 14px */
-  line-height: 1.4!important; /* ✅ NOUVEAU: meilleure lisibilité */
+  padding: 12px 20px!important; 
+  border-radius: 8px!important;
+  font-weight: 700!important; 
+  letter-spacing: 0.5px!important;
+  text-transform: uppercase!important;
+  font-size: var(--ms-btn-font-size)!important; /* ✅ NOUVEAU: Taille ajustable */
+  line-height: 1.3!important; /* ✅ NOUVEAU: Meilleure lisibilité */
   cursor: pointer!important;
   border: none!important;
   overflow: hidden!important;
-  transition: all 0.2s ease!important; /* ✅ ACCÉLÉRÉ: était 0.3s */
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1)!important; /* ✅ SIMPLIFIÉ */
+  transition: all 0.3s ease!important;
+  box-shadow: 0 4px 12px rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b),0.3),
+              inset 0 3px 0 rgba(255,255,255,0.2),
+              inset 0 -3px 0 rgba(0,0,0,0.2)!important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 0 4px rgba(0,0,0,0.2)!important; /* ✅ NOUVEAU: Ombrage texte */
   text-align: center!important;
   display: flex!important;
   align-items: center!important;
   justify-content: center!important;
-  min-height: 40px!important; /* ✅ NOUVEAU: hauteur minimale cohérente */
-  max-width: 100%!important;
+  min-height: 50px!important; /* ✅ NOUVEAU: Hauteur minimale harmonieuse */
   word-wrap: break-word!important;
-  white-space: normal!important; /* ✅ NOUVEAU: permet le retour à la ligne */
+  hyphens: auto!important; /* ✅ NOUVEAU: Césure automatique */
 }
 
-/* ✅ Effet hover épuré */
+/* ✅ Effet hover conservé et amélioré */
 .multiselect-container .submit-btn:hover {
-  transform: translateY(-1px)!important; /* ✅ RÉDUIT: était -2px */
-  box-shadow: 0 4px 8px rgba(0,0,0,0.15)!important; /* ✅ SIMPLIFIÉ */
-  filter: brightness(1.05)!important; /* ✅ NOUVEAU: éclairci au hover */
+  transform: translateY(-2px)!important;
+  box-shadow: 0 6px 20px rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b),0.4),
+              inset 0 3px 0 rgba(255,255,255,0.3),
+              inset 0 -3px 0 rgba(0,0,0,0.3)!important;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.4), 0 0 6px rgba(0,0,0,0.3)!important; /* ✅ Ombrage renforcé au hover */
 }
 
-/* ✅ Effet active (clic) épuré */
+/* ✅ Effet active (clic) conservé */
 .multiselect-container .submit-btn:active {
-  transform: translateY(0px)!important; /* ✅ RÉDUIT: était 1px */
-  box-shadow: 0 1px 2px rgba(0,0,0,0.1)!important; /* ✅ SIMPLIFIÉ */
+  transform: translateY(1px)!important;
+  box-shadow: 0 2px 6px rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b),0.3),
+              inset 0 1px 0 rgba(255,255,255,0.1),
+              inset 0 -1px 0 rgba(0,0,0,0.1)!important;
 }
 
-/* ✅ SUPPRIMÉ: Effet de scan sci-fi trop chargé */
+/* ✅ Effet de scan sci-fi conservé */
+.multiselect-container .submit-btn::before {
+  content: ''!important;
+  position: absolute!important;
+  top: -2px!important;
+  left: -2px!important;
+  width: calc(100% + 4px)!important;
+  height: calc(100% + 4px)!important;
+  background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent)!important;
+  transform: translateX(-100%) rotate(45deg)!important;
+  transition: transform 0.8s ease!important;
+}
+
+.multiselect-container .submit-btn:hover::before {
+  transform: translateX(100%) rotate(45deg)!important;
+}
 
 /* Animation shake améliorée - conservée */
 @keyframes shake-enhanced {
@@ -594,20 +623,34 @@ export const MultiSelect = {
 
 .multiselect-container .submit-btn.shake {
   animation: shake-enhanced 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97)!important;
-  box-shadow: 0 0 0 2px rgba(255,68,68,0.5)!important; /* ✅ RÉDUIT: était 4px */
+  box-shadow: 0 0 0 4px rgba(255,68,68,0.5)!important;
 }
 
-/* Effet de glow pour les erreurs - simplifié */
+/* Effet de glow pour les erreurs - conservé */
 .multiselect-container .submit-btn.shake {
   background: #ff4433!important;
-  box-shadow: 0 0 8px rgba(255,68,68,0.3)!important; /* ✅ SIMPLIFIÉ */
+  box-shadow: 0 0 10px #ff4433,
+              0 0 20px rgba(255,68,68,0.5),
+              inset 0 3px 0 rgba(255,255,255,0.2),
+              inset 0 -3px 0 rgba(0,0,0,0.2)!important;
 }
 
-/* ✅ SUPPRIMÉ: Effet de pulse trop chargé */
+/* ✅ Effet de pulse conservé */
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b),0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b),0); }
+  100% { box-shadow: 0 0 0 0 rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b),0); }
+}
 
-/* Style pour boutons avec couleurs personnalisées - simplifié */
+.multiselect-container .submit-btn:focus {
+  animation: pulse 1.5s infinite!important;
+}
+
+/* Style pour boutons avec couleurs personnalisées - conservé */
 .multiselect-container .submit-btn[style*="background-color"] {
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1)!important; /* ✅ SIMPLIFIÉ */
+  box-shadow: 0 4px 12px rgba(var(--btn-r),var(--btn-g),var(--btn-b),0.3),
+              inset 0 3px 0 rgba(255,255,255,0.2),
+              inset 0 -3px 0 rgba(0,0,0,0.2)!important;
 }
 
 /* État désactivé */

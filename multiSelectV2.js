@@ -515,54 +515,27 @@ export const MultiSelect = {
 
 /* ✅ NOUVEAU: Container des boutons harmonieux et responsive */
 .multiselect-container .buttons-container {
-  display: grid!important;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr))!important;
+  display: flex!important;
+  flex-wrap: wrap!important;
+  justify-content: center!important;
+  align-items: stretch!important;
   gap: 12px!important;
   padding: 16px!important;
   width: 100%!important;
-  align-items: stretch!important;
 }
 
-/* ✅ Adaptation intelligente selon le nombre de boutons */
-.multiselect-container .buttons-container:has(.button-wrapper:nth-child(1):last-child) {
-  grid-template-columns: 1fr!important;
-  max-width: 400px!important;
-  margin: 0 auto!important;
-}
-
-.multiselect-container .buttons-container:has(.button-wrapper:nth-child(2):last-child) {
-  grid-template-columns: 1fr 1fr!important;
-  max-width: 600px!important;
-  margin: 0 auto!important;
-}
-
-/* ✅ Responsive design */
-@media (max-width: 768px) {
-  .multiselect-container .buttons-container {
-    grid-template-columns: 1fr!important;
-    gap: 8px!important;
-    padding: 12px!important;
-  }
-}
-
-@media (min-width: 769px) and (max-width: 1024px) {
-  .multiselect-container .buttons-container {
-    grid-template-columns: repeat(2, 1fr)!important;
-  }
-}
-
-/* ✅ BOUTONS HARMONIEUX - Tous les effets stylés conservés + améliorations */
+/* ✅ BOUTONS HARMONIEUX - Taille uniforme et flexible */
 .multiselect-container .submit-btn {
   position: relative!important;
   background: var(--ms-global-btn-color)!important;
   color: #fff!important;
-  padding: 12px 20px!important; 
+  padding: 14px 20px!important; 
   border-radius: 8px!important;
   font-weight: 700!important; 
   letter-spacing: 0.5px!important;
   text-transform: uppercase!important;
-  font-size: var(--ms-btn-font-size)!important; /* ✅ NOUVEAU: Taille ajustable */
-  line-height: 1.3!important; /* ✅ NOUVEAU: Meilleure lisibilité */
+  font-size: var(--ms-btn-font-size)!important;
+  line-height: 1.2!important;
   cursor: pointer!important;
   border: none!important;
   overflow: hidden!important;
@@ -570,14 +543,48 @@ export const MultiSelect = {
   box-shadow: 0 4px 12px rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b),0.3),
               inset 0 3px 0 rgba(255,255,255,0.2),
               inset 0 -3px 0 rgba(0,0,0,0.2)!important;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 0 4px rgba(0,0,0,0.2)!important; /* ✅ NOUVEAU: Ombrage texte */
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 0 4px rgba(0,0,0,0.2)!important;
   text-align: center!important;
   display: flex!important;
   align-items: center!important;
   justify-content: center!important;
-  min-height: 50px!important; /* ✅ NOUVEAU: Hauteur minimale harmonieuse */
+  
+  /* ✅ CLÉS POUR L'HARMONIE */
+  flex: 1 1 auto!important; /* Flex pour prendre l'espace disponible */
+  min-width: 200px!important; /* Largeur minimale */
+  max-width: 400px!important; /* Largeur maximale */
+  height: 60px!important; /* Hauteur fixe pour tous les boutons */
+  
   word-wrap: break-word!important;
-  hyphens: auto!important; /* ✅ NOUVEAU: Césure automatique */
+  hyphens: auto!important;
+  white-space: normal!important; /* Permet le retour à la ligne */
+}
+
+/* ✅ Responsive : Sur mobile, boutons pleine largeur */
+@media (max-width: 768px) {
+  .multiselect-container .buttons-container {
+    flex-direction: column!important;
+    gap: 8px!important;
+  }
+  
+  .multiselect-container .submit-btn {
+    flex: 1 1 100%!important;
+    max-width: none!important;
+    min-width: auto!important;
+  }
+}
+
+/* ✅ Pour 2 boutons : côte à côte harmonieux */
+.multiselect-container .buttons-container:has(.button-wrapper:nth-child(2):last-child) .submit-btn {
+  flex: 1 1 calc(50% - 6px)!important;
+}
+
+/* ✅ Pour 3+ boutons : adaptation intelligente */
+@media (min-width: 769px) {
+  .multiselect-container .buttons-container:has(.button-wrapper:nth-child(n+3)) .submit-btn {
+    flex: 1 1 calc(33.333% - 8px)!important;
+    min-width: 250px!important;
+  }
 }
 
 /* ✅ Effet hover conservé et amélioré */

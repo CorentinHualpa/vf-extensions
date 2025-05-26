@@ -40,7 +40,7 @@ export const MultiSelect = {
         gridColumns     = 0,  // 0 = auto (par défaut), 1 = force une colonne
         optionsGap      = 4,  // Contrôle l'espacement entre les options (en px)
         global_button_color = '#3778F4', // Couleur par défaut pour tous les boutons (bleu)
-        buttonFontSize  = 15, // ✅ NOUVEAU: Taille du texte des boutons (ajustable facilement)
+        buttonFontSize  = 13, // ✅ NOUVEAU: Taille du texte des boutons (ajustable facilement)
         useGlobalAll    = false,  // NOUVEAU: option pour activer/désactiver l'option global-all
         globalAllText   = "Tout sélectionner / désélectionner", // NOUVEAU: texte pour l'option global-all
         instanceId      = null // Identifiant fourni dans le payload (facultatif)

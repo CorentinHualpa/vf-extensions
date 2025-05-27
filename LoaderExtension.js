@@ -539,10 +539,9 @@ export const LoaderExtension = {
               inset 0 2px 0 rgba(255, 255, 255, 0.2),
               inset 0 -2px 0 rgba(0, 0, 0, 0.2)!important;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1)!important;
-  opacity: 0!important;
-  scale: 0.3!important;
-  z-index: 100!important;
-  animation: finalButtonAppear 0.8s ease-out 0.5s forwards!important;
+  opacity: 1!important;
+  transform: translate(-50%, -50%) scale(1)!important;
+  z-index: 1000!important;
   backdrop-filter: blur(10px)!important;
   overflow: hidden!important;
 }

@@ -35,6 +35,9 @@ export const LoaderExtension = {
         height = 400,                    // Hauteur fixe en pixels (défaut: 400px)
         backgroundImage = null,          // Image de fond (URL)
         finalText = "Terminé ! Cliquez pour continuer", // Texte final cliquable
+        finalButtonColor = "#4CAF50",    // Couleur du bouton final (vert par défaut)
+        finalButtonIcon = "🎯",          // Icône du bouton final
+        messagePaddingTop = 0,           // Padding au-dessus du message principal (en px)
         instanceId = null                 // ID unique
       } = trace.payload || {};
 
@@ -67,6 +70,12 @@ export const LoaderExtension = {
       if (backgroundImage && backgroundImage.includes('[img]') && backgroundImage.includes('[/img]')) {
         processedBackgroundImage = backgroundImage.replace(/\[img\](.*?)\[\/img\]/g, '$1');
       }
+
+      // Traitement de la couleur du bouton final
+      const finalBtnRgb = parseInt(finalButtonColor.replace('#',''), 16);
+      const finalBtnR = (finalBtnRgb >> 16) & 255;
+      const finalBtnG = (finalBtnRgb >> 8) & 255;
+      const finalBtnB = finalBtnRgb & 255;
 
       // Générer un ID unique pour cette instance
       const uniqueInstanceId = instanceId || `loader_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -108,6 +117,11 @@ export const LoaderExtension = {
   --loader-stroke: ${strokeWidth}px;
   --loader-radius: ${radius}px;
   --loader-circumference: ${circumference}px;
+  --final-btn-color: ${finalButtonColor};
+  --final-btn-r: ${finalBtnR};
+  --final-btn-g: ${finalBtnG};
+  --final-btn-b: ${finalBtnB};
+  --msg-padding-top: ${messagePaddingTop}px;
 }
 
 /* Reset et styles de base */
@@ -402,6 +416,7 @@ export const LoaderExtension = {
   text-shadow: 0 3px 12px rgba(0, 0, 0, 0.8),
                0 0 10px rgba(255, 255, 255, 0.2)!important;
   margin-bottom: 15px!important;
+  margin-top: var(--msg-padding-top)!important;
   animation: messageFloat 3s ease-in-out infinite!important;
   background: linear-gradient(135deg, 
     rgba(255, 255, 255, 0.1),
@@ -515,13 +530,13 @@ export const LoaderExtension = {
   top: 50%!important;
   left: 50%!important;
   transform: translate(-50%, -50%)!important;
-  width: calc(var(--loader-size) + 20px)!important;
-  height: calc(var(--loader-size) + 20px)!important;
+  width: calc(var(--loader-size) + 30px)!important;
+  height: calc(var(--loader-size) + 30px)!important;
   border-radius: 50%!important;
   background: linear-gradient(145deg, 
-    var(--loader-color), 
-    rgba(var(--loader-r), var(--loader-g), var(--loader-b), 0.8))!important;
-  border: none!important;
+    var(--final-btn-color), 
+    rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 0.8))!important;
+  border: 3px solid rgba(255, 255, 255, 0.3)!important;
   cursor: pointer!important;
   display: flex!important;
   flex-direction: column!important;
@@ -532,40 +547,50 @@ export const LoaderExtension = {
   font-size: 16px!important;
   font-weight: 700!important;
   text-align: center!important;
-  line-height: 1.3!important;
+  line-height: 1.2!important;
   letter-spacing: 0.5px!important;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5)!important;
-  box-shadow: 0 8px 30px rgba(var(--loader-r), var(--loader-g), var(--loader-b), 0.4),
-              inset 0 2px 0 rgba(255, 255, 255, 0.2),
-              inset 0 -2px 0 rgba(0, 0, 0, 0.2)!important;
+  text-shadow: 0 3px 12px rgba(0, 0, 0, 0.8),
+               0 0 8px rgba(255, 255, 255, 0.3)!important;
+  box-shadow: 0 12px 40px rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 0.5),
+              inset 0 4px 0 rgba(255, 255, 255, 0.25),
+              inset 0 -4px 0 rgba(0, 0, 0, 0.25),
+              0 0 0 6px rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 0.15)!important;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1)!important;
   opacity: 1!important;
   transform: translate(-50%, -50%) scale(1)!important;
   z-index: 1000!important;
-  backdrop-filter: blur(10px)!important;
+  backdrop-filter: blur(15px)!important;
   overflow: hidden!important;
+  position: relative!important;
 }
 
 .loader-final-button:hover {
-  transform: translate(-50%, -50%) scale(1.05)!important;
-  box-shadow: 0 12px 40px rgba(var(--loader-r), var(--loader-g), var(--loader-b), 0.6),
-              inset 0 3px 0 rgba(255, 255, 255, 0.3),
-              inset 0 -3px 0 rgba(0, 0, 0, 0.3)!important;
+  transform: translate(-50%, -50%) scale(1.08)!important;
+  box-shadow: 0 16px 50px rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 0.6),
+              inset 0 4px 0 rgba(255, 255, 255, 0.35),
+              inset 0 -4px 0 rgba(0, 0, 0, 0.35),
+              0 0 0 8px rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 0.25)!important;
+  border-color: rgba(255, 255, 255, 0.5)!important;
 }
 
 .loader-final-button:active {
   transform: translate(-50%, -50%) scale(0.95)!important;
-  box-shadow: 0 4px 15px rgba(var(--loader-r), var(--loader-g), var(--loader-b), 0.4)!important;
+  box-shadow: 0 6px 20px rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 0.4),
+              inset 0 2px 0 rgba(255, 255, 255, 0.15),
+              inset 0 -2px 0 rgba(0, 0, 0, 0.15)!important;
 }
 
 .loader-final-button::before {
   content: ''!important;
   position: absolute!important;
-  top: -10px!important;
-  left: -10px!important;
-  width: calc(100% + 20px)!important;
-  height: calc(100% + 20px)!important;
-  background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent)!important;
+  top: -5px!important;
+  left: -5px!important;
+  width: calc(100% + 10px)!important;
+  height: calc(100% + 10px)!important;
+  background: linear-gradient(45deg, 
+    transparent, 
+    rgba(255, 255, 255, 0.2), 
+    transparent)!important;
   border-radius: 50%!important;
   transform: translateX(-100%) rotate(45deg)!important;
   transition: transform 0.8s ease!important;
@@ -576,19 +601,23 @@ export const LoaderExtension = {
 }
 
 .loader-final-button .final-icon {
-  font-size: 28px!important;
+  font-size: 32px!important;
   margin-bottom: 8px!important;
   animation: finalIconPulse 2s ease-in-out infinite!important;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4))!important;
+  line-height: 1!important;
 }
 
 .loader-final-button .final-text {
-  font-size: 14px!important;
+  font-size: 15px!important;
   font-weight: 600!important;
   padding: 0 15px!important;
-  max-width: calc(var(--loader-size) - 40px)!important;
+  max-width: calc(var(--loader-size) - 20px)!important;
   overflow: hidden!important;
   text-overflow: ellipsis!important;
   white-space: nowrap!important;
+  line-height: 1.2!important;
+  letter-spacing: 0.3px!important;
 }
 
 @keyframes finalButtonAppear {

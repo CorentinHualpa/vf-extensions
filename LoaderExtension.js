@@ -535,13 +535,13 @@ export const LoaderExtension = {
   right: 0!important;
   bottom: 0!important;
   margin: auto!important;
-  width: calc(var(--loader-size) + 30px)!important;
-  height: calc(var(--loader-size) + 30px)!important;
+  width: calc(var(--loader-size) + 10px)!important;
+  height: calc(var(--loader-size) + 10px)!important;
   border-radius: 50%!important;
   background: linear-gradient(145deg, 
     var(--final-btn-color), 
-    rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 0.8))!important;
-  border: 3px solid rgba(255, 255, 255, 0.3)!important;
+    rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 0.9))!important;
+  border: 2px solid rgba(255, 255, 255, 0.4)!important;
   cursor: pointer!important;
   display: flex!important;
   flex-direction: column!important;
@@ -549,54 +549,54 @@ export const LoaderExtension = {
   justify-content: center!important;
   color: #fff!important;
   font-family: inherit!important;
-  font-size: 16px!important;
-  font-weight: 700!important;
+  font-size: 15px!important;
+  font-weight: 600!important;
   text-align: center!important;
   line-height: 1.2!important;
-  letter-spacing: 0.5px!important;
-  text-shadow: 0 3px 12px rgba(0, 0, 0, 0.8),
-               0 0 8px rgba(255, 255, 255, 0.3)!important;
-  box-shadow: 0 12px 40px rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 0.5),
-              inset 0 4px 0 rgba(255, 255, 255, 0.25),
-              inset 0 -4px 0 rgba(0, 0, 0, 0.25),
-              0 0 0 6px rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 0.15)!important;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1)!important;
+  letter-spacing: 0.3px!important;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6),
+               0 0 6px rgba(255, 255, 255, 0.2)!important;
+  box-shadow: 0 8px 25px rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 0.3),
+              inset 0 2px 0 rgba(255, 255, 255, 0.2),
+              inset 0 -2px 0 rgba(0, 0, 0, 0.2)!important;
+  transition: all 0.2s ease!important;
   opacity: 1!important;
   z-index: 1000!important;
-  backdrop-filter: blur(15px)!important;
+  backdrop-filter: blur(10px)!important;
   overflow: hidden!important;
 }
 
 .loader-final-button:hover {
-  transform: scale(1.08)!important;
-  box-shadow: 0 16px 50px rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 0.6),
-              inset 0 4px 0 rgba(255, 255, 255, 0.35),
-              inset 0 -4px 0 rgba(0, 0, 0, 0.35),
-              0 0 0 8px rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 0.25)!important;
-  border-color: rgba(255, 255, 255, 0.5)!important;
+  box-shadow: 0 10px 30px rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 0.4),
+              inset 0 2px 0 rgba(255, 255, 255, 0.3),
+              inset 0 -2px 0 rgba(0, 0, 0, 0.3)!important;
+  border-color: rgba(255, 255, 255, 0.6)!important;
+  background: linear-gradient(145deg, 
+    rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 1.1), 
+    var(--final-btn-color))!important;
 }
 
 .loader-final-button:active {
-  transform: scale(0.95)!important;
-  box-shadow: 0 6px 20px rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 0.4),
-              inset 0 2px 0 rgba(255, 255, 255, 0.15),
-              inset 0 -2px 0 rgba(0, 0, 0, 0.15)!important;
+  box-shadow: 0 4px 15px rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 0.3),
+              inset 0 1px 0 rgba(255, 255, 255, 0.1),
+              inset 0 -1px 0 rgba(0, 0, 0, 0.1)!important;
+  background: rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 0.9)!important;
 }
 
 .loader-final-button::before {
   content: ''!important;
   position: absolute!important;
-  top: -5px!important;
-  left: -5px!important;
-  width: calc(100% + 10px)!important;
-  height: calc(100% + 10px)!important;
+  top: -3px!important;
+  left: -3px!important;
+  width: calc(100% + 6px)!important;
+  height: calc(100% + 6px)!important;
   background: linear-gradient(45deg, 
     transparent, 
-    rgba(255, 255, 255, 0.2), 
+    rgba(255, 255, 255, 0.15), 
     transparent)!important;
   border-radius: 50%!important;
   transform: translateX(-100%) rotate(45deg)!important;
-  transition: transform 0.8s ease!important;
+  transition: transform 0.6s ease!important;
 }
 
 .loader-final-button:hover::before {
@@ -604,23 +604,23 @@ export const LoaderExtension = {
 }
 
 .loader-final-button .final-icon {
-  font-size: 32px!important;
-  margin-bottom: 8px!important;
+  font-size: 24px!important;
+  margin-bottom: 6px!important;
   animation: finalIconPulse 2s ease-in-out infinite!important;
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4))!important;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.3))!important;
   line-height: 1!important;
 }
 
 .loader-final-button .final-text {
-  font-size: 15px!important;
-  font-weight: 600!important;
-  padding: 0 15px!important;
-  max-width: calc(var(--loader-size) - 20px)!important;
+  font-size: 13px!important;
+  font-weight: 500!important;
+  padding: 0 12px!important;
+  max-width: calc(var(--loader-size) - 30px)!important;
   overflow: hidden!important;
   text-overflow: ellipsis!important;
   white-space: nowrap!important;
-  line-height: 1.2!important;
-  letter-spacing: 0.3px!important;
+  line-height: 1.1!important;
+  letter-spacing: 0.2px!important;
 }
 
 @keyframes finalButtonAppear {

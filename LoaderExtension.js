@@ -410,6 +410,11 @@ export const LoaderExtension = {
   border-radius: 12px!important;
   backdrop-filter: blur(10px)!important;
   border: 1px solid rgba(255, 255, 255, 0.2)!important;
+  width: 100%!important;
+  box-sizing: border-box!important;
+  word-wrap: break-word!important;
+  overflow-wrap: break-word!important;
+  hyphens: auto!important;
 }
 
 @keyframes messageFloat {
@@ -536,7 +541,7 @@ export const LoaderExtension = {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1)!important;
   opacity: 0!important;
   scale: 0.3!important;
-  z-index: 10!important;
+  z-index: 100!important;
   animation: finalButtonAppear 0.8s ease-out 0.5s forwards!important;
   backdrop-filter: blur(10px)!important;
   overflow: hidden!important;
@@ -823,18 +828,40 @@ export const LoaderExtension = {
           // Animation de fin
           container.classList.add('completed');
           
-          // Attendre un peu avant d'envoyer la réponse
-          setTimeout(() => {
-            window.voiceflow.chat.interact({
-              type: 'complete',
-              payload: {
-                completed: true,
-                duration: duration,
-                stepsCompleted: processSteps.length,
-                instanceId: uniqueInstanceId
-              }
-            });
-          }, 1000);
+          // ✅ NOUVEAU: Créer le bouton final cliquable
+          const finalButton = document.createElement('button');
+          finalButton.classList.add('loader-final-button');
+          finalButton.innerHTML = `
+            <div class="final-icon">🎉</div>
+            <div class="final-text">${finalText}</div>
+          `;
+          
+          // Ajouter l'événement de clic
+          finalButton.addEventListener('click', () => {
+            // Animation de clic
+            finalButton.style.transform = 'translate(-50%, -50%) scale(0.9)';
+            
+            setTimeout(() => {
+              container.classList.add('disabled-container');
+              
+              // Envoyer la réponse à Voiceflow
+              window.voiceflow.chat.interact({
+                type: 'complete',
+                payload: {
+                  completed: true,
+                  duration: duration,
+                  stepsCompleted: processSteps.length,
+                  finalButtonClicked: true,
+                  instanceId: uniqueInstanceId
+                }
+              });
+            }, 200);
+          });
+          
+          // Ajouter le bouton au container du cercle
+          circleContainer.appendChild(finalButton);
+          
+          console.log(`🎉 LoaderExtension terminé - Bouton final affiché`);
         }
       };
 

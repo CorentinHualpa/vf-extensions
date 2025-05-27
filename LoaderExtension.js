@@ -339,6 +339,9 @@ export const LoaderExtension = {
   width: var(--loader-size)!important;
   height: var(--loader-size)!important;
   margin-bottom: 25px!important;
+  display: flex!important;
+  align-items: center!important;
+  justify-content: center!important;
 }
 
 /* Cercle SVG */
@@ -527,9 +530,11 @@ export const LoaderExtension = {
 /* ✅ NOUVEAU: Bouton final cliquable */
 .loader-final-button {
   position: absolute!important;
-  top: 50%!important;
-  left: 50%!important;
-  transform: translate(-50%, -50%)!important;
+  top: 0!important;
+  left: 0!important;
+  right: 0!important;
+  bottom: 0!important;
+  margin: auto!important;
   width: calc(var(--loader-size) + 30px)!important;
   height: calc(var(--loader-size) + 30px)!important;
   border-radius: 50%!important;
@@ -557,15 +562,13 @@ export const LoaderExtension = {
               0 0 0 6px rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 0.15)!important;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1)!important;
   opacity: 1!important;
-  transform: translate(-50%, -50%) scale(1)!important;
   z-index: 1000!important;
   backdrop-filter: blur(15px)!important;
   overflow: hidden!important;
-  position: relative!important;
 }
 
 .loader-final-button:hover {
-  transform: translate(-50%, -50%) scale(1.08)!important;
+  transform: scale(1.08)!important;
   box-shadow: 0 16px 50px rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 0.6),
               inset 0 4px 0 rgba(255, 255, 255, 0.35),
               inset 0 -4px 0 rgba(0, 0, 0, 0.35),
@@ -574,7 +577,7 @@ export const LoaderExtension = {
 }
 
 .loader-final-button:active {
-  transform: translate(-50%, -50%) scale(0.95)!important;
+  transform: scale(0.95)!important;
   box-shadow: 0 6px 20px rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 0.4),
               inset 0 2px 0 rgba(255, 255, 255, 0.15),
               inset 0 -2px 0 rgba(0, 0, 0, 0.15)!important;

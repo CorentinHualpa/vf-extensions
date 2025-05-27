@@ -566,7 +566,7 @@ export const MultiSelect = {
   border-radius: 8px!important;
   font-weight: 700!important; 
   letter-spacing: 0.5px!important;
-  text-transform: uppercase!important;
+  //text-transform: uppercase!important;
   font-size: var(--ms-btn-font-size)!important;
   line-height: 1.2!important;
   cursor: pointer!important;

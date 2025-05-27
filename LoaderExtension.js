@@ -122,6 +122,7 @@ export const LoaderExtension = {
   width: ${width}%!important;
   height: ${height}px!important;
   max-width: 600px!important;
+  min-width: 400px!important;
   margin: 0 auto!important;
   padding: 30px 20px!important;
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif!important;
@@ -148,6 +149,7 @@ export const LoaderExtension = {
   position: relative!important;
   overflow: hidden!important;
   animation: containerGlow 3s ease-in-out infinite alternate!important;
+  box-sizing: border-box!important;
 }
 
 /* Animation de glow du container */
@@ -232,6 +234,8 @@ export const LoaderExtension = {
   gap: 15px!important;
   padding: 20px 25px!important;
   width: 100%!important;
+  max-width: 100%!important;
+  box-sizing: border-box!important;
   color: #fff!important;
   font-size: 16px!important;
   font-weight: 700!important;
@@ -249,6 +253,7 @@ export const LoaderExtension = {
   border-radius: 8px!important;
   backdrop-filter: blur(10px)!important;
   min-height: 60px!important;
+  overflow: hidden!important;
 }
 
 .loader-current-step .step-icon {
@@ -270,6 +275,12 @@ export const LoaderExtension = {
   word-wrap: break-word!important;
   overflow-wrap: break-word!important;
   hyphens: auto!important;
+  max-width: calc(100% - 50px)!important;
+  overflow: hidden!important;
+  text-overflow: ellipsis!important;
+  display: -webkit-box!important;
+  -webkit-line-clamp: 3!important;
+  -webkit-box-orient: vertical!important;
 }
 
 @keyframes stepFadeIn {
@@ -499,6 +510,8 @@ export const LoaderExtension = {
   .loader-container {
     --loader-size: ${Math.min(size, 150)}px;
     width: 95%!important;
+    min-width: 320px!important;
+    max-width: 400px!important;
     height: ${Math.max(height * 0.8, 320)}px!important;
     padding: 20px 15px!important;
   }
@@ -527,6 +540,8 @@ export const LoaderExtension = {
   
   .loader-current-step .step-text {
     line-height: 1.3!important;
+    font-size: 14px!important;
+    max-width: calc(100% - 40px)!important;
   }
 }
       `;

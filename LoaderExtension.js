@@ -527,7 +527,7 @@ export const LoaderExtension = {
   100% { transform: scale(1); }
 }
 
-/* ✅ NOUVEAU: Bouton final cliquable */
+/* ✅ NOUVEAU: Bouton final cliquable ultra-stylé */
 .loader-final-button {
   position: absolute!important;
   top: 0!important;
@@ -535,92 +535,111 @@ export const LoaderExtension = {
   right: 0!important;
   bottom: 0!important;
   margin: auto!important;
-  width: calc(var(--loader-size) + 10px)!important;
-  height: calc(var(--loader-size) + 10px)!important;
+  width: calc(var(--loader-size) - 10px)!important;
+  height: calc(var(--loader-size) - 10px)!important;
   border-radius: 50%!important;
-  background: linear-gradient(145deg, 
-    var(--final-btn-color), 
-    rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 0.9))!important;
-  border: 2px solid rgba(255, 255, 255, 0.4)!important;
+  background: linear-gradient(135deg, 
+    var(--final-btn-color) 0%, 
+    rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 0.9) 50%,
+    rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 0.7) 100%)!important;
+  border: 1px solid rgba(255, 255, 255, 0.5)!important;
   cursor: pointer!important;
   display: flex!important;
   flex-direction: column!important;
   align-items: center!important;
   justify-content: center!important;
   color: #fff!important;
-  font-family: inherit!important;
-  font-size: 15px!important;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif!important;
+  font-size: 14px!important;
   font-weight: 600!important;
   text-align: center!important;
   line-height: 1.2!important;
-  letter-spacing: 0.3px!important;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6),
-               0 0 6px rgba(255, 255, 255, 0.2)!important;
-  box-shadow: 0 8px 25px rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 0.3),
-              inset 0 2px 0 rgba(255, 255, 255, 0.2),
-              inset 0 -2px 0 rgba(0, 0, 0, 0.2)!important;
-  transition: all 0.2s ease!important;
+  letter-spacing: 0.2px!important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4)!important;
+  box-shadow: 0 4px 20px rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 0.3),
+              0 2px 8px rgba(0, 0, 0, 0.2),
+              inset 0 1px 0 rgba(255, 255, 255, 0.3)!important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1)!important;
   opacity: 1!important;
   z-index: 1000!important;
-  backdrop-filter: blur(10px)!important;
+  backdrop-filter: blur(8px)!important;
   overflow: hidden!important;
+  position: relative!important;
 }
 
 .loader-final-button:hover {
-  box-shadow: 0 10px 30px rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 0.4),
-              inset 0 2px 0 rgba(255, 255, 255, 0.3),
-              inset 0 -2px 0 rgba(0, 0, 0, 0.3)!important;
-  border-color: rgba(255, 255, 255, 0.6)!important;
-  background: linear-gradient(145deg, 
-    rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 1.1), 
-    var(--final-btn-color))!important;
+  box-shadow: 0 6px 25px rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 0.4),
+              0 3px 12px rgba(0, 0, 0, 0.3),
+              inset 0 1px 0 rgba(255, 255, 255, 0.4),
+              0 0 0 2px rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 0.2)!important;
+  border-color: rgba(255, 255, 255, 0.7)!important;
+  background: linear-gradient(135deg, 
+    rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 1.1) 0%, 
+    var(--final-btn-color) 50%,
+    rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 0.8) 100%)!important;
 }
 
 .loader-final-button:active {
-  box-shadow: 0 4px 15px rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 0.3),
-              inset 0 1px 0 rgba(255, 255, 255, 0.1),
-              inset 0 -1px 0 rgba(0, 0, 0, 0.1)!important;
+  box-shadow: 0 2px 10px rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 0.3),
+              0 1px 4px rgba(0, 0, 0, 0.2),
+              inset 0 1px 3px rgba(0, 0, 0, 0.2)!important;
   background: rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 0.9)!important;
+}
+
+.loader-final-button:disabled {
+  opacity: 0.6!important;
+  cursor: not-allowed!important;
+  box-shadow: 0 2px 8px rgba(var(--final-btn-r), var(--final-btn-g), var(--final-btn-b), 0.2)!important;
 }
 
 .loader-final-button::before {
   content: ''!important;
   position: absolute!important;
-  top: -3px!important;
-  left: -3px!important;
-  width: calc(100% + 6px)!important;
-  height: calc(100% + 6px)!important;
+  top: 0!important;
+  left: 0!important;
+  width: 100%!important;
+  height: 100%!important;
   background: linear-gradient(45deg, 
-    transparent, 
-    rgba(255, 255, 255, 0.15), 
-    transparent)!important;
+    transparent 30%, 
+    rgba(255, 255, 255, 0.1) 50%, 
+    transparent 70%)!important;
   border-radius: 50%!important;
-  transform: translateX(-100%) rotate(45deg)!important;
-  transition: transform 0.6s ease!important;
+  opacity: 0!important;
+  transition: opacity 0.3s ease!important;
 }
 
 .loader-final-button:hover::before {
-  transform: translateX(100%) rotate(45deg)!important;
+  opacity: 1!important;
+  animation: shimmer 1.5s ease-in-out infinite!important;
+}
+
+@keyframes shimmer {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .loader-final-button .final-icon {
-  font-size: 24px!important;
-  margin-bottom: 6px!important;
-  animation: finalIconPulse 2s ease-in-out infinite!important;
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.3))!important;
+  font-size: 28px!important;
+  margin-bottom: 4px!important;
+  animation: finalIconPulse 2.5s ease-in-out infinite!important;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3))!important;
   line-height: 1!important;
+  position: relative!important;
+  z-index: 2!important;
 }
 
 .loader-final-button .final-text {
-  font-size: 13px!important;
+  font-size: 12px!important;
   font-weight: 500!important;
-  padding: 0 12px!important;
-  max-width: calc(var(--loader-size) - 30px)!important;
+  padding: 0 8px!important;
+  max-width: calc(var(--loader-size) - 40px)!important;
   overflow: hidden!important;
   text-overflow: ellipsis!important;
   white-space: nowrap!important;
   line-height: 1.1!important;
-  letter-spacing: 0.2px!important;
+  letter-spacing: 0.1px!important;
+  position: relative!important;
+  z-index: 2!important;
 }
 
 @keyframes finalButtonAppear {

@@ -34,6 +34,7 @@ export const LoaderExtension = {
         width = 90,                      // Largeur en pourcentage (défaut: 90%)
         height = 400,                    // Hauteur fixe en pixels (défaut: 400px)
         backgroundImage = null,          // Image de fond (URL)
+        finalText = "Terminé ! Cliquez pour continuer", // Texte final cliquable
         instanceId = null                 // ID unique
       } = trace.payload || {};
 
@@ -119,10 +120,8 @@ export const LoaderExtension = {
   flex-direction: column!important;
   align-items: center!important;
   justify-content: center!important;
-  width: ${width}%!important;
+  width: 500px!important;
   height: ${height}px!important;
-  max-width: 600px!important;
-  min-width: 400px!important;
   margin: 0 auto!important;
   padding: 30px 20px!important;
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif!important;
@@ -503,6 +502,121 @@ export const LoaderExtension = {
   0% { transform: scale(1); }
   50% { transform: scale(1.05); }
   100% { transform: scale(1); }
+}
+
+/* ✅ NOUVEAU: Bouton final cliquable */
+.loader-final-button {
+  position: absolute!important;
+  top: 50%!important;
+  left: 50%!important;
+  transform: translate(-50%, -50%)!important;
+  width: calc(var(--loader-size) + 20px)!important;
+  height: calc(var(--loader-size) + 20px)!important;
+  border-radius: 50%!important;
+  background: linear-gradient(145deg, 
+    var(--loader-color), 
+    rgba(var(--loader-r), var(--loader-g), var(--loader-b), 0.8))!important;
+  border: none!important;
+  cursor: pointer!important;
+  display: flex!important;
+  flex-direction: column!important;
+  align-items: center!important;
+  justify-content: center!important;
+  color: #fff!important;
+  font-family: inherit!important;
+  font-size: 16px!important;
+  font-weight: 700!important;
+  text-align: center!important;
+  line-height: 1.3!important;
+  letter-spacing: 0.5px!important;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5)!important;
+  box-shadow: 0 8px 30px rgba(var(--loader-r), var(--loader-g), var(--loader-b), 0.4),
+              inset 0 2px 0 rgba(255, 255, 255, 0.2),
+              inset 0 -2px 0 rgba(0, 0, 0, 0.2)!important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1)!important;
+  opacity: 0!important;
+  scale: 0.3!important;
+  z-index: 10!important;
+  animation: finalButtonAppear 0.8s ease-out 0.5s forwards!important;
+  backdrop-filter: blur(10px)!important;
+  overflow: hidden!important;
+}
+
+.loader-final-button:hover {
+  transform: translate(-50%, -50%) scale(1.05)!important;
+  box-shadow: 0 12px 40px rgba(var(--loader-r), var(--loader-g), var(--loader-b), 0.6),
+              inset 0 3px 0 rgba(255, 255, 255, 0.3),
+              inset 0 -3px 0 rgba(0, 0, 0, 0.3)!important;
+}
+
+.loader-final-button:active {
+  transform: translate(-50%, -50%) scale(0.95)!important;
+  box-shadow: 0 4px 15px rgba(var(--loader-r), var(--loader-g), var(--loader-b), 0.4)!important;
+}
+
+.loader-final-button::before {
+  content: ''!important;
+  position: absolute!important;
+  top: -10px!important;
+  left: -10px!important;
+  width: calc(100% + 20px)!important;
+  height: calc(100% + 20px)!important;
+  background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent)!important;
+  border-radius: 50%!important;
+  transform: translateX(-100%) rotate(45deg)!important;
+  transition: transform 0.8s ease!important;
+}
+
+.loader-final-button:hover::before {
+  transform: translateX(100%) rotate(45deg)!important;
+}
+
+.loader-final-button .final-icon {
+  font-size: 28px!important;
+  margin-bottom: 8px!important;
+  animation: finalIconPulse 2s ease-in-out infinite!important;
+}
+
+.loader-final-button .final-text {
+  font-size: 14px!important;
+  font-weight: 600!important;
+  padding: 0 15px!important;
+  max-width: calc(var(--loader-size) - 40px)!important;
+  overflow: hidden!important;
+  text-overflow: ellipsis!important;
+  white-space: nowrap!important;
+}
+
+@keyframes finalButtonAppear {
+  0% {
+    opacity: 0;
+    scale: 0.3;
+    transform: translate(-50%, -50%) rotate(-180deg);
+  }
+  50% {
+    opacity: 0.8;
+    scale: 1.1;
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  100% {
+    opacity: 1;
+    scale: 1;
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+}
+
+@keyframes finalIconPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+/* Masquer les éléments du loader quand terminé */
+.loader-container.completed .loader-percentage,
+.loader-container.completed .loader-circle-progress,
+.loader-container.completed .loader-circle-glow,
+.loader-container.completed .loader-particles {
+  opacity: 0!important;
+  transition: opacity 0.5s ease!important;
 }
 
 /* Style responsive */

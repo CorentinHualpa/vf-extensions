@@ -31,6 +31,9 @@ export const LoaderExtension = {
         showScanEffect = true,           // Effet de scan
         showParticles = true,            // Particules animées
         steps = [],                      // Étapes avec textes défilants
+        width = 90,                      // Largeur en pourcentage (défaut: 90%)
+        height = 400,                    // Hauteur fixe en pixels (défaut: 400px)
+        backgroundImage = null,          // Image de fond (URL)
         instanceId = null                 // ID unique
       } = trace.payload || {};
 
@@ -57,6 +60,12 @@ export const LoaderExtension = {
       ];
 
       const processSteps = steps.length > 0 ? steps : defaultSteps;
+
+      // Traitement de l'image de fond si elle est au format [img]URL[/img]
+      let processedBackgroundImage = backgroundImage;
+      if (backgroundImage && backgroundImage.includes('[img]') && backgroundImage.includes('[/img]')) {
+        processedBackgroundImage = backgroundImage.replace(/\[img\](.*?)\[\/img\]/g, '$1');
+      }
 
       // Générer un ID unique pour cette instance
       const uniqueInstanceId = instanceId || `loader_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -110,18 +119,32 @@ export const LoaderExtension = {
   flex-direction: column!important;
   align-items: center!important;
   justify-content: center!important;
-  width: 100%!important;
+  width: ${width}%!important;
+  height: ${height}px!important;
+  max-width: 600px!important;
+  margin: 0 auto!important;
   padding: 30px 20px!important;
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif!important;
-  background: linear-gradient(135deg, 
-    rgba(var(--loader-r), var(--loader-g), var(--loader-b), 0.1),
-    rgba(var(--loader-r), var(--loader-g), var(--loader-b), 0.05))!important;
+  background: ${processedBackgroundImage ? `
+    linear-gradient(135deg, 
+      rgba(var(--loader-r), var(--loader-g), var(--loader-b), 0.85),
+      rgba(var(--loader-r), var(--loader-g), var(--loader-b), 0.75)),
+    url("${processedBackgroundImage}")
+  ` : `
+    linear-gradient(135deg, 
+      rgba(var(--loader-r), var(--loader-g), var(--loader-b), 0.4),
+      rgba(var(--loader-r), var(--loader-g), var(--loader-b), 0.2))
+  `}!important;
+  background-size: cover!important;
+  background-position: center!important;
+  background-repeat: no-repeat!important;
   backdrop-filter: blur(20px)!important;
   -webkit-backdrop-filter: blur(20px)!important;
-  border: 1px solid rgba(255, 255, 255, 0.1)!important;
+  border: 2px solid rgba(255, 255, 255, 0.3)!important;
   border-radius: 20px!important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3),
-              inset 0 1px 0 rgba(255, 255, 255, 0.1)!important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4),
+              inset 0 2px 0 rgba(255, 255, 255, 0.2),
+              0 0 0 1px rgba(var(--loader-r), var(--loader-g), var(--loader-b), 0.3)!important;
   position: relative!important;
   overflow: hidden!important;
   animation: containerGlow 3s ease-in-out infinite alternate!important;
@@ -130,14 +153,14 @@ export const LoaderExtension = {
 /* Animation de glow du container */
 @keyframes containerGlow {
   0% {
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3),
-                inset 0 1px 0 rgba(255, 255, 255, 0.1),
-                0 0 0 rgba(var(--loader-r), var(--loader-g), var(--loader-b), 0);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4),
+                inset 0 2px 0 rgba(255, 255, 255, 0.2),
+                0 0 0 1px rgba(var(--loader-r), var(--loader-g), var(--loader-b), 0.3);
   }
   100% {
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4),
-                inset 0 1px 0 rgba(255, 255, 255, 0.2),
-                0 0 30px rgba(var(--loader-r), var(--loader-g), var(--loader-b), 0.3);
+    box-shadow: 0 16px 50px rgba(0, 0, 0, 0.5),
+                inset 0 2px 0 rgba(255, 255, 255, 0.3),
+                0 0 20px rgba(var(--loader-r), var(--loader-g), var(--loader-b), 0.6);
   }
 }
 
@@ -168,14 +191,16 @@ export const LoaderExtension = {
   height: 80px!important;
   margin-bottom: 20px!important;
   position: relative!important;
-  background: rgba(0, 0, 0, 0.2)!important;
+  background: rgba(0, 0, 0, 0.6)!important;
   border-radius: 12px!important;
-  border: 1px solid rgba(255, 255, 255, 0.1)!important;
-  backdrop-filter: blur(10px)!important;
+  border: 2px solid rgba(255, 255, 255, 0.25)!important;
+  backdrop-filter: blur(15px)!important;
   overflow: hidden!important;
   display: flex!important;
   align-items: center!important;
   justify-content: center!important;
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3),
+              0 4px 15px rgba(0, 0, 0, 0.2)!important;
 }
 
 .loader-steps-container::before {
@@ -206,13 +231,19 @@ export const LoaderExtension = {
   padding: 15px 20px!important;
   color: #fff!important;
   font-size: 16px!important;
-  font-weight: 600!important;
+  font-weight: 700!important;
   text-align: center!important;
   letter-spacing: 0.3px!important;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6)!important;
+  text-shadow: 0 3px 12px rgba(0, 0, 0, 0.8),
+               0 0 8px rgba(255, 255, 255, 0.3)!important;
   animation: stepFadeIn 0.6s ease-out!important;
   position: relative!important;
   z-index: 2!important;
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.15),
+    rgba(255, 255, 255, 0.05))!important;
+  border-radius: 8px!important;
+  backdrop-filter: blur(10px)!important;
 }
 
 .loader-current-step .step-icon {
@@ -252,12 +283,15 @@ export const LoaderExtension = {
   position: absolute!important;
   bottom: 0!important;
   left: 0!important;
-  height: 3px!important;
+  height: 4px!important;
   background: linear-gradient(90deg, 
     var(--loader-color), 
-    rgba(var(--loader-r), var(--loader-g), var(--loader-b), 0.8))!important;
+    rgba(var(--loader-r), var(--loader-g), var(--loader-b), 0.9),
+    #ffffff)!important;
   transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1)!important;
-  box-shadow: 0 0 10px rgba(var(--loader-r), var(--loader-g), var(--loader-b), 0.6)!important;
+  box-shadow: 0 0 15px rgba(var(--loader-r), var(--loader-g), var(--loader-b), 0.8),
+              0 2px 8px rgba(0, 0, 0, 0.3)!important;
+  border-radius: 0 0 12px 12px!important;
 }
 
 /* Container du cercle principal */
@@ -335,14 +369,22 @@ export const LoaderExtension = {
 
 /* Message de chargement */
 .loader-message {
-  font-size: 18px!important;
-  font-weight: 600!important;
+  font-size: 20px!important;
+  font-weight: 800!important;
   color: #fff!important;
   text-align: center!important;
-  letter-spacing: 0.5px!important;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6)!important;
+  letter-spacing: 0.8px!important;
+  text-shadow: 0 3px 12px rgba(0, 0, 0, 0.8),
+               0 0 10px rgba(255, 255, 255, 0.2)!important;
   margin-bottom: 15px!important;
   animation: messageFloat 3s ease-in-out infinite!important;
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.1),
+    rgba(255, 255, 255, 0.05))!important;
+  padding: 12px 20px!important;
+  border-radius: 12px!important;
+  backdrop-filter: blur(10px)!important;
+  border: 1px solid rgba(255, 255, 255, 0.2)!important;
 }
 
 @keyframes messageFloat {
@@ -441,11 +483,14 @@ export const LoaderExtension = {
 @media (max-width: 768px) {
   .loader-container {
     --loader-size: ${Math.min(size, 150)}px;
+    width: 95%!important;
+    height: ${Math.max(height * 0.8, 320)}px!important;
     padding: 20px 15px!important;
   }
   
   .loader-message {
-    font-size: 16px!important;
+    font-size: 18px!important;
+    padding: 10px 15px!important;
   }
   
   .loader-steps-container {

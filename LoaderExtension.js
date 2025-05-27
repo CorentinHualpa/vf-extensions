@@ -188,19 +188,21 @@ export const LoaderExtension = {
 /* ✅ NOUVEAU: Zone des étapes défilantes */
 .loader-steps-container {
   width: 100%!important;
-  height: 80px!important;
+  min-height: 100px!important;
+  height: auto!important;
   margin-bottom: 20px!important;
   position: relative!important;
   background: rgba(0, 0, 0, 0.6)!important;
   border-radius: 12px!important;
   border: 2px solid rgba(255, 255, 255, 0.25)!important;
   backdrop-filter: blur(15px)!important;
-  overflow: hidden!important;
+  overflow: visible!important;
   display: flex!important;
   align-items: center!important;
   justify-content: center!important;
   box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3),
               0 4px 15px rgba(0, 0, 0, 0.2)!important;
+  padding: 15px!important;
 }
 
 .loader-steps-container::before {
@@ -226,14 +228,16 @@ export const LoaderExtension = {
 .loader-current-step {
   display: flex!important;
   align-items: center!important;
-  justify-content: center!important;
-  gap: 12px!important;
-  padding: 15px 20px!important;
+  justify-content: flex-start!important;
+  gap: 15px!important;
+  padding: 20px 25px!important;
+  width: 100%!important;
   color: #fff!important;
   font-size: 16px!important;
   font-weight: 700!important;
-  text-align: center!important;
+  text-align: left!important;
   letter-spacing: 0.3px!important;
+  line-height: 1.4!important;
   text-shadow: 0 3px 12px rgba(0, 0, 0, 0.8),
                0 0 8px rgba(255, 255, 255, 0.3)!important;
   animation: stepFadeIn 0.6s ease-out!important;
@@ -244,17 +248,28 @@ export const LoaderExtension = {
     rgba(255, 255, 255, 0.05))!important;
   border-radius: 8px!important;
   backdrop-filter: blur(10px)!important;
+  min-height: 60px!important;
 }
 
 .loader-current-step .step-icon {
   font-size: 20px!important;
   animation: iconBounce 0.8s ease-out!important;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))!important;
+  min-width: 28px!important;
+  display: flex!important;
+  align-items: center!important;
+  justify-content: center!important;
+  align-self: flex-start!important;
+  margin-top: 2px!important;
 }
 
 .loader-current-step .step-text {
   font-weight: 500!important;
-  line-height: 1.3!important;
+  line-height: 1.4!important;
+  flex: 1!important;
+  word-wrap: break-word!important;
+  overflow-wrap: break-word!important;
+  hyphens: auto!important;
 }
 
 @keyframes stepFadeIn {
@@ -494,16 +509,24 @@ export const LoaderExtension = {
   }
   
   .loader-steps-container {
-    height: 70px!important;
+    min-height: 90px!important;
+    padding: 12px!important;
   }
   
   .loader-current-step {
     font-size: 14px!important;
-    padding: 12px 15px!important;
+    padding: 15px 20px!important;
+    gap: 12px!important;
+    min-height: 50px!important;
   }
   
   .loader-current-step .step-icon {
     font-size: 18px!important;
+    min-width: 24px!important;
+  }
+  
+  .loader-current-step .step-text {
+    line-height: 1.3!important;
   }
 }
       `;
@@ -605,6 +628,12 @@ export const LoaderExtension = {
               currentStepIndex = i;
               const step = processSteps[i];
               
+              // Nettoyer le texte (enlever l'icône si elle est au début)
+              let cleanText = step.text;
+              if (cleanText.startsWith(step.icon)) {
+                cleanText = cleanText.replace(step.icon, '').trim();
+              }
+              
               // Animer le changement d'étape
               currentStepEl.style.animation = 'none';
               currentStepEl.offsetHeight; // Force reflow
@@ -613,14 +642,14 @@ export const LoaderExtension = {
               // Mettre à jour le contenu
               currentStepEl.innerHTML = `
                 <span class="step-icon">${step.icon || '⚙️'}</span>
-                <span class="step-text">${step.text}</span>
+                <span class="step-text">${cleanText}</span>
               `;
               
               // Mettre à jour la barre de progression des étapes
               const stepProgress = ((i + 1) / processSteps.length) * 100;
               stepsProgressEl.style.width = stepProgress + '%';
               
-              console.log(`📍 Étape ${i + 1}/${processSteps.length}: ${step.text}`);
+              console.log(`📍 Étape ${i + 1}/${processSteps.length}: ${cleanText}`);
             }
             break;
           }

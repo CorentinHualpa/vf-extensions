@@ -8,7 +8,7 @@
  *  ║  • Text-shadow pour visibilité optimale                  ║
  *  ║  • Tous les effets visuels conservés                     ║
  *  ║  • NOUVEAU: global_select_button_text pour customiser    ║
- *  ║    le texte du bouton de sélection principal             ║
+ *  ║    le texte du bouton principal de sélection             ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 
@@ -35,7 +35,7 @@ export const MultiSelect = {
         buttonFontSize  = 15, // ✅ NOUVEAU: Taille du texte des boutons (ajustable facilement)
         useGlobalAll    = false,  // NOUVEAU: option pour activer/désactiver l'option global-all
         globalAllText   = "Tout sélectionner / désélectionner", // NOUVEAU: texte pour l'option global-all
-        global_select_button_text = "✅ Sélectionner", // ✅ NOUVEAU: Texte par défaut pour le bouton de sélection principal
+        global_select_button_text = null, // ✅ NOUVEAU: Texte personnalisé pour le bouton principal de sélection
         instanceId      = null // Identifiant fourni dans le payload (facultatif)
       } = trace.payload;
 
@@ -1047,13 +1047,12 @@ export const MultiSelect = {
             btn.style.setProperty('--btn-b', b);
           }
           
-          // ✅ NOUVEAU: Utiliser global_select_button_text si aucun texte n'est spécifié
-          // et que le bouton a le path "Default" (bouton de sélection principal)
-          if (!cfg.text && (cfg.path === 'Default' || !cfg.path)) {
-            btn.textContent = global_select_button_text;
-          } else {
-            btn.textContent = cfg.text || global_select_button_text;
+          // ✅ NOUVEAU: Utiliser global_select_button_text si défini et que c'est le bouton principal
+          let buttonText = cfg.text;
+          if (global_select_button_text && (cfg.path === 'Default' || cfg.path === undefined)) {
+            buttonText = global_select_button_text;
           }
+          btn.textContent = buttonText;
 
           // zone d'erreur sous le bouton
           const err = document.createElement('div');
@@ -1101,7 +1100,7 @@ export const MultiSelect = {
               type: 'complete',
               payload: {
                 selections:  res,
-                buttonText:  btn.textContent, // ✅ MODIFIÉ: Utiliser le texte réel du bouton
+                buttonText:  buttonText, // ✅ Utiliser le texte personnalisé s'il existe
                 buttonPath:  cfg.path || 'Default',
                 isEmpty:     res.every(r => !r.selections.length && !r.userInput),
                 instanceId:  uniqueInstanceId // Ajouter l'ID unique dans le payload
@@ -1155,7 +1154,7 @@ export const MultiSelect = {
         chatStateObserver.disconnect();
       };
       
-      console.log(`✅ MultiSelect prêt (ID: ${uniqueInstanceId}) avec ${gridColumns} colonnes`);
+      console.log(`✅ MultiSelect prêt (ID: ${uniqueInstanceId}) avec ${gridColumns} colonnes${global_select_button_text ? ` et texte personnalisé: "${global_select_button_text}"` : ''}`);
     } catch (err) {
       console.error('❌ MultiSelect Error :', err);
       window.voiceflow.chat.interact({

@@ -6,9 +6,8 @@
  *  ║  • Boutons harmonieux et responsive                       ║
  *  ║  • Taille de texte des boutons ajustable                 ║
  *  ║  • Text-shadow pour visibilité optimale                  ║
- *  ║  • Tous les effets visuels conservés                     ║
- *  ║  • NOUVEAU: global_select_button_text pour customiser    ║
- *  ║    le texte du bouton principal de sélection             ║
+ *  ║  • Champs texte adaptatifs améliorés                     ║
+ *  ║  • Bouton global-all personnalisable                     ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 
@@ -31,11 +30,12 @@ export const MultiSelect = {
         chatDisabledText= '🚫',
         gridColumns     = 0,  // 0 = auto (par défaut), 1 = force une colonne, 2,3,4,5,6+ = nombre de colonnes
         optionsGap      = 4,  // Contrôle l'espacement entre les options (en px)
-        global_button_color = '#9C27B0', // Couleur par défaut pour tous les boutons (bleu)
-        buttonFontSize  = 15, // ✅ NOUVEAU: Taille du texte des boutons (ajustable facilement)
-        useGlobalAll    = false,  // NOUVEAU: option pour activer/désactiver l'option global-all
-        globalAllText   = "Tout sélectionner / désélectionner", // NOUVEAU: texte pour l'option global-all
-        global_select_button_text = null, // ✅ NOUVEAU: Texte personnalisé pour le bouton principal de sélection
+        global_button_color = '#9C27B0', // Couleur par défaut pour tous les boutons
+        buttonFontSize  = 15, // Taille du texte des boutons (ajustable facilement)
+        useGlobalAll    = false,  // Option pour activer/désactiver l'option global-all
+        globalAllText   = "Tout sélectionner / désélectionner", // Texte pour l'option global-all (fallback)
+        globalAllSelectText = "Tout sélectionner", // ✅ NOUVEAU: Texte pour "sélectionner tout"
+        globalAllDeselectText = "Tout désélectionner", // ✅ NOUVEAU: Texte pour "désélectionner tout"
         instanceId      = null // Identifiant fourni dans le payload (facultatif)
       } = trace.payload;
 
@@ -71,7 +71,7 @@ export const MultiSelect = {
       const root = element.getRootNode();
       const host = root instanceof ShadowRoot ? root : document;
       
-      // AMÉLIORÉ: Variable pour suivre l'état d'activation du chat
+      // Variable pour suivre l'état d'activation du chat
       let chatEnabled = chat; // Initialiser avec l'état défini dans le payload
       
       function disableChat() {
@@ -99,7 +99,7 @@ export const MultiSelect = {
         if (snd) { snd.disabled = false; snd.removeAttribute('title'); }
         chatEnabled = true; // Mettre à jour l'état du chat
         
-        // NOUVEAU: Vérification additionnelle pour s'assurer que le chat est activé
+        // Vérification additionnelle pour s'assurer que le chat est activé
         setTimeout(() => {
           if (!chatEnabled) {
             enableChat(); // Réessayer l'activation si nécessaire
@@ -117,7 +117,7 @@ export const MultiSelect = {
       container.id = uniqueInstanceId;
       container.setAttribute('data-instance-id', uniqueInstanceId);
       
-      // ✅ NOUVEAU: Support complet pour n'importe quel nombre de colonnes
+      // Support complet pour n'importe quel nombre de colonnes
       if (gridColumns === 1 || sections.length === 1) {
         container.classList.add('one-section');
       } else if (gridColumns >= 2) {
@@ -133,7 +133,7 @@ export const MultiSelect = {
             container.classList.add('disabled-container');
             disableChat();
             
-            // AMÉLIORÉ: Réactiver le chat après soumission du texte
+            // Réactiver le chat après soumission du texte
             setTimeout(() => {
               enableChat();
             }, 300);
@@ -150,7 +150,7 @@ export const MultiSelect = {
             container.classList.add('disabled-container');
             disableChat();
             
-            // AMÉLIORÉ: Réactiver le chat après soumission par touche Entrée
+            // Réactiver le chat après soumission par touche Entrée
             setTimeout(() => {
               enableChat();
             }, 300);
@@ -165,7 +165,7 @@ export const MultiSelect = {
           container.classList.add('disabled-container');
           disableChat();
           
-          // AMÉLIORÉ: Réactiver le chat après le clic sur envoyer
+          // Réactiver le chat après le clic sur envoyer
           setTimeout(() => {
             enableChat();
           }, 300);
@@ -215,7 +215,7 @@ export const MultiSelect = {
   color:#fff!important;
 }
 
-/* ✅ NOUVEAU: Layout des sections - Support pour n'importe quel nombre de colonnes */
+/* Layout des sections - Support pour n'importe quel nombre de colonnes */
 .multiselect-container .sections-grid { 
   display:grid!important; 
   grid-template-columns:repeat(2,1fr)!important; /* Par défaut : 2 colonnes */
@@ -226,7 +226,7 @@ export const MultiSelect = {
   grid-template-columns:1fr!important; 
 }
 
-/* ✅ NOUVEAU: Support spécifique pour chaque nombre de colonnes */
+/* Support spécifique pour chaque nombre de colonnes */
 .multiselect-container.grid-3-cols .sections-grid { 
   grid-template-columns:repeat(3,1fr)!important; 
 }
@@ -243,12 +243,12 @@ export const MultiSelect = {
   grid-template-columns:repeat(6,1fr)!important; 
 }
 
-/* ✅ NOUVEAU: Solution générique avec CSS custom properties pour 7+ colonnes */
+/* Solution générique avec CSS custom properties pour 7+ colonnes */
 .multiselect-container[data-grid-columns] .sections-grid {
   grid-template-columns: repeat(var(--grid-cols, 2), 1fr)!important;
 }
 
-/* ✅ NOUVEAU: Responsive design pour 3+ colonnes */
+/* Responsive design pour 3+ colonnes */
 @media (max-width: 768px) {
   .multiselect-container[data-grid-columns] .sections-grid {
     grid-template-columns: 1fr!important; /* 1 colonne sur mobile */
@@ -367,7 +367,7 @@ export const MultiSelect = {
   background:var(--ms-selected-bg)!important; 
 }
 
-/* NOUVEAU: Styles spécifiques pour les options "all" */
+/* Styles spécifiques pour les options "all" */
 .multiselect-container .option-container.all-option label {
   background: rgba(0, 0, 0, 0.5)!important;
   border: 1px dashed rgba(255, 255, 255, 0.3)!important;
@@ -396,7 +396,7 @@ export const MultiSelect = {
   opacity: 0.8!important;
 }
 
-/* NOUVEAU: Styles pour le global-all */
+/* Styles pour le global-all */
 .multiselect-container .global-all-container {
   width: 100%!important;
   display: flex!important;
@@ -509,29 +509,65 @@ export const MultiSelect = {
   background:var(--ms-accent)!important;
 }
 
-/* Champs de saisie utilisateur */
+/* ✅ AMÉLIORATIONS POUR LES CHAMPS DE SAISIE UTILISATEUR */
 .multiselect-container .user-input-container { 
   grid-column:1/-1!important; 
-  margin-top:var(--ms-gap)!important; 
+  margin-top:calc(var(--ms-gap) * 2)!important;
+  padding: 16px!important;
+  background: rgba(255,255,255,0.08)!important;
+  border-radius: 12px!important;
+  border: 1px solid rgba(255,255,255,0.15)!important;
+  backdrop-filter: blur(10px)!important;
+  -webkit-backdrop-filter: blur(10px)!important;
 }
 
 .multiselect-container .user-input-label { 
-  font-size:var(--ms-small-fs)!important; 
-  margin-bottom:16px!important; 
+  font-size: var(--ms-base-fs)!important;
+  font-weight: 600!important;
+  margin-bottom: 12px!important;
+  display: block!important;
+  color: #ffffff!important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3)!important;
 }
 
 .multiselect-container .user-input-field { 
-  width:100%!important; 
-  padding:6px!important;
-  border-radius:var(--ms-radius)!important; 
-  border:1px solid rgba(255,255,255,.3)!important;
-  font-size:var(--ms-small-fs)!important; 
-  transition:box-shadow .2s!important;
+  width: 100%!important; 
+  min-height: 120px!important; /* ✅ Hauteur minimale pour textarea */
+  padding: 12px 16px!important;
+  border-radius: 8px!important; 
+  border: 2px solid rgba(255,255,255,0.3)!important;
+  background: rgba(255,255,255,0.95)!important;
+  color: #333!important;
+  font-size: var(--ms-base-fs)!important;
+  font-family: inherit!important;
+  line-height: 1.5!important;
+  resize: vertical!important; /* ✅ Permet le redimensionnement vertical */
+  transition: all 0.3s ease!important;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.1)!important;
 }
 
+/* ✅ État focus amélioré */
 .multiselect-container .user-input-field:focus { 
-  box-shadow:0 0 0 2px rgba(255,255,255,.4)!important;
-  border-color:var(--ms-accent)!important;
+  outline: none!important;
+  border-color: var(--ms-accent)!important;
+  box-shadow: 0 0 0 3px rgba(76,175,80,0.3), 
+              inset 0 2px 4px rgba(0,0,0,0.1)!important;
+  background: rgba(255,255,255,1)!important;
+  transform: translateY(-2px)!important;
+}
+
+/* ✅ Placeholder styling */
+.multiselect-container .user-input-field::placeholder {
+  color: #666!important;
+  font-style: italic!important;
+  opacity: 0.8!important;
+}
+
+/* ✅ Auto-resize du textarea basé sur le contenu */
+.multiselect-container .user-input-field[data-auto-resize] {
+  overflow: hidden!important;
+  min-height: 60px!important;
+  max-height: 200px!important;
 }
 
 /* Wrapper boutons et erreurs */
@@ -549,7 +585,7 @@ export const MultiSelect = {
   white-space:nowrap!important;
 }
 
-/* ✅ NOUVEAU: Container des boutons harmonieux et responsive */
+/* Container des boutons harmonieux et responsive */
 .multiselect-container .buttons-container {
   display: flex!important;
   flex-wrap: wrap!important;
@@ -560,7 +596,7 @@ export const MultiSelect = {
   width: 100%!important;
 }
 
-/* ✅ BOUTONS HARMONIEUX - Taille uniforme et flexible */
+/* BOUTONS HARMONIEUX - Taille uniforme et flexible */
 .multiselect-container .submit-btn {
   position: relative!important;
   background: var(--ms-global-btn-color)!important;
@@ -569,7 +605,6 @@ export const MultiSelect = {
   border-radius: 8px!important;
   font-weight: 700!important; 
   letter-spacing: 0.5px!important;
-  //text-transform: uppercase!important;
   font-size: var(--ms-btn-font-size)!important;
   line-height: 1.2!important;
   cursor: pointer!important;
@@ -585,7 +620,7 @@ export const MultiSelect = {
   align-items: center!important;
   justify-content: center!important;
   
-  /* ✅ CLÉS POUR L'HARMONIE */
+  /* CLÉS POUR L'HARMONIE */
   flex: 1 1 auto!important; /* Flex pour prendre l'espace disponible */
   min-width: 200px!important; /* Largeur minimale */
   max-width: 400px!important; /* Largeur maximale */
@@ -596,7 +631,7 @@ export const MultiSelect = {
   white-space: normal!important; /* Permet le retour à la ligne */
 }
 
-/* ✅ Responsive : Sur mobile, boutons pleine largeur */
+/* Responsive : Sur mobile, boutons pleine largeur */
 @media (max-width: 768px) {
   .multiselect-container .buttons-container {
     flex-direction: column!important;
@@ -610,12 +645,12 @@ export const MultiSelect = {
   }
 }
 
-/* ✅ Pour 2 boutons : côte à côte harmonieux */
+/* Pour 2 boutons : côte à côte harmonieux */
 .multiselect-container .buttons-container:has(.button-wrapper:nth-child(2):last-child) .submit-btn {
   flex: 1 1 calc(50% - 6px)!important;
 }
 
-/* ✅ Pour 3+ boutons : adaptation intelligente */
+/* Pour 3+ boutons : adaptation intelligente */
 @media (min-width: 769px) {
   .multiselect-container .buttons-container:has(.button-wrapper:nth-child(n+3)) .submit-btn {
     flex: 1 1 calc(33.333% - 8px)!important;
@@ -623,16 +658,16 @@ export const MultiSelect = {
   }
 }
 
-/* ✅ Effet hover conservé et amélioré */
+/* Effet hover conservé et amélioré */
 .multiselect-container .submit-btn:hover {
   transform: translateY(-2px)!important;
   box-shadow: 0 6px 20px rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b),0.4),
               inset 0 3px 0 rgba(255,255,255,0.3),
               inset 0 -3px 0 rgba(0,0,0,0.3)!important;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.4), 0 0 6px rgba(0,0,0,0.3)!important; /* ✅ Ombrage renforcé au hover */
+  text-shadow: 0 1px 3px rgba(0,0,0,0.4), 0 0 6px rgba(0,0,0,0.3)!important;
 }
 
-/* ✅ Effet active (clic) conservé */
+/* Effet active (clic) conservé */
 .multiselect-container .submit-btn:active {
   transform: translateY(1px)!important;
   box-shadow: 0 2px 6px rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b),0.3),
@@ -640,7 +675,7 @@ export const MultiSelect = {
               inset 0 -1px 0 rgba(0,0,0,0.1)!important;
 }
 
-/* ✅ Effet de scan sci-fi conservé */
+/* Effet de scan sci-fi conservé */
 .multiselect-container .submit-btn::before {
   content: ''!important;
   position: absolute!important;
@@ -678,7 +713,7 @@ export const MultiSelect = {
               inset 0 -3px 0 rgba(0,0,0,0.2)!important;
 }
 
-/* ✅ Effet de pulse conservé */
+/* Effet de pulse conservé */
 @keyframes pulse {
   0% { box-shadow: 0 0 0 0 rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b),0.7); }
   70% { box-shadow: 0 0 0 10px rgba(var(--ms-global-btn-r),var(--ms-global-btn-g),var(--ms-global-btn-b),0); }
@@ -737,7 +772,7 @@ export const MultiSelect = {
           allInput.parentElement.classList.toggle('selected', everyChecked);
         });
         
-        // NOUVEAU: mise à jour du bouton global-all
+        // mise à jour du bouton global-all
         if (useGlobalAll) {
           const globalAllBtn = container.querySelector('.global-all-button');
           if (globalAllBtn) {
@@ -748,10 +783,10 @@ export const MultiSelect = {
             
             if (allChecked) {
               globalAllBtn.classList.add('active');
-              globalAllBtn.innerHTML = '<span class="icon">☑</span> Tout désélectionner';
+              globalAllBtn.innerHTML = '<span class="icon">☑</span> ' + globalAllDeselectText;
             } else {
               globalAllBtn.classList.remove('active');
-              globalAllBtn.innerHTML = '<span class="icon">☐</span> Tout sélectionner';
+              globalAllBtn.innerHTML = '<span class="icon">☐</span> ' + globalAllSelectText;
             }
           }
         }
@@ -762,13 +797,11 @@ export const MultiSelect = {
         if (Array.isArray(opt.children) && opt.children.length) {
           const blk = document.createElement('div');
           blk.classList.add('non-selectable-block');
-          // AMÉLIORÉ: Utilisation de l'ID unique dans la génération des IDs des blocs
           blk.setAttribute('data-block-id', `block-${uniqueInstanceId}-${sectionIdx}-${Math.random().toString(36).substring(2, 9)}`);
           blk.innerHTML = opt.name;
           const wrap = document.createElement('div');
           wrap.classList.add('children-options');
           opt.children.forEach(ch => {
-            // Passer l'ID du bloc parent pour les enfants
             wrap.append(createOptionElement(ch, sectionIdx, blk.getAttribute('data-block-id')));
           });
           blk.append(wrap);
@@ -777,7 +810,7 @@ export const MultiSelect = {
         const wrap = document.createElement('div');
         wrap.classList.add('option-container');
         
-        // NOUVEAU: Ajouter la classe all-option pour les options "all"
+        // Ajouter la classe all-option pour les options "all"
         if (opt.action === 'all') {
           wrap.classList.add('all-option');
         }
@@ -789,11 +822,9 @@ export const MultiSelect = {
         inp.dataset.action = opt.action || '';
         inp.dataset.sectionIdx = sectionIdx;
         
-        // NOUVEAU: Ajouter l'ID unique à l'input pour éviter les conflits
         inp.id = `ms-${uniqueInstanceId}-${sectionIdx}-${Math.random().toString(36).substring(2, 9)}`;
         inp.name = multiselect ? `ms-group-${uniqueInstanceId}-${sectionIdx}` : `ms-group-${uniqueInstanceId}`;
         
-        // Stocker l'ID du bloc parent si présent
         if (parentBlock) {
           inp.dataset.parentBlock = parentBlock;
         }
@@ -801,7 +832,7 @@ export const MultiSelect = {
         if (opt.grey) inp.disabled = true;
 
         const lbl = document.createElement('label');
-        lbl.setAttribute('for', inp.id); // Associer le label à l'input par son ID
+        lbl.setAttribute('for', inp.id);
         const txt = document.createElement('span');
         txt.innerHTML = opt.name;
         lbl.append(inp, txt);
@@ -814,7 +845,6 @@ export const MultiSelect = {
           if (opt.action === 'all') {
             // Logique pour gérer les différents niveaux de "all"
             if (parentBlock) {
-              // Si le bouton "all" a un parent bloc, il ne doit sélectionner que les options de ce bloc
               const parentElement = container.querySelector(`[data-block-id="${parentBlock}"]`);
               if (parentElement) {
                 const blockOptions = Array.from(
@@ -827,7 +857,6 @@ export const MultiSelect = {
                 });
               }
             } else {
-              // Comportement traditionnel - sélectionne tous les éléments de la section
               const secDom = grid.children[sectionIdx];
               const others = Array.from(
                 secDom.querySelectorAll('input[type="checkbox"], input[type="radio"]')
@@ -843,23 +872,18 @@ export const MultiSelect = {
 
           // Gestion du mode single-select (radio) pour soumission automatique
           if (!multiselect) {
-            // AMÉLIORÉ: S'assurer que le chat est réactivé avant d'interagir
             enableChat();
-            
-            // Désactiver le conteneur pour empêcher d'autres interactions
             container.classList.add('disabled-container');
             
-            // Envoyer la réponse à Voiceflow
             window.voiceflow.chat.interact({
               type: 'complete',
               payload: {
                 selection: opt.name,
                 buttonPath: opt.action || 'Default',
-                instanceId: uniqueInstanceId // Ajouter l'ID unique dans le payload
+                instanceId: uniqueInstanceId
               }
             });
             
-            // Vérifier à nouveau que le chat est activé après la soumission
             setTimeout(() => {
               enableChat();
             }, 300);
@@ -872,11 +896,8 @@ export const MultiSelect = {
       /* 7. build sections */
       grid = document.createElement('div');
       grid.classList.add('sections-grid');
-      
-      // NOUVEAU: Ajouter l'ID unique au grid
       grid.id = `grid-${uniqueInstanceId}`;
       
-      // ✅ NOUVEAU: Définir le nombre de colonnes via CSS custom property
       if (gridColumns >= 2) {
         grid.style.setProperty('--grid-cols', gridColumns);
       }
@@ -884,13 +905,11 @@ export const MultiSelect = {
       sections.forEach((sec, i) => {
         const sc = document.createElement('div');
         sc.classList.add('section-container');
-        // NOUVEAU: Ajouter l'ID unique à la section
         sc.id = `section-${uniqueInstanceId}-${i}`;
         
         const bg = sec.backgroundColor || sec.color || '#673AB7';
         sc.style.backgroundColor = bg;
         
-        // Définir un dégradé dynamique basé sur la couleur de la section
         const rgba1 = hexToRgba(bg, 0.9);
         const rgba2 = hexToRgba(bg, 0.7);
         sc.style.background = `linear-gradient(135deg, ${rgba1}, ${rgba2})`;
@@ -902,7 +921,6 @@ export const MultiSelect = {
             (_m, r, g, b) => `rgba(${parseInt(r,16)},${parseInt(g,16)},${parseInt(b,16)},0.15)`
           )
         );
-        // Utiliser la couleur de la section comme accent
         sc.style.setProperty('--ms-accent', lightenColor(bg, 0.3));
 
         // titre de section
@@ -916,50 +934,50 @@ export const MultiSelect = {
         // liste d'options
         const ol = document.createElement('div');
         ol.classList.add('options-list');
-        // NOUVEAU: Ajouter l'ID unique à la liste d'options
         ol.id = `options-list-${uniqueInstanceId}-${i}`;
         
         if ((sec.options || []).length > 10) ol.classList.add('grid-2cols');
 
         sec.options.forEach((opt, optIdx) => {
           if (opt.action === 'user_input') {
-            // champ libre
+            // ✅ CHAMP LIBRE AMÉLIORÉ
             const uiWrap = document.createElement('div');
             uiWrap.classList.add('user-input-container');
-            // NOUVEAU: Ajouter l'ID unique au conteneur de l'input utilisateur
             uiWrap.id = `ui-container-${uniqueInstanceId}-${i}-${optIdx}`;
             
             const uiLbl = document.createElement('label');
             uiLbl.classList.add('user-input-label');
             uiLbl.textContent = opt.label;
             
-            const uiInp = document.createElement('input');
-            uiInp.type = 'text';
+            // ✅ UTILISER TEXTAREA AU LIEU D'INPUT POUR PLUS D'ESPACE
+            const uiInp = document.createElement('textarea');
             uiInp.classList.add('user-input-field');
-            // NOUVEAU: Ajouter l'ID unique à l'input
             uiInp.id = `ui-input-${uniqueInstanceId}-${i}-${optIdx}`;
             uiInp.placeholder = opt.placeholder || '';
+            uiInp.rows = 3; // ✅ Nombre de lignes par défaut
+            
+            // ✅ AUTO-RESIZE DU TEXTAREA
+            uiInp.addEventListener('input', function() {
+              this.style.height = 'auto';
+              this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+            });
             
             uiInp.addEventListener('keydown', e => {
-              if (e.key === 'Enter' && e.target.value.trim()) {
-                // AMÉLIORÉ: S'assurer que le chat est réactivé
+              if (e.key === 'Enter' && e.ctrlKey && e.target.value.trim()) {
+                // ✅ Ctrl+Enter pour soumettre
                 enableChat();
-                
-                // Désactiver le conteneur
                 container.classList.add('disabled-container');
                 
-                // Envoyer la réponse à Voiceflow
                 window.voiceflow.chat.interact({
                   type: 'complete',
                   payload: {
                     isUserInput: true,
                     userInput: e.target.value.trim(),
                     buttonPath: 'Default',
-                    instanceId: uniqueInstanceId // Ajouter l'ID unique dans le payload
+                    instanceId: uniqueInstanceId
                   }
                 });
                 
-                // Vérifier à nouveau que le chat est activé
                 setTimeout(() => {
                   enableChat();
                 }, 300);
@@ -969,7 +987,6 @@ export const MultiSelect = {
             uiWrap.append(uiLbl, uiInp);
             ol.append(uiWrap);
           } else {
-            // case / radio standard
             ol.append(createOptionElement(opt, i));
           }
         });
@@ -979,35 +996,29 @@ export const MultiSelect = {
       });
       container.append(grid);
       
-      /* NOUVEAU: Option global-all */
+      /* Option global-all */
       if (useGlobalAll && multiselect) {
         const globalAllContainer = document.createElement('div');
         globalAllContainer.classList.add('global-all-container');
-        // NOUVEAU: Ajouter l'ID unique au conteneur global-all
         globalAllContainer.id = `global-all-container-${uniqueInstanceId}`;
         
         const globalAllBtn = document.createElement('button');
         globalAllBtn.classList.add('global-all-button');
-        // NOUVEAU: Ajouter l'ID unique au bouton
         globalAllBtn.id = `global-all-btn-${uniqueInstanceId}`;
-        globalAllBtn.innerHTML = '<span class="icon">☐</span> ' + globalAllText;
+        globalAllBtn.innerHTML = '<span class="icon">☐</span> ' + globalAllSelectText;
         
         globalAllBtn.addEventListener('click', () => {
-          // Récupérer toutes les checkboxes (sauf les options "all")
           const allCheckboxes = Array.from(
             container.querySelectorAll('input[type="checkbox"]:not([data-action="all"])')
           ).filter(cb => !cb.disabled);
           
-          // Déterminer l'état actuel (tous cochés ou non)
           const allChecked = allCheckboxes.length > 0 && allCheckboxes.every(cb => cb.checked);
           
-          // Inverser l'état
           allCheckboxes.forEach(cb => {
             cb.checked = !allChecked;
             cb.parentElement.classList.toggle('selected', !allChecked);
           });
           
-          // Mettre à jour les options "all" de chaque section
           updateTotalChecked();
         });
         
@@ -1019,25 +1030,20 @@ export const MultiSelect = {
       if (buttons.length) {
         const bc = document.createElement('div');
         bc.classList.add('buttons-container');
-        // NOUVEAU: Ajouter l'ID unique au conteneur de boutons
         bc.id = `buttons-container-${uniqueInstanceId}`;
 
         buttons.forEach((cfg, btnIdx) => {
-          // wrapper vertical : bouton + msg d'erreur
           const wrapper = document.createElement('div');
           wrapper.classList.add('button-wrapper');
-          // NOUVEAU: Ajouter l'ID unique au wrapper
           wrapper.id = `button-wrapper-${uniqueInstanceId}-${btnIdx}`;
 
           const btn = document.createElement('button');
           btn.classList.add('submit-btn');
-          // NOUVEAU: Ajouter l'ID unique au bouton
           btn.id = `submit-btn-${uniqueInstanceId}-${btnIdx}`;
           
           if (cfg.color) {
             btn.style.setProperty('background-color', cfg.color, 'important');
             btn.style.setProperty('border-color',     cfg.color, 'important');
-            // Extraire les valeurs RGB pour le box-shadow
             const rgb = parseInt(cfg.color.replace('#',''), 16);
             const r = (rgb >> 16) & 255;
             const g = (rgb >> 8) & 255;
@@ -1047,28 +1053,19 @@ export const MultiSelect = {
             btn.style.setProperty('--btn-b', b);
           }
           
-          // ✅ NOUVEAU: Utiliser global_select_button_text si défini et que c'est le bouton principal
-          let buttonText = cfg.text;
-          if (global_select_button_text && (cfg.path === 'Default' || cfg.path === undefined)) {
-            buttonText = global_select_button_text;
-          }
-          btn.textContent = buttonText;
+          btn.textContent = cfg.text;
 
-          // zone d'erreur sous le bouton
           const err = document.createElement('div');
           err.className = 'minselect-error';
-          // NOUVEAU: Ajouter l'ID unique à la zone d'erreur
           err.id = `error-${uniqueInstanceId}-${btnIdx}`;
 
           btn.addEventListener('click', () => {
             const min = cfg.minSelect || 0;
 
-            // nombre de checkbox cochées hors "all"
             const checked = Array.from(
               container.querySelectorAll('input[type="checkbox"]:checked')
             ).filter(i => i.dataset.action !== 'all').length;
 
-            // si seuil ≥1 et non atteint → shake+erreur
             if (min > 0 && checked < min) {
               btn.classList.add('shake');
               setTimeout(() => btn.classList.remove('shake'), 400);
@@ -1077,13 +1074,8 @@ export const MultiSelect = {
               return;
             }
 
-            // sinon sélection OK → on cache l'erreur, on réactive le chat, on grise le container
             err.style.visibility = 'hidden';
-            
-            // AMÉLIORÉ: S'assurer que le chat est réactivé
             enableChat();
-            
-            // Désactiver uniquement le container
             container.classList.add('disabled-container');
 
             const res = sections.map((s, i) => {
@@ -1095,19 +1087,17 @@ export const MultiSelect = {
               return { section: s.label, selections: sels, userInput: ui };
             }).filter(r => r.selections.length || r.userInput);
 
-            // Envoyer la réponse à Voiceflow
             window.voiceflow.chat.interact({
               type: 'complete',
               payload: {
                 selections:  res,
-                buttonText:  buttonText, // ✅ Utiliser le texte personnalisé s'il existe
+                buttonText:  cfg.text,
                 buttonPath:  cfg.path || 'Default',
                 isEmpty:     res.every(r => !r.selections.length && !r.userInput),
-                instanceId:  uniqueInstanceId // Ajouter l'ID unique dans le payload
+                instanceId:  uniqueInstanceId
               }
             });
             
-            // Vérifier à nouveau que le chat est activé
             setTimeout(() => {
               enableChat();
             }, 300);
@@ -1123,10 +1113,8 @@ export const MultiSelect = {
       /* 9. injecter dans le DOM */
       element.append(container);
       
-      // NOUVEAU: Observer pour maintenir le chat actif
+      // Observer pour maintenir le chat actif
       const chatStateObserver = new MutationObserver((mutations) => {
-        // Si le MultiSelect est toujours actif (n'a pas la classe disabled-container)
-        // mais que le chat est désactivé, alors réactiver le chat
         if (!container.classList.contains('disabled-container') && !chatEnabled) {
           setTimeout(() => {
             enableChat();
@@ -1134,7 +1122,6 @@ export const MultiSelect = {
         }
       });
       
-      // Observer les changements d'attributs sur les éléments d'entrée du chat
       const chatInputContainer = host.querySelector('.vfrc-input-container');
       if (chatInputContainer) {
         chatStateObserver.observe(chatInputContainer, { 
@@ -1144,17 +1131,15 @@ export const MultiSelect = {
         });
       }
       
-      // Mise à jour de l'état initial du bouton global-all
       if (useGlobalAll && multiselect) {
         updateTotalChecked();
       }
       
-      // Nettoyer l'observateur lorsque la composante est détruite
       return () => {
         chatStateObserver.disconnect();
       };
       
-      console.log(`✅ MultiSelect prêt (ID: ${uniqueInstanceId}) avec ${gridColumns} colonnes${global_select_button_text ? ` et texte personnalisé: "${global_select_button_text}"` : ''}`);
+      console.log(`✅ MultiSelect prêt (ID: ${uniqueInstanceId}) avec ${gridColumns} colonnes${globalAllSelectText !== "Tout sélectionner" ? ` et texte personnalisé: "${globalAllSelectText}"/"${globalAllDeselectText}"` : ''}`);
     } catch (err) {
       console.error('❌ MultiSelect Error :', err);
       window.voiceflow.chat.interact({

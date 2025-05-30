@@ -1,15 +1,14 @@
 /**
  *  ╔═══════════════════════════════════════════════════════════╗
- *  ║  FileUpload – Voiceflow Response Extension Ultra-Stylée   ║
+ *  ║  FileUpload – Voiceflow Response Extension Complète      ║
  *  ║                                                           ║
- *  ║  • Zone de drop glassmorphism ultra-moderne               ║
- *  ║  • Animations et effets visuels avancés                  ║
- *  ║  • Gestion complète du chat (désactivé par défaut)       ║
- *  ║  • Image de fond personnalisable                         ║
- *  ║  • Textes entièrement configurables                      ║
- *  ║  • Boutons multiples personnalisables                    ║
- *  ║  • États visuels dynamiques et particules                ║
- *  ║  • Upload progressif avec barre de chargement             ║
+ *  ║  • Upload de fichiers stylé avec glassmorphism           ║
+ *  ║  • Gestion des groupes de documents avec badges          ║
+ *  ║  • Accumulation automatique dans pdf_link et pdf_linkS   ║
+ *  ║  • Boutons configurables (continue/submit)               ║
+ *  ║  • Chat désactivable et textes personnalisables          ║
+ *  ║  • Support drag & drop et sélection multiple             ║
+ *  ║  • Gestion des erreurs et retry automatique              ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 
@@ -23,41 +22,35 @@ export const FileUpload = {
 
   render: ({ trace, element }) => {
     try {
-      // Configuration depuis le payload avec valeurs par défaut
+      // Configuration depuis le payload
       const {
-        title = "Téléversement de fichiers",
-        subtitle = "Glissez vos fichiers ou cliquez pour sélectionner",
-        dragText = "📁 Relâchez pour téléverser vos fichiers",
-        loadingText = "⚡ Téléversement en cours...",
-        successText = "✅ Fichiers téléversés avec succès !",
-        errorText = "❌ Erreur lors du téléversement",
-        primaryColor = '#3778F4',
-        secondaryColor = '#9C27B0',
-        backgroundImage = null,           // URL de l'image de fond
-        chat = false,                     // Chat désactivé par défaut
-        chatDisabledText = '🚫 Veuillez téléverser vos fichiers',
-        buttons = [                       // Boutons configurables
-          { text: "Continuer", path: "Continue", color: "#4CAF50" }
-        ],
-        allowMultiple = true,             // Autoriser multiple fichiers
-        acceptedTypes = "*/*",            // Types de fichiers acceptés
-        maxFileSize = 10,                 // Taille max en MB
-        maxFiles = 5,                     // Nombre max de fichiers
-        showFileList = true,              // Afficher la liste des fichiers
-        showProgress = true,              // Afficher la barre de progression
-        showParticles = true,             // Effets de particules
-        uploadEndpoint = 'https://chatinnov-api-dev.proudsky-cdf9333b.francecentral.azurecontainerapps.io/documents_upload/',
-        instanceId = null                 // ID unique
+        title = "📂 Gestion des documents",
+        uploadText = "Cliquez ou glissez vos fichiers ici",
+        uploadSubtext = "PDF, Word, Excel, PowerPoint acceptés (max 50MB par fichier)",
+        successText = "✅ Fichier(s) uploadé(s) avec succès !",
+        errorText = "❌ Erreur lors de l'upload",
+        processingText = "🔄 Upload en cours...",
+        groupBadgeText = "📁 Groupe",
+        maxFiles = 10,
+        maxFileSize = 50 * 1024 * 1024, // 50MB par défaut
+        primaryColor = "#9C27B0",
+        backgroundImage = null,
+        chat = false,
+        chatDisabledText = "Vous ne pouvez pas envoyer de chat ici.",
+        instanceId = null,
+        buttons = [
+          { text: "📤 Continuer l'upload", action: "continue" },
+          { text: "✅ Traiter les documents", action: "submit", path: "process_documents" },
+          { text: "◀️ Étape précédente", action: "submit", path: "previous_step", color: "#D35400" }
+        ]
       } = trace.payload || {};
 
-      // Générer un identifiant unique pour cette instance
+      // Générer un ID unique pour cette instance
       const uniqueInstanceId = instanceId || `fu_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
       
-      // Variables d'état
-      let isDragging = false;
-      let isUploading = false;
-      let uploadedFiles = [];
-      let chatEnabled = chat; // État initial du chat
+      // Variables globales pour accumulation des fichiers
+      let uploadedGroups = []; // Groupes de fichiers uploadés pour cette session
+      let currentGroupCount = 0;
 
       // Traitement de l'image de fond
       let processedBackgroundImage = backgroundImage;
@@ -68,11 +61,9 @@ export const FileUpload = {
       // Récupérer le root pour accéder au chat
       const root = element.getRootNode();
       const host = root instanceof ShadowRoot ? root : document;
-
-      // Fonctions de gestion du chat
+      
+      // Fonctions pour gérer le chat
       function disableChat() {
-        if (isUploading) return; // Ne pas désactiver pendant l'upload
-        
         const ic = host.querySelector('.vfrc-input-container');
         if (!ic) return;
         ic.style.opacity = '.5';
@@ -82,9 +73,8 @@ export const FileUpload = {
         if (ta) { ta.disabled = true; ta.setAttribute('title', chatDisabledText); }
         const snd = host.querySelector('#vfrc-send-message');
         if (snd) { snd.disabled = true; snd.setAttribute('title', chatDisabledText); }
-        chatEnabled = false;
       }
-
+      
       function enableChat() {
         const ic = host.querySelector('.vfrc-input-container');
         if (!ic) return;
@@ -95,60 +85,37 @@ export const FileUpload = {
         if (ta) { ta.disabled = false; ta.removeAttribute('title'); }
         const snd = host.querySelector('#vfrc-send-message');
         if (snd) { snd.disabled = false; snd.removeAttribute('title'); }
-        chatEnabled = true;
-        
-        // Vérification additionnelle
-        setTimeout(() => {
-          if (!chatEnabled) {
-            enableChat();
-          }
-        }, 100);
       }
-
-      // Initialiser l'état du chat
+      
+      // Désactiver le chat si requis
       if (!chat) disableChat();
 
-      // Container principal avec ID unique
+      // Création du conteneur principal
       const container = document.createElement('div');
-      container.classList.add('file-upload-container');
+      container.className = 'file-upload-container';
       container.id = uniqueInstanceId;
       container.setAttribute('data-instance-id', uniqueInstanceId);
 
-      // Extraction des valeurs RGB pour les variables CSS
-      const hexToRgba = (hex, opacity) => {
-        const num = parseInt(hex.replace('#',''), 16);
-        const r = num >> 16;
-        const g = (num >> 8) & 0xFF;
-        const b = num & 0xFF;
-        return `rgba(${r}, ${g}, ${b}, ${opacity})`;
-      };
-
-      const primaryRgb = parseInt(primaryColor.replace('#',''), 16);
-      const primaryR = (primaryRgb >> 16) & 255;
-      const primaryG = (primaryRgb >> 8) & 255;
-      const primaryB = primaryRgb & 255;
-
-      const secondaryRgb = parseInt(secondaryColor.replace('#',''), 16);
-      const secondaryR = (secondaryRgb >> 16) & 255;
-      const secondaryG = (secondaryRgb >> 8) & 255;
-      const secondaryB = secondaryRgb & 255;
-
-      // CSS intégré ultra-stylé
+      // CSS intégré avec glassmorphism et animations
       const styleEl = document.createElement('style');
+      
+      // Extraction des valeurs RGB pour les variables CSS
+      const colorRgb = parseInt(primaryColor.replace('#',''), 16);
+      const colorR = (colorRgb >> 16) & 255;
+      const colorG = (colorRgb >> 8) & 255;
+      const colorB = colorRgb & 255;
+      
       styleEl.textContent = `
 /* Variables CSS principales */
 .file-upload-container {
   --fu-primary: ${primaryColor};
-  --fu-primary-r: ${primaryR};
-  --fu-primary-g: ${primaryG};
-  --fu-primary-b: ${primaryB};
-  --fu-secondary: ${secondaryColor};
-  --fu-secondary-r: ${secondaryR};
-  --fu-secondary-g: ${secondaryG};
-  --fu-secondary-b: ${secondaryB};
-  --fu-radius: 16px;
-  --fu-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  --fu-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --fu-primary-r: ${colorR};
+  --fu-primary-g: ${colorG};
+  --fu-primary-b: ${colorB};
+  --fu-radius: 12px;
+  --fu-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  --fu-text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --fu-border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 /* Reset et styles de base */
@@ -162,33 +129,40 @@ export const FileUpload = {
   width: 100%!important;
   max-width: 600px!important;
   margin: 0 auto!important;
-  padding: 30px!important;
+  padding: 25px!important;
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif!important;
   background: ${processedBackgroundImage ? `
     linear-gradient(135deg, 
       rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.85),
-      rgba(var(--fu-secondary-r), var(--fu-secondary-g), var(--fu-secondary-b), 0.75)),
+      rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.75)),
     url("${processedBackgroundImage}")
   ` : `
     linear-gradient(135deg, 
       rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.85),
-      rgba(var(--fu-secondary-r), var(--fu-secondary-g), var(--fu-secondary-b), 0.75))
+      rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.65))
   `}!important;
   background-size: cover!important;
   background-position: center!important;
   background-repeat: no-repeat!important;
   backdrop-filter: blur(20px)!important;
   -webkit-backdrop-filter: blur(20px)!important;
-  border: 2px solid rgba(255, 255, 255, 0.2)!important;
+  border: var(--fu-border)!important;
   border-radius: var(--fu-radius)!important;
-  box-shadow: var(--fu-shadow),
-              inset 0 2px 0 rgba(255, 255, 255, 0.1)!important;
+  box-shadow: var(--fu-shadow), 
+              inset 0 1px 0 rgba(255, 255, 255, 0.1)!important;
+  color: #fff!important;
   position: relative!important;
   overflow: hidden!important;
-  transition: var(--fu-transition)!important;
-  color: #fff!important;
+  transition: all 0.3s ease!important;
 }
 
+.file-upload-container:hover {
+  transform: translateY(-4px)!important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3), 
+              inset 0 1px 0 rgba(255, 255, 255, 0.2)!important;
+}
+
+/* Effet de scan sci-fi */
 .file-upload-container::before {
   content: ''!important;
   position: absolute!important;
@@ -201,7 +175,7 @@ export const FileUpload = {
     rgba(255, 255, 255, 0.1), 
     transparent)!important;
   transform: translateX(-100%) rotate(45deg)!important;
-  animation: scanEffect 6s ease-in-out infinite!important;
+  animation: scanEffect 4s ease-in-out infinite!important;
 }
 
 @keyframes scanEffect {
@@ -209,761 +183,454 @@ export const FileUpload = {
   100% { transform: translateX(100%) rotate(45deg); }
 }
 
-/* États du container */
-.file-upload-container.uploading {
-  pointer-events: none!important;
-  animation: uploadingPulse 2s ease-in-out infinite!important;
-}
-
-.file-upload-container.success {
-  border-color: #4CAF50!important;
-  box-shadow: 0 8px 32px rgba(76, 175, 80, 0.4),
-              inset 0 2px 0 rgba(255, 255, 255, 0.1)!important;
-}
-
-.file-upload-container.error {
-  border-color: #f44336!important;
-  box-shadow: 0 8px 32px rgba(244, 67, 54, 0.4),
-              inset 0 2px 0 rgba(255, 255, 255, 0.1)!important;
-  animation: errorShake 0.5s ease-in-out 2!important;
-}
-
-.file-upload-container.disabled-state {
-  opacity: 0.6!important;
-  pointer-events: none!important;
-  filter: grayscale(0.8)!important;
-}
-
-@keyframes uploadingPulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.02); }
-}
-
-@keyframes errorShake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-5px); }
-  75% { transform: translateX(5px); }
-}
-
-/* Header de l'upload */
-.file-upload-header {
+/* Titre principal */
+.file-upload-title {
+  font-size: 22px!important;
+  font-weight: 700!important;
+  margin: 0 0 20px 0!important;
   text-align: center!important;
-  margin-bottom: 30px!important;
+  color: #fff!important;
+  text-shadow: var(--fu-text-shadow)!important;
+  letter-spacing: -0.3px!important;
   position: relative!important;
   z-index: 2!important;
 }
 
-.file-upload-title {
-  font-size: 24px!important;
-  font-weight: 800!important;
-  margin: 0 0 10px 0!important;
-  background: linear-gradient(135deg, #fff, rgba(255,255,255,0.8))!important;
-  -webkit-background-clip: text!important;
-  background-clip: text!important;
-  -webkit-text-fill-color: transparent!important;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3)!important;
-  letter-spacing: -0.5px!important;
+.file-upload-title::after {
+  content: ''!important;
+  position: absolute!important;
+  bottom: -8px!important;
+  left: 50%!important;
+  transform: translateX(-50%)!important;
+  width: 60px!important;
+  height: 2px!important;
+  background: #fff!important;
+  transition: width 0.3s ease!important;
 }
 
-.file-upload-subtitle {
-  font-size: 16px!important;
-  font-weight: 500!important;
-  color: rgba(255, 255, 255, 0.9)!important;
-  margin: 0!important;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3)!important;
+.file-upload-container:hover .file-upload-title::after {
+  width: 100%!important;
 }
 
-/* Zone de drop principale */
-.file-upload-drop-zone {
-  position: relative!important;
-  min-height: 200px!important;
-  border: 3px dashed rgba(255, 255, 255, 0.3)!important;
-  border-radius: 12px!important;
-  background: rgba(255, 255, 255, 0.05)!important;
+/* Zone des badges de groupes uploadés */
+.file-upload-groups {
+  margin-bottom: 20px!important;
+  min-height: 40px!important;
   display: flex!important;
-  flex-direction: column!important;
+  flex-wrap: wrap!important;
+  gap: 10px!important;
+  position: relative!important;
+  z-index: 2!important;
+}
+
+.file-upload-group-badge {
+  display: inline-flex!important;
   align-items: center!important;
-  justify-content: center!important;
-  padding: 40px 20px!important;
-  cursor: pointer!important;
-  transition: var(--fu-transition)!important;
-  margin-bottom: 25px!important;
+  gap: 8px!important;
+  padding: 8px 12px!important;
+  background: rgba(0, 0, 0, 0.6)!important;
   backdrop-filter: blur(10px)!important;
+  border: 1px solid rgba(255, 255, 255, 0.3)!important;
+  border-radius: 20px!important;
+  color: #fff!important;
+  font-size: 14px!important;
+  font-weight: 600!important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5)!important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3)!important;
+  animation: badgeAppear 0.5s ease-out!important;
+  transition: all 0.3s ease!important;
+}
+
+.file-upload-group-badge:hover {
+  transform: translateY(-2px)!important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4)!important;
+  border-color: rgba(255, 255, 255, 0.5)!important;
+}
+
+.file-upload-group-badge .badge-icon {
+  font-size: 16px!important;
+}
+
+.file-upload-group-badge .badge-text {
+  font-size: 13px!important;
+}
+
+@keyframes badgeAppear {
+  0% {
+    opacity: 0;
+    scale: 0.8;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    scale: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Zone d'upload principale */
+.file-upload-zone {
+  border: 2px dashed rgba(255, 255, 255, 0.5)!important;
+  border-radius: var(--fu-radius)!important;
+  padding: 40px 20px!important;
+  text-align: center!important;
+  cursor: pointer!important;
+  transition: all 0.3s ease!important;
+  background: rgba(0, 0, 0, 0.3)!important;
+  backdrop-filter: blur(10px)!important;
+  margin-bottom: 20px!important;
+  position: relative!important;
+  z-index: 2!important;
   overflow: hidden!important;
 }
 
-.file-upload-drop-zone::before {
-  content: ''!important;
-  position: absolute!important;
-  top: 0!important;
-  left: 0!important;
-  width: 100%!important;
-  height: 100%!important;
-  background: radial-gradient(circle at center, 
-    rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.1) 0%,
-    transparent 70%)!important;
-  opacity: 0!important;
-  transition: opacity 0.3s ease!important;
-}
-
-.file-upload-drop-zone:hover::before,
-.file-upload-drop-zone.drag-over::before {
-  opacity: 1!important;
-}
-
-.file-upload-drop-zone:hover {
-  border-color: rgba(255, 255, 255, 0.6)!important;
+.file-upload-zone:hover,
+.file-upload-zone.dragover {
+  border-color: #fff!important;
   background: rgba(255, 255, 255, 0.1)!important;
-  transform: translateY(-2px)!important;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2)!important;
-}
-
-.file-upload-drop-zone.drag-over {
-  border-color: var(--fu-primary)!important;
-  border-style: solid!important;
-  background: rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.15)!important;
   transform: scale(1.02)!important;
-  box-shadow: 0 0 30px rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.4)!important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3)!important;
 }
 
-.file-upload-drop-zone.uploading {
-  border-color: #FFA726!important;
-  background: rgba(255, 167, 38, 0.1)!important;
-  cursor: not-allowed!important;
+.file-upload-zone.processing {
+  border-color: var(--fu-primary)!important;
+  background: rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.2)!important;
+  animation: processingPulse 2s ease-in-out infinite!important;
 }
 
-.file-upload-drop-zone.success {
-  border-color: #4CAF50!important;
-  background: rgba(76, 175, 80, 0.1)!important;
+@keyframes processingPulse {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
 }
 
-.file-upload-drop-zone.error {
-  border-color: #f44336!important;
-  background: rgba(244, 67, 54, 0.1)!important;
-}
-
-/* Icône centrale */
-.file-upload-icon {
-  font-size: 48px!important;
-  margin-bottom: 20px!important;
-  opacity: 0.8!important;
-  transition: var(--fu-transition)!important;
-  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3))!important;
-}
-
-.file-upload-drop-zone:hover .file-upload-icon,
-.file-upload-drop-zone.drag-over .file-upload-icon {
-  transform: scale(1.1) rotate(5deg)!important;
-  opacity: 1!important;
-}
-
-.file-upload-drop-zone.uploading .file-upload-icon {
-  animation: uploadSpin 2s linear infinite!important;
-}
-
-@keyframes uploadSpin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-/* Texte de la zone de drop */
-.file-upload-text {
-  font-size: 18px!important;
-  font-weight: 600!important;
-  color: rgba(255, 255, 255, 0.9)!important;
-  text-align: center!important;
-  line-height: 1.4!important;
-  margin: 0!important;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3)!important;
-  transition: var(--fu-transition)!important;
-}
-
-.file-upload-drop-zone.drag-over .file-upload-text {
-  transform: scale(1.05)!important;
-  color: #fff!important;
-}
-
-/* Input fichier caché */
 .file-upload-input {
   display: none!important;
 }
 
-/* Barre de progression */
-.file-upload-progress-container {
-  width: 100%!important;
-  margin: 20px 0!important;
-  display: none!important;
-}
-
-.file-upload-progress-container.visible {
-  display: block!important;
-}
-
-.file-upload-progress-bar {
-  width: 100%!important;
-  height: 8px!important;
-  background: rgba(255, 255, 255, 0.2)!important;
-  border-radius: 4px!important;
-  overflow: hidden!important;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2)!important;
-}
-
-.file-upload-progress-fill {
-  height: 100%!important;
-  width: 0%!important;
-  background: linear-gradient(90deg, 
-    var(--fu-primary), 
-    rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.8))!important;
-  transition: width 0.3s ease!important;
-  box-shadow: 0 0 10px rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.5)!important;
-}
-
-.file-upload-progress-text {
-  text-align: center!important;
-  margin-top: 10px!important;
-  font-size: 14px!important;
+.file-upload-main-text {
+  font-size: 18px!important;
   font-weight: 600!important;
-  color: rgba(255, 255, 255, 0.8)!important;
-}
-
-/* Liste des fichiers */
-.file-upload-files-container {
-  margin: 20px 0!important;
-  display: none!important;
-}
-
-.file-upload-files-container.visible {
-  display: block!important;
-}
-
-.file-upload-files-title {
-  font-size: 16px!important;
-  font-weight: 700!important;
-  color: rgba(255, 255, 255, 0.9)!important;
-  margin-bottom: 15px!important;
-  display: flex!important;
-  align-items: center!important;
-  gap: 8px!important;
-}
-
-.file-upload-file-item {
-  display: flex!important;
-  align-items: center!important;
-  justify-content: space-between!important;
-  padding: 12px 16px!important;
-  background: rgba(255, 255, 255, 0.1)!important;
-  border-radius: 8px!important;
+  color: #fff!important;
   margin-bottom: 8px!important;
-  backdrop-filter: blur(5px)!important;
-  border: 1px solid rgba(255, 255, 255, 0.1)!important;
-  transition: var(--fu-transition)!important;
+  text-shadow: var(--fu-text-shadow)!important;
 }
 
-.file-upload-file-item:hover {
-  background: rgba(255, 255, 255, 0.15)!important;
-  transform: translateX(5px)!important;
-}
-
-.file-upload-file-info {
-  display: flex!important;
-  flex-direction: column!important;
-  gap: 4px!important;
-  flex: 1!important;
-}
-
-.file-upload-file-name {
+.file-upload-sub-text {
   font-size: 14px!important;
-  font-weight: 600!important;
-  color: #fff!important;
-  word-break: break-all!important;
+  color: rgba(255, 255, 255, 0.8)!important;
+  margin-bottom: 20px!important;
+  text-shadow: var(--fu-text-shadow)!important;
 }
 
-.file-upload-file-size {
-  font-size: 12px!important;
-  color: rgba(255, 255, 255, 0.7)!important;
+.file-upload-icon {
+  font-size: 48px!important;
+  margin-bottom: 16px!important;
+  display: block!important;
+  animation: iconFloat 3s ease-in-out infinite!important;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))!important;
 }
 
-.file-upload-file-status {
-  font-size: 20px!important;
-  line-height: 1!important;
+@keyframes iconFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
 }
 
-/* Messages de statut */
+/* Zone de statut */
 .file-upload-status {
-  padding: 15px 20px!important;
+  padding: 12px 16px!important;
   border-radius: 8px!important;
-  margin: 20px 0!important;
+  margin-top: 16px!important;
   font-weight: 600!important;
   text-align: center!important;
-  backdrop-filter: blur(10px)!important;
-  border: 1px solid!important;
   display: none!important;
+  position: relative!important;
+  z-index: 2!important;
+  backdrop-filter: blur(10px)!important;
+  border: 1px solid rgba(255, 255, 255, 0.2)!important;
 }
 
-.file-upload-status.visible {
-  display: block!important;
-}
-
-.file-upload-status.loading {
-  background: rgba(33, 150, 243, 0.2)!important;
-  border-color: #2196F3!important;
+.file-upload-status.processing {
+  background: rgba(33, 150, 243, 0.8)!important;
   color: #fff!important;
+  display: block!important;
+  animation: statusSlide 0.3s ease-out!important;
 }
 
 .file-upload-status.success {
-  background: rgba(76, 175, 80, 0.2)!important;
-  border-color: #4CAF50!important;
+  background: rgba(76, 175, 80, 0.8)!important;
   color: #fff!important;
+  display: block!important;
+  animation: statusSlide 0.3s ease-out!important;
 }
 
 .file-upload-status.error {
-  background: rgba(244, 67, 54, 0.2)!important;
-  border-color: #f44336!important;
+  background: rgba(244, 67, 54, 0.8)!important;
   color: #fff!important;
+  display: block!important;
+  animation: statusSlide 0.3s ease-out, statusShake 0.6s ease-out 0.3s!important;
 }
 
-/* Container des boutons - Style cohérent avec MultiSelect */
-.file-upload-buttons-container {
+@keyframes statusSlide {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes statusShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+/* Conteneur des boutons */
+.file-upload-buttons {
   display: flex!important;
   flex-wrap: wrap!important;
   justify-content: center!important;
-  align-items: stretch!important;
   gap: 12px!important;
-  padding: 20px 0 0!important;
-  width: 100%!important;
-}
-
-.file-upload-button-wrapper {
-  display: flex!important;
-  flex-direction: column!important;
-  align-items: center!important;
+  margin-top: 20px!important;
+  position: relative!important;
+  z-index: 2!important;
 }
 
 /* Boutons stylés comme MultiSelect */
-.file-upload-button {
+.file-upload-btn {
   position: relative!important;
-  background: var(--fu-primary)!important;
   color: #fff!important;
-  padding: 14px 24px!important; 
+  padding: 12px 20px!important;
   border-radius: 8px!important;
-  font-weight: 700!important; 
+  font-weight: 700!important;
   letter-spacing: 0.5px!important;
-  font-size: 15px!important;
-  line-height: 1.2!important;
+  font-size: 14px!important;
   cursor: pointer!important;
   border: none!important;
   overflow: hidden!important;
   transition: all 0.3s ease!important;
-  box-shadow: 0 4px 12px rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.3),
-              inset 0 3px 0 rgba(255, 255, 255, 0.2),
-              inset 0 -3px 0 rgba(0, 0, 0, 0.2)!important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 0 4px rgba(0, 0, 0, 0.2)!important;
+  min-width: 180px!important;
   text-align: center!important;
   display: flex!important;
   align-items: center!important;
   justify-content: center!important;
+  backdrop-filter: blur(10px)!important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3)!important;
   flex: 1 1 auto!important;
-  min-width: 200px!important;
-  max-width: 400px!important;
-  height: 60px!important;
-  word-wrap: break-word!important;
-  hyphens: auto!important;
-  white-space: normal!important;
 }
 
-.file-upload-button:hover {
+.file-upload-btn.primary {
+  background: linear-gradient(145deg, var(--fu-primary), 
+              rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.8))!important;
+  box-shadow: 0 4px 12px rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.3),
+              inset 0 2px 0 rgba(255, 255, 255, 0.2)!important;
+}
+
+.file-upload-btn.secondary {
+  background: linear-gradient(145deg, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.4))!important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3),
+              inset 0 2px 0 rgba(255, 255, 255, 0.1)!important;
+}
+
+.file-upload-btn:hover {
   transform: translateY(-2px)!important;
+}
+
+.file-upload-btn.primary:hover {
   box-shadow: 0 6px 20px rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.4),
-              inset 0 3px 0 rgba(255, 255, 255, 0.3),
-              inset 0 -3px 0 rgba(0, 0, 0, 0.3)!important;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 0 6px rgba(0, 0, 0, 0.3)!important;
+              inset 0 2px 0 rgba(255, 255, 255, 0.3)!important;
 }
 
-.file-upload-button:active {
+.file-upload-btn.secondary:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4),
+              inset 0 2px 0 rgba(255, 255, 255, 0.2)!important;
+}
+
+.file-upload-btn:active {
   transform: translateY(1px)!important;
-  box-shadow: 0 2px 6px rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.3),
-              inset 0 1px 0 rgba(255, 255, 255, 0.1),
-              inset 0 -1px 0 rgba(0, 0, 0, 0.1)!important;
 }
 
-.file-upload-button:disabled {
-  opacity: 0.5!important;
-  cursor: not-allowed!important;
-  transform: none!important;
-}
-
-/* Effet de scan sci-fi */
-.file-upload-button::before {
+.file-upload-btn::before {
   content: ''!important;
   position: absolute!important;
   top: -2px!important;
   left: -2px!important;
   width: calc(100% + 4px)!important;
   height: calc(100% + 4px)!important;
-  background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent)!important;
+  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent)!important;
   transform: translateX(-100%) rotate(45deg)!important;
   transition: transform 0.8s ease!important;
 }
 
-.file-upload-button:hover::before {
+.file-upload-btn:hover::before {
   transform: translateX(100%) rotate(45deg)!important;
 }
 
-/* Particules (si activées) */
-.file-upload-particles {
-  position: absolute!important;
-  width: 100%!important;
-  height: 100%!important;
-  pointer-events: none!important;
-  overflow: hidden!important;
-  z-index: 1!important;
-}
-
-.file-upload-particle {
-  position: absolute!important;
-  width: 4px!important;
-  height: 4px!important;
-  background: var(--fu-primary)!important;
-  border-radius: 50%!important;
-  box-shadow: 0 0 6px rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.8)!important;
-  animation: particleFloat 3s ease-in-out infinite!important;
-}
-
-.file-upload-particle:nth-child(odd) {
-  animation-delay: -1.5s!important;
-  animation-duration: 4s!important;
-}
-
-@keyframes particleFloat {
-  0% {
-    transform: translateY(20px) scale(0);
-    opacity: 0;
-  }
-  50% {
-    opacity: 1;
-    transform: translateY(-20px) scale(1);
-  }
-  100% {
-    transform: translateY(-50px) scale(0);
-    opacity: 0;
-  }
-}
-
-/* Responsive */
+/* Responsive design */
 @media (max-width: 768px) {
   .file-upload-container {
+    max-width: 95%!important;
     padding: 20px!important;
-    max-width: 100%!important;
   }
   
-  .file-upload-title {
-    font-size: 20px!important;
-  }
-  
-  .file-upload-drop-zone {
-    min-height: 160px!important;
+  .file-upload-zone {
     padding: 30px 15px!important;
   }
   
-  .file-upload-icon {
-    font-size: 36px!important;
-  }
-  
-  .file-upload-text {
-    font-size: 16px!important;
-  }
-  
-  .file-upload-buttons-container {
+  .file-upload-buttons {
     flex-direction: column!important;
-    gap: 8px!important;
   }
   
-  .file-upload-button {
-    flex: 1 1 100%!important;
-    max-width: none!important;
+  .file-upload-btn {
     min-width: auto!important;
+    flex: 1 1 100%!important;
   }
+}
+
+/* État désactivé */
+.file-upload-container.disabled {
+  opacity: 0.6!important;
+  pointer-events: none!important;
+  filter: grayscale(0.3)!important;
 }
       `;
 
       container.appendChild(styleEl);
 
-      // Header
-      const header = document.createElement('div');
-      header.classList.add('file-upload-header');
-      header.innerHTML = `
-        <h2 class="file-upload-title">${title}</h2>
-        <p class="file-upload-subtitle">${subtitle}</p>
-      `;
-      container.appendChild(header);
+      // Titre
+      const titleEl = document.createElement('h2');
+      titleEl.className = 'file-upload-title';
+      titleEl.textContent = title;
+      container.appendChild(titleEl);
 
-      // Zone de drop principale
-      const dropZone = document.createElement('div');
-      dropZone.classList.add('file-upload-drop-zone');
-      dropZone.innerHTML = `
+      // Zone des badges de groupes
+      const groupsEl = document.createElement('div');
+      groupsEl.className = 'file-upload-groups';
+      groupsEl.id = `groups-${uniqueInstanceId}`;
+      container.appendChild(groupsEl);
+
+      // Zone d'upload
+      const uploadZone = document.createElement('div');
+      uploadZone.className = 'file-upload-zone';
+      uploadZone.innerHTML = `
         <div class="file-upload-icon">📁</div>
-        <p class="file-upload-text">${subtitle}</p>
+        <div class="file-upload-main-text">${uploadText}</div>
+        <div class="file-upload-sub-text">${uploadSubtext}</div>
+        <input class="file-upload-input" type="file" id="input-${uniqueInstanceId}" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx">
       `;
+      container.appendChild(uploadZone);
 
-      // Input fichier caché
-      const fileInput = document.createElement('input');
-      fileInput.type = 'file';
-      fileInput.classList.add('file-upload-input');
-      fileInput.id = `file-input-${uniqueInstanceId}`;
-      fileInput.multiple = allowMultiple;
-      if (acceptedTypes !== "*/*") {
-        fileInput.accept = acceptedTypes;
-      }
-
-      dropZone.appendChild(fileInput);
-      container.appendChild(dropZone);
-
-      // Barre de progression
-      if (showProgress) {
-        const progressContainer = document.createElement('div');
-        progressContainer.classList.add('file-upload-progress-container');
-        progressContainer.innerHTML = `
-          <div class="file-upload-progress-bar">
-            <div class="file-upload-progress-fill"></div>
-          </div>
-          <div class="file-upload-progress-text">0%</div>
-        `;
-        container.appendChild(progressContainer);
-      }
-
-      // Liste des fichiers
-      if (showFileList) {
-        const filesContainer = document.createElement('div');
-        filesContainer.classList.add('file-upload-files-container');
-        filesContainer.innerHTML = `
-          <div class="file-upload-files-title">
-            <span>📎</span>
-            <span>Fichiers sélectionnés</span>
-          </div>
-          <div class="file-upload-files-list"></div>
-        `;
-        container.appendChild(filesContainer);
-      }
-
-      // Messages de statut
+      // Zone de statut
       const statusEl = document.createElement('div');
-      statusEl.classList.add('file-upload-status');
+      statusEl.className = 'file-upload-status';
+      statusEl.id = `status-${uniqueInstanceId}`;
       container.appendChild(statusEl);
 
-      // Particules (si activées)
-      if (showParticles) {
-        const particlesContainer = document.createElement('div');
-        particlesContainer.classList.add('file-upload-particles');
+      // Conteneur des boutons
+      const buttonsEl = document.createElement('div');
+      buttonsEl.className = 'file-upload-buttons';
+      buttonsEl.id = `buttons-${uniqueInstanceId}`;
+
+      // Création des boutons
+      buttons.forEach((btn, index) => {
+        const button = document.createElement('button');
+        button.className = `file-upload-btn ${index === 0 ? 'primary' : 'secondary'}`;
+        button.textContent = btn.text;
+        button.setAttribute('data-action', btn.action);
+        button.setAttribute('data-path', btn.path || '');
         
-        // Générer des particules
-        for (let i = 0; i < 6; i++) {
-          const particle = document.createElement('div');
-          particle.classList.add('file-upload-particle');
-          particle.style.left = Math.random() * 80 + 10 + '%';
-          particle.style.animationDelay = (Math.random() * 3) + 's';
-          particlesContainer.appendChild(particle);
+        // Couleur personnalisée si spécifiée
+        if (btn.color) {
+          const btnRgb = parseInt(btn.color.replace('#',''), 16);
+          const btnR = (btnRgb >> 16) & 255;
+          const btnG = (btnRgb >> 8) & 255;
+          const btnB = btnRgb & 255;
+          button.style.background = `linear-gradient(145deg, ${btn.color}, rgba(${btnR}, ${btnG}, ${btnB}, 0.8))`;
+          button.style.boxShadow = `0 4px 12px rgba(${btnR}, ${btnG}, ${btnB}, 0.3), inset 0 2px 0 rgba(255, 255, 255, 0.2)`;
         }
-        
-        container.appendChild(particlesContainer);
-      }
 
-      // Boutons
-      if (buttons.length > 0) {
-        const buttonsContainer = document.createElement('div');
-        buttonsContainer.classList.add('file-upload-buttons-container');
-        buttonsContainer.id = `buttons-container-${uniqueInstanceId}`;
+        buttonsEl.appendChild(button);
+      });
 
-        buttons.forEach((btn, index) => {
-          const wrapper = document.createElement('div');
-          wrapper.classList.add('file-upload-button-wrapper');
+      container.appendChild(buttonsEl);
 
-          const button = document.createElement('button');
-          button.classList.add('file-upload-button');
-          button.textContent = btn.text;
-          button.disabled = true; // Désactivé par défaut jusqu'à l'upload
-
-          if (btn.color) {
-            const btnRgb = parseInt(btn.color.replace('#',''), 16);
-            const btnR = (btnRgb >> 16) & 255;
-            const btnG = (btnRgb >> 8) & 255;
-            const btnB = btnRgb & 255;
-            
-            button.style.setProperty('background', btn.color, 'important');
-            button.style.setProperty('--fu-primary-r', btnR);
-            button.style.setProperty('--fu-primary-g', btnG);
-            button.style.setProperty('--fu-primary-b', btnB);
-          }
-
-          button.addEventListener('click', () => {
-            if (!button.disabled) {
-              enableChat();
-              container.classList.add('disabled-state');
-
-              window.voiceflow.chat.interact({
-                type: 'complete',
-                payload: {
-                  success: true,
-                  urls: uploadedFiles,
-                  filesCount: uploadedFiles.length,
-                  buttonPath: btn.path || 'Default',
-                  buttonText: btn.text,
-                  instanceId: uniqueInstanceId
-                }
-              });
-
-              setTimeout(() => {
-                enableChat();
-              }, 300);
-            }
-          });
-
-          wrapper.appendChild(button);
-          buttonsContainer.appendChild(wrapper);
-        });
-
-        container.appendChild(buttonsContainer);
-      }
-
-      // Fonctions utilitaires
-      const formatFileSize = (bytes) => {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-      };
-
+      // Fonction d'affichage du statut
       const showStatus = (message, type) => {
         statusEl.textContent = message;
-        statusEl.className = `file-upload-status visible ${type}`;
-      };
-
-      const hideStatus = () => {
-        statusEl.classList.remove('visible');
-      };
-
-      const updateProgress = (percentage) => {
-        if (showProgress) {
-          const progressFill = container.querySelector('.file-upload-progress-fill');
-          const progressText = container.querySelector('.file-upload-progress-text');
-          if (progressFill && progressText) {
-            progressFill.style.width = percentage + '%';
-            progressText.textContent = percentage + '%';
-          }
+        statusEl.className = `file-upload-status ${type}`;
+        
+        if (type === 'success') {
+          setTimeout(() => {
+            statusEl.style.display = 'none';
+          }, 3000);
         }
       };
 
-      const showProgressBar = () => {
-        if (showProgress) {
-          const progressContainer = container.querySelector('.file-upload-progress-container');
-          if (progressContainer) {
-            progressContainer.classList.add('visible');
-          }
-        }
+      // Fonction pour créer un badge de groupe
+      const createGroupBadge = (groupNumber, fileCount) => {
+        const badge = document.createElement('div');
+        badge.className = 'file-upload-group-badge';
+        badge.innerHTML = `
+          <span class="badge-icon">📁</span>
+          <span class="badge-text">${groupBadgeText} ${groupNumber} (${fileCount} fichier${fileCount > 1 ? 's' : ''})</span>
+        `;
+        return badge;
       };
 
-      const hideProgressBar = () => {
-        if (showProgress) {
-          const progressContainer = container.querySelector('.file-upload-progress-container');
-          if (progressContainer) {
-            progressContainer.classList.remove('visible');
-            updateProgress(0);
-          }
-        }
-      };
-
-      const addFileToList = (file, status = '⏳') => {
-        if (showFileList) {
-          const filesList = container.querySelector('.file-upload-files-list');
-          const filesContainer = container.querySelector('.file-upload-files-container');
+      // Fonction pour mettre à jour les variables globales
+      const updateGlobalVariables = (newUrls) => {
+        // Mise à jour de pdf_link (dernier groupe uploadé)
+        if (typeof window !== 'undefined') {
+          window.pdf_link = JSON.stringify(newUrls);
           
-          if (filesList && filesContainer) {
-            const fileItem = document.createElement('div');
-            fileItem.classList.add('file-upload-file-item');
-            fileItem.setAttribute('data-file-name', file.name);
-            
-            fileItem.innerHTML = `
-              <div class="file-upload-file-info">
-                <div class="file-upload-file-name">${file.name}</div>
-                <div class="file-upload-file-size">${formatFileSize(file.size)}</div>
-              </div>
-              <div class="file-upload-file-status">${status}</div>
-            `;
-            
-            filesList.appendChild(fileItem);
-            filesContainer.classList.add('visible');
+          // Mise à jour de pdf_linkS (tous les groupes)
+          if (!window.pdf_linkS || !Array.isArray(window.pdf_linkS)) {
+            window.pdf_linkS = [];
           }
+          
+          // Ajouter le nouveau groupe
+          newUrls.forEach(url => {
+            window.pdf_linkS.push(url);
+          });
+          
+          console.log('📁 Variables mises à jour:', {
+            pdf_link: window.pdf_link,
+            pdf_linkS: window.pdf_linkS
+          });
         }
-      };
-
-      const updateFileStatus = (fileName, status) => {
-        if (showFileList) {
-          const fileItem = container.querySelector(`[data-file-name="${fileName}"]`);
-          if (fileItem) {
-            const statusEl = fileItem.querySelector('.file-upload-file-status');
-            if (statusEl) {
-              statusEl.textContent = status;
-            }
-          }
-        }
-      };
-
-      const enableButtons = () => {
-        const allButtons = container.querySelectorAll('.file-upload-button');
-        allButtons.forEach(btn => {
-          btn.disabled = false;
-        });
       };
 
       // Fonction d'upload
       const uploadFiles = async (files) => {
         if (!files.length) return;
+        
+        // Vérification de la limite
         if (files.length > maxFiles) {
           showStatus(`❌ Maximum ${maxFiles} fichiers autorisés`, 'error');
           return;
         }
-
-        // Vérifier la taille des fichiers
+        
+        // Vérification de la taille des fichiers
         for (let file of files) {
-          if (file.size > maxFileSize * 1024 * 1024) {
-            showStatus(`❌ ${file.name} dépasse la taille maximale de ${maxFileSize}MB`, 'error');
+          if (file.size > maxFileSize) {
+            showStatus(`❌ ${file.name} est trop volumineux (max ${Math.round(maxFileSize / 1024 / 1024)}MB)`, 'error');
             return;
           }
         }
 
-        isUploading = true;
-        container.classList.add('uploading');
-        dropZone.classList.add('uploading');
-        dropZone.querySelector('.file-upload-icon').textContent = '⚡';
-        dropZone.querySelector('.file-upload-text').textContent = loadingText;
-        
-        showStatus(loadingText, 'loading');
-        showProgressBar();
-
-        // Ajouter les fichiers à la liste
-        if (showFileList) {
-          Array.from(files).forEach(file => addFileToList(file, '⏳'));
-        }
+        uploadZone.classList.add('processing');
+        showStatus(`${processingText} (${files.length} fichier${files.length > 1 ? 's' : ''})`, 'processing');
 
         const formData = new FormData();
         Array.from(files).forEach(file => formData.append('files', file));
 
         try {
-          // Simulation de progression
-          let progress = 0;
-          const progressInterval = setInterval(() => {
-            progress += Math.random() * 15;
-            if (progress > 90) progress = 90;
-            updateProgress(Math.round(progress));
-          }, 200);
-
-          const response = await fetch(uploadEndpoint, {
-            method: 'POST',
-            body: formData
-          });
-
-          clearInterval(progressInterval);
-          updateProgress(100);
+          const response = await fetch(
+            'https://chatinnov-api-dev.proudsky-cdf9333b.francecentral.azurecontainerapps.io/documents_upload/',
+            { method: 'POST', body: formData }
+          );
 
           const result = await response.json();
 
@@ -971,158 +638,124 @@ export const FileUpload = {
             throw new Error(result.detail || 'Aucune URL renvoyée');
           }
 
-          // Succès
-          uploadedFiles = result.urls;
-          container.classList.remove('uploading');
-          container.classList.add('success');
-          dropZone.classList.remove('uploading');
-          dropZone.classList.add('success');
-          dropZone.querySelector('.file-upload-icon').textContent = '✅';
-          dropZone.querySelector('.file-upload-text').textContent = successText;
+          // Succès - créer un badge et mettre à jour les variables
+          currentGroupCount++;
+          const badge = createGroupBadge(currentGroupCount, result.urls.length);
+          groupsEl.appendChild(badge);
           
+          // Stocker le groupe uploadé
+          uploadedGroups.push(result.urls);
+          
+          // Mettre à jour les variables globales
+          updateGlobalVariables(result.urls);
+
           showStatus(`${successText} (${result.urls.length} fichier${result.urls.length > 1 ? 's' : ''})`, 'success');
-
-          // Mettre à jour le statut des fichiers
-          if (showFileList) {
-            Array.from(files).forEach(file => updateFileStatus(file.name, '✅'));
-          }
-
-          // Activer les boutons
-          enableButtons();
-
-          // Auto-submit si pas de boutons
-          if (buttons.length === 0) {
-            setTimeout(() => {
-              enableChat();
-              container.classList.add('disabled-state');
-
-              window.voiceflow.chat.interact({
-                type: 'complete',
-                payload: {
-                  success: true,
-                  urls: uploadedFiles,
-                  filesCount: uploadedFiles.length,
-                  instanceId: uniqueInstanceId
-                }
-              });
-            }, 1500);
-          }
+          
+          // Reset du champ input
+          const input = container.querySelector('.file-upload-input');
+          if (input) input.value = '';
 
         } catch (error) {
-          console.error('Upload error:', error);
-          
-          container.classList.remove('uploading');
-          container.classList.add('error');
-          dropZone.classList.remove('uploading');
-          dropZone.classList.add('error');
-          dropZone.querySelector('.file-upload-icon').textContent = '❌';
-          dropZone.querySelector('.file-upload-text').textContent = errorText;
-          
+          console.error('❌ Erreur upload:', error);
           showStatus(`${errorText}: ${error.message}`, 'error');
-          hideProgressBar();
-
-          // Mettre à jour le statut des fichiers
-          if (showFileList) {
-            Array.from(files).forEach(file => updateFileStatus(file.name, '❌'));
-          }
-
-          // Si pas de boutons, envoyer l'erreur automatiquement
-          if (buttons.length === 0) {
-            setTimeout(() => {
-              enableChat();
-              
-              window.voiceflow.chat.interact({
-                type: 'complete',
-                payload: {
-                  success: false,
-                  error: error.message,
-                  instanceId: uniqueInstanceId
-                }
-              });
-            }, 2000);
-          }
         } finally {
-          isUploading = false;
+          uploadZone.classList.remove('processing');
         }
       };
 
-      // Événements
-      dropZone.addEventListener('click', () => {
-        if (!isUploading) {
-          fileInput.click();
-        }
-      });
-
-      fileInput.addEventListener('change', (e) => {
-        uploadFiles(e.target.files);
-      });
+      // Événements de la zone d'upload
+      const input = container.querySelector('.file-upload-input');
+      
+      uploadZone.addEventListener('click', () => input.click());
+      input.addEventListener('change', (e) => uploadFiles(e.target.files));
 
       // Drag & Drop
       ['dragenter', 'dragover'].forEach(eventName => {
-        dropZone.addEventListener(eventName, (e) => {
+        uploadZone.addEventListener(eventName, (e) => {
           e.preventDefault();
           e.stopPropagation();
-          if (!isUploading) {
-            dropZone.classList.add('drag-over');
-            dropZone.querySelector('.file-upload-text').textContent = dragText;
-          }
+          uploadZone.classList.add('dragover');
         });
       });
 
       ['dragleave', 'drop'].forEach(eventName => {
-        dropZone.addEventListener(eventName, (e) => {
+        uploadZone.addEventListener(eventName, (e) => {
           e.preventDefault();
           e.stopPropagation();
-          dropZone.classList.remove('drag-over');
-          if (eventName === 'drop' && !isUploading) {
-            dropZone.querySelector('.file-upload-text').textContent = subtitle;
+          uploadZone.classList.remove('dragover');
+          
+          if (eventName === 'drop') {
             uploadFiles(e.dataTransfer.files);
-          } else if (eventName === 'dragleave') {
-            dropZone.querySelector('.file-upload-text').textContent = subtitle;
           }
         });
       });
 
-      // Observer pour maintenir le chat dans l'état souhaité
-      const chatStateObserver = new MutationObserver(() => {
-        if (!container.classList.contains('disabled-state') && !isUploading) {
+      // Événements des boutons
+      buttonsEl.addEventListener('click', (e) => {
+        if (!e.target.classList.contains('file-upload-btn')) return;
+        
+        const action = e.target.getAttribute('data-action');
+        const path = e.target.getAttribute('data-path');
+        
+        if (action === 'continue') {
+          // Rester dans l'extension - ne rien faire de spécial
+          console.log('🔄 Continuer dans l\'extension');
+          return;
+        }
+        
+        if (action === 'submit') {
+          // Sortir de l'extension avec les données
+          container.classList.add('disabled');
+          
+          // Réactiver le chat
+          enableChat();
+          
+          // Préparer les données finales
+          const allUploadedFiles = uploadedGroups.flat();
+          
+          // Envoyer les données à Voiceflow
           setTimeout(() => {
-            if (chat) {
-              enableChat();
-            } else {
-              disableChat();
-            }
+            window.voiceflow.chat.interact({
+              type: 'complete',
+              payload: {
+                success: true,
+                action: action,
+                path: path,
+                totalFiles: allUploadedFiles.length,
+                totalGroups: uploadedGroups.length,
+                pdf_linkS: allUploadedFiles, // Toutes les URLs pour l'API finale
+                buttonPath: path,
+                instanceId: uniqueInstanceId
+              }
+            });
           }, 100);
+          
+          console.log(`✅ Extension terminée - Path: ${path}, Files: ${allUploadedFiles.length}`);
         }
       });
 
-      const chatInputContainer = host.querySelector('.vfrc-input-container');
-      if (chatInputContainer) {
-        chatStateObserver.observe(chatInputContainer, { 
-          attributes: true, 
-          subtree: true,
-          childList: true
-        });
-      }
-
       // Ajout au DOM
       element.appendChild(container);
-
-      // Fonction de nettoyage
-      return () => {
-        chatStateObserver.disconnect();
-      };
-
-      console.log(`✅ FileUpload prêt (ID: ${uniqueInstanceId}) - ${buttons.length} bouton(s), chat: ${chat ? 'activé' : 'désactivé'}`);
+      
+      console.log(`✅ FileUpload prêt (ID: ${uniqueInstanceId}) - Max ${maxFiles} fichiers`);
 
     } catch (error) {
       console.error('❌ FileUpload Error:', error);
+      
+      // Fallback en cas d'erreur
+      const errorContainer = document.createElement('div');
+      errorContainer.innerHTML = `
+        <div style="color: #fff; background: rgba(244, 67, 54, 0.8); padding: 1rem; border-radius: 8px; text-align: center;">
+          <p>❌ Erreur lors du chargement de l'extension d'upload</p>
+          <p>${error.message}</p>
+        </div>
+      `;
+      element.appendChild(errorContainer);
+      
+      // Terminer avec erreur
       window.voiceflow.chat.interact({
         type: 'complete',
-        payload: { 
-          success: false, 
-          error: 'Erreur interne FileUpload: ' + error.message 
-        }
+        payload: { success: false, error: error.message }
       });
     }
   }

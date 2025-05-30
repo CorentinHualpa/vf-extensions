@@ -8,6 +8,7 @@
  *  ║  • Animation de scan et particules                       ║
  *  ║  • Message personnalisable et pourcentage                ║
  *  ║  • Totalement configurable                               ║
+ *  ║  • Icône finale dynamique + désactivation après clic    ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 
@@ -36,7 +37,7 @@ export const LoaderExtension = {
         backgroundImage = null,          // Image de fond (URL)
         finalText = "Terminé ! Cliquez pour continuer", // Texte final cliquable
         finalButtonColor = "#4CAF50",    // Couleur du bouton final (vert par défaut)
-        finalButtonIcon = "🎯",          // Icône du bouton final
+        finalButtonIcon = "🎯",          // ✅ Icône du bouton final (corrigé)
         messagePaddingTop = 0,           // Padding au-dessus du message principal (en px)
         instanceId = null                 // ID unique
       } = trace.payload || {};
@@ -163,6 +164,48 @@ export const LoaderExtension = {
   overflow: hidden!important;
   animation: containerGlow 3s ease-in-out infinite alternate!important;
   box-sizing: border-box!important;
+  transition: all 0.5s ease!important;
+}
+
+/* ✅ NOUVEAU: État désactivé - Container grisé */
+.loader-container.disabled-state {
+  filter: grayscale(1) brightness(0.6) contrast(0.8)!important;
+  pointer-events: none!important;
+  opacity: 0.7!important;
+  animation: none!important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3),
+              inset 0 2px 0 rgba(255, 255, 255, 0.1),
+              0 0 0 1px rgba(128, 128, 128, 0.3)!important;
+}
+
+.loader-container.disabled-state::before {
+  content: ''!important;
+  position: absolute!important;
+  top: 0!important;
+  left: 0!important;
+  width: 100%!important;
+  height: 100%!important;
+  background: rgba(0, 0, 0, 0.4)!important;
+  z-index: 999!important;
+  backdrop-filter: blur(3px)!important;
+}
+
+.loader-container.disabled-state::after {
+  content: '✅ TERMINÉ'!important;
+  position: absolute!important;
+  top: 20px!important;
+  right: 20px!important;
+  background: rgba(0, 0, 0, 0.8)!important;
+  color: #4CAF50!important;
+  padding: 8px 16px!important;
+  border-radius: 20px!important;
+  font-size: 12px!important;
+  font-weight: 700!important;
+  letter-spacing: 1px!important;
+  z-index: 1000!important;
+  border: 1px solid #4CAF50!important;
+  text-shadow: 0 0 5px #4CAF50!important;
+  box-shadow: 0 0 10px rgba(76, 175, 80, 0.3)!important;
 }
 
 /* Animation de glow du container */
@@ -875,11 +918,11 @@ export const LoaderExtension = {
           // Animation de fin
           container.classList.add('completed');
           
-          // ✅ NOUVEAU: Créer le bouton final cliquable
+          // ✅ CORRECTION: Créer le bouton final avec l'icône dynamique
           const finalButton = document.createElement('button');
           finalButton.classList.add('loader-final-button');
           finalButton.innerHTML = `
-            <div class="final-icon">🎉</div>
+            <div class="final-icon">${finalButtonIcon}</div>
             <div class="final-text">${finalText}</div>
           `;
           
@@ -889,7 +932,8 @@ export const LoaderExtension = {
             finalButton.style.transform = 'translate(-50%, -50%) scale(0.9)';
             
             setTimeout(() => {
-              container.classList.add('disabled-container');
+              // ✅ NOUVEAU: Désactiver toute l'extension (grisée + non interactive)
+              container.classList.add('disabled-state');
               
               // Envoyer la réponse à Voiceflow
               window.voiceflow.chat.interact({
@@ -902,13 +946,15 @@ export const LoaderExtension = {
                   instanceId: uniqueInstanceId
                 }
               });
+              
+              console.log(`🎯 LoaderExtension terminé et désactivé - Instance: ${uniqueInstanceId}`);
             }, 200);
           });
           
           // Ajouter le bouton au container du cercle
           circleContainer.appendChild(finalButton);
           
-          console.log(`🎉 LoaderExtension terminé - Bouton final affiché`);
+          console.log(`🎉 LoaderExtension terminé - Bouton final affiché (Icône: ${finalButtonIcon})`);
         }
       };
 

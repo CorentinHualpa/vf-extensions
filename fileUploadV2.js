@@ -1,63 +1,62 @@
 /**
  *  ╔═══════════════════════════════════════════════════════════╗
- *  ║  FileUpload – Voiceflow Response Extension Complète      ║
+ *  ║  FileUpload – Voiceflow Response Extension Avancée       ║
  *  ║                                                           ║
- *  ║  • Upload de fichiers stylé avec glassmorphism           ║
- *  ║  • Gestion des groupes de documents avec badges          ║
- *  ║  • Accumulation automatique dans pdf_link et pdf_linkS   ║
- *  ║  • Boutons configurables (continue/submit)               ║
- *  ║  • Chat désactivable et textes personnalisables          ║
- *  ║  • Support drag & drop et sélection multiple             ║
- *  ║  • Gestion des erreurs et retry automatique              ║
+ *  ║  • Upload continu avec accumulation des URLs             ║
+ *  ║  • Badges des groupes de fichiers uploadés               ║
+ *  ║  • Barres de progression + notifications toast           ║
+ *  ║  • Boutons configurables (stay/exit)                     ║
+ *  ║  • Validation des types (PDF, DOCX, TXT)                 ║
+ *  ║  • Style glassmorphism cohérent                          ║
+ *  ║  • Titre et description personnalisables                 ║
+ *  ║  • Chat désactivé par défaut                             ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 
 export const FileUpload = {
   name: 'FileUpload',
   type: 'response',
-
+  
   // Activation sur trace file_upload
-  match: ({ trace }) => 
-    trace.payload?.name === 'file_upload' || trace.type === 'file_upload',
-
+  match: ({ trace }) => trace.payload?.name === 'file_upload',
+  
   render: ({ trace, element }) => {
     try {
       // Configuration depuis le payload
       const {
-        title = "📂 Gestion des documents",
-        uploadText = "Cliquez ou glissez vos fichiers ici",
-        uploadSubtext = "PDF, Word, Excel, PowerPoint acceptés (max 50MB par fichier)",
-        successText = "✅ Fichier(s) uploadé(s) avec succès !",
-        errorText = "❌ Erreur lors de l'upload",
-        processingText = "🔄 Upload en cours...",
-        groupBadgeText = "📁 Groupe",
+        title = "Uploadez vos documents",
+        description = "Glissez-déposez vos fichiers ou cliquez pour les sélectionner",
+        uploadText = "📁 Cliquez ou glissez vos fichiers ici",
         maxFiles = 10,
-        maxFileSize = 50 * 1024 * 1024, // 50MB par défaut
-        primaryColor = "#9C27B0",
+        allowedTypes = ['pdf', 'docx', 'doc', 'txt'],
+        primaryColor = '#9C27B0',
         backgroundImage = null,
         chat = false,
-        chatDisabledText = "Vous ne pouvez pas envoyer de chat ici.",
-        instanceId = null,
+        chatDisabledText = '🚫 Veuillez uploader vos documents',
+        successMessage = '✅ Fichier(s) uploadé(s) avec succès !',
+        errorMessage = '❌ Erreur lors de l\'upload',
+        uploadingMessage = '📤 Upload en cours...',
         buttons = [
-          { text: "📤 Continuer l'upload", action: "continue" },
-          { text: "✅ Traiter les documents", action: "submit", path: "process_documents" },
-          { text: "◀️ Étape précédente", action: "submit", path: "previous_step", color: "#D35400" }
-        ]
+          { text: "📤 Ajouter d'autres documents", action: "stay" },
+          { text: "✅ Terminer et traiter", action: "exit", path: "process_documents" },
+          { text: "◀️ Étape précédente", action: "exit", path: "previous_step", color: "#D35400" }
+        ],
+        instanceId = null,
+        // Traitement de l'image de fond
+        processedBackgroundImage = backgroundImage && backgroundImage.includes('[img]') && backgroundImage.includes('[/img]')
+          ? backgroundImage.replace(/\[img\](.*?)\[\/img\]/g, '$1')
+          : backgroundImage
       } = trace.payload || {};
 
       // Générer un ID unique pour cette instance
-      const uniqueInstanceId = instanceId || `fu_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const uniqueInstanceId = instanceId || `fileupload_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
       
-      // Variables globales pour accumulation des fichiers
-      let uploadedGroups = []; // Groupes de fichiers uploadés pour cette session
-      let currentGroupCount = 0;
-
-      // Traitement de l'image de fond
-      let processedBackgroundImage = backgroundImage;
-      if (backgroundImage && backgroundImage.includes('[img]') && backgroundImage.includes('[/img]')) {
-        processedBackgroundImage = backgroundImage.replace(/\[img\](.*?)\[\/img\]/g, '$1');
-      }
-
+      // Variables de gestion des uploads
+      let uploadGroups = []; // Tableau des groupes uploadés
+      let currentGroupIndex = 0;
+      let totalFilesUploaded = 0;
+      let isUploading = false;
+      
       // Récupérer le root pour accéder au chat
       const root = element.getRootNode();
       const host = root instanceof ShadowRoot ? root : document;
@@ -78,8 +77,8 @@ export const FileUpload = {
       function enableChat() {
         const ic = host.querySelector('.vfrc-input-container');
         if (!ic) return;
-        ic.style.opacity = '';
-        ic.style.cursor = '';
+        ic.style.removeProperty('opacity');
+        ic.style.removeProperty('cursor');
         ic.removeAttribute('title');
         const ta = ic.querySelector('textarea.vfrc-chat-input');
         if (ta) { ta.disabled = false; ta.removeAttribute('title'); }
@@ -87,16 +86,16 @@ export const FileUpload = {
         if (snd) { snd.disabled = false; snd.removeAttribute('title'); }
       }
       
-      // Désactiver le chat si requis
+      // Désactiver le chat selon la configuration
       if (!chat) disableChat();
 
-      // Création du conteneur principal
+      // Container principal
       const container = document.createElement('div');
-      container.className = 'file-upload-container';
+      container.classList.add('fileupload-container');
       container.id = uniqueInstanceId;
       container.setAttribute('data-instance-id', uniqueInstanceId);
-
-      // CSS intégré avec glassmorphism et animations
+      
+      // CSS intégré avec style glassmorphism
       const styleEl = document.createElement('style');
       
       // Extraction des valeurs RGB pour les variables CSS
@@ -107,30 +106,33 @@ export const FileUpload = {
       
       styleEl.textContent = `
 /* Variables CSS principales */
-.file-upload-container {
+.fileupload-container {
   --fu-primary: ${primaryColor};
   --fu-primary-r: ${colorR};
   --fu-primary-g: ${colorG};
   --fu-primary-b: ${colorB};
   --fu-radius: 12px;
   --fu-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  --fu-text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --fu-border: 1px solid rgba(255, 255, 255, 0.15);
+  --fu-heading-fs: 20px;
+  --fu-base-fs: 15px;
+  --fu-small-fs: 13px;
+  --fu-gap: 16px;
 }
 
 /* Reset et styles de base */
-.file-upload-container, .file-upload-container * { 
+.fileupload-container, .fileupload-container * { 
   box-sizing: border-box!important; 
 }
 
-.file-upload-container {
+.fileupload-container {
   display: flex!important;
   flex-direction: column!important;
   width: 100%!important;
   max-width: 600px!important;
   margin: 0 auto!important;
-  padding: 25px!important;
+  padding: 24px!important;
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif!important;
+  color: #fff!important;
   background: ${processedBackgroundImage ? `
     linear-gradient(135deg, 
       rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.85),
@@ -138,624 +140,767 @@ export const FileUpload = {
     url("${processedBackgroundImage}")
   ` : `
     linear-gradient(135deg, 
-      rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.85),
-      rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.65))
+      rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.9),
+      rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.7))
   `}!important;
   background-size: cover!important;
   background-position: center!important;
   background-repeat: no-repeat!important;
   backdrop-filter: blur(20px)!important;
   -webkit-backdrop-filter: blur(20px)!important;
-  border: var(--fu-border)!important;
+  border: 2px solid rgba(255, 255, 255, 0.2)!important;
   border-radius: var(--fu-radius)!important;
   box-shadow: var(--fu-shadow), 
-              inset 0 1px 0 rgba(255, 255, 255, 0.1)!important;
-  color: #fff!important;
+              inset 0 2px 0 rgba(255, 255, 255, 0.2)!important;
   position: relative!important;
   overflow: hidden!important;
   transition: all 0.3s ease!important;
 }
 
-.file-upload-container:hover {
+.fileupload-container:hover {
   transform: translateY(-4px)!important;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3), 
-              inset 0 1px 0 rgba(255, 255, 255, 0.2)!important;
-}
-
-/* Effet de scan sci-fi */
-.file-upload-container::before {
-  content: ''!important;
-  position: absolute!important;
-  top: -50%!important;
-  left: -10%!important;
-  width: 120%!important;
-  height: 200%!important;
-  background: linear-gradient(45deg, 
-    transparent, 
-    rgba(255, 255, 255, 0.1), 
-    transparent)!important;
-  transform: translateX(-100%) rotate(45deg)!important;
-  animation: scanEffect 4s ease-in-out infinite!important;
-}
-
-@keyframes scanEffect {
-  0%, 90% { transform: translateX(-100%) rotate(45deg); }
-  100% { transform: translateX(100%) rotate(45deg); }
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3),
+              inset 0 2px 0 rgba(255, 255, 255, 0.3)!important;
 }
 
 /* Titre principal */
-.file-upload-title {
-  font-size: 22px!important;
+.fileupload-title {
+  font-size: var(--fu-heading-fs)!important;
   font-weight: 700!important;
-  margin: 0 0 20px 0!important;
   text-align: center!important;
+  margin-bottom: 8px!important;
   color: #fff!important;
-  text-shadow: var(--fu-text-shadow)!important;
   letter-spacing: -0.3px!important;
-  position: relative!important;
-  z-index: 2!important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3)!important;
 }
 
-.file-upload-title::after {
-  content: ''!important;
-  position: absolute!important;
-  bottom: -8px!important;
-  left: 50%!important;
-  transform: translateX(-50%)!important;
-  width: 60px!important;
-  height: 2px!important;
-  background: #fff!important;
-  transition: width 0.3s ease!important;
+/* Description */
+.fileupload-description {
+  font-size: var(--fu-base-fs)!important;
+  text-align: center!important;
+  margin-bottom: var(--fu-gap)!important;
+  color: rgba(255, 255, 255, 0.9)!important;
+  line-height: 1.4!important;
 }
 
-.file-upload-container:hover .file-upload-title::after {
-  width: 100%!important;
+/* Container des badges de groupes */
+.fileupload-groups {
+  margin-bottom: var(--fu-gap)!important;
+  min-height: 24px!important;
 }
 
-/* Zone des badges de groupes uploadés */
-.file-upload-groups {
-  margin-bottom: 20px!important;
-  min-height: 40px!important;
+.fileupload-groups-title {
+  font-size: var(--fu-small-fs)!important;
+  font-weight: 600!important;
+  margin-bottom: 8px!important;
+  color: rgba(255, 255, 255, 0.8)!important;
+}
+
+.fileupload-groups-list {
   display: flex!important;
   flex-wrap: wrap!important;
-  gap: 10px!important;
-  position: relative!important;
-  z-index: 2!important;
+  gap: 8px!important;
 }
 
-.file-upload-group-badge {
-  display: inline-flex!important;
-  align-items: center!important;
-  gap: 8px!important;
-  padding: 8px 12px!important;
-  background: rgba(0, 0, 0, 0.6)!important;
-  backdrop-filter: blur(10px)!important;
+/* Badges des groupes */
+.fileupload-group-badge {
+  background: rgba(0, 0, 0, 0.4)!important;
   border: 1px solid rgba(255, 255, 255, 0.3)!important;
   border-radius: 20px!important;
-  color: #fff!important;
-  font-size: 14px!important;
+  padding: 6px 12px!important;
+  font-size: var(--fu-small-fs)!important;
   font-weight: 600!important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5)!important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3)!important;
-  animation: badgeAppear 0.5s ease-out!important;
-  transition: all 0.3s ease!important;
-}
-
-.file-upload-group-badge:hover {
-  transform: translateY(-2px)!important;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4)!important;
-  border-color: rgba(255, 255, 255, 0.5)!important;
-}
-
-.file-upload-group-badge .badge-icon {
-  font-size: 16px!important;
-}
-
-.file-upload-group-badge .badge-text {
-  font-size: 13px!important;
+  color: #fff!important;
+  backdrop-filter: blur(10px)!important;
+  animation: badgeAppear 0.4s ease-out!important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2)!important;
 }
 
 @keyframes badgeAppear {
-  0% {
-    opacity: 0;
-    scale: 0.8;
-    transform: translateY(10px);
-  }
-  100% {
-    opacity: 1;
-    scale: 1;
-    transform: translateY(0);
-  }
+  0% { opacity: 0; transform: scale(0.8) translateY(10px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 /* Zone d'upload principale */
-.file-upload-zone {
-  border: 2px dashed rgba(255, 255, 255, 0.5)!important;
+.fileupload-zone {
+  border: 2px dashed rgba(255, 255, 255, 0.4)!important;
   border-radius: var(--fu-radius)!important;
   padding: 40px 20px!important;
   text-align: center!important;
   cursor: pointer!important;
   transition: all 0.3s ease!important;
-  background: rgba(0, 0, 0, 0.3)!important;
+  background: rgba(0, 0, 0, 0.2)!important;
   backdrop-filter: blur(10px)!important;
-  margin-bottom: 20px!important;
+  margin-bottom: var(--fu-gap)!important;
   position: relative!important;
-  z-index: 2!important;
   overflow: hidden!important;
 }
 
-.file-upload-zone:hover,
-.file-upload-zone.dragover {
-  border-color: #fff!important;
-  background: rgba(255, 255, 255, 0.1)!important;
-  transform: scale(1.02)!important;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3)!important;
+.fileupload-zone:hover {
+  border-color: rgba(255, 255, 255, 0.7)!important;
+  background: rgba(0, 0, 0, 0.3)!important;
+  transform: translateY(-2px)!important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2)!important;
 }
 
-.file-upload-zone.processing {
+.fileupload-zone.drag-over {
+  border-color: #4CAF50!important;
+  background: rgba(76, 175, 80, 0.2)!important;
+  animation: dragPulse 1s ease-in-out infinite!important;
+}
+
+@keyframes dragPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+.fileupload-zone.uploading {
+  pointer-events: none!important;
+  opacity: 0.7!important;
   border-color: var(--fu-primary)!important;
-  background: rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.2)!important;
-  animation: processingPulse 2s ease-in-out infinite!important;
 }
 
-@keyframes processingPulse {
-  0%, 100% { opacity: 0.8; }
-  50% { opacity: 1; }
-}
-
-.file-upload-input {
+/* Input file caché */
+.fileupload-input {
   display: none!important;
 }
 
-.file-upload-main-text {
-  font-size: 18px!important;
+/* Texte de la zone d'upload */
+.fileupload-zone-text {
+  font-size: var(--fu-base-fs)!important;
   font-weight: 600!important;
   color: #fff!important;
   margin-bottom: 8px!important;
-  text-shadow: var(--fu-text-shadow)!important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3)!important;
 }
 
-.file-upload-sub-text {
-  font-size: 14px!important;
-  color: rgba(255, 255, 255, 0.8)!important;
-  margin-bottom: 20px!important;
-  text-shadow: var(--fu-text-shadow)!important;
+.fileupload-zone-subtext {
+  font-size: var(--fu-small-fs)!important;
+  color: rgba(255, 255, 255, 0.7)!important;
+  margin-bottom: 12px!important;
 }
 
-.file-upload-icon {
-  font-size: 48px!important;
-  margin-bottom: 16px!important;
-  display: block!important;
-  animation: iconFloat 3s ease-in-out infinite!important;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))!important;
+.fileupload-zone-types {
+  font-size: 12px!important;
+  color: rgba(255, 255, 255, 0.6)!important;
+  font-style: italic!important;
 }
 
-@keyframes iconFloat {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
-}
-
-/* Zone de statut */
-.file-upload-status {
-  padding: 12px 16px!important;
-  border-radius: 8px!important;
-  margin-top: 16px!important;
-  font-weight: 600!important;
-  text-align: center!important;
+/* Container de progression */
+.fileupload-progress-container {
+  margin: var(--fu-gap) 0!important;
   display: none!important;
+}
+
+/* Barre de progression individuelle */
+.fileupload-progress-item {
+  background: rgba(0, 0, 0, 0.3)!important;
+  border-radius: 8px!important;
+  padding: 12px!important;
+  margin-bottom: 8px!important;
+  border: 1px solid rgba(255, 255, 255, 0.2)!important;
+  backdrop-filter: blur(10px)!important;
+}
+
+.fileupload-progress-filename {
+  font-size: var(--fu-small-fs)!important;
+  font-weight: 600!important;
+  color: #fff!important;
+  margin-bottom: 6px!important;
+  text-overflow: ellipsis!important;
+  overflow: hidden!important;
+  white-space: nowrap!important;
+}
+
+.fileupload-progress-bar {
+  width: 100%!important;
+  height: 6px!important;
+  background: rgba(255, 255, 255, 0.2)!important;
+  border-radius: 3px!important;
+  overflow: hidden!important;
   position: relative!important;
-  z-index: 2!important;
+}
+
+.fileupload-progress-fill {
+  height: 100%!important;
+  background: linear-gradient(90deg, var(--fu-primary), #4CAF50)!important;
+  border-radius: 3px!important;
+  transition: width 0.3s ease!important;
+  width: 0%!important;
+  box-shadow: 0 0 10px rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.5)!important;
+}
+
+.fileupload-progress-status {
+  font-size: 11px!important;
+  color: rgba(255, 255, 255, 0.8)!important;
+  margin-top: 4px!important;
+  text-align: center!important;
+}
+
+/* Notifications toast */
+.fileupload-toast {
+  position: fixed!important;
+  top: 20px!important;
+  right: 20px!important;
+  padding: 12px 20px!important;
+  border-radius: 8px!important;
+  color: #fff!important;
+  font-weight: 600!important;
+  font-size: var(--fu-small-fs)!important;
+  z-index: 10000!important;
   backdrop-filter: blur(10px)!important;
   border: 1px solid rgba(255, 255, 255, 0.2)!important;
+  animation: toastSlideIn 0.3s ease-out!important;
+  max-width: 300px!important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3)!important;
 }
 
-.file-upload-status.processing {
-  background: rgba(33, 150, 243, 0.8)!important;
-  color: #fff!important;
-  display: block!important;
-  animation: statusSlide 0.3s ease-out!important;
+.fileupload-toast.success {
+  background: linear-gradient(135deg, #4CAF50, #2E7D32)!important;
 }
 
-.file-upload-status.success {
-  background: rgba(76, 175, 80, 0.8)!important;
-  color: #fff!important;
-  display: block!important;
-  animation: statusSlide 0.3s ease-out!important;
+.fileupload-toast.error {
+  background: linear-gradient(135deg, #f44336, #d32f2f)!important;
 }
 
-.file-upload-status.error {
-  background: rgba(244, 67, 54, 0.8)!important;
-  color: #fff!important;
-  display: block!important;
-  animation: statusSlide 0.3s ease-out, statusShake 0.6s ease-out 0.3s!important;
+.fileupload-toast.info {
+  background: linear-gradient(135deg, var(--fu-primary), rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.8))!important;
 }
 
-@keyframes statusSlide {
-  0% {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
+@keyframes toastSlideIn {
+  0% { transform: translateX(100%); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
 }
 
-@keyframes statusShake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-4px); }
-  75% { transform: translateX(4px); }
+@keyframes toastSlideOut {
+  0% { transform: translateX(0); opacity: 1; }
+  100% { transform: translateX(100%); opacity: 0; }
 }
 
-/* Conteneur des boutons */
-.file-upload-buttons {
+/* Container des boutons harmonieux */
+.fileupload-buttons-container {
   display: flex!important;
   flex-wrap: wrap!important;
   justify-content: center!important;
+  align-items: stretch!important;
   gap: 12px!important;
-  margin-top: 20px!important;
-  position: relative!important;
-  z-index: 2!important;
+  padding: 16px 0 0!important;
+  width: 100%!important;
 }
 
-/* Boutons stylés comme MultiSelect */
-.file-upload-btn {
+/* BOUTONS HARMONIEUX - Style cohérent avec MultiSelect */
+.fileupload-button {
   position: relative!important;
+  background: var(--fu-primary)!important;
   color: #fff!important;
-  padding: 12px 20px!important;
+  padding: 14px 20px!important; 
   border-radius: 8px!important;
-  font-weight: 700!important;
+  font-weight: 700!important; 
   letter-spacing: 0.5px!important;
   font-size: 14px!important;
   cursor: pointer!important;
   border: none!important;
   overflow: hidden!important;
   transition: all 0.3s ease!important;
-  min-width: 180px!important;
+  box-shadow: 0 4px 12px rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.3),
+              inset 0 3px 0 rgba(255, 255, 255, 0.2),
+              inset 0 -3px 0 rgba(0, 0, 0, 0.2)!important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3)!important;
   text-align: center!important;
   display: flex!important;
   align-items: center!important;
   justify-content: center!important;
-  backdrop-filter: blur(10px)!important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3)!important;
   flex: 1 1 auto!important;
+  min-width: 180px!important;
+  max-width: 300px!important;
+  height: 50px!important;
+  word-wrap: break-word!important;
+  white-space: normal!important;
 }
 
-.file-upload-btn.primary {
-  background: linear-gradient(145deg, var(--fu-primary), 
-              rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.8))!important;
-  box-shadow: 0 4px 12px rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.3),
-              inset 0 2px 0 rgba(255, 255, 255, 0.2)!important;
+/* Responsive : Sur mobile, boutons pleine largeur */
+@media (max-width: 768px) {
+  .fileupload-buttons-container {
+    flex-direction: column!important;
+    gap: 8px!important;
+  }
+  
+  .fileupload-button {
+    flex: 1 1 100%!important;
+    max-width: none!important;
+    min-width: auto!important;
+  }
 }
 
-.file-upload-btn.secondary {
-  background: linear-gradient(145deg, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.4))!important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3),
-              inset 0 2px 0 rgba(255, 255, 255, 0.1)!important;
-}
-
-.file-upload-btn:hover {
+/* Effet hover */
+.fileupload-button:hover {
   transform: translateY(-2px)!important;
-}
-
-.file-upload-btn.primary:hover {
   box-shadow: 0 6px 20px rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.4),
-              inset 0 2px 0 rgba(255, 255, 255, 0.3)!important;
+              inset 0 3px 0 rgba(255, 255, 255, 0.3),
+              inset 0 -3px 0 rgba(0, 0, 0, 0.3)!important;
 }
 
-.file-upload-btn.secondary:hover {
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4),
-              inset 0 2px 0 rgba(255, 255, 255, 0.2)!important;
-}
-
-.file-upload-btn:active {
+/* Effet active (clic) */
+.fileupload-button:active {
   transform: translateY(1px)!important;
+  box-shadow: 0 2px 6px rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.3),
+              inset 0 1px 0 rgba(255, 255, 255, 0.1),
+              inset 0 -1px 0 rgba(0, 0, 0, 0.1)!important;
 }
 
-.file-upload-btn::before {
+/* Effet de scan sci-fi */
+.fileupload-button::before {
   content: ''!important;
   position: absolute!important;
   top: -2px!important;
   left: -2px!important;
   width: calc(100% + 4px)!important;
   height: calc(100% + 4px)!important;
-  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent)!important;
+  background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent)!important;
   transform: translateX(-100%) rotate(45deg)!important;
   transition: transform 0.8s ease!important;
 }
 
-.file-upload-btn:hover::before {
+.fileupload-button:hover::before {
   transform: translateX(100%) rotate(45deg)!important;
+}
+
+/* État désactivé après finalisation */
+.fileupload-container.completed {
+  opacity: 0.8!important;
+  pointer-events: none!important;
+  filter: grayscale(30%)!important;
+}
+
+.fileupload-container.completed::after {
+  content: '✅ UPLOAD TERMINÉ'!important;
+  position: absolute!important;
+  top: 16px!important;
+  right: 16px!important;
+  background: rgba(76, 175, 80, 0.9)!important;
+  color: #fff!important;
+  padding: 6px 12px!important;
+  border-radius: 16px!important;
+  font-size: 12px!important;
+  font-weight: 700!important;
+  letter-spacing: 0.5px!important;
+  border: 1px solid rgba(255, 255, 255, 0.3)!important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2)!important;
 }
 
 /* Responsive design */
 @media (max-width: 768px) {
-  .file-upload-container {
+  .fileupload-container {
     max-width: 95%!important;
-    padding: 20px!important;
+    padding: 20px 16px!important;
   }
   
-  .file-upload-zone {
-    padding: 30px 15px!important;
+  .fileupload-zone {
+    padding: 30px 16px!important;
   }
   
-  .file-upload-buttons {
-    flex-direction: column!important;
+  .fileupload-title {
+    font-size: 18px!important;
   }
-  
-  .file-upload-btn {
-    min-width: auto!important;
-    flex: 1 1 100%!important;
-  }
-}
-
-/* État désactivé */
-.file-upload-container.disabled {
-  opacity: 0.6!important;
-  pointer-events: none!important;
-  filter: grayscale(0.3)!important;
 }
       `;
-
+      
       container.appendChild(styleEl);
 
+      // Construction de l'interface
       // Titre
       const titleEl = document.createElement('h2');
-      titleEl.className = 'file-upload-title';
+      titleEl.classList.add('fileupload-title');
       titleEl.textContent = title;
       container.appendChild(titleEl);
 
-      // Zone des badges de groupes
-      const groupsEl = document.createElement('div');
-      groupsEl.className = 'file-upload-groups';
-      groupsEl.id = `groups-${uniqueInstanceId}`;
-      container.appendChild(groupsEl);
+      // Description
+      const descEl = document.createElement('p');
+      descEl.classList.add('fileupload-description');
+      descEl.textContent = description;
+      container.appendChild(descEl);
+
+      // Container des groupes uploadés
+      const groupsContainer = document.createElement('div');
+      groupsContainer.classList.add('fileupload-groups');
+      
+      const groupsTitle = document.createElement('div');
+      groupsTitle.classList.add('fileupload-groups-title');
+      groupsTitle.textContent = '📁 Documents uploadés:';
+      groupsTitle.style.display = 'none'; // Caché initialement
+      
+      const groupsList = document.createElement('div');
+      groupsList.classList.add('fileupload-groups-list');
+      
+      groupsContainer.appendChild(groupsTitle);
+      groupsContainer.appendChild(groupsList);
+      container.appendChild(groupsContainer);
 
       // Zone d'upload
       const uploadZone = document.createElement('div');
-      uploadZone.className = 'file-upload-zone';
-      uploadZone.innerHTML = `
-        <div class="file-upload-icon">📁</div>
-        <div class="file-upload-main-text">${uploadText}</div>
-        <div class="file-upload-sub-text">${uploadSubtext}</div>
-        <input class="file-upload-input" type="file" id="input-${uniqueInstanceId}" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx">
-      `;
+      uploadZone.classList.add('fileupload-zone');
+      
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.multiple = true;
+      fileInput.accept = allowedTypes.map(type => `.${type}`).join(',');
+      fileInput.classList.add('fileupload-input');
+      fileInput.id = `fileInput_${uniqueInstanceId}`;
+      
+      const zoneText = document.createElement('div');
+      zoneText.classList.add('fileupload-zone-text');
+      zoneText.textContent = uploadText;
+      
+      const zoneSubtext = document.createElement('div');
+      zoneSubtext.classList.add('fileupload-zone-subtext');
+      zoneSubtext.textContent = `Maximum ${maxFiles} fichiers`;
+      
+      const zoneTypes = document.createElement('div');
+      zoneTypes.classList.add('fileupload-zone-types');
+      zoneTypes.textContent = `Types autorisés: ${allowedTypes.map(t => t.toUpperCase()).join(', ')}`;
+      
+      uploadZone.appendChild(fileInput);
+      uploadZone.appendChild(zoneText);
+      uploadZone.appendChild(zoneSubtext);
+      uploadZone.appendChild(zoneTypes);
       container.appendChild(uploadZone);
 
-      // Zone de statut
-      const statusEl = document.createElement('div');
-      statusEl.className = 'file-upload-status';
-      statusEl.id = `status-${uniqueInstanceId}`;
-      container.appendChild(statusEl);
+      // Container de progression
+      const progressContainer = document.createElement('div');
+      progressContainer.classList.add('fileupload-progress-container');
+      container.appendChild(progressContainer);
 
-      // Conteneur des boutons
-      const buttonsEl = document.createElement('div');
-      buttonsEl.className = 'file-upload-buttons';
-      buttonsEl.id = `buttons-${uniqueInstanceId}`;
-
-      // Création des boutons
+      // Container des boutons
+      const buttonsContainer = document.createElement('div');
+      buttonsContainer.classList.add('fileupload-buttons-container');
+      
       buttons.forEach((btn, index) => {
         const button = document.createElement('button');
-        button.className = `file-upload-btn ${index === 0 ? 'primary' : 'secondary'}`;
+        button.classList.add('fileupload-button');
         button.textContent = btn.text;
         button.setAttribute('data-action', btn.action);
         button.setAttribute('data-path', btn.path || '');
         
-        // Couleur personnalisée si spécifiée
         if (btn.color) {
-          const btnRgb = parseInt(btn.color.replace('#',''), 16);
-          const btnR = (btnRgb >> 16) & 255;
-          const btnG = (btnRgb >> 8) & 255;
-          const btnB = btnRgb & 255;
-          button.style.background = `linear-gradient(145deg, ${btn.color}, rgba(${btnR}, ${btnG}, ${btnB}, 0.8))`;
-          button.style.boxShadow = `0 4px 12px rgba(${btnR}, ${btnG}, ${btnB}, 0.3), inset 0 2px 0 rgba(255, 255, 255, 0.2)`;
+          button.style.setProperty('background', btn.color, 'important');
+          const rgb = parseInt(btn.color.replace('#',''), 16);
+          const r = (rgb >> 16) & 255;
+          const g = (rgb >> 8) & 255;
+          const b = rgb & 255;
+          button.style.setProperty('box-shadow', 
+            `0 4px 12px rgba(${r}, ${g}, ${b}, 0.3), inset 0 3px 0 rgba(255, 255, 255, 0.2), inset 0 -3px 0 rgba(0, 0, 0, 0.2)`, 
+            'important');
         }
-
-        buttonsEl.appendChild(button);
+        
+        button.addEventListener('click', () => handleButtonClick(btn));
+        buttonsContainer.appendChild(button);
       });
+      
+      container.appendChild(buttonsContainer);
 
-      container.appendChild(buttonsEl);
-
-      // Fonction d'affichage du statut
-      const showStatus = (message, type) => {
-        statusEl.textContent = message;
-        statusEl.className = `file-upload-status ${type}`;
+      // Fonctions utilitaires
+      function showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.classList.add('fileupload-toast', type);
+        toast.textContent = message;
+        document.body.appendChild(toast);
         
-        if (type === 'success') {
-          setTimeout(() => {
-            statusEl.style.display = 'none';
-          }, 3000);
-        }
-      };
+        setTimeout(() => {
+          toast.style.animation = 'toastSlideOut 0.3s ease-in';
+          setTimeout(() => toast.remove(), 300);
+        }, 3000);
+      }
 
-      // Fonction pour créer un badge de groupe
-      const createGroupBadge = (groupNumber, fileCount) => {
-        const badge = document.createElement('div');
-        badge.className = 'file-upload-group-badge';
-        badge.innerHTML = `
-          <span class="badge-icon">📁</span>
-          <span class="badge-text">${groupBadgeText} ${groupNumber} (${fileCount} fichier${fileCount > 1 ? 's' : ''})</span>
-        `;
-        return badge;
-      };
-
-      // Fonction pour mettre à jour les variables globales
-      const updateGlobalVariables = (newUrls) => {
-        // Mise à jour de pdf_link (dernier groupe uploadé)
-        if (typeof window !== 'undefined') {
-          window.pdf_link = JSON.stringify(newUrls);
+      function updateGroupsBadges() {
+        groupsList.innerHTML = '';
+        
+        if (uploadGroups.length > 0) {
+          groupsTitle.style.display = 'block';
           
-          // Mise à jour de pdf_linkS (tous les groupes)
-          if (!window.pdf_linkS || !Array.isArray(window.pdf_linkS)) {
-            window.pdf_linkS = [];
-          }
-          
-          // Ajouter le nouveau groupe
-          newUrls.forEach(url => {
-            window.pdf_linkS.push(url);
+          uploadGroups.forEach((group, index) => {
+            const badge = document.createElement('div');
+            badge.classList.add('fileupload-group-badge');
+            badge.textContent = `Groupe ${index + 1} (${group.files.length} fichier${group.files.length > 1 ? 's' : ''})`;
+            groupsList.appendChild(badge);
           });
-          
-          console.log('📁 Variables mises à jour:', {
-            pdf_link: window.pdf_link,
-            pdf_linkS: window.pdf_linkS
-          });
+        } else {
+          groupsTitle.style.display = 'none';
         }
-      };
+      }
 
-      // Fonction d'upload
-      const uploadFiles = async (files) => {
-        if (!files.length) return;
+      function validateFiles(files) {
+        const validFiles = [];
+        const errors = [];
         
-        // Vérification de la limite
-        if (files.length > maxFiles) {
-          showStatus(`❌ Maximum ${maxFiles} fichiers autorisés`, 'error');
-          return;
-        }
-        
-        // Vérification de la taille des fichiers
         for (let file of files) {
-          if (file.size > maxFileSize) {
-            showStatus(`❌ ${file.name} est trop volumineux (max ${Math.round(maxFileSize / 1024 / 1024)}MB)`, 'error');
-            return;
+          // Vérifier le type
+          const extension = file.name.split('.').pop().toLowerCase();
+          if (!allowedTypes.includes(extension)) {
+            errors.push(`${file.name}: Type non autorisé`);
+            continue;
           }
+          
+          // Vérifier la limite globale
+          if (totalFilesUploaded + validFiles.length >= maxFiles) {
+            errors.push(`Limite de ${maxFiles} fichiers atteinte`);
+            break;
+          }
+          
+          validFiles.push(file);
         }
+        
+        return { validFiles, errors };
+      }
 
-        uploadZone.classList.add('processing');
-        showStatus(`${processingText} (${files.length} fichier${files.length > 1 ? 's' : ''})`, 'processing');
+      function createProgressItem(file) {
+        const item = document.createElement('div');
+        item.classList.add('fileupload-progress-item');
+        
+        const filename = document.createElement('div');
+        filename.classList.add('fileupload-progress-filename');
+        filename.textContent = file.name;
+        
+        const progressBar = document.createElement('div');
+        progressBar.classList.add('fileupload-progress-bar');
+        
+        const progressFill = document.createElement('div');
+        progressFill.classList.add('fileupload-progress-fill');
+        
+        const status = document.createElement('div');
+        status.classList.add('fileupload-progress-status');
+        status.textContent = 'En attente...';
+        
+        progressBar.appendChild(progressFill);
+        item.appendChild(filename);
+        item.appendChild(progressBar);
+        item.appendChild(status);
+        
+        return { item, progressFill, status };
+      }
 
-        const formData = new FormData();
-        Array.from(files).forEach(file => formData.append('files', file));
-
+      async function uploadFiles(files) {
+        if (isUploading) return;
+        
+        const { validFiles, errors } = validateFiles(files);
+        
+        if (errors.length > 0) {
+          errors.forEach(error => showToast(error, 'error'));
+        }
+        
+        if (validFiles.length === 0) return;
+        
+        isUploading = true;
+        uploadZone.classList.add('uploading');
+        progressContainer.style.display = 'block';
+        
+        showToast(`${uploadingMessage} (${validFiles.length} fichier${validFiles.length > 1 ? 's' : ''})`, 'info');
+        
+        const progressItems = [];
+        const currentGroup = {
+          files: [],
+          urls: [],
+          timestamp: Date.now()
+        };
+        
+        // Créer les barres de progression
+        validFiles.forEach(file => {
+          const progressItem = createProgressItem(file);
+          progressItems.push(progressItem);
+          progressContainer.appendChild(progressItem.item);
+        });
+        
         try {
+          const formData = new FormData();
+          validFiles.forEach(file => formData.append('files', file));
+          
+          // Simuler la progression pour chaque fichier
+          const progressPromises = progressItems.map((item, index) => {
+            return new Promise(resolve => {
+              let progress = 0;
+              item.status.textContent = 'Upload en cours...';
+              
+              const interval = setInterval(() => {
+                progress += Math.random() * 15;
+                if (progress > 90) progress = 90;
+                
+                item.progressFill.style.width = progress + '%';
+                
+                if (progress >= 90) {
+                  clearInterval(interval);
+                  resolve();
+                }
+              }, 100);
+            });
+          });
+          
+          // Attendre que toutes les barres atteignent 90%
+          await Promise.all(progressPromises);
+          
+          // Upload réel
           const response = await fetch(
             'https://chatinnov-api-dev.proudsky-cdf9333b.francecentral.azurecontainerapps.io/documents_upload/',
-            { method: 'POST', body: formData }
+            {
+              method: 'POST',
+              body: formData
+            }
           );
-
+          
           const result = await response.json();
-
+          
           if (!response.ok || !Array.isArray(result.urls) || !result.urls.length) {
             throw new Error(result.detail || 'Aucune URL renvoyée');
           }
-
-          // Succès - créer un badge et mettre à jour les variables
-          currentGroupCount++;
-          const badge = createGroupBadge(currentGroupCount, result.urls.length);
-          groupsEl.appendChild(badge);
           
-          // Stocker le groupe uploadé
-          uploadedGroups.push(result.urls);
+          // Finaliser les barres de progression
+          progressItems.forEach((item, index) => {
+            item.progressFill.style.width = '100%';
+            item.status.textContent = '✅ Terminé';
+            
+            // Ajouter à currentGroup
+            currentGroup.files.push(validFiles[index]);
+            currentGroup.urls.push(result.urls[index]);
+          });
           
-          // Mettre à jour les variables globales
-          updateGlobalVariables(result.urls);
-
-          showStatus(`${successText} (${result.urls.length} fichier${result.urls.length > 1 ? 's' : ''})`, 'success');
+          // Ajouter le groupe aux uploads
+          uploadGroups.push(currentGroup);
+          totalFilesUploaded += validFiles.length;
+          currentGroupIndex++;
           
-          // Reset du champ input
-          const input = container.querySelector('.file-upload-input');
-          if (input) input.value = '';
-
+          // Mettre à jour l'affichage
+          updateGroupsBadges();
+          showToast(`${successMessage} (${validFiles.length} fichier${validFiles.length > 1 ? 's' : ''})`, 'success');
+          
+          // Nettoyer la progression après un délai
+          setTimeout(() => {
+            progressContainer.innerHTML = '';
+            progressContainer.style.display = 'none';
+          }, 2000);
+          
         } catch (error) {
-          console.error('❌ Erreur upload:', error);
-          showStatus(`${errorText}: ${error.message}`, 'error');
-        } finally {
-          uploadZone.classList.remove('processing');
+          console.error('Upload error:', error);
+          
+          // Marquer toutes les barres comme échouées
+          progressItems.forEach(item => {
+            item.progressFill.style.width = '0%';
+            item.status.textContent = '❌ Échec';
+          });
+          
+          showToast(`${errorMessage}: ${error.message}`, 'error');
+          
+          setTimeout(() => {
+            progressContainer.innerHTML = '';
+            progressContainer.style.display = 'none';
+          }, 3000);
         }
-      };
+        
+        isUploading = false;
+        uploadZone.classList.remove('uploading');
+        fileInput.value = ''; // Reset input
+      }
 
-      // Événements de la zone d'upload
-      const input = container.querySelector('.file-upload-input');
+      function handleButtonClick(button) {
+        if (button.action === 'stay') {
+          // Rester dans l'extension - ne rien faire de spécial
+          showToast('Continuez à uploader vos documents', 'info');
+          return;
+        }
+        
+        if (button.action === 'exit') {
+          // Sortir de l'extension
+          container.classList.add('completed');
+          
+          // Préparer les données pour Voiceflow
+          const allUrls = uploadGroups.flatMap(group => group.urls);
+          const pdf_linkS = allUrls; // Tableau complet
+          const pdf_link = JSON.stringify(allUrls); // JSON stringifié
+          
+          // Réactiver le chat si nécessaire
+          if (!chat) enableChat();
+          
+          // Envoyer à Voiceflow
+          window.voiceflow.chat.interact({
+            type: 'complete',
+            payload: {
+              success: true,
+              pdf_linkS: pdf_linkS,
+              pdf_link: pdf_link,
+              totalGroups: uploadGroups.length,
+              totalFiles: totalFilesUploaded,
+              buttonPath: button.path,
+              buttonText: button.text,
+              instanceId: uniqueInstanceId
+            }
+          });
+          
+          showToast('Upload terminé !', 'success');
+        }
+      }
+
+      // Event listeners
       
-      uploadZone.addEventListener('click', () => input.click());
-      input.addEventListener('change', (e) => uploadFiles(e.target.files));
-
+      // Clic sur la zone d'upload
+      uploadZone.addEventListener('click', () => {
+        if (!isUploading) fileInput.click();
+      });
+      
+      // Sélection de fichiers
+      fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+          uploadFiles(Array.from(e.target.files));
+        }
+      });
+      
       // Drag & Drop
       ['dragenter', 'dragover'].forEach(eventName => {
         uploadZone.addEventListener(eventName, (e) => {
           e.preventDefault();
           e.stopPropagation();
-          uploadZone.classList.add('dragover');
+          if (!isUploading) {
+            uploadZone.classList.add('drag-over');
+          }
         });
       });
-
+      
       ['dragleave', 'drop'].forEach(eventName => {
         uploadZone.addEventListener(eventName, (e) => {
           e.preventDefault();
           e.stopPropagation();
-          uploadZone.classList.remove('dragover');
+          uploadZone.classList.remove('drag-over');
           
-          if (eventName === 'drop') {
-            uploadFiles(e.dataTransfer.files);
+          if (eventName === 'drop' && !isUploading) {
+            const files = Array.from(e.dataTransfer.files);
+            if (files.length > 0) {
+              uploadFiles(files);
+            }
           }
         });
       });
 
-      // Événements des boutons
-      buttonsEl.addEventListener('click', (e) => {
-        if (!e.target.classList.contains('file-upload-btn')) return;
-        
-        const action = e.target.getAttribute('data-action');
-        const path = e.target.getAttribute('data-path');
-        
-        if (action === 'continue') {
-          // Rester dans l'extension - ne rien faire de spécial
-          console.log('🔄 Continuer dans l\'extension');
-          return;
-        }
-        
-        if (action === 'submit') {
-          // Sortir de l'extension avec les données
-          container.classList.add('disabled');
-          
-          // Réactiver le chat
-          enableChat();
-          
-          // Préparer les données finales
-          const allUploadedFiles = uploadedGroups.flat();
-          
-          // Envoyer les données à Voiceflow
-          setTimeout(() => {
-            window.voiceflow.chat.interact({
-              type: 'complete',
-              payload: {
-                success: true,
-                action: action,
-                path: path,
-                totalFiles: allUploadedFiles.length,
-                totalGroups: uploadedGroups.length,
-                pdf_linkS: allUploadedFiles, // Toutes les URLs pour l'API finale
-                buttonPath: path,
-                instanceId: uniqueInstanceId
-              }
-            });
-          }, 100);
-          
-          console.log(`✅ Extension terminée - Path: ${path}, Files: ${allUploadedFiles.length}`);
-        }
-      });
-
-      // Ajout au DOM
+      // Ajouter au DOM
       element.appendChild(container);
       
-      console.log(`✅ FileUpload prêt (ID: ${uniqueInstanceId}) - Max ${maxFiles} fichiers`);
-
+      console.log(`✅ FileUpload Extension prêt (ID: ${uniqueInstanceId}) - Max ${maxFiles} fichiers`);
+      
     } catch (error) {
       console.error('❌ FileUpload Error:', error);
       
-      // Fallback en cas d'erreur
-      const errorContainer = document.createElement('div');
-      errorContainer.innerHTML = `
-        <div style="color: #fff; background: rgba(244, 67, 54, 0.8); padding: 1rem; border-radius: 8px; text-align: center;">
+      // Formulaire de secours
+      const errorDiv = document.createElement('div');
+      errorDiv.innerHTML = `
+        <div style="color: #fff; background: rgba(220, 53, 69, 0.8); padding: 1rem; border-radius: 8px; margin: 1rem 0;">
           <p>❌ Erreur lors du chargement de l'extension d'upload</p>
-          <p>${error.message}</p>
+          <p>Erreur: ${error.message}</p>
         </div>
       `;
-      element.appendChild(errorContainer);
+      element.appendChild(errorDiv);
       
       // Terminer avec erreur
       window.voiceflow.chat.interact({
         type: 'complete',
-        payload: { success: false, error: error.message }
+        payload: {
+          success: false,
+          error: error.message
+        }
       });
     }
   }

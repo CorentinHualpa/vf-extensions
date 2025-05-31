@@ -1,14 +1,13 @@
 /**
  *  ╔═══════════════════════════════════════════════════════════╗
- *  ║  FileUpload – Voiceflow Response Extension Complète      ║
+ *  ║  FileUpload – Voiceflow Response Extension Améliorée     ║
  *  ║                                                           ║
+ *  ║  • Meilleurs contrastes et lisibilité                    ║
+ *  ║  • Boutons avec couleurs distinctives                    ║
+ *  ║  • Container de stats plus visible                       ║
  *  ║  • Upload continu avec accumulation automatique          ║
  *  ║  • Validations robustes (fichiers requis + limites)      ║
  *  ║  • Style glassmorphism élégant avec image de fond        ║
- *  ║  • Boutons configurables (stay/exit)                     ║
- *  ║  • Messages d'erreur personnalisables multilingue        ║
- *  ║  • Compatible avec l'ancien script de capture           ║
- *  ║  • Chat désactivable                                     ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 
@@ -36,7 +35,8 @@ export const FileUpload = {
         chat = false,
         chatDisabledText = '🚫 Veuillez uploader vos documents',
         buttons = [
-          { text: "✅ Terminer et traiter les documents", action: "exit", path: "process_documents" },
+          { text: "✅ Terminer et traiter les documents", action: "exit", path: "process_documents", color: "#4CAF50" },
+          { text: "▶️ Passer à la suite sans upload", action: "exit", path: "skip_upload", color: "#2196F3" },
           { text: "◀️ Étape précédente", action: "exit", path: "previous_step", color: "#D35400" }
         ],
         instanceId = null
@@ -162,27 +162,32 @@ export const FileUpload = {
           
           #${uniqueId} .upload-stats {
             margin-bottom: 16px;
-            padding: 8px 16px;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 8px;
+            padding: 12px 20px;
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.9), rgba(46, 125, 50, 0.9));
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
             text-align: center;
-            font-size: 14px;
-            color: rgba(255, 255, 255, 0.8);
+            font-size: 16px;
+            font-weight: 700;
+            color: #ffffff;
             display: none;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3),
+                        inset 0 2px 0 rgba(255, 255, 255, 0.2);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
           }
           
           #${uniqueId} .upload-container {
-            border: 2px dashed rgba(255, 255, 255, 0.4);
+            border: 2px dashed rgba(255, 255, 255, 0.5);
             border-radius: 12px;
             padding: 40px 20px;
             text-align: center;
             cursor: pointer;
             transition: all 0.3s ease;
-            background: rgba(0, 0, 0, 0.2);
+            background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
             margin-bottom: 20px;
             position: relative;
-            /* 🎯 CORRECTION: Toute la zone devient cliquable */
             width: 100%;
             min-height: 120px;
             display: flex;
@@ -192,14 +197,16 @@ export const FileUpload = {
           }
           
           #${uniqueId} .upload-container:hover {
-            border-color: rgba(255, 255, 255, 0.7);
-            background: rgba(0, 0, 0, 0.3);
+            border-color: rgba(255, 255, 255, 0.8);
+            background: rgba(255, 255, 255, 0.15);
             transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
           }
           
           #${uniqueId} .upload-container.drag-over {
             border-color: #4CAF50;
             background: rgba(76, 175, 80, 0.2);
+            box-shadow: 0 0 20px rgba(76, 175, 80, 0.3);
           }
           
           #${uniqueId} .upload-input {
@@ -218,7 +225,7 @@ export const FileUpload = {
             font-weight: 600;
             color: #fff;
             margin-bottom: 8px;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
             display: block;
             pointer-events: none;
             position: relative;
@@ -227,20 +234,22 @@ export const FileUpload = {
           
           #${uniqueId} .upload-info {
             font-size: 13px;
-            color: rgba(255, 255, 255, 0.7);
+            color: rgba(255, 255, 255, 0.8);
             margin-bottom: 8px;
             pointer-events: none;
             position: relative;
             z-index: 1;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
           }
           
           #${uniqueId} .upload-types {
             font-size: 12px;
-            color: rgba(255, 255, 255, 0.6);
+            color: rgba(255, 255, 255, 0.7);
             font-style: italic;
             pointer-events: none;
             position: relative;
             z-index: 1;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
           }
           
           #${uniqueId} .status {
@@ -317,7 +326,7 @@ export const FileUpload = {
             border: none;
             overflow: hidden;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(var(--primary-r), var(--primary-g), var(--primary-b), 0.3),
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2),
                         inset 0 3px 0 rgba(255, 255, 255, 0.2),
                         inset 0 -3px 0 rgba(0, 0, 0, 0.2);
             text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
@@ -335,7 +344,7 @@ export const FileUpload = {
           
           #${uniqueId} .upload-button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(var(--primary-r), var(--primary-g), var(--primary-b), 0.4),
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3),
                         inset 0 3px 0 rgba(255, 255, 255, 0.3),
                         inset 0 -3px 0 rgba(0, 0, 0, 0.3);
           }
@@ -418,7 +427,7 @@ export const FileUpload = {
         <div class="buttons-container">
           ${buttons.map((btn, index) => `
             <button class="upload-button" data-action="${btn.action}" data-path="${btn.path || ''}" 
-                    ${btn.color ? `style="background: ${btn.color} !important;"` : ''}>
+                    ${btn.color ? `style="background: ${btn.color} !important; box-shadow: 0 4px 12px ${btn.color}40 !important;"` : ''}>
               ${btn.text}
             </button>
           `).join('')}

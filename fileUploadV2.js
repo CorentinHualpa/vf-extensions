@@ -79,10 +79,11 @@ export const FileUpload = {
       
       if (!chat) disableChat();
 
-      // Traitement de l'image de fond
-      const processedBackgroundImage = backgroundImage && backgroundImage.includes('[img]') && backgroundImage.includes('[/img]')
-        ? backgroundImage.replace(/\[img\](.*?)\[\/img\]/g, '$1')
-        : backgroundImage;
+      // Traitement de l'image de fond (INSPIRÉ DE LOADEREXTENSION)
+      let processedBackgroundImage = backgroundImage;
+      if (backgroundImage && backgroundImage.includes('[img]') && backgroundImage.includes('[/img]')) {
+        processedBackgroundImage = backgroundImage.replace(/\[img\](.*?)\[\/img\]/g, '$1');
+      }
 
       // Création du container
       const container = document.createElement('div');
@@ -119,9 +120,10 @@ export const FileUpload = {
               linear-gradient(135deg, 
                 rgba(var(--primary-r), var(--primary-g), var(--primary-b), 0.9),
                 rgba(var(--primary-r), var(--primary-g), var(--primary-b), 0.7))
-            `};
-            background-size: cover;
-            background-position: center;
+            `}!important;
+            background-size: cover!important;
+            background-position: center!important;
+            background-repeat: no-repeat!important;
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border: 2px solid rgba(255, 255, 255, 0.2);

@@ -426,7 +426,10 @@ export const FileUpload = {
         
         <div class="buttons-container">
           ${buttons.map((btn, index) => `
-            <button class="upload-button" data-action="${btn.action}" data-path="${btn.path || ''}" 
+            <button class="upload-button" 
+                    data-action="${btn.action || 'exit'}" 
+                    data-path="${btn.path || 'Default'}" 
+                    data-button-index="${index}"
                     ${btn.color ? `style="background: ${btn.color} !important; box-shadow: 0 4px 12px ${btn.color}40 !important;"` : ''}>
               ${btn.text}
             </button>
@@ -558,11 +561,20 @@ export const FileUpload = {
         });
       });
       
-      // Event listeners pour les boutons
-      container.querySelectorAll('.upload-button').forEach(btn => {
+      // Event listeners pour les boutons - AMÉLIORÉ AVEC DEBUG
+      container.querySelectorAll('.upload-button').forEach((btn, btnIndex) => {
         btn.addEventListener('click', () => {
           const action = btn.getAttribute('data-action');
           const path = btn.getAttribute('data-path');
+          const buttonIndex = btn.getAttribute('data-button-index');
+          const buttonText = btn.textContent;
+          
+          // ✅ DEBUG COMPLET
+          console.log(`🔘 Bouton cliqué: "${buttonText}"`);
+          console.log(`   → action: "${action}"`);
+          console.log(`   → path: "${path}"`);
+          console.log(`   → index: ${buttonIndex}`);
+          console.log(`   → Bouton original:`, buttons[buttonIndex]);
           
           if (action === 'exit') {
             
@@ -581,17 +593,27 @@ export const FileUpload = {
             
             if (!chat) enableChat();
             
-            // ✅ ENVOI COMPATIBLE avec l'ancien format
+            // ✅ PAYLOAD AVEC DEBUG COMPLET
+            const payloadToSend = {
+              success: true,
+              urls: allUploadedUrls,
+              buttonPath: path,
+              buttonText: buttonText,
+              buttonAction: action,
+              totalFiles: allUploadedUrls.length,
+              instanceId: uniqueId,
+              debugInfo: {
+                originalButton: buttons[buttonIndex],
+                clickedPath: path,
+                expectedPath: buttons[buttonIndex]?.path
+              }
+            };
+            
+            console.log(`✅ Envoi du payload:`, payloadToSend);
+            
             window.voiceflow.chat.interact({
               type: 'complete',
-              payload: {
-                success: true,
-                urls: allUploadedUrls,  // ✅ FORMAT ATTENDU par l'ancien script
-                buttonPath: path,
-                buttonText: btn.textContent,
-                totalFiles: allUploadedUrls.length,
-                instanceId: uniqueId
-              }
+              payload: payloadToSend
             });
             
             console.log(`✅ Extension terminée - ${allUploadedUrls.length} fichiers envoyés via path: ${path}`);

@@ -1,14 +1,12 @@
 /**
  *  ╔═══════════════════════════════════════════════════════════╗
- *  ║  FileUpload – Voiceflow Response Extension Complète      ║
+ *  ║  FileUpload – Voiceflow Response Extension Simplifiée    ║
  *  ║                                                           ║
+ *  ║  • Basée sur l'ancienne extension qui fonctionne         ║
  *  ║  • Upload continu avec accumulation automatique          ║
- *  ║  • Validations robustes (fichiers requis + limites)      ║
- *  ║  • Style glassmorphism élégant avec image de fond        ║
- *  ║  • Boutons configurables (stay/exit)                     ║
- *  ║  • Messages d'erreur personnalisables multilingue        ║
+ *  ║  • Style glassmorphism élégant                           ║
+ *  ║  • Boutons configurables                                 ║
  *  ║  • Compatible avec l'ancien script de capture           ║
- *  ║  • Chat désactivable                                     ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 

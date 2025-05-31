@@ -1,12 +1,14 @@
 /**
  *  ╔═══════════════════════════════════════════════════════════╗
- *  ║  FileUpload – Voiceflow Response Extension Simplifiée    ║
+ *  ║  FileUpload – Voiceflow Response Extension Complète      ║
  *  ║                                                           ║
- *  ║  • Basée sur l'ancienne extension qui fonctionne         ║
  *  ║  • Upload continu avec accumulation automatique          ║
- *  ║  • Style glassmorphism élégant                           ║
- *  ║  • Boutons configurables                                 ║
+ *  ║  • Validations robustes (fichiers requis + limites)      ║
+ *  ║  • Style glassmorphism élégant avec image de fond        ║
+ *  ║  • Boutons configurables (stay/exit)                     ║
+ *  ║  • Messages d'erreur personnalisables multilingue        ║
  *  ║  • Compatible avec l'ancien script de capture           ║
+ *  ║  • Chat désactivable                                     ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 
@@ -406,6 +408,7 @@ export const FileUpload = {
       const status = container.querySelector('.status');
       const statsEl = container.querySelector('#stats-text');
       const statsContainer = container.querySelector('.upload-stats');
+      const validationError = container.querySelector(`#validation-error-${uniqueId}`);
       
       // Fonction d'affichage du statut
       const showStatus = (msg, type) => {
@@ -420,6 +423,25 @@ export const FileUpload = {
         }
       };
       
+      // 🚨 NOUVELLE FONCTION : Affichage des erreurs de validation
+      const showValidationError = (message) => {
+        validationError.textContent = message;
+        validationError.style.display = 'block';
+        
+        // Masquer après 5 secondes
+        setTimeout(() => {
+          validationError.style.display = 'none';
+        }, 5000);
+        
+        // Scroll vers l'erreur pour la visibilité
+        validationError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      };
+      
+      // Fonction de masquage des erreurs de validation
+      const hideValidationError = () => {
+        validationError.style.display = 'none';
+      };
+      
       // Fonction de mise à jour des stats
       const updateStats = () => {
         if (allUploadedUrls.length > 0) {
@@ -430,15 +452,25 @@ export const FileUpload = {
         }
       };
       
-      // Fonction d'upload (BASÉE SUR L'ANCIENNE EXTENSION)
+      // Fonction d'upload (BASÉE SUR L'ANCIENNE EXTENSION + VALIDATION)
       const upload = async (files) => {
         if (!files.length) return;
         
-        // Vérifier la limite
+        // 🚨 VALIDATION : Vérifier la limite AVANT l'upload
         if (allUploadedUrls.length + files.length > maxFiles) {
-          showStatus(`❌ Limite de ${maxFiles} fichiers atteinte`, 'error');
+          const errorMsg = limitExceededErrorMessage.replace('{maxFiles}', maxFiles);
+          showValidationError(errorMsg);
+          
+          // 🔄 RESET COMPLET si limite dépassée
+          console.log(`⚠️ Limite dépassée: ${allUploadedUrls.length + files.length}/${maxFiles} - Reset`);
+          allUploadedUrls = []; // Vider tous les uploads précédents
+          updateStats();
+          
           return;
         }
+        
+        // Masquer les erreurs de validation pendant l'upload
+        hideValidationError();
         
         showStatus(`Téléversement de ${files.length} fichier(s)…`, 'loading');
         
@@ -462,7 +494,7 @@ export const FileUpload = {
           showStatus(`${successMessage} (${j.urls.length} fichier(s))`, 'success');
           updateStats();
           
-          console.log(`📁 ${j.urls.length} fichiers uploadés. Total: ${allUploadedUrls.length}`);
+          console.log(`📁 ${j.urls.length} fichiers uploadés. Total: ${allUploadedUrls.length}/${maxFiles}`);
           console.log('URLs accumulées:', allUploadedUrls);
           
         } catch (e) {
@@ -499,6 +531,17 @@ export const FileUpload = {
           const path = btn.getAttribute('data-path');
           
           if (action === 'exit') {
+            
+            // 🚨 VALIDATION : Vérifier qu'il y a au moins 1 fichier pour "process_documents"
+            if (path === 'process_documents' && allUploadedUrls.length === 0) {
+              showValidationError(noFilesErrorMessage);
+              console.log('❌ Tentative de finalisation sans fichiers uploadés');
+              return; // Bloquer la sortie
+            }
+            
+            // Masquer les erreurs de validation
+            hideValidationError();
+            
             // Sortir de l'extension
             container.classList.add('completed');
             
@@ -517,7 +560,7 @@ export const FileUpload = {
               }
             });
             
-            console.log(`✅ Extension terminée - ${allUploadedUrls.length} fichiers envoyés`);
+            console.log(`✅ Extension terminée - ${allUploadedUrls.length} fichiers envoyés via path: ${path}`);
           }
           // Si action === 'stay', on ne fait rien (reste dans l'extension)
         });

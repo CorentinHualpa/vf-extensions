@@ -25,6 +25,8 @@ export const FileUpload = {
         uploadText = "📁 Cliquez ou glissez vos fichiers ici",
         successMessage = "✅ Fichier(s) uploadé(s) avec succès !",
         errorMessage = "❌ Erreur lors de l'upload",
+        noFilesErrorMessage = "❌ Veuillez uploader au moins 1 document avant de continuer",
+        limitExceededErrorMessage = "❌ Limite de {maxFiles} fichiers dépassée. Veuillez recommencer.",
         maxFiles = 20,
         allowedTypes = ['pdf', 'docx', 'doc', 'txt'],
         primaryColor = '#9C27B0',
@@ -241,6 +243,26 @@ export const FileUpload = {
             color: #fff;
           }
           
+          #${uniqueId} .validation-error {
+            margin: 16px 0;
+            padding: 12px 16px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #f44336, #d32f2f);
+            color: #fff;
+            font-weight: 600;
+            text-align: center;
+            display: none;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            animation: errorShake 0.5s ease-in-out;
+          }
+          
+          @keyframes errorShake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+          }
+          
           @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.8; }
@@ -361,6 +383,10 @@ export const FileUpload = {
         </div>
         
         <div class="status"></div>
+        
+        <div class="validation-error" id="validation-error-${uniqueId}">
+          <!-- Message d'erreur de validation -->
+        </div>
         
         <div class="buttons-container">
           ${buttons.map((btn, index) => `

@@ -37,8 +37,7 @@ export const FileUpload = {
         errorMessage = '❌ Erreur lors de l\'upload',
         uploadingMessage = '📤 Upload en cours...',
         buttons = [
-          { text: "📤 Ajouter d'autres documents", action: "stay" },
-          { text: "✅ Terminer et traiter", action: "exit", path: "process_documents" },
+          { text: "✅ Terminer et traiter les documents", action: "exit", path: "process_documents" },
           { text: "◀️ Étape précédente", action: "exit", path: "previous_step", color: "#D35400" }
         ],
         instanceId = null,
@@ -756,9 +755,21 @@ export const FileUpload = {
             item.progressFill.style.width = '100%';
             item.status.textContent = '✅ Terminé';
             
-            // Ajouter à currentGroup
+            // 🔧 CORRECTION : S'assurer de la structure correcte des objets
+            const fileUrl = result.urls[index];
+            const fileName = validFiles[index].name;
+            
+            // Créer un objet structuré pour l'URL
+            const fileObject = {
+              url: typeof fileUrl === 'string' ? fileUrl : fileUrl.url || fileUrl,
+              filename: fileName
+            };
+            
+            console.log(`📄 Fichier ${index + 1}:`, fileObject);
+            
+            // Ajouter à currentGroup avec la structure correcte
             currentGroup.files.push(validFiles[index]);
-            currentGroup.urls.push(result.urls[index]);
+            currentGroup.urls.push(fileObject);
           });
           
           // Ajouter le groupe aux uploads
@@ -811,8 +822,12 @@ export const FileUpload = {
           
           // Préparer les données pour Voiceflow
           const allUrls = uploadGroups.flatMap(group => group.urls);
-          const pdf_linkS = allUrls; // Tableau complet
-          const pdf_link = JSON.stringify(allUrls); // JSON stringifié
+          const pdf_linkS = allUrls; // Tableau complet pour l'API
+          const pdf_link = JSON.stringify(allUrls); // JSON stringifié pour rétrocompatibilité
+          
+          console.log("🔍 Données préparées :");
+          console.log("📋 pdf_linkS (tableau):", pdf_linkS);
+          console.log("📋 pdf_link (JSON string):", pdf_link);
           
           // Réactiver le chat si nécessaire
           if (!chat) enableChat();

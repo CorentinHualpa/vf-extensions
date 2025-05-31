@@ -118,8 +118,8 @@ export const FileUpload = {
               url("${processedBackgroundImage}")
             ` : `
               linear-gradient(135deg, 
-                rgba(var(--primary-r), var(--primary-g), var(--primary-b), 0.9),
-                rgba(var(--primary-r), var(--primary-g), var(--primary-b), 0.7))
+                rgba(var(--primary-r), var(--primary-g), var(--primary-b), 0.4),
+                rgba(var(--primary-r), var(--primary-g), var(--primary-b), 0.2))
             `}!important;
             background-size: cover!important;
             background-position: center!important;

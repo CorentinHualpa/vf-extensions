@@ -1,12 +1,14 @@
 /**
  *  ╔═══════════════════════════════════════════════════════════╗
- *  ║  FileUpload – Voiceflow Response Extension Simplifiée    ║
+ *  ║  FileUpload – Voiceflow Response Extension Complète      ║
  *  ║                                                           ║
- *  ║  • Basée sur l'ancienne extension qui fonctionne         ║
  *  ║  • Upload continu avec accumulation automatique          ║
- *  ║  • Style glassmorphism élégant                           ║
- *  ║  • Boutons configurables                                 ║
+ *  ║  • Validations robustes (fichiers requis + limites)      ║
+ *  ║  • Style glassmorphism élégant avec image de fond        ║
+ *  ║  • Boutons configurables (stay/exit)                     ║
+ *  ║  • Messages d'erreur personnalisables multilingue        ║
  *  ║  • Compatible avec l'ancien script de capture           ║
+ *  ║  • Chat désactivable                                     ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 
@@ -178,6 +180,13 @@ export const FileUpload = {
             backdrop-filter: blur(10px);
             margin-bottom: 20px;
             position: relative;
+            /* 🎯 CORRECTION: Toute la zone devient cliquable */
+            width: 100%;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
           }
           
           #${uniqueId} .upload-container:hover {
@@ -192,7 +201,14 @@ export const FileUpload = {
           }
           
           #${uniqueId} .upload-input {
-            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 2;
           }
           
           #${uniqueId} .upload-label {
@@ -202,18 +218,27 @@ export const FileUpload = {
             margin-bottom: 8px;
             text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
             display: block;
+            pointer-events: none;
+            position: relative;
+            z-index: 1;
           }
           
           #${uniqueId} .upload-info {
             font-size: 13px;
             color: rgba(255, 255, 255, 0.7);
             margin-bottom: 8px;
+            pointer-events: none;
+            position: relative;
+            z-index: 1;
           }
           
           #${uniqueId} .upload-types {
             font-size: 12px;
             color: rgba(255, 255, 255, 0.6);
             font-style: italic;
+            pointer-events: none;
+            position: relative;
+            z-index: 1;
           }
           
           #${uniqueId} .status {
@@ -377,7 +402,7 @@ export const FileUpload = {
         
         <div class="upload-container">
           <input id="input-${uniqueId}" class="upload-input" type="file" multiple accept="${allowedTypes.map(t => `.${t}`).join(',')}" />
-          <label for="input-${uniqueId}" class="upload-label">${uploadText}</label>
+          <div class="upload-label">${uploadText}</div>
           <div class="upload-info">Maximum ${maxFiles} fichiers</div>
           <div class="upload-types">Types autorisés: ${allowedTypes.map(t => t.toUpperCase()).join(', ')}</div>
         </div>
@@ -504,7 +529,7 @@ export const FileUpload = {
       // Event listeners pour l'upload
       input.addEventListener('change', e => upload(e.target.files));
       
-      // Drag & Drop
+      // Drag & Drop sur le container
       ['dragenter', 'dragover'].forEach(ev => {
         uploadContainer.addEventListener(ev, e => {
           e.preventDefault();

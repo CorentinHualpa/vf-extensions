@@ -33,6 +33,7 @@ export const FileUpload = {
         allowedTypes = ['pdf', 'docx', 'doc', 'txt'],
         primaryColor = '#9C27B0',
         backgroundImage = null,
+        backgroundOpacity = { high: 0.5, low: 0.3 }, // Nouveau paramètre pour contrôler l'opacité
         chat = false,
         chatDisabledText = '🚫 Veuillez uploader vos documents',
         buttons = [
@@ -114,8 +115,8 @@ export const FileUpload = {
             color: #fff;
             background: ${processedBackgroundImage ? `
               linear-gradient(135deg, 
-                rgba(var(--primary-r), var(--primary-g), var(--primary-b), 0.85),
-                rgba(var(--primary-r), var(--primary-g), var(--primary-b), 0.75)),
+                rgba(var(--primary-r), var(--primary-g), var(--primary-b), ${backgroundOpacity.high}),
+                rgba(var(--primary-r), var(--primary-g), var(--primary-b), ${backgroundOpacity.low})),
               url("${processedBackgroundImage}")
             ` : `
               linear-gradient(135deg, 
@@ -421,6 +422,21 @@ export const FileUpload = {
             flex: 1 1 calc(33.333% - 8px)!important;
           }
           
+          /* Styles spécifiques pour les boutons avec couleur personnalisée */
+          #${uniqueId} .upload-button[style*="background"] {
+            position: relative!important;
+          }
+          
+          /* Assurer que le hover fonctionne avec les couleurs personnalisées */
+          #${uniqueId} .upload-button[style*="background"]:hover {
+            filter: brightness(1.1)!important;
+            transform: translateY(-2px)!important;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.5),
+                        0 6px 20px var(--btn-color, var(--primary))40,
+                        inset 0 3px 0 rgba(255,255,255,0.3),
+                        inset 0 -3px 0 rgba(0,0,0,0.3)!important;
+          }
+          
           /* Responsive : Sur mobile, boutons pleine largeur */
           @media (max-width: 768px) {
             #${uniqueId} {
@@ -490,7 +506,8 @@ export const FileUpload = {
                     data-button-index="${index}"
                     ${btn.color ? `style="background: ${btn.color} !important; 
                                         --btn-color: ${btn.color};
-                                        box-shadow: 0 4px 12px ${btn.color}40,
+                                        box-shadow: 0 4px 12px rgba(0,0,0,0.3),
+                                                   0 4px 12px ${btn.color}40,
                                                    inset 0 3px 0 rgba(255,255,255,0.2),
                                                    inset 0 -3px 0 rgba(0,0,0,0.2) !important;"` : ''}>
               ${btn.text}

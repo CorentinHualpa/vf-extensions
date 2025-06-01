@@ -5,92 +5,95 @@ export const FileUpload = {
     trace.payload?.name === 'file_upload',
   render: ({ trace, element }) => {
     try {
-      // Configuration des couleurs (inspiré de MultiSelect)
-      const primaryColor = trace.payload?.color || '#9C27B0';
-      const buttonFontSize = trace.payload?.buttonFontSize || 15;
-      
-      // Extraire les valeurs RGB pour les effets
-      const hexToRgb = (hex) => {
-        const num = parseInt(hex.replace('#',''), 16);
-        return {
-          r: (num >> 16) & 255,
-          g: (num >> 8) & 255,
-          b: num & 255
-        };
-      };
-      
-      const rgb = hexToRgb(primaryColor);
-      
       // Création du container
       const id = 'fileUpload_' + Date.now();
       const container = document.createElement('div');
+      
+      // Couleur personnalisable (inspirée de MultiSelect)
+      const primaryColor = trace.payload?.color || '#9C27B0';
+      const primaryRgb = parseInt(primaryColor.replace('#',''), 16);
+      const primaryR = (primaryRgb >> 16) & 255;
+      const primaryG = (primaryRgb >> 8) & 255;
+      const primaryB = primaryRgb & 255;
+      
       container.innerHTML = `
         <style>
           /* Variables CSS inspirées de MultiSelect */
-          .file-upload-wrapper {
-            --fu-primary: ${primaryColor};
-            --fu-primary-r: ${rgb.r};
-            --fu-primary-g: ${rgb.g};
-            --fu-primary-b: ${rgb.b};
-            --fu-btn-font-size: ${buttonFontSize}px;
+          .fileupload-wrapper {
+            --fu-primary-color: ${primaryColor};
+            --fu-primary-r: ${primaryR};
+            --fu-primary-g: ${primaryG};
+            --fu-primary-b: ${primaryB};
             --fu-radius: 12px;
             --fu-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-            
             width: 100%;
             max-width: 800px;
             margin: 0 auto;
             font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
           }
           
-          /* Container principal avec glassmorphism */
+          /* Container principal avec effet glassmorphism */
           .upload-container {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 20px;
-            padding: 24px;
-            background: rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.1);
+            position: relative;
+            padding: 40px;
+            background: linear-gradient(135deg, 
+              rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.9),
+              rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.7)
+            );
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            border: 2px dashed rgba(255, 255, 255, 0.3);
             border-radius: var(--fu-radius);
-            box-shadow: var(--fu-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-            transition: all 0.3s ease;
-            position: relative;
+            text-align: center;
+            cursor: pointer;
             overflow: hidden;
+            transition: all 0.3s ease;
+            box-shadow: var(--fu-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
           }
           
+          /* Effet hover */
           .upload-container:hover {
-            transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.6);
+            transform: translateY(-4px);
             box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
           }
           
-          /* Zone de drop */
-          .drop-zone {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            padding: 20px;
-            border: 2px dashed rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
-            background: rgba(0, 0, 0, 0.3);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            min-height: 80px;
+          /* État actif */
+          .upload-container:active {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
           }
           
-          .drop-zone:hover {
-            border-color: var(--fu-primary);
-            background: rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.2);
-            transform: scale(1.02);
+          /* Effet de scan/shine comme MultiSelect */
+          .upload-container::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            width: calc(100% + 20px);
+            height: calc(100% + 20px);
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transform: translateX(-100%) rotate(45deg);
+            transition: transform 0.8s ease;
           }
           
-          .drop-zone.dragging {
-            border-color: var(--fu-primary);
-            background: rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.3);
-            box-shadow: 0 0 20px rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.5);
+          .upload-container:hover::before {
+            transform: translateX(100%) rotate(45deg);
+          }
+          
+          /* État drag over */
+          .upload-container.drag-over {
+            border-color: rgba(255, 255, 255, 0.8);
+            background: linear-gradient(135deg, 
+              rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 1),
+              rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.8)
+            );
+            box-shadow: 0 0 30px rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.5);
           }
           
           /* Input caché */
@@ -98,190 +101,145 @@ export const FileUpload = {
             display: none;
           }
           
-          /* Label avec icône */
+          /* Label avec style amélioré */
           .upload-label {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            color: #fff;
-            font-size: var(--fu-btn-font-size);
-            font-weight: 500;
-            cursor: pointer;
-            user-select: none;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-          }
-          
-          .upload-icon {
-            font-size: 28px;
-            color: var(--fu-primary);
-            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
-          }
-          
-          /* Bouton d'upload style MultiSelect */
-          .upload-button {
-            position: relative;
-            background: var(--fu-primary);
-            color: #fff;
-            padding: 14px 28px;
-            border-radius: 8px;
-            font-weight: 700;
+            color: #ffffff;
+            display: block;
+            font-size: 18px;
+            font-weight: 600;
             letter-spacing: 0.5px;
-            font-size: var(--fu-btn-font-size);
-            line-height: 1.2;
-            cursor: pointer;
-            border: none;
-            overflow: hidden;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.3),
-                        inset 0 3px 0 rgba(255, 255, 255, 0.2),
-                        inset 0 -3px 0 rgba(0, 0, 0, 0.2);
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 0 4px rgba(0, 0, 0, 0.2);
-            white-space: nowrap;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 0 6px rgba(0, 0, 0, 0.2);
+            margin-bottom: 10px;
+            z-index: 1;
+            position: relative;
           }
           
-          .upload-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.4),
-                        inset 0 3px 0 rgba(255, 255, 255, 0.3),
-                        inset 0 -3px 0 rgba(0, 0, 0, 0.3);
+          /* Icône upload */
+          .upload-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+            opacity: 0.9;
+            animation: float 3s ease-in-out infinite;
           }
           
-          .upload-button:active {
-            transform: translateY(1px);
-            box-shadow: 0 2px 6px rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.3),
-                        inset 0 1px 0 rgba(255, 255, 255, 0.1),
-                        inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+          @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
           }
           
-          /* Effet de scan du bouton */
-          .upload-button::before {
-            content: '';
-            position: absolute;
-            top: -2px;
-            left: -2px;
-            width: calc(100% + 4px);
-            height: calc(100% + 4px);
-            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-            transform: translateX(-100%) rotate(45deg);
-            transition: transform 0.8s ease;
-          }
-          
-          .upload-button:hover::before {
-            transform: translateX(100%) rotate(45deg);
+          /* Texte secondaire */
+          .upload-hint {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+            margin-top: 5px;
           }
           
           /* Status avec style glassmorphism */
           .status {
-            position: absolute;
-            bottom: -60px;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 12px 24px;
+            margin-top: 16px;
+            padding: 16px 24px;
             border-radius: 8px;
+            display: none;
+            font-weight: 600;
+            font-size: 15px;
+            text-align: center;
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-            opacity: 0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             transition: all 0.3s ease;
-            white-space: nowrap;
-            font-weight: 500;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-          }
-          
-          .status.show {
-            opacity: 1;
-            bottom: -50px;
+            letter-spacing: 0.3px;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
           }
           
           .status.loading {
-            background: rgba(33, 150, 243, 0.9);
+            background: linear-gradient(135deg, rgba(33, 150, 243, 0.95), rgba(33, 150, 243, 0.85));
             color: #fff;
+            animation: pulse 1.5s infinite;
           }
           
           .status.success {
-            background: rgba(76, 175, 80, 0.9);
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.95), rgba(76, 175, 80, 0.85));
             color: #fff;
           }
           
           .status.error {
-            background: rgba(244, 67, 54, 0.9);
+            background: linear-gradient(135deg, rgba(244, 67, 54, 0.95), rgba(244, 67, 54, 0.85));
             color: #fff;
           }
           
-          /* Animation de chargement */
           @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0); }
-            100% { box-shadow: 0 0 0 0 rgba(var(--fu-primary-r), var(--fu-primary-g), var(--fu-primary-b), 0); }
+            0% { box-shadow: 0 0 0 0 rgba(33, 150, 243, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(33, 150, 243, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(33, 150, 243, 0); }
           }
           
-          .upload-button.loading {
-            animation: pulse 1.5s infinite;
-          }
-          
-          /* Désactivé */
+          /* État désactivé */
           .upload-container.disabled {
-            opacity: 0.5;
+            opacity: 0.6;
             pointer-events: none;
+            cursor: not-allowed;
+          }
+          
+          /* Animation de shake pour les erreurs */
+          @keyframes shake-enhanced {
+            0%, 100% { transform: translateX(0); }
+            15%, 45%, 75% { transform: translateX(-6px); }
+            30%, 60%, 90% { transform: translateX(6px); }
+          }
+          
+          .status.error.shake {
+            animation: shake-enhanced 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97);
           }
           
           /* Responsive */
-          @media (max-width: 600px) {
+          @media (max-width: 768px) {
             .upload-container {
-              flex-direction: column;
-              gap: 16px;
+              padding: 30px 20px;
+              min-height: 180px;
             }
             
-            .drop-zone {
-              width: 100%;
+            .upload-label {
+              font-size: 16px;
             }
             
-            .upload-button {
-              width: 100%;
+            .upload-icon {
+              font-size: 36px;
             }
           }
         </style>
-        
-        <div class="file-upload-wrapper">
+        <div class="fileupload-wrapper">
           <div class="upload-container">
-            <div class="drop-zone">
-              <input id="${id}" class="upload-input" type="file" multiple />
-              <label for="${id}" class="upload-label">
-                <span class="upload-icon">📁</span>
-                <span>Glissez vos fichiers ici ou cliquez pour parcourir</span>
-              </label>
-            </div>
-            <button class="upload-button" onclick="document.getElementById('${id}').click()">
-              Sélectionner des fichiers
-            </button>
+            <input id="${id}" class="upload-input" type="file" multiple />
+            <div class="upload-icon">📎</div>
+            <label for="${id}" class="upload-label">Cliquez ou glissez vos fichiers ici</label>
+            <div class="upload-hint">Formats acceptés : tous types de fichiers</div>
           </div>
           <div class="status"></div>
         </div>
       `;
       
       element.appendChild(container);
-      
       const inp = container.querySelector('.upload-input');
-      const dropZone = container.querySelector('.drop-zone');
-      const uploadContainer = container.querySelector('.upload-container');
+      const box = container.querySelector('.upload-container');
       const status = container.querySelector('.status');
-      const uploadButton = container.querySelector('.upload-button');
       
       const show = (msg, type) => {
         status.textContent = msg;
-        status.className = `status ${type} show`;
-        setTimeout(() => {
-          status.classList.remove('show');
-        }, 5000);
+        status.className = 'status ' + type;
+        status.style.display = 'block';
+        
+        if (type === 'error') {
+          status.classList.add('shake');
+          setTimeout(() => status.classList.remove('shake'), 400);
+        }
       };
       
       const upload = async (files) => {
         if (!files.length) return;
         
-        uploadButton.classList.add('loading');
-        uploadButton.disabled = true;
         show(`Téléversement de ${files.length} fichier(s)…`, 'loading');
+        box.classList.add('disabled');
         
         const fd = new FormData();
         Array.from(files).forEach(f => fd.append('files', f));
@@ -297,13 +255,11 @@ export const FileUpload = {
             throw new Error(j.detail || 'Aucune URL renvoyée');
           }
           
-          show(`✅ ${j.urls.length} fichier(s) uploadés avec succès !`, 'success');
-          uploadContainer.classList.add('disabled');
+          show(`✅ ${j.urls.length} fichier(s) uploadés !`, 'success');
+          box.style.pointerEvents = 'none';
+          box.style.opacity = '0.6';
           
-          // Animation de succès
-          uploadButton.style.background = '#4CAF50';
-          uploadButton.textContent = '✓ Fichiers uploadés';
-          
+          // On envoie ici **un objet** pour que le widget valide
           window.voiceflow.chat.interact({
             type: 'complete',
             payload: {
@@ -314,8 +270,7 @@ export const FileUpload = {
         } catch (e) {
           console.error(e);
           show(`❌ Erreur : ${e.message}`, 'error');
-          uploadButton.classList.remove('loading');
-          uploadButton.disabled = false;
+          box.classList.remove('disabled');
           
           window.voiceflow.chat.interact({
             type: 'complete',
@@ -330,35 +285,25 @@ export const FileUpload = {
       // Events
       inp.addEventListener('change', e => upload(e.target.files));
       
-      // Drag and drop avec style
       ['dragenter', 'dragover'].forEach(ev =>
-        dropZone.addEventListener(ev, e => {
+        box.addEventListener(ev, e => {
           e.preventDefault();
           e.stopPropagation();
-          dropZone.classList.add('dragging');
+          box.classList.add('drag-over');
         })
       );
       
       ['dragleave', 'drop'].forEach(ev =>
-        dropZone.addEventListener(ev, e => {
+        box.addEventListener(ev, e => {
           e.preventDefault();
           e.stopPropagation();
-          dropZone.classList.remove('dragging');
-          if (ev === 'drop' && e.dataTransfer.files.length) {
-            upload(e.dataTransfer.files);
-          }
+          box.classList.remove('drag-over');
+          if (ev === 'drop') upload(e.dataTransfer.files);
         })
       );
-      
-      // Clic sur la zone de drop
-      dropZone.addEventListener('click', (e) => {
-        if (e.target !== inp) {
-          inp.click();
-        }
-      });
-      
     } catch (e) {
       console.error(e);
+      // On termine coûte que coûte
       window.voiceflow.chat.interact({
         type: 'complete',
         payload: { success: false, error: 'Erreur interne FileUpload' }
@@ -366,3 +311,5 @@ export const FileUpload = {
     }
   }
 };
+
+export default FileUpload;

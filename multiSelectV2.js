@@ -1067,14 +1067,29 @@ export const MultiSelect = {
           btn.addEventListener('click', () => {
             const min = cfg.minSelect || 0;
 
+            // ✅ CORRECTION : Compter les checkboxes cochées ET les champs de saisie remplis
             const checked = Array.from(
               container.querySelectorAll('input[type="checkbox"]:checked')
             ).filter(i => i.dataset.action !== 'all').length;
 
-            if (min > 0 && checked < min) {
+            // ✅ NOUVEAU: Vérifier aussi les champs de saisie utilisateur
+            const userInputs = Array.from(
+              container.querySelectorAll('.user-input-field')
+            ).filter(field => field.value && field.value.trim() !== '').length;
+
+            // ✅ MODIFIÉ: La validation prend en compte les deux types de sélection
+            const totalSelections = checked + userInputs;
+
+            if (min > 0 && totalSelections < min) {
               btn.classList.add('shake');
               setTimeout(() => btn.classList.remove('shake'), 400);
-              err.textContent = `Vous devez sélectionner au moins ${min} option${min>1?'s':''}.`;
+              
+              // ✅ AMÉLIORÉ: Message d'erreur plus explicite
+              if (userInputs > 0) {
+                err.textContent = `Votre saisie personnalisée compte comme une sélection.`;
+              } else {
+                err.textContent = `Vous devez sélectionner au moins ${min} option${min>1?'s':''} ou saisir du texte.`;
+              }
               err.style.visibility = 'visible';
               return;
             }

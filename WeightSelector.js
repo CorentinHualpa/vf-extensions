@@ -8,6 +8,8 @@
  *  ║  • Design glassmorphisme cohérent                        ║
  *  ║  • Support responsive multi-colonnes                     ║
  *  ║  • Chat configurable (défaut: désactivé)                 ║
+ *  ║  • Inversion automatique des couleurs des boutons        ║
+ *  ║  • Effets visuels dynamiques selon les pondérations     ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 
@@ -41,7 +43,7 @@ export const WeightSelector = {
       // Générer un identifiant unique
       const uniqueInstanceId = instanceId || `ws_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
       
-      /* 1. Utilitaires */
+      /* 1. Utilitaires de couleur (définies en premier) */
       const stripHTML = html => {
         const tmp = document.createElement('div');
         tmp.innerHTML = html || '';
@@ -55,6 +57,50 @@ export const WeightSelector = {
         const b = num & 0xFF;
         return `rgba(${r}, ${g}, ${b}, ${opacity})`;
       };
+      
+      // Fonction pour calculer la luminosité d'une couleur (0-255)
+      const getLuminance = (hex) => {
+        const rgb = parseInt(hex.replace('#',''), 16);
+        const r = (rgb >> 16) & 255;
+        const g = (rgb >> 8) & 255;
+        const b = rgb & 255;
+        // Formule de luminosité perçue
+        return (0.299 * r + 0.587 * g + 0.114 * b);
+      };
+      
+      // Fonction pour assombrir/éclaircir une couleur
+      const adjustColorBrightness = (hex, factor) => {
+        const rgb = parseInt(hex.replace('#',''), 16);
+        let r = (rgb >> 16) & 255;
+        let g = (rgb >> 8) & 255;
+        let b = rgb & 255;
+        
+        if (factor > 0) {
+          // Éclaircir
+          r = Math.min(255, Math.floor(r + (255 - r) * factor));
+          g = Math.min(255, Math.floor(g + (255 - g) * factor));
+          b = Math.min(255, Math.floor(b + (255 - b) * factor));
+        } else {
+          // Assombrir
+          r = Math.max(0, Math.floor(r * (1 + factor)));
+          g = Math.max(0, Math.floor(g * (1 + factor)));
+          b = Math.max(0, Math.floor(b * (1 + factor)));
+        }
+        
+        const toHex = c => c.toString(16).padStart(2,'0');
+        return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+      };
+      
+      // Fonction pour déterminer la couleur de texte selon le fond
+      const getContrastTextColor = (bgColor) => {
+        const luminance = getLuminance(bgColor);
+        return luminance > 128 ? '#333333' : '#FFFFFF';
+      };
+      
+      const globalBtnRgb = parseInt(global_button_color.replace('#',''), 16);
+      const globalBtnR = (globalBtnRgb >> 16) & 255;
+      const globalBtnG = (globalBtnRgb >> 8) & 255;
+      const globalBtnB = globalBtnRgb & 255;
 
       /* 2. Gestion du chat */
       const root = element.getRootNode();
@@ -287,11 +333,6 @@ export const WeightSelector = {
       }
 
       /* 5. CSS Styles */
-      const globalBtnRgb = parseInt(global_button_color.replace('#',''), 16);
-      const globalBtnR = (globalBtnRgb >> 16) & 255;
-      const globalBtnG = (globalBtnRgb >> 8) & 255;
-      const globalBtnB = globalBtnRgb & 255;
-      
       const styleEl = document.createElement('style');
       styleEl.textContent = `
 /* Variables CSS principales */
@@ -718,6 +759,7 @@ export const WeightSelector = {
   align-items: center !important;
 }
 
+/* BOUTONS avec inversion automatique des couleurs */
 .weight-selector-submit-btn {
   position: relative !important;
   background: var(--ws-accent) !important;
@@ -749,6 +791,52 @@ export const WeightSelector = {
   white-space: normal !important;
 }
 
+/* Boutons avec couleurs claires - inversion automatique */
+.weight-selector-submit-btn.light-button {
+  background: linear-gradient(145deg, #FFFFFF, #F8F9FA) !important;
+  color: var(--ws-accent) !important;
+  border: 2px solid rgba(var(--ws-accent-r),var(--ws-accent-g),var(--ws-accent-b),0.2) !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1),
+              inset 0 3px 0 rgba(255,255,255,0.8),
+              inset 0 -3px 0 rgba(0,0,0,0.05) !important;
+  text-shadow: none !important;
+}
+
+.weight-selector-submit-btn.light-button:hover {
+  background: linear-gradient(145deg, #F8F9FA, #E9ECEF) !important;
+  border: 2px solid rgba(var(--ws-accent-r),var(--ws-accent-g),var(--ws-accent-b),0.4) !important;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15),
+              inset 0 3px 0 rgba(255,255,255,0.9),
+              inset 0 -3px 0 rgba(0,0,0,0.08) !important;
+  color: var(--ws-accent) !important;
+  transform: translateY(-2px) !important;
+}
+
+.weight-selector-submit-btn.light-button:active {
+  background: linear-gradient(145deg, #E9ECEF, #DEE2E6) !important;
+  transform: translateY(1px) !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1),
+              inset 0 1px 0 rgba(255,255,255,0.7),
+              inset 0 -1px 0 rgba(0,0,0,0.05) !important;
+}
+
+/* Boutons normaux (couleurs foncées) */
+.weight-selector-submit-btn:not(.light-button):hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 20px rgba(var(--ws-accent-r),var(--ws-accent-g),var(--ws-accent-b),0.4),
+              inset 0 3px 0 rgba(255,255,255,0.3),
+              inset 0 -3px 0 rgba(0,0,0,0.3) !important;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.4), 0 0 6px rgba(0,0,0,0.3) !important;
+}
+
+.weight-selector-submit-btn:not(.light-button):active {
+  transform: translateY(1px) !important;
+  box-shadow: 0 2px 6px rgba(var(--ws-accent-r),var(--ws-accent-g),var(--ws-accent-b),0.3),
+              inset 0 1px 0 rgba(255,255,255,0.1),
+              inset 0 -1px 0 rgba(0,0,0,0.1) !important;
+}
+
+/* Responsive design pour boutons */
 @media (max-width: 768px) {
   .weight-selector-buttons-container {
     flex-direction: column !important;
@@ -773,21 +861,7 @@ export const WeightSelector = {
   }
 }
 
-.weight-selector-submit-btn:hover {
-  transform: translateY(-2px) !important;
-  box-shadow: 0 6px 20px rgba(var(--ws-accent-r),var(--ws-accent-g),var(--ws-accent-b),0.4),
-              inset 0 3px 0 rgba(255,255,255,0.3),
-              inset 0 -3px 0 rgba(0,0,0,0.3) !important;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.4), 0 0 6px rgba(0,0,0,0.3) !important;
-}
-
-.weight-selector-submit-btn:active {
-  transform: translateY(1px) !important;
-  box-shadow: 0 2px 6px rgba(var(--ws-accent-r),var(--ws-accent-g),var(--ws-accent-b),0.3),
-              inset 0 1px 0 rgba(255,255,255,0.1),
-              inset 0 -1px 0 rgba(0,0,0,0.1) !important;
-}
-
+/* Effet de scan sci-fi pour tous les boutons */
 .weight-selector-submit-btn::before {
   content: '' !important;
   position: absolute !important;
@@ -802,6 +876,22 @@ export const WeightSelector = {
 
 .weight-selector-submit-btn:hover::before {
   transform: translateX(100%) rotate(45deg) !important;
+}
+
+/* Effet de scan spécial pour boutons clairs */
+.weight-selector-submit-btn.light-button::before {
+  background: linear-gradient(45deg, transparent, rgba(var(--ws-accent-r),var(--ws-accent-g),var(--ws-accent-b),0.2), transparent) !important;
+}
+
+/* Effet de pulse pour le focus */
+@keyframes pulse-accent {
+  0% { box-shadow: 0 0 0 0 rgba(var(--ws-accent-r),var(--ws-accent-g),var(--ws-accent-b),0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(var(--ws-accent-r),var(--ws-accent-g),var(--ws-accent-b),0); }
+  100% { box-shadow: 0 0 0 0 rgba(var(--ws-accent-r),var(--ws-accent-g),var(--ws-accent-b),0); }
+}
+
+.weight-selector-submit-btn:focus {
+  animation: pulse-accent 1.5s infinite !important;
 }
 
 /* État désactivé */
@@ -850,11 +940,26 @@ export const WeightSelector = {
         sectionEl.className = 'weight-selector-section';
         sectionEl.id = `section-${uniqueInstanceId}-${sectionIdx}`;
         
-        // Couleur de section
+        // Couleur de section (défaut harmonieux ou personnalisée)
         const sectionColor = section.color || global_button_color;
         const rgba1 = hexToRgba(sectionColor, 0.9);
         const rgba2 = hexToRgba(sectionColor, 0.7);
+        
+        // Créer un dégradé harmonieux
+        const lighterColor = adjustColorBrightness(sectionColor, 0.1);
+        const darkerColor = adjustColorBrightness(sectionColor, -0.1);
+        
         sectionEl.style.background = `linear-gradient(135deg, ${rgba1}, ${rgba2})`;
+        sectionEl.style.borderColor = hexToRgba(sectionColor, 0.3);
+        
+        // Définir les couleurs CSS personnalisées pour cette section
+        sectionEl.style.setProperty('--section-color', sectionColor);
+        sectionEl.style.setProperty('--section-color-light', lighterColor);
+        sectionEl.style.setProperty('--section-color-dark', darkerColor);
+        
+        // Déterminer la couleur de texte selon la luminosité
+        const textColor = getContrastTextColor(sectionColor);
+        sectionEl.style.color = textColor;
         
         // Titre de section
         if (section.label) {

@@ -119,12 +119,24 @@ export const WeightSelector = {
       container.id = uniqueInstanceId;
       container.setAttribute('data-instance-id', uniqueInstanceId);
       
-      // Configuration des colonnes
+      // Configuration des colonnes améliorée
       if (gridColumns === 1 || sections.length === 1) {
-        container.classList.add('one-section');
+        // 1 colonne
+        // Pas de classe spéciale, c'est le défaut
       } else if (gridColumns >= 2) {
         container.classList.add(`grid-${gridColumns}-cols`);
         container.setAttribute('data-grid-columns', gridColumns);
+      } else if (gridColumns === 0) {
+        // Auto-détection selon le nombre de sections
+        if (sections.length <= 2) {
+          container.classList.add('grid-2-cols');
+        } else if (sections.length <= 4) {
+          container.classList.add('grid-2-cols'); // 2x2 pour 3-4 sections
+        } else if (sections.length <= 6) {
+          container.classList.add('grid-3-cols'); // 3x2 pour 5-6 sections
+        } else {
+          container.classList.add('grid-3-cols'); // Max 3 colonnes pour + de 6
+        }
       }
 
       /* 4. Structure des données et initialisation des poids */
@@ -216,8 +228,14 @@ export const WeightSelector = {
         weights.set(changedId, newValue);
       }
 
-      // Mise à jour de l'affichage
+      // Mise à jour de l'affichage avec effets visuels
       function updateDisplay() {
+        // Calculer la moyenne pour déterminer les classes de poids
+        const weightValues = Array.from(weights.values());
+        const averageWeight = weightValues.reduce((sum, w) => sum + w, 0) / weightValues.length;
+        const maxWeight = Math.max(...weightValues);
+        const minWeight = Math.min(...weightValues);
+        
         for (let [id, weight] of weights) {
           const slider = sliderElements.get(id);
           const progressBar = progressBars.get(id);
@@ -228,13 +246,42 @@ export const WeightSelector = {
             if (valueDisplay) {
               valueDisplay.textContent = `${Math.round(weight * 100)}%`;
             }
+            
+            // Déterminer la classe de poids
+            let weightClass = 'weight-medium';
+            if (weight >= maxWeight * 0.8 && weight > averageWeight * 1.2) {
+              weightClass = 'weight-high';
+            } else if (weight <= minWeight * 1.2 && weight < averageWeight * 0.8) {
+              weightClass = 'weight-low';
+            }
+            
+            // Appliquer la classe au wrapper du slider
+            const sliderWrapper = slider.closest('.weight-selector-slider-wrapper');
+            if (sliderWrapper) {
+              sliderWrapper.className = `weight-selector-slider-wrapper ${weightClass}`;
+            }
+            
+            // Appliquer la classe à la section correspondante
+            const sectionElement = slider.closest('.weight-selector-section');
+            if (sectionElement) {
+              sectionElement.className = `weight-selector-section ${weightClass}`;
+            }
           }
           
           if (progressBar) {
             progressBar.style.width = `${weight * 100}%`;
-            // Ajuster l'opacité en fonction du poids (plus de poids = plus opaque)
-            const opacity = 0.3 + (weight * 0.7); // Entre 0.3 et 1.0
-            progressBar.style.opacity = opacity;
+            // Ajuster l'opacité et l'intensité en fonction du poids
+            const intensity = 0.3 + (weight * 0.7); // Entre 0.3 et 1.0
+            progressBar.style.opacity = intensity;
+            
+            // Couleur plus intense pour les poids élevés
+            if (weight >= maxWeight * 0.8) {
+              progressBar.style.boxShadow = `0 0 12px rgba(255, 255, 255, ${intensity})`;
+            } else if (weight <= minWeight * 1.2) {
+              progressBar.style.boxShadow = `0 0 4px rgba(255, 255, 255, ${intensity * 0.5})`;
+            } else {
+              progressBar.style.boxShadow = `0 0 8px rgba(255, 255, 255, ${intensity * 0.7})`;
+            }
           }
         }
       }
@@ -329,16 +376,17 @@ export const WeightSelector = {
   font-weight: 500 !important;
 }
 
-/* Layout des sections */
+/* Layout des sections - Support amélioré pour grids */
 .weight-selector-sections-grid { 
   display: grid !important; 
-  grid-template-columns: repeat(2, 1fr) !important;
+  grid-template-columns: 1fr !important; /* Par défaut : 1 colonne */
   gap: var(--ws-gap) !important;
   margin-bottom: 2rem !important;
 }
 
-.weight-selector-container.one-section .weight-selector-sections-grid { 
-  grid-template-columns: 1fr !important; 
+/* Grids spécifiques */
+.weight-selector-container.grid-2-cols .weight-selector-sections-grid { 
+  grid-template-columns: repeat(2, 1fr) !important; 
 }
 
 .weight-selector-container.grid-3-cols .weight-selector-sections-grid { 
@@ -357,27 +405,28 @@ export const WeightSelector = {
   grid-template-columns: repeat(6, 1fr) !important; 
 }
 
+/* Solution générique avec CSS custom properties pour 7+ colonnes */
 .weight-selector-container[data-grid-columns] .weight-selector-sections-grid {
-  grid-template-columns: repeat(var(--grid-cols, 2), 1fr) !important;
+  grid-template-columns: repeat(var(--grid-cols, 1), 1fr) !important;
 }
 
-/* Responsive */
+/* Responsive design amélioré */
 @media (max-width: 768px) {
   .weight-selector-container[data-grid-columns] .weight-selector-sections-grid {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: 1fr !important; /* 1 colonne sur mobile */
   }
 }
 
 @media (min-width: 769px) and (max-width: 1024px) {
-  .weight-selector-container[data-grid-columns="3"] .weight-selector-sections-grid,
-  .weight-selector-container[data-grid-columns="4"] .weight-selector-sections-grid,
-  .weight-selector-container[data-grid-columns="5"] .weight-selector-sections-grid,
-  .weight-selector-container[data-grid-columns="6"] .weight-selector-sections-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
+  .weight-selector-container.grid-3-cols .weight-selector-sections-grid,
+  .weight-selector-container.grid-4-cols .weight-selector-sections-grid,
+  .weight-selector-container.grid-5-cols .weight-selector-sections-grid,
+  .weight-selector-container.grid-6-cols .weight-selector-sections-grid {
+    grid-template-columns: repeat(2, 1fr) !important; /* 2 colonnes sur tablette */
   }
 }
 
-/* Section container */
+/* Section container avec couleurs dynamiques */
 .weight-selector-section { 
   backdrop-filter: blur(10px) !important;
   -webkit-backdrop-filter: blur(10px) !important;
@@ -388,11 +437,33 @@ export const WeightSelector = {
               inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
   transition: all .3s ease !important;
   position: relative !important;
+  /* Background sera défini dynamiquement dans JavaScript */
 }
 
 .weight-selector-section:hover { 
   transform: translateY(-2px) !important; 
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Effet de poids dynamique pour les sections */
+.weight-selector-section.weight-high {
+  box-shadow: 0 12px 36px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.4), 
+              inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+  border: 2px solid rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.6) !important;
+  transform: translateY(-1px) !important;
+}
+
+.weight-selector-section.weight-medium {
+  box-shadow: 0 8px 24px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.2), 
+              inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.3) !important;
+}
+
+.weight-selector-section.weight-low {
+  opacity: 0.8 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 
+              inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
 }
 
 /* Titre de section */
@@ -445,9 +516,10 @@ export const WeightSelector = {
   box-shadow: 0 0 8px rgba(255, 255, 255, 0.3) !important;
 }
 
-/* Container de slider */
+/* Container de slider avec effets de poids */
 .weight-selector-slider-container {
   padding: 0 20px 20px !important;
+  position: relative !important;
 }
 
 .weight-selector-slider-wrapper {
@@ -455,6 +527,35 @@ export const WeightSelector = {
   align-items: center !important;
   gap: 12px !important;
   margin-bottom: 12px !important;
+  position: relative !important;
+}
+
+/* Effet de glow sur les sliders selon le poids */
+.weight-selector-slider-wrapper.weight-high {
+  background: linear-gradient(90deg, 
+    rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.15), 
+    rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.05)) !important;
+  border-radius: 8px !important;
+  padding: 8px !important;
+  margin: 4px 0 !important;
+  box-shadow: inset 0 1px 3px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.2) !important;
+}
+
+.weight-selector-slider-wrapper.weight-medium {
+  background: linear-gradient(90deg, 
+    rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.08), 
+    rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.02)) !important;
+  border-radius: 6px !important;
+  padding: 6px !important;
+  margin: 3px 0 !important;
+}
+
+.weight-selector-slider-wrapper.weight-low {
+  opacity: 0.7 !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+  border-radius: 4px !important;
+  padding: 4px !important;
+  margin: 2px 0 !important;
 }
 
 .weight-selector-slider-label {
@@ -462,6 +563,13 @@ export const WeightSelector = {
   font-weight: 600 !important;
   min-width: 80px !important;
   color: rgba(255, 255, 255, 0.9) !important;
+  transition: all 0.3s ease !important;
+}
+
+.weight-selector-slider-wrapper.weight-high .weight-selector-slider-label {
+  font-weight: 700 !important;
+  color: #FFFFFF !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
 }
 
 .weight-selector-slider-input {
@@ -474,6 +582,26 @@ export const WeightSelector = {
   outline: none !important;
   margin: 0 !important;
   cursor: pointer !important;
+  transition: all 0.3s ease !important;
+}
+
+/* Slider avec effets de poids */
+.weight-selector-slider-wrapper.weight-high .weight-selector-slider-input {
+  background: linear-gradient(90deg, 
+    rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.5), 
+    rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.3)) !important;
+  height: 8px !important;
+  box-shadow: 0 2px 8px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.3) !important;
+}
+
+.weight-selector-slider-wrapper.weight-medium .weight-selector-slider-input {
+  background: rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.2) !important;
+  height: 7px !important;
+}
+
+.weight-selector-slider-wrapper.weight-low .weight-selector-slider-input {
+  background: rgba(0, 0, 0, 0.2) !important;
+  height: 5px !important;
 }
 
 .weight-selector-slider-input::-webkit-slider-thumb {
@@ -487,6 +615,23 @@ export const WeightSelector = {
   cursor: pointer !important;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
   transition: all 0.2s ease !important;
+}
+
+/* Thumb avec effets de poids */
+.weight-selector-slider-wrapper.weight-high .weight-selector-slider-input::-webkit-slider-thumb {
+  width: 22px !important;
+  height: 22px !important;
+  background: linear-gradient(145deg, #FFFFFF, #F0F0F0) !important;
+  border: 3px solid rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 1) !important;
+  box-shadow: 0 4px 12px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.4), 
+              inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+}
+
+.weight-selector-slider-wrapper.weight-low .weight-selector-slider-input::-webkit-slider-thumb {
+  width: 14px !important;
+  height: 14px !important;
+  opacity: 0.8 !important;
+  border: 1px solid rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.5) !important;
 }
 
 .weight-selector-slider-input::-webkit-slider-thumb:hover {
@@ -517,6 +662,23 @@ export const WeightSelector = {
   font-size: var(--ws-small-fs) !important;
   color: white !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  transition: all 0.3s ease !important;
+}
+
+/* Valeur avec effets de poids */
+.weight-selector-slider-wrapper.weight-high .weight-value {
+  background: rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.4) !important;
+  border: 1px solid rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.6) !important;
+  font-weight: 800 !important;
+  color: #FFFFFF !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+  box-shadow: 0 2px 6px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.3) !important;
+}
+
+.weight-selector-slider-wrapper.weight-low .weight-value {
+  opacity: 0.7 !important;
+  background: rgba(0, 0, 0, 0.2) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
 }
 
 /* Sous-sections */
@@ -845,19 +1007,31 @@ export const WeightSelector = {
           btn.className = 'weight-selector-submit-btn';
           btn.id = `submit-btn-${uniqueInstanceId}-${btnIdx}`;
           
-          if (buttonConfig.color) {
-            btn.style.setProperty('background-color', buttonConfig.color, 'important');
-            btn.style.setProperty('border-color', buttonConfig.color, 'important');
-            const rgb = parseInt(buttonConfig.color.replace('#',''), 16);
-            const r = (rgb >> 16) & 255;
-            const g = (rgb >> 8) & 255;
-            const b = rgb & 255;
-            btn.style.setProperty('--ws-accent-r', r);
-            btn.style.setProperty('--ws-accent-g', g);
-            btn.style.setProperty('--ws-accent-b', b);
-          }
-          
           btn.textContent = buttonConfig.text || 'Confirmer';
+
+          // Gestion automatique de l'inversion des couleurs pour boutons clairs
+          if (buttonConfig.color) {
+            const buttonLuminance = getLuminance(buttonConfig.color);
+            
+            if (buttonLuminance > 200) {
+              // Bouton clair - inversion automatique
+              btn.classList.add('light-button');
+              btn.style.setProperty('background-color', buttonConfig.color, 'important');
+              btn.style.setProperty('color', global_button_color, 'important');
+              btn.style.setProperty('border-color', global_button_color, 'important');
+            } else {
+              // Bouton foncé - style normal
+              btn.style.setProperty('background-color', buttonConfig.color, 'important');
+              btn.style.setProperty('border-color', buttonConfig.color, 'important');
+              const rgb = parseInt(buttonConfig.color.replace('#',''), 16);
+              const r = (rgb >> 16) & 255;
+              const g = (rgb >> 8) & 255;
+              const b = rgb & 255;
+              btn.style.setProperty('--ws-accent-r', r);
+              btn.style.setProperty('--ws-accent-g', g);
+              btn.style.setProperty('--ws-accent-b', b);
+            }
+          }
 
           btn.addEventListener('click', () => {
             // Désactiver l'interface

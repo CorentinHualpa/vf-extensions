@@ -2,14 +2,10 @@
  *  ╔═══════════════════════════════════════════════════════════╗
  *  ║  WeightSelector – Voiceflow Response Extension            ║
  *  ║                                                           ║
- *  ║  • Sections et sous-sections avec sliders de pondération ║
- *  ║  • Redistribution automatique proportionnelle            ║
- *  ║  • Barres de progression colorées                        ║
- *  ║  • Design glassmorphisme cohérent                        ║
- *  ║  • Support responsive multi-colonnes                     ║
- *  ║  • Chat configurable (défaut: désactivé)                 ║
- *  ║  • Inversion automatique des couleurs des boutons        ║
- *  ║  • Effets visuels dynamiques selon les pondérations     ║
+ *  ║  • Design moderne avec fond blanc et bordures colorées    ║
+ *  ║  • Effets visuels dynamiques selon les pondérations       ║
+ *  ║  • Animations fluides et feedback visuel amélioré         ║
+ *  ║  • Support responsive multi-colonnes                      ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 
@@ -17,7 +13,6 @@ export const WeightSelector = {
   name: 'WeightSelector',
   type: 'response',
 
-  // S'active sur les traces weight_selector
   match: ({ trace }) => trace.type === 'weight_selector' || trace.payload?.type === 'weight_selector',
 
   render: ({ trace, element }) => {
@@ -31,19 +26,18 @@ export const WeightSelector = {
         title = 'Pondération des éléments',
         subtitle = 'Ajustez l\'importance de chaque élément (total = 100%)',
         sections = [],
-        sliderLevel = 'section', // 'section' ou 'subsection'
+        sliderLevel = 'section',
         chat = false,
         chatDisabledText = '🚫 Veuillez effectuer vos pondérations',
-        gridColumns = 0, // 0 = auto, 1,2,3,4,5,6+ = nombre de colonnes
+        gridColumns = 0,
         global_button_color = '#7928CA',
         buttons = [],
         instanceId = null
       } = payload;
 
-      // Générer un identifiant unique
       const uniqueInstanceId = instanceId || `ws_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
       
-      /* 1. Utilitaires de couleur (définies en premier) */
+      /* 1. Utilitaires de couleur */
       const stripHTML = html => {
         const tmp = document.createElement('div');
         tmp.innerHTML = html || '';
@@ -58,17 +52,14 @@ export const WeightSelector = {
         return `rgba(${r}, ${g}, ${b}, ${opacity})`;
       };
       
-      // Fonction pour calculer la luminosité d'une couleur (0-255)
       const getLuminance = (hex) => {
         const rgb = parseInt(hex.replace('#',''), 16);
         const r = (rgb >> 16) & 255;
         const g = (rgb >> 8) & 255;
         const b = rgb & 255;
-        // Formule de luminosité perçue
         return (0.299 * r + 0.587 * g + 0.114 * b);
       };
       
-      // Fonction pour assombrir/éclaircir une couleur
       const adjustColorBrightness = (hex, factor) => {
         const rgb = parseInt(hex.replace('#',''), 16);
         let r = (rgb >> 16) & 255;
@@ -76,12 +67,10 @@ export const WeightSelector = {
         let b = rgb & 255;
         
         if (factor > 0) {
-          // Éclaircir
           r = Math.min(255, Math.floor(r + (255 - r) * factor));
           g = Math.min(255, Math.floor(g + (255 - g) * factor));
           b = Math.min(255, Math.floor(b + (255 - b) * factor));
         } else {
-          // Assombrir
           r = Math.max(0, Math.floor(r * (1 + factor)));
           g = Math.max(0, Math.floor(g * (1 + factor)));
           b = Math.max(0, Math.floor(b * (1 + factor)));
@@ -91,7 +80,6 @@ export const WeightSelector = {
         return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
       };
       
-      // Fonction pour déterminer la couleur de texte selon le fond
       const getContrastTextColor = (bgColor) => {
         const luminance = getLuminance(bgColor);
         return luminance > 128 ? '#333333' : '#FFFFFF';
@@ -165,39 +153,35 @@ export const WeightSelector = {
       container.id = uniqueInstanceId;
       container.setAttribute('data-instance-id', uniqueInstanceId);
       
-      // Configuration des colonnes améliorée
       if (gridColumns === 1 || sections.length === 1) {
         // 1 colonne
-        // Pas de classe spéciale, c'est le défaut
       } else if (gridColumns >= 2) {
         container.classList.add(`grid-${gridColumns}-cols`);
         container.setAttribute('data-grid-columns', gridColumns);
       } else if (gridColumns === 0) {
-        // Auto-détection selon le nombre de sections
         if (sections.length <= 2) {
           container.classList.add('grid-2-cols');
         } else if (sections.length <= 4) {
-          container.classList.add('grid-2-cols'); // 2x2 pour 3-4 sections
+          container.classList.add('grid-2-cols');
         } else if (sections.length <= 6) {
-          container.classList.add('grid-3-cols'); // 3x2 pour 5-6 sections
+          container.classList.add('grid-3-cols');
         } else {
-          container.classList.add('grid-3-cols'); // Max 3 colonnes pour + de 6
+          container.classList.add('grid-3-cols');
         }
       }
 
       /* 4. Structure des données et initialisation des poids */
-      let weights = new Map(); // Stockage des poids (clé: ID unique, valeur: poids)
-      let sliderElements = new Map(); // Stockage des éléments slider
-      let progressBars = new Map(); // Stockage des barres de progression
+      let weights = new Map();
+      let sliderElements = new Map();
+      let progressBars = new Map();
       
-      // Initialiser les poids selon le niveau de slider
       function initializeWeights() {
         let totalItems = 0;
         let itemsToWeight = [];
 
         sections.forEach((section, sectionIdx) => {
           if (sliderLevel === 'section') {
-            if (section.hasSlider !== false) { // Par défaut true si non spécifié
+            if (section.hasSlider !== false) {
               const id = `section_${sectionIdx}`;
               itemsToWeight.push({
                 id,
@@ -221,18 +205,15 @@ export const WeightSelector = {
           }
         });
 
-        // Calcul des poids par défaut
         const defaultWeight = 1.0 / totalItems;
         
         itemsToWeight.forEach(item => {
           weights.set(item.id, item.defaultWeight || defaultWeight);
         });
 
-        // Normaliser pour être sûr que le total = 1.0
         normalizeWeights();
       }
 
-      // Normalisation des poids pour total = 1.0
       function normalizeWeights() {
         const total = Array.from(weights.values()).reduce((sum, weight) => sum + weight, 0);
         if (total > 0) {
@@ -242,7 +223,6 @@ export const WeightSelector = {
         }
       }
 
-      // Redistribution proportionnelle
       function redistributeWeights(changedId, newValue) {
         const oldValue = weights.get(changedId) || 0;
         const otherIds = Array.from(weights.keys()).filter(id => id !== changedId);
@@ -252,11 +232,9 @@ export const WeightSelector = {
           return;
         }
 
-        // Calculer le total des autres poids
         const otherTotalOld = otherIds.reduce((sum, id) => sum + weights.get(id), 0);
         const remainingWeight = 1.0 - newValue;
         
-        // Redistribuer proportionnellement
         if (otherTotalOld > 0) {
           otherIds.forEach(id => {
             const oldWeight = weights.get(id);
@@ -264,7 +242,6 @@ export const WeightSelector = {
             weights.set(id, newWeight);
           });
         } else {
-          // Si tous les autres étaient à 0, répartir équitablement
           const equalWeight = remainingWeight / otherIds.length;
           otherIds.forEach(id => {
             weights.set(id, equalWeight);
@@ -274,9 +251,7 @@ export const WeightSelector = {
         weights.set(changedId, newValue);
       }
 
-      // Mise à jour de l'affichage avec effets visuels
       function updateDisplay() {
-        // Calculer la moyenne pour déterminer les classes de poids
         const weightValues = Array.from(weights.values());
         const averageWeight = weightValues.reduce((sum, w) => sum + w, 0) / weightValues.length;
         const maxWeight = Math.max(...weightValues);
@@ -293,41 +268,34 @@ export const WeightSelector = {
               valueDisplay.textContent = `${Math.round(weight * 100)}%`;
             }
             
-            // Déterminer la classe de poids
             let weightClass = 'weight-medium';
-            if (weight >= maxWeight * 0.8 && weight > averageWeight * 1.2) {
+            if (weight >= maxWeight * 0.9 && weight > averageWeight * 1.2) {
               weightClass = 'weight-high';
-            } else if (weight <= minWeight * 1.2 && weight < averageWeight * 0.8) {
+            } else if (weight <= minWeight * 1.1 && weight < averageWeight * 0.8) {
               weightClass = 'weight-low';
             }
             
-            // Appliquer la classe au wrapper du slider
             const sliderWrapper = slider.closest('.weight-selector-slider-wrapper');
             if (sliderWrapper) {
               sliderWrapper.className = `weight-selector-slider-wrapper ${weightClass}`;
             }
             
-            // Appliquer la classe à la section correspondante
             const sectionElement = slider.closest('.weight-selector-section');
             if (sectionElement) {
               sectionElement.className = `weight-selector-section ${weightClass}`;
+              
+              // Mise à jour de l'intensité de la bordure
+              const sectionColor = sectionElement.getAttribute('data-section-color') || global_button_color;
+              const intensity = 0.3 + (weight * 0.7);
+              sectionElement.style.borderColor = hexToRgba(sectionColor, intensity);
+              sectionElement.style.boxShadow = `0 0 ${20 * intensity}px ${hexToRgba(sectionColor, intensity * 0.4)}, inset 0 0 ${15 * intensity}px ${hexToRgba(sectionColor, intensity * 0.1)}`;
             }
           }
           
           if (progressBar) {
             progressBar.style.width = `${weight * 100}%`;
-            // Ajuster l'opacité et l'intensité en fonction du poids
-            const intensity = 0.3 + (weight * 0.7); // Entre 0.3 et 1.0
+            const intensity = 0.3 + (weight * 0.7);
             progressBar.style.opacity = intensity;
-            
-            // Couleur plus intense pour les poids élevés
-            if (weight >= maxWeight * 0.8) {
-              progressBar.style.boxShadow = `0 0 12px rgba(255, 255, 255, ${intensity})`;
-            } else if (weight <= minWeight * 1.2) {
-              progressBar.style.boxShadow = `0 0 4px rgba(255, 255, 255, ${intensity * 0.5})`;
-            } else {
-              progressBar.style.boxShadow = `0 0 8px rgba(255, 255, 255, ${intensity * 0.7})`;
-            }
           }
         }
       }
@@ -341,12 +309,12 @@ export const WeightSelector = {
   --ws-accent-r: ${globalBtnR};
   --ws-accent-g: ${globalBtnG};
   --ws-accent-b: ${globalBtnB};
-  --ws-radius: 10px;
-  --ws-shadow: 0 4px 12px rgba(0,0,0,.15);
-  --ws-heading-fs: 18px;
-  --ws-base-fs: 15px;
+  --ws-radius: 16px;
+  --ws-shadow: 0 10px 40px rgba(0,0,0,.08);
+  --ws-heading-fs: 24px;
+  --ws-base-fs: 16px;
   --ws-small-fs: 14px;
-  --ws-gap: 16px;
+  --ws-gap: 20px;
 }
 
 /* Reset et styles de base */
@@ -358,74 +326,61 @@ export const WeightSelector = {
   display: flex !important; 
   flex-direction: column !important; 
   width: 100% !important;
-  font-family: 'Inter','Segoe UI',system-ui,-apple-system,sans-serif !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
   font-size: var(--ws-base-fs) !important; 
-  color: #fff !important;
-  padding: 1.5rem !important;
-  border-radius: 12px !important;
-  backdrop-filter: blur(10px) !important;
-  -webkit-backdrop-filter: blur(10px) !important;
-  background: linear-gradient(135deg, 
-    rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.85), 
-    rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.65)) !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), 
-              inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
-  transition: all 0.3s ease !important;
+  color: #1a1a1a !important;
+  padding: 2rem !important;
+  border-radius: 20px !important;
+  background: #ffffff !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08) !important;
+  position: relative !important;
+  overflow: hidden !important;
 }
 
-.weight-selector-container:hover {
-  transform: translateY(-4px) !important;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3) !important;
+.weight-selector-container::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 4px !important;
+  background: linear-gradient(90deg, var(--ws-accent), ${adjustColorBrightness(global_button_color, 0.3)}, var(--ws-accent)) !important;
+  background-size: 200% 100% !important;
+  animation: shimmer 3s ease-in-out infinite !important;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
 /* Titre principal */
 .weight-selector-header {
   font-size: var(--ws-heading-fs) !important;
   font-weight: 700 !important;
-  margin: 0 0 1rem 0 !important;
+  margin: 0 0 0.5rem 0 !important;
   text-align: center !important;
-  color: #fff !important;
-  letter-spacing: -0.3px !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
-  position: relative !important;
-  padding-bottom: 10px !important;
-}
-
-.weight-selector-header::before {
-  content: '' !important;
-  position: absolute !important;
-  left: 50% !important;
-  bottom: 0 !important;
-  transform: translateX(-50%) !important;
-  width: 60px !important;
-  height: 2px !important;
-  background: #FFFFFF !important;
-  transition: width 0.3s ease !important;
-}
-
-.weight-selector-container:hover .weight-selector-header::before {
-  width: 120px !important;
+  color: #1a1a1a !important;
+  letter-spacing: -0.5px !important;
 }
 
 /* Sous-titre */
 .weight-selector-subtitle {
   font-size: var(--ws-base-fs) !important;
   text-align: center !important;
-  margin-bottom: 2rem !important;
-  opacity: 0.9 !important;
-  font-weight: 500 !important;
+  margin-bottom: 2.5rem !important;
+  color: #666 !important;
+  font-weight: 400 !important;
 }
 
-/* Layout des sections - Support amélioré pour grids */
+/* Layout des sections */
 .weight-selector-sections-grid { 
   display: grid !important; 
-  grid-template-columns: 1fr !important; /* Par défaut : 1 colonne */
+  grid-template-columns: 1fr !important;
   gap: var(--ws-gap) !important;
-  margin-bottom: 2rem !important;
+  margin-bottom: 2.5rem !important;
 }
 
-/* Grids spécifiques */
 .weight-selector-container.grid-2-cols .weight-selector-sections-grid { 
   grid-template-columns: repeat(2, 1fr) !important; 
 }
@@ -434,114 +389,79 @@ export const WeightSelector = {
   grid-template-columns: repeat(3, 1fr) !important; 
 }
 
-.weight-selector-container.grid-4-cols .weight-selector-sections-grid { 
-  grid-template-columns: repeat(4, 1fr) !important; 
-}
-
-.weight-selector-container.grid-5-cols .weight-selector-sections-grid { 
-  grid-template-columns: repeat(5, 1fr) !important; 
-}
-
-.weight-selector-container.grid-6-cols .weight-selector-sections-grid { 
-  grid-template-columns: repeat(6, 1fr) !important; 
-}
-
-/* Solution générique avec CSS custom properties pour 7+ colonnes */
-.weight-selector-container[data-grid-columns] .weight-selector-sections-grid {
-  grid-template-columns: repeat(var(--grid-cols, 1), 1fr) !important;
-}
-
-/* Responsive design amélioré */
 @media (max-width: 768px) {
-  .weight-selector-container[data-grid-columns] .weight-selector-sections-grid {
-    grid-template-columns: 1fr !important; /* 1 colonne sur mobile */
+  .weight-selector-sections-grid {
+    grid-template-columns: 1fr !important;
   }
 }
 
-@media (min-width: 769px) and (max-width: 1024px) {
-  .weight-selector-container.grid-3-cols .weight-selector-sections-grid,
-  .weight-selector-container.grid-4-cols .weight-selector-sections-grid,
-  .weight-selector-container.grid-5-cols .weight-selector-sections-grid,
-  .weight-selector-container.grid-6-cols .weight-selector-sections-grid {
-    grid-template-columns: repeat(2, 1fr) !important; /* 2 colonnes sur tablette */
-  }
-}
-
-/* Section container avec couleurs dynamiques */
+/* Section container avec bordures colorées */
 .weight-selector-section { 
-  backdrop-filter: blur(10px) !important;
-  -webkit-backdrop-filter: blur(10px) !important;
-  border: 1px solid rgba(255,255,255,0.15) !important;
-  border-radius: 12px !important;
+  background: #ffffff !important;
+  border: 3px solid !important;
+  border-radius: 16px !important;
   overflow: hidden !important; 
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), 
-              inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
-  transition: all .3s ease !important;
+  transition: all .4s cubic-bezier(0.4, 0, 0.2, 1) !important;
   position: relative !important;
-  /* Background sera défini dynamiquement dans JavaScript */
+}
+
+.weight-selector-section::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background: radial-gradient(circle at top left, transparent, rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.03)) !important;
+  opacity: 0 !important;
+  transition: opacity 0.3s ease !important;
+}
+
+.weight-selector-section:hover::before {
+  opacity: 1 !important;
 }
 
 .weight-selector-section:hover { 
-  transform: translateY(-2px) !important; 
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3) !important;
+  transform: translateY(-4px) !important; 
 }
 
-/* Effet de poids dynamique pour les sections */
+/* Classes de poids avec effets visuels */
 .weight-selector-section.weight-high {
-  box-shadow: 0 12px 36px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.4), 
-              inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
-  border: 2px solid rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.6) !important;
-  transform: translateY(-1px) !important;
+  transform: scale(1.02) !important;
+  z-index: 10 !important;
 }
 
-.weight-selector-section.weight-medium {
-  box-shadow: 0 8px 24px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.2), 
-              inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
-  border: 1px solid rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.3) !important;
+.weight-selector-section.weight-high:hover {
+  transform: translateY(-6px) scale(1.02) !important;
 }
 
 .weight-selector-section.weight-low {
-  opacity: 0.8 !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 
-              inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
-  border: 1px solid rgba(255,255,255,0.1) !important;
+  opacity: 0.85 !important;
+}
+
+.weight-selector-section.weight-low:hover {
+  opacity: 1 !important;
 }
 
 /* Titre de section */
 .weight-selector-section-title { 
-  padding: 16px 20px !important; 
-  font-weight: 700 !important;
-  font-size: 16px !important;
+  padding: 20px 24px !important; 
+  font-weight: 600 !important;
+  font-size: 18px !important;
   letter-spacing: -0.3px !important;
-  background: linear-gradient(to right, rgba(255,255,255,0.1), transparent) !important;
-  border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+  background: linear-gradient(135deg, #f8f9fa, #ffffff) !important;
+  border-bottom: 1px solid #e9ecef !important;
   margin: 0 !important;
-  position: relative !important;
-  overflow: hidden !important;
+  color: #1a1a1a !important;
 }
 
-.weight-selector-section-title::before {
-  content: '' !important;
-  position: absolute !important;
-  left: 0 !important;
-  bottom: 0 !important;
-  width: 60px !important;
-  height: 2px !important;
-  background: #FFFFFF !important;
-  transition: width 0.3s ease !important;
-}
-
-.weight-selector-section:hover .weight-selector-section-title::before {
-  width: 100% !important;
-}
-
-/* Barre de progression de pondération */
+/* Barre de progression */
 .weight-selector-progress-container {
   position: relative !important;
-  height: 6px !important;
-  background: rgba(0, 0, 0, 0.3) !important;
-  margin: 0 20px 16px !important;
-  border-radius: 3px !important;
+  height: 8px !important;
+  background: #f0f0f0 !important;
+  margin: 0 24px 20px !important;
+  border-radius: 4px !important;
   overflow: hidden !important;
 }
 
@@ -550,348 +470,215 @@ export const WeightSelector = {
   left: 0 !important;
   top: 0 !important;
   height: 100% !important;
-  background: linear-gradient(90deg, #FFFFFF, rgba(255, 255, 255, 0.8)) !important;
-  border-radius: 3px !important;
-  transition: all 0.3s ease !important;
+  background: linear-gradient(90deg, var(--ws-accent), ${adjustColorBrightness(global_button_color, 0.2)}) !important;
+  border-radius: 4px !important;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
   width: 0% !important;
-  box-shadow: 0 0 8px rgba(255, 255, 255, 0.3) !important;
 }
 
-/* Container de slider avec effets de poids */
+/* Container de slider */
 .weight-selector-slider-container {
-  padding: 0 20px 20px !important;
-  position: relative !important;
+  padding: 0 24px 24px !important;
 }
 
 .weight-selector-slider-wrapper {
   display: flex !important;
   align-items: center !important;
-  gap: 12px !important;
-  margin-bottom: 12px !important;
-  position: relative !important;
+  gap: 16px !important;
+  margin-bottom: 16px !important;
+  padding: 16px !important;
+  background: #f8f9fa !important;
+  border-radius: 12px !important;
+  transition: all 0.3s ease !important;
 }
 
-/* Effet de glow sur les sliders selon le poids */
+.weight-selector-slider-wrapper:hover {
+  background: #f0f1f3 !important;
+}
+
+/* Effet sur les wrappers selon le poids */
 .weight-selector-slider-wrapper.weight-high {
-  background: linear-gradient(90deg, 
-    rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.15), 
-    rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.05)) !important;
-  border-radius: 8px !important;
-  padding: 8px !important;
-  margin: 4px 0 !important;
-  box-shadow: inset 0 1px 3px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.2) !important;
-}
-
-.weight-selector-slider-wrapper.weight-medium {
-  background: linear-gradient(90deg, 
-    rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.08), 
-    rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.02)) !important;
-  border-radius: 6px !important;
-  padding: 6px !important;
-  margin: 3px 0 !important;
+  background: linear-gradient(135deg, #f8f9fa, #ffffff) !important;
+  box-shadow: 0 4px 12px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.15) !important;
 }
 
 .weight-selector-slider-wrapper.weight-low {
   opacity: 0.7 !important;
-  background: rgba(255, 255, 255, 0.02) !important;
-  border-radius: 4px !important;
-  padding: 4px !important;
-  margin: 2px 0 !important;
+}
+
+.weight-selector-slider-wrapper.weight-low:hover {
+  opacity: 1 !important;
 }
 
 .weight-selector-slider-label {
   font-size: var(--ws-small-fs) !important;
-  font-weight: 600 !important;
-  min-width: 80px !important;
-  color: rgba(255, 255, 255, 0.9) !important;
-  transition: all 0.3s ease !important;
+  font-weight: 500 !important;
+  min-width: 60px !important;
+  color: #495057 !important;
 }
 
-.weight-selector-slider-wrapper.weight-high .weight-selector-slider-label {
-  font-weight: 700 !important;
-  color: #FFFFFF !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
-}
-
+/* Slider moderne */
 .weight-selector-slider-input {
   flex: 1 !important;
-  height: 6px !important;
+  height: 8px !important;
   appearance: none !important;
   -webkit-appearance: none !important;
-  background: rgba(0, 0, 0, 0.3) !important;
-  border-radius: 3px !important;
+  background: #e9ecef !important;
+  border-radius: 4px !important;
   outline: none !important;
   margin: 0 !important;
   cursor: pointer !important;
   transition: all 0.3s ease !important;
 }
 
-/* Slider avec effets de poids */
-.weight-selector-slider-wrapper.weight-high .weight-selector-slider-input {
-  background: linear-gradient(90deg, 
-    rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.5), 
-    rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.3)) !important;
-  height: 8px !important;
-  box-shadow: 0 2px 8px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.3) !important;
-}
-
-.weight-selector-slider-wrapper.weight-medium .weight-selector-slider-input {
-  background: rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.2) !important;
-  height: 7px !important;
-}
-
-.weight-selector-slider-wrapper.weight-low .weight-selector-slider-input {
-  background: rgba(0, 0, 0, 0.2) !important;
-  height: 5px !important;
-}
-
 .weight-selector-slider-input::-webkit-slider-thumb {
   appearance: none !important;
   -webkit-appearance: none !important;
-  width: 18px !important;
-  height: 18px !important;
-  background: white !important;
-  border: 2px solid rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.8) !important;
+  width: 24px !important;
+  height: 24px !important;
+  background: #ffffff !important;
+  border: 3px solid var(--ws-accent) !important;
   border-radius: 50% !important;
   cursor: pointer !important;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
   transition: all 0.2s ease !important;
-}
-
-/* Thumb avec effets de poids */
-.weight-selector-slider-wrapper.weight-high .weight-selector-slider-input::-webkit-slider-thumb {
-  width: 22px !important;
-  height: 22px !important;
-  background: linear-gradient(145deg, #FFFFFF, #F0F0F0) !important;
-  border: 3px solid rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 1) !important;
-  box-shadow: 0 4px 12px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.4), 
-              inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
-}
-
-.weight-selector-slider-wrapper.weight-low .weight-selector-slider-input::-webkit-slider-thumb {
-  width: 14px !important;
-  height: 14px !important;
-  opacity: 0.8 !important;
-  border: 1px solid rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.5) !important;
 }
 
 .weight-selector-slider-input::-webkit-slider-thumb:hover {
-  transform: scale(1.15) !important;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+  transform: scale(1.2) !important;
+  box-shadow: 0 4px 16px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.3) !important;
 }
 
-.weight-selector-slider-input::-moz-range-thumb {
-  appearance: none !important;
-  width: 14px !important;
-  height: 14px !important;
-  background: white !important;
-  border: 2px solid rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.8) !important;
-  border-radius: 50% !important;
+.weight-selector-slider-input::-webkit-slider-thumb:active {
+  transform: scale(1.1) !important;
+}
+
+/* Track du slider avec remplissage progressif */
+.weight-selector-slider-input::-webkit-slider-runnable-track {
+  width: 100% !important;
+  height: 8px !important;
   cursor: pointer !important;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
-  transition: all 0.2s ease !important;
+  background: linear-gradient(to right, var(--ws-accent) 0%, var(--ws-accent) var(--value, 0%), #e9ecef var(--value, 0%), #e9ecef 100%) !important;
+  border-radius: 4px !important;
 }
 
 .weight-value {
-  font-family: 'Roboto Mono', monospace !important;
-  font-weight: 700 !important;
-  background: rgba(0, 0, 0, 0.3) !important;
-  padding: 4px 8px !important;
-  border-radius: 4px !important;
-  min-width: 50px !important;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace !important;
+  font-weight: 600 !important;
+  background: var(--ws-accent) !important;
+  color: white !important;
+  padding: 6px 12px !important;
+  border-radius: 8px !important;
+  min-width: 60px !important;
   text-align: center !important;
   font-size: var(--ws-small-fs) !important;
-  color: white !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 2px 8px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.25) !important;
   transition: all 0.3s ease !important;
 }
 
-/* Valeur avec effets de poids */
+/* Variations de la valeur selon le poids */
 .weight-selector-slider-wrapper.weight-high .weight-value {
-  background: rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.4) !important;
-  border: 1px solid rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.6) !important;
-  font-weight: 800 !important;
-  color: #FFFFFF !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
-  box-shadow: 0 2px 6px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.3) !important;
+  transform: scale(1.1) !important;
+  box-shadow: 0 4px 12px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.4) !important;
 }
 
 .weight-selector-slider-wrapper.weight-low .weight-value {
-  opacity: 0.7 !important;
-  background: rgba(0, 0, 0, 0.2) !important;
-  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  transform: scale(0.9) !important;
+  opacity: 0.8 !important;
 }
 
 /* Sous-sections */
 .weight-selector-subsections {
-  padding: 0 20px 20px !important;
+  padding: 0 24px 20px !important;
 }
 
 .weight-selector-subsection {
-  background: rgba(0, 0, 0, 0.2) !important;
-  border-radius: 8px !important;
-  padding: 12px !important;
-  margin-bottom: 8px !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background: #f8f9fa !important;
+  border-radius: 12px !important;
+  padding: 16px !important;
+  margin-bottom: 12px !important;
+  border: 1px solid #e9ecef !important;
+  transition: all 0.3s ease !important;
+}
+
+.weight-selector-subsection:hover {
+  background: #f0f1f3 !important;
+  border-color: #dee2e6 !important;
 }
 
 .weight-selector-subsection-title {
   font-size: var(--ws-small-fs) !important;
-  font-weight: 600 !important;
-  margin-bottom: 8px !important;
-  color: rgba(255, 255, 255, 0.9) !important;
+  font-weight: 500 !important;
+  margin-bottom: 12px !important;
+  color: #495057 !important;
 }
 
-/* Boutons - Style cohérent */
+/* Boutons modernes */
 .weight-selector-buttons-container {
   display: flex !important;
   flex-wrap: wrap !important;
   justify-content: center !important;
-  align-items: stretch !important;
-  gap: 12px !important;
-  padding: 16px 0 0 !important;
+  gap: 16px !important;
+  padding-top: 20px !important;
   width: 100% !important;
 }
 
-.weight-selector-button-wrapper {
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-}
-
-/* BOUTONS avec inversion automatique des couleurs */
 .weight-selector-submit-btn {
-  position: relative !important;
   background: var(--ws-accent) !important;
-  color: #fff !important;
-  padding: 14px 20px !important; 
-  border-radius: 8px !important;
-  font-weight: 700 !important; 
-  letter-spacing: 0.5px !important;
-  font-size: 14px !important;
-  line-height: 1.2 !important;
+  color: white !important;
+  padding: 16px 32px !important; 
+  border-radius: 12px !important;
+  font-weight: 600 !important; 
+  font-size: 16px !important;
   cursor: pointer !important;
   border: none !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 4px 16px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.25) !important;
+  position: relative !important;
   overflow: hidden !important;
-  transition: all 0.3s ease !important;
-  box-shadow: 0 4px 12px rgba(var(--ws-accent-r),var(--ws-accent-g),var(--ws-accent-b),0.3),
-              inset 0 3px 0 rgba(255,255,255,0.2),
-              inset 0 -3px 0 rgba(0,0,0,0.2) !important;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 0 4px rgba(0,0,0,0.2) !important;
-  text-align: center !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  flex: 1 1 auto !important;
   min-width: 200px !important;
-  max-width: 400px !important;
-  height: 60px !important;
-  word-wrap: break-word !important;
-  hyphens: auto !important;
-  white-space: normal !important;
 }
 
-/* Boutons avec couleurs claires - inversion automatique */
-.weight-selector-submit-btn.light-button {
-  background: linear-gradient(145deg, #FFFFFF, #F8F9FA) !important;
-  color: var(--ws-accent) !important;
-  border: 2px solid rgba(var(--ws-accent-r),var(--ws-accent-g),var(--ws-accent-b),0.2) !important;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1),
-              inset 0 3px 0 rgba(255,255,255,0.8),
-              inset 0 -3px 0 rgba(0,0,0,0.05) !important;
-  text-shadow: none !important;
-}
-
-.weight-selector-submit-btn.light-button:hover {
-  background: linear-gradient(145deg, #F8F9FA, #E9ECEF) !important;
-  border: 2px solid rgba(var(--ws-accent-r),var(--ws-accent-g),var(--ws-accent-b),0.4) !important;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.15),
-              inset 0 3px 0 rgba(255,255,255,0.9),
-              inset 0 -3px 0 rgba(0,0,0,0.08) !important;
-  color: var(--ws-accent) !important;
-  transform: translateY(-2px) !important;
-}
-
-.weight-selector-submit-btn.light-button:active {
-  background: linear-gradient(145deg, #E9ECEF, #DEE2E6) !important;
-  transform: translateY(1px) !important;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1),
-              inset 0 1px 0 rgba(255,255,255,0.7),
-              inset 0 -1px 0 rgba(0,0,0,0.05) !important;
-}
-
-/* Boutons normaux (couleurs foncées) */
-.weight-selector-submit-btn:not(.light-button):hover {
-  transform: translateY(-2px) !important;
-  box-shadow: 0 6px 20px rgba(var(--ws-accent-r),var(--ws-accent-g),var(--ws-accent-b),0.4),
-              inset 0 3px 0 rgba(255,255,255,0.3),
-              inset 0 -3px 0 rgba(0,0,0,0.3) !important;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.4), 0 0 6px rgba(0,0,0,0.3) !important;
-}
-
-.weight-selector-submit-btn:not(.light-button):active {
-  transform: translateY(1px) !important;
-  box-shadow: 0 2px 6px rgba(var(--ws-accent-r),var(--ws-accent-g),var(--ws-accent-b),0.3),
-              inset 0 1px 0 rgba(255,255,255,0.1),
-              inset 0 -1px 0 rgba(0,0,0,0.1) !important;
-}
-
-/* Responsive design pour boutons */
-@media (max-width: 768px) {
-  .weight-selector-buttons-container {
-    flex-direction: column !important;
-    gap: 8px !important;
-  }
-  
-  .weight-selector-submit-btn {
-    flex: 1 1 100% !important;
-    max-width: none !important;
-    min-width: auto !important;
-  }
-}
-
-.weight-selector-buttons-container:has(.weight-selector-button-wrapper:nth-child(2):last-child) .weight-selector-submit-btn {
-  flex: 1 1 calc(50% - 6px) !important;
-}
-
-@media (min-width: 769px) {
-  .weight-selector-buttons-container:has(.weight-selector-button-wrapper:nth-child(n+3)) .weight-selector-submit-btn {
-    flex: 1 1 calc(33.333% - 8px) !important;
-    min-width: 250px !important;
-  }
-}
-
-/* Effet de scan sci-fi pour tous les boutons */
 .weight-selector-submit-btn::before {
   content: '' !important;
   position: absolute !important;
-  top: -2px !important;
-  left: -2px !important;
-  width: calc(100% + 4px) !important;
-  height: calc(100% + 4px) !important;
-  background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent) !important;
-  transform: translateX(-100%) rotate(45deg) !important;
-  transition: transform 0.8s ease !important;
+  top: 50% !important;
+  left: 50% !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-radius: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  transition: width 0.6s, height 0.6s !important;
+}
+
+.weight-selector-submit-btn:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 24px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.35) !important;
 }
 
 .weight-selector-submit-btn:hover::before {
-  transform: translateX(100%) rotate(45deg) !important;
+  width: 300px !important;
+  height: 300px !important;
 }
 
-/* Effet de scan spécial pour boutons clairs */
-.weight-selector-submit-btn.light-button::before {
-  background: linear-gradient(45deg, transparent, rgba(var(--ws-accent-r),var(--ws-accent-g),var(--ws-accent-b),0.2), transparent) !important;
+.weight-selector-submit-btn:active {
+  transform: translateY(0) !important;
+  box-shadow: 0 2px 8px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.25) !important;
 }
 
-/* Effet de pulse pour le focus */
-@keyframes pulse-accent {
-  0% { box-shadow: 0 0 0 0 rgba(var(--ws-accent-r),var(--ws-accent-g),var(--ws-accent-b),0.7); }
-  70% { box-shadow: 0 0 0 10px rgba(var(--ws-accent-r),var(--ws-accent-g),var(--ws-accent-b),0); }
-  100% { box-shadow: 0 0 0 0 rgba(var(--ws-accent-r),var(--ws-accent-g),var(--ws-accent-b),0); }
+/* Boutons clairs */
+.weight-selector-submit-btn.light-button {
+  background: #f8f9fa !important;
+  color: var(--ws-accent) !important;
+  border: 2px solid var(--ws-accent) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
 }
 
-.weight-selector-submit-btn:focus {
-  animation: pulse-accent 1.5s infinite !important;
+.weight-selector-submit-btn.light-button:hover {
+  background: var(--ws-accent) !important;
+  color: white !important;
+  box-shadow: 0 6px 24px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.35) !important;
 }
 
 /* État désactivé */
@@ -899,14 +686,22 @@ export const WeightSelector = {
   opacity: 0.6 !important;
   pointer-events: none !important;
   filter: grayscale(30%) !important;
-  user-select: none !important;
-  transform: none !important;
+}
+
+/* Animations supplémentaires */
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
+.weight-selector-section.weight-high .weight-selector-section-title {
+  animation: pulse 2s ease-in-out infinite !important;
 }
       `;
       container.appendChild(styleEl);
 
       /* 6. Construction de l'interface */
-      // Initialiser les poids
       initializeWeights();
 
       // Titre principal
@@ -940,26 +735,20 @@ export const WeightSelector = {
         sectionEl.className = 'weight-selector-section';
         sectionEl.id = `section-${uniqueInstanceId}-${sectionIdx}`;
         
-        // Couleur de section (défaut harmonieux ou personnalisée)
+        // Couleur de section
         const sectionColor = section.color || global_button_color;
-        const rgba1 = hexToRgba(sectionColor, 0.9);
-        const rgba2 = hexToRgba(sectionColor, 0.7);
+        sectionEl.setAttribute('data-section-color', sectionColor);
+        sectionEl.style.borderColor = hexToRgba(sectionColor, 0.5);
+        sectionEl.style.setProperty('--ws-accent', sectionColor);
         
-        // Créer un dégradé harmonieux
-        const lighterColor = adjustColorBrightness(sectionColor, 0.1);
-        const darkerColor = adjustColorBrightness(sectionColor, -0.1);
-        
-        sectionEl.style.background = `linear-gradient(135deg, ${rgba1}, ${rgba2})`;
-        sectionEl.style.borderColor = hexToRgba(sectionColor, 0.3);
-        
-        // Définir les couleurs CSS personnalisées pour cette section
-        sectionEl.style.setProperty('--section-color', sectionColor);
-        sectionEl.style.setProperty('--section-color-light', lighterColor);
-        sectionEl.style.setProperty('--section-color-dark', darkerColor);
-        
-        // Déterminer la couleur de texte selon la luminosité
-        const textColor = getContrastTextColor(sectionColor);
-        sectionEl.style.color = textColor;
+        // Convertir la couleur en RGB pour les animations
+        const sectionRgb = parseInt(sectionColor.replace('#',''), 16);
+        const sectionR = (sectionRgb >> 16) & 255;
+        const sectionG = (sectionRgb >> 8) & 255;
+        const sectionB = sectionRgb & 255;
+        sectionEl.style.setProperty('--ws-accent-r', sectionR);
+        sectionEl.style.setProperty('--ws-accent-g', sectionG);
+        sectionEl.style.setProperty('--ws-accent-b', sectionB);
         
         // Titre de section
         if (section.label) {
@@ -976,6 +765,7 @@ export const WeightSelector = {
           
           const progressBar = document.createElement('div');
           progressBar.className = 'weight-selector-progress-bar';
+          progressBar.style.background = `linear-gradient(90deg, ${sectionColor}, ${adjustColorBrightness(sectionColor, 0.2)})`;
           
           progressContainer.appendChild(progressBar);
           sectionEl.appendChild(progressContainer);
@@ -1005,15 +795,19 @@ export const WeightSelector = {
           
           const valueDisplay = document.createElement('div');
           valueDisplay.className = 'weight-value';
+          valueDisplay.style.background = sectionColor;
           
           const sectionId = `section_${sectionIdx}`;
           sliderElements.set(sectionId, slider);
           
-          // Événement de changement
+          // Mettre à jour le style du track en fonction de la valeur
           slider.addEventListener('input', () => {
             const newWeight = parseInt(slider.value) / 100;
             redistributeWeights(sectionId, newWeight);
             updateDisplay();
+            
+            // Mettre à jour le remplissage du slider
+            slider.style.setProperty('--value', `${slider.value}%`);
           });
           
           sliderWrapper.append(label, slider, valueDisplay);
@@ -1045,6 +839,7 @@ export const WeightSelector = {
               
               const progressBar = document.createElement('div');
               progressBar.className = 'weight-selector-progress-bar';
+              progressBar.style.background = `linear-gradient(90deg, ${sectionColor}, ${adjustColorBrightness(sectionColor, 0.2)})`;
               
               progressContainer.appendChild(progressBar);
               subsectionEl.appendChild(progressContainer);
@@ -1071,6 +866,7 @@ export const WeightSelector = {
               
               const valueDisplay = document.createElement('div');
               valueDisplay.className = 'weight-value';
+              valueDisplay.style.background = sectionColor;
               
               const subsectionId = `subsection_${sectionIdx}_${subIdx}`;
               sliderElements.set(subsectionId, slider);
@@ -1080,6 +876,9 @@ export const WeightSelector = {
                 const newWeight = parseInt(slider.value) / 100;
                 redistributeWeights(subsectionId, newWeight);
                 updateDisplay();
+                
+                // Mettre à jour le remplissage du slider
+                slider.style.setProperty('--value', `${slider.value}%`);
               });
               
               sliderWrapper.append(label, slider, valueDisplay);
@@ -1114,20 +913,17 @@ export const WeightSelector = {
           
           btn.textContent = buttonConfig.text || 'Confirmer';
 
-          // Gestion automatique de l'inversion des couleurs pour boutons clairs
+          // Gestion des couleurs de bouton
           if (buttonConfig.color) {
             const buttonLuminance = getLuminance(buttonConfig.color);
             
             if (buttonLuminance > 200) {
               // Bouton clair - inversion automatique
               btn.classList.add('light-button');
-              btn.style.setProperty('background-color', buttonConfig.color, 'important');
-              btn.style.setProperty('color', global_button_color, 'important');
-              btn.style.setProperty('border-color', global_button_color, 'important');
+              btn.style.setProperty('--ws-accent', global_button_color);
             } else {
               // Bouton foncé - style normal
-              btn.style.setProperty('background-color', buttonConfig.color, 'important');
-              btn.style.setProperty('border-color', buttonConfig.color, 'important');
+              btn.style.setProperty('--ws-accent', buttonConfig.color);
               const rgb = parseInt(buttonConfig.color.replace('#',''), 16);
               const r = (rgb >> 16) & 255;
               const g = (rgb >> 8) & 255;
@@ -1190,6 +986,11 @@ export const WeightSelector = {
       /* 8. Initialisation finale */
       updateDisplay();
       
+      // Initialiser les valeurs de remplissage des sliders
+      for (let [id, slider] of sliderElements) {
+        slider.style.setProperty('--value', `${slider.value}%`);
+      }
+      
       // Ajout au DOM
       element.appendChild(container);
       
@@ -1200,7 +1001,7 @@ export const WeightSelector = {
       
       const errorEl = document.createElement('div');
       errorEl.innerHTML = `
-        <div style="color: #fff; background-color: rgba(220, 53, 69, 0.8); padding: 1rem; border-radius: 8px; backdrop-filter: blur(5px);">
+        <div style="color: #721c24; background-color: #f8d7da; padding: 1rem; border-radius: 8px; border: 1px solid #f5c6cb;">
           <p>Erreur lors du chargement de WeightSelector:</p>
           <p>${error.message}</p>
         </div>

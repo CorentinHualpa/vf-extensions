@@ -174,6 +174,7 @@ export const WeightSelector = {
       let weights = new Map();
       let sliderElements = new Map();
       let progressBars = new Map();
+      let lockedSliders = new Set(); // Pour suivre les sliders verrouillés
       
       function initializeWeights() {
         let totalItems = 0;
@@ -225,23 +226,44 @@ export const WeightSelector = {
 
       function redistributeWeights(changedId, newValue) {
         const oldValue = weights.get(changedId) || 0;
-        const otherIds = Array.from(weights.keys()).filter(id => id !== changedId);
+        const otherIds = Array.from(weights.keys()).filter(id => id !== changedId && !lockedSliders.has(id));
         
         if (otherIds.length === 0) {
-          weights.set(changedId, 1.0);
+          // Si tous les autres sont verrouillés, on ne peut pas redistribuer
+          const totalLocked = Array.from(weights.keys())
+            .filter(id => id !== changedId && lockedSliders.has(id))
+            .reduce((sum, id) => sum + weights.get(id), 0);
+          
+          const maxAvailable = 1.0 - totalLocked;
+          
+          if (newValue > maxAvailable) {
+            // Ne pas permettre de dépasser l'espace disponible
+            newValue = maxAvailable;
+          }
+          
+          weights.set(changedId, newValue);
           return;
         }
 
-        const otherTotalOld = otherIds.reduce((sum, id) => sum + weights.get(id), 0);
-        const remainingWeight = 1.0 - newValue;
+        // Calculer le total des poids verrouillés
+        const lockedTotal = Array.from(lockedSliders).reduce((sum, id) => sum + weights.get(id), 0);
+        const remainingWeight = 1.0 - newValue - lockedTotal;
         
-        if (otherTotalOld > 0) {
+        // Si la nouvelle valeur + poids verrouillés dépasse 100%, ajuster
+        if (newValue + lockedTotal > 1.0) {
+          newValue = 1.0 - lockedTotal;
+        }
+        
+        // Redistribuer seulement parmi les non-verrouillés
+        const otherTotalOld = otherIds.reduce((sum, id) => sum + weights.get(id), 0);
+        
+        if (otherTotalOld > 0 && remainingWeight >= 0) {
           otherIds.forEach(id => {
             const oldWeight = weights.get(id);
             const newWeight = (oldWeight / otherTotalOld) * remainingWeight;
             weights.set(id, newWeight);
           });
-        } else {
+        } else if (remainingWeight >= 0) {
           const equalWeight = remainingWeight / otherIds.length;
           otherIds.forEach(id => {
             weights.set(id, equalWeight);
@@ -469,6 +491,61 @@ export const WeightSelector = {
 
 .weight-selector-slider-wrapper:hover {
   background: #f0f1f3 !important;
+}
+
+/* État verrouillé */
+.weight-selector-slider-wrapper.locked {
+  background: #e8f5e9 !important;
+  border: 1px solid #4caf50 !important;
+}
+
+.weight-selector-slider-wrapper.locked .weight-selector-slider-input {
+  opacity: 0.7 !important;
+  cursor: not-allowed !important;
+}
+
+.weight-selector-slider-wrapper.locked .weight-selector-slider-input::-webkit-slider-thumb {
+  cursor: not-allowed !important;
+}
+
+.weight-selector-slider-wrapper.locked .weight-selector-slider-input::-moz-range-thumb {
+  cursor: not-allowed !important;
+}
+
+/* Bouton de verrouillage */
+.weight-selector-lock-btn {
+  position: absolute !important;
+  right: 8px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 6px !important;
+  border: 1px solid #dee2e6 !important;
+  background: #ffffff !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.2s ease !important;
+  font-size: 16px !important;
+  z-index: 3 !important;
+}
+
+.weight-selector-lock-btn:hover {
+  background: #f8f9fa !important;
+  border-color: #adb5bd !important;
+}
+
+.weight-selector-lock-btn.locked {
+  background: #4caf50 !important;
+  border-color: #4caf50 !important;
+  color: white !important;
+}
+
+.weight-selector-lock-btn.locked:hover {
+  background: #45a049 !important;
+  border-color: #45a049 !important;
 }
 
 .weight-selector-slider-label {
@@ -776,20 +853,46 @@ export const WeightSelector = {
           valueDisplay.className = 'weight-value';
           valueDisplay.style.background = sectionColor;
           
+          // Bouton de verrouillage
+          const lockBtn = document.createElement('button');
+          lockBtn.className = 'weight-selector-lock-btn';
+          lockBtn.innerHTML = '🔓';
+          lockBtn.title = 'Verrouiller/Déverrouiller cette pondération';
+          
           const sectionId = `section_${sectionIdx}`;
           sliderElements.set(sectionId, slider);
           
-          // Mettre à jour le style du track en fonction de la valeur
-          slider.addEventListener('input', () => {
-            const newWeight = parseInt(slider.value) / 100;
-            redistributeWeights(sectionId, newWeight);
-            updateDisplay();
-            
-            // Mettre à jour le remplissage du slider
-            slider.style.setProperty('--value', `${slider.value}%`);
+          // Gérer le verrouillage
+          lockBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (lockedSliders.has(sectionId)) {
+              lockedSliders.delete(sectionId);
+              lockBtn.innerHTML = '🔓';
+              lockBtn.classList.remove('locked');
+              sliderWrapper.classList.remove('locked');
+              slider.disabled = false;
+            } else {
+              lockedSliders.add(sectionId);
+              lockBtn.innerHTML = '🔒';
+              lockBtn.classList.add('locked');
+              sliderWrapper.classList.add('locked');
+              slider.disabled = true;
+            }
           });
           
-          sliderWrapper.append(label, slider, valueDisplay);
+          // Mettre à jour le style du track en fonction de la valeur
+          slider.addEventListener('input', () => {
+            if (!lockedSliders.has(sectionId)) {
+              const newWeight = parseInt(slider.value) / 100;
+              redistributeWeights(sectionId, newWeight);
+              updateDisplay();
+              
+              // Mettre à jour le remplissage du slider
+              slider.style.setProperty('--value', `${slider.value}%`);
+            }
+          });
+          
+          sliderWrapper.append(label, slider, valueDisplay, lockBtn);
           sliderContainer.appendChild(sliderWrapper);
           sectionEl.appendChild(sliderContainer);
         }
@@ -847,20 +950,46 @@ export const WeightSelector = {
               valueDisplay.className = 'weight-value';
               valueDisplay.style.background = sectionColor;
               
+              // Bouton de verrouillage pour les sous-sections
+              const lockBtn = document.createElement('button');
+              lockBtn.className = 'weight-selector-lock-btn';
+              lockBtn.innerHTML = '🔓';
+              lockBtn.title = 'Verrouiller/Déverrouiller cette pondération';
+              
               const subsectionId = `subsection_${sectionIdx}_${subIdx}`;
               sliderElements.set(subsectionId, slider);
               
-              // Événement de changement
-              slider.addEventListener('input', () => {
-                const newWeight = parseInt(slider.value) / 100;
-                redistributeWeights(subsectionId, newWeight);
-                updateDisplay();
-                
-                // Mettre à jour le remplissage du slider
-                slider.style.setProperty('--value', `${slider.value}%`);
+              // Gérer le verrouillage
+              lockBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (lockedSliders.has(subsectionId)) {
+                  lockedSliders.delete(subsectionId);
+                  lockBtn.innerHTML = '🔓';
+                  lockBtn.classList.remove('locked');
+                  sliderWrapper.classList.remove('locked');
+                  slider.disabled = false;
+                } else {
+                  lockedSliders.add(subsectionId);
+                  lockBtn.innerHTML = '🔒';
+                  lockBtn.classList.add('locked');
+                  sliderWrapper.classList.add('locked');
+                  slider.disabled = true;
+                }
               });
               
-              sliderWrapper.append(label, slider, valueDisplay);
+              // Événement de changement
+              slider.addEventListener('input', () => {
+                if (!lockedSliders.has(subsectionId)) {
+                  const newWeight = parseInt(slider.value) / 100;
+                  redistributeWeights(subsectionId, newWeight);
+                  updateDisplay();
+                  
+                  // Mettre à jour le remplissage du slider
+                  slider.style.setProperty('--value', `${slider.value}%`);
+                }
+              });
+              
+              sliderWrapper.append(label, slider, valueDisplay, lockBtn);
               subsectionEl.appendChild(sliderWrapper);
             }
             
@@ -921,17 +1050,20 @@ export const WeightSelector = {
             const result = {
               sliderLevel,
               weights: Object.fromEntries(weights),
+              lockedWeights: Array.from(lockedSliders), // Inclure les sliders verrouillés
               sections: sections.map((section, sectionIdx) => {
                 const sectionResult = {
                   label: section.label,
                   weight: sliderLevel === 'section' ? weights.get(`section_${sectionIdx}`) || 0 : null,
+                  locked: sliderLevel === 'section' ? lockedSliders.has(`section_${sectionIdx}`) : null,
                   subsections: []
                 };
                 
                 if (section.subsections) {
                   sectionResult.subsections = section.subsections.map((subsection, subIdx) => ({
                     label: subsection.label,
-                    weight: sliderLevel === 'subsection' ? weights.get(`subsection_${sectionIdx}_${subIdx}`) || 0 : null
+                    weight: sliderLevel === 'subsection' ? weights.get(`subsection_${sectionIdx}_${subIdx}`) || 0 : null,
+                    locked: sliderLevel === 'subsection' ? lockedSliders.has(`subsection_${sectionIdx}_${subIdx}`) : null
                   }));
                 }
                 

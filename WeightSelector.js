@@ -480,9 +480,10 @@ export const WeightSelector = {
 .weight-selector-slider-wrapper {
   display: flex !important;
   align-items: center !important;
-  gap: 16px !important;
+  gap: 12px !important;
   margin-bottom: 16px !important;
   padding: 16px !important;
+  padding-right: 52px !important; /* Espace pour le bouton de verrouillage */
   background: #f8f9fa !important;
   border-radius: 12px !important;
   transition: all 0.3s ease !important;
@@ -515,7 +516,7 @@ export const WeightSelector = {
 /* Bouton de verrouillage */
 .weight-selector-lock-btn {
   position: absolute !important;
-  right: 8px !important;
+  right: 10px !important;
   top: 50% !important;
   transform: translateY(-50%) !important;
   width: 32px !important;
@@ -652,6 +653,7 @@ export const WeightSelector = {
   font-size: var(--ws-small-fs) !important;
   box-shadow: 0 2px 8px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.25) !important;
   transition: all 0.3s ease !important;
+  margin-right: 8px !important; /* Espace entre le pourcentage et le bouton lock */
 }
 
 /* Sous-sections */

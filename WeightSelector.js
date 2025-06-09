@@ -290,6 +290,9 @@ export const WeightSelector = {
               valueDisplay.textContent = `${Math.round(weight * 100)}%`;
             }
             
+            // IMPORTANT: Mettre à jour le remplissage du slider (la barre verte)
+            slider.style.setProperty('--value', `${Math.round(weight * 100)}%`);
+            
             let weightClass = 'weight-medium';
             if (weight >= maxWeight * 0.9 && weight > averageWeight * 1.2) {
               weightClass = 'weight-high';
@@ -300,6 +303,10 @@ export const WeightSelector = {
             const sliderWrapper = slider.closest('.weight-selector-slider-wrapper');
             if (sliderWrapper) {
               sliderWrapper.className = `weight-selector-slider-wrapper ${weightClass}`;
+              // Conserver la classe locked si elle existe
+              if (lockedSliders.has(id)) {
+                sliderWrapper.classList.add('locked');
+              }
             }
             
             const sectionElement = slider.closest('.weight-selector-section');

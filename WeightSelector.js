@@ -175,6 +175,7 @@ export const WeightSelector = {
       let sliderElements = new Map();
       let progressBars = new Map();
       let lockedSliders = new Set(); // Pour suivre les sliders verrouillés
+      let sectionComments = new Map(); // Pour stocker les commentaires des sections
       
       function initializeWeights() {
         let totalItems = 0;
@@ -757,6 +758,47 @@ export const WeightSelector = {
   box-shadow: 0 6px 24px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.35) !important;
 }
 
+/* Champ de commentaire de section */
+.weight-selector-comment-container {
+  padding: 0 24px 24px !important;
+  margin-top: -8px !important;
+}
+
+.weight-selector-comment-label {
+  font-size: var(--ws-small-fs) !important;
+  font-weight: 500 !important;
+  color: #6c757d !important;
+  margin-bottom: 8px !important;
+  display: block !important;
+  font-style: italic !important;
+}
+
+.weight-selector-comment-textarea {
+  width: 100% !important;
+  min-height: 80px !important;
+  padding: 12px !important;
+  border: 1px solid #dee2e6 !important;
+  border-radius: 8px !important;
+  background: #ffffff !important;
+  color: #2d3436 !important;
+  font-family: inherit !important;
+  font-size: var(--ws-small-fs) !important;
+  resize: vertical !important;
+  transition: all 0.3s ease !important;
+  box-sizing: border-box !important;
+}
+
+.weight-selector-comment-textarea:focus {
+  outline: none !important;
+  border-color: var(--ws-accent) !important;
+  box-shadow: 0 0 0 3px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.1) !important;
+}
+
+.weight-selector-comment-textarea::placeholder {
+  color: #adb5bd !important;
+  font-style: italic !important;
+}
+
 /* État désactivé */
 .weight-selector-container.disabled {
   opacity: 0.6 !important;
@@ -904,6 +946,32 @@ export const WeightSelector = {
           sliderWrapper.append(label, slider, valueDisplay, lockBtn);
           sliderContainer.appendChild(sliderWrapper);
           sectionEl.appendChild(sliderContainer);
+          
+          // Ajouter le champ de commentaire
+          const commentContainer = document.createElement('div');
+          commentContainer.className = 'weight-selector-comment-container';
+          
+          const commentLabel = document.createElement('label');
+          commentLabel.className = 'weight-selector-comment-label';
+          commentLabel.textContent = 'Pourquoi ces critères sont-ils importants pour vous ?';
+          commentLabel.htmlFor = `comment-${uniqueInstanceId}-section-${sectionIdx}`;
+          
+          const commentTextarea = document.createElement('textarea');
+          commentTextarea.className = 'weight-selector-comment-textarea';
+          commentTextarea.id = `comment-${uniqueInstanceId}-section-${sectionIdx}`;
+          commentTextarea.placeholder = 'Précisez en quoi ces critères sont importants pour votre marché, votre industrie, votre positionnement...';
+          
+          // Stocker la référence et gérer les changements
+          sectionComments.set(sectionId, commentTextarea);
+          
+          commentTextarea.addEventListener('input', (e) => {
+            // Les commentaires sont automatiquement stockés via la référence Map
+            console.log(`Commentaire section ${sectionIdx}: ${e.target.value}`);
+          });
+          
+          commentContainer.appendChild(commentLabel);
+          commentContainer.appendChild(commentTextarea);
+          sectionEl.appendChild(commentContainer);
         }
 
         // Sous-sections
@@ -1061,10 +1129,12 @@ export const WeightSelector = {
               weights: Object.fromEntries(weights),
               lockedWeights: Array.from(lockedSliders), // Inclure les sliders verrouillés
               sections: sections.map((section, sectionIdx) => {
+                const sectionId = `section_${sectionIdx}`;
                 const sectionResult = {
                   label: section.label,
-                  weight: sliderLevel === 'section' ? weights.get(`section_${sectionIdx}`) || 0 : null,
-                  locked: sliderLevel === 'section' ? lockedSliders.has(`section_${sectionIdx}`) : null,
+                  weight: sliderLevel === 'section' ? weights.get(sectionId) || 0 : null,
+                  locked: sliderLevel === 'section' ? lockedSliders.has(sectionId) : null,
+                  comment: sliderLevel === 'section' ? (sectionComments.get(sectionId)?.value || '') : null,
                   subsections: []
                 };
                 

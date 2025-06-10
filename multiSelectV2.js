@@ -29,7 +29,7 @@ export const MultiSelect = {
         chat            = true,
         chatDisabledText= '🚫',
         gridColumns     = 0,  // 0 = auto (par défaut), 1 = force une colonne, 2,3,4,5,6+ = nombre de colonnes
-        optionsGap      = 12,  // Contrôle l'espacement entre les options (en px)
+        optionsGap      = 4,  // Contrôle l'espacement entre les options (en px)
         global_button_color = '#9C27B0', // Couleur par défaut pour tous les boutons
         buttonFontSize  = 15, // Taille du texte des boutons (base pour tous les textes)
         useGlobalAll    = false,  // Option pour activer/désactiver l'option global-all
@@ -200,7 +200,7 @@ export const MultiSelect = {
   --ms-hover-bg: rgba(55,120,244,0.3);
   --ms-bg-opacity: 0.8;
   --ms-gap: ${gapProportional}px;
-  --ms-radius: 10px;
+  --ms-radius: 6px;
   --ms-shadow: 0 2px 6px rgba(0,0,0,.15);
   --ms-heading-fs: ${h3Size}px;
   --ms-base-fs: ${baseFontSize}px;
@@ -380,7 +380,7 @@ export const MultiSelect = {
   display:grid!important; 
   grid-template-columns:1fr!important;
   gap:var(--ms-gap)!important; 
-  padding:calc(var(--ms-gap) * 1.5)!important;
+  padding:calc(var(--ms-gap)/2)!important;
 }
 
 .multiselect-container .options-list.grid-2cols { 
@@ -402,15 +402,15 @@ export const MultiSelect = {
   display:flex!important; 
   align-items:flex-start!important;
   gap:calc(var(--ms-gap)/2)!important;
-  margin-bottom: var(--ms-gap)!important;
+  margin-bottom: calc(var(--ms-gap)/2)!important;
 }
 
 .multiselect-container .option-container label { 
   display:flex!important; 
-  align-items:flex-start!important;
-  gap:calc(var(--ms-gap) * 0.8)!important; 
+  align-items:center!important;
+  gap:calc(var(--ms-gap)/2)!important; 
   width:100%!important;
-  padding:calc(var(--ms-gap) * 2) calc(var(--ms-gap) * 2.5)!important;
+  padding:calc(var(--ms-gap) * 0.8) calc(var(--ms-gap) * 1.2)!important;
   background:rgba(0,0,0,var(--ms-bg-opacity))!important;
   border-radius:var(--ms-radius)!important; 
   cursor:pointer!important;
@@ -439,8 +439,8 @@ export const MultiSelect = {
   border: 1px dashed rgba(255, 255, 255, 0.3)!important;
   font-weight: 700!important;
   font-style: italic!important;
-  padding: calc(var(--ms-gap) * 2) calc(var(--ms-gap) * 2.5)!important;
-  border-radius: calc(var(--ms-radius) + 2px)!important;
+  padding: calc(var(--ms-gap) * 1) calc(var(--ms-gap) * 1.5)!important;
+  border-radius: 8px!important;
   transition: all 0.3s ease!important;
 }
 
@@ -561,8 +561,6 @@ export const MultiSelect = {
   border-radius:50%!important; 
   background:#fff!important;
   transition:transform .1s ease!important;
-  margin-top: 3px!important;
-  flex-shrink: 0!important;
 }
 
 .multiselect-container .option-container input:hover { 
@@ -669,7 +667,7 @@ export const MultiSelect = {
   position: relative!important;
   background: var(--ms-global-btn-color)!important;
   color: #fff!important;
-  padding: calc(var(--ms-gap) * 1.2) calc(var(--ms-gap) * 2)!important; 
+  padding: calc(var(--ms-base-fs) * 1.2) calc(var(--ms-base-fs) * 2.5)!important; 
   border-radius: 8px!important;
   font-weight: 700!important; 
   letter-spacing: 0.5px!important;
@@ -692,7 +690,7 @@ export const MultiSelect = {
   flex: 1 1 auto!important; /* Flex pour prendre l'espace disponible */
   min-width: calc(var(--ms-base-fs) * 13)!important; /* Largeur minimale proportionnelle */
   max-width: calc(var(--ms-base-fs) * 26)!important; /* Largeur maximale proportionnelle */
-  height: calc(var(--ms-base-fs) * 4)!important; /* Hauteur proportionnelle */
+  min-height: calc(var(--ms-base-fs) * 4)!important; /* Hauteur minimale proportionnelle */
   
   word-wrap: break-word!important;
   hyphens: auto!important;

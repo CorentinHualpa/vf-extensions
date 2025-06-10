@@ -1127,33 +1127,34 @@ export const WeightSelector = {
             // Désactiver l'interface
             container.classList.add('disabled');
             
-            // Créer l'objet de résultat
+            // Créer l'objet de résultat avec structure optimisée
+            const sectionsData = sections.map((section, sectionIdx) => {
+              const sectionId = `section_${sectionIdx}`;
+              const sectionWeight = sliderLevel === 'section' ? (weights.get(sectionId) || 0) : null;
+              const sectionPercentage = sliderLevel === 'section' ? Math.round((sectionWeight || 0) * 100) : null;
+              const sectionComment = sliderLevel === 'section' ? (sectionComments.get(sectionId)?.value || '') : '';
+              const isLocked = sliderLevel === 'section' ? lockedSliders.has(sectionId) : false;
+              
+              return {
+                label: section.label,
+                weight: sectionWeight,
+                percentage: sectionPercentage,
+                locked: isLocked,
+                comment: sectionComment,
+                subsections: section.subsections ? section.subsections.map((subsection, subIdx) => ({
+                  label: subsection.label,
+                  weight: sliderLevel === 'subsection' ? weights.get(`subsection_${sectionIdx}_${subIdx}`) || 0 : null,
+                  percentage: sliderLevel === 'subsection' ? Math.round((weights.get(`subsection_${sectionIdx}_${subIdx}`) || 0) * 100) : null,
+                  locked: sliderLevel === 'subsection' ? lockedSliders.has(`subsection_${sectionIdx}_${subIdx}`) : null
+                })) : []
+              };
+            });
+            
             const result = {
               sliderLevel,
               weights: Object.fromEntries(weights),
               lockedWeights: Array.from(lockedSliders),
-              sections: sections.map((section, sectionIdx) => {
-                const sectionId = `section_${sectionIdx}`;
-                const sectionResult = {
-                  label: section.label,
-                  weight: sliderLevel === 'section' ? weights.get(sectionId) || 0 : null,
-                  percentage: sliderLevel === 'section' ? Math.round((weights.get(sectionId) || 0) * 100) : null,
-                  locked: sliderLevel === 'section' ? lockedSliders.has(sectionId) : null,
-                  comment: sliderLevel === 'section' ? (sectionComments.get(sectionId)?.value || '') : null,
-                  subsections: []
-                };
-                
-                if (section.subsections) {
-                  sectionResult.subsections = section.subsections.map((subsection, subIdx) => ({
-                    label: subsection.label,
-                    weight: sliderLevel === 'subsection' ? weights.get(`subsection_${sectionIdx}_${subIdx}`) || 0 : null,
-                    percentage: sliderLevel === 'subsection' ? Math.round((weights.get(`subsection_${sectionIdx}_${subIdx}`) || 0) * 100) : null,
-                    locked: sliderLevel === 'subsection' ? lockedSliders.has(`subsection_${sectionIdx}_${subIdx}`) : null
-                  }));
-                }
-                
-                return sectionResult;
-              }),
+              sections: sectionsData,
               buttonText: buttonConfig.text,
               buttonPath: buttonConfig.path || 'Default',
               instanceId: uniqueInstanceId

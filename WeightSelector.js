@@ -3,8 +3,9 @@
  *  ║  WeightSelector – Voiceflow Response Extension            ║
  *  ║                                                           ║
  *  ║  • Design moderne avec sections blanches                  ║
- *  ║  • Sliders fonctionnels avec feedback visuel             ║
- *  ║  • Animations fluides et effets dynamiques               ║
+ *  ║  • Sliders indépendants avec états visuels spéciaux      ║
+ *  ║  • Section à 0% = apparence désactivée                   ║
+ *  ║  • Section à 100% = met les autres à 0%                  ║
  *  ║  • Support responsive multi-colonnes                      ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
@@ -24,7 +25,7 @@ export const WeightSelector = {
 
       const {
         title = 'Pondération des éléments',
-        subtitle = 'Ajustez l\'importance de chaque élément (total = 100%)',
+        subtitle = 'Ajustez l\'importance de chaque élément',
         sections = [],
         sliderLevel = 'section',
         chat = false,
@@ -174,112 +175,46 @@ export const WeightSelector = {
       let weights = new Map();
       let sliderElements = new Map();
       let progressBars = new Map();
-      let lockedSliders = new Set(); // Pour suivre les sliders verrouillés
-      let sectionComments = new Map(); // Pour stocker les commentaires des sections
+      let lockedSliders = new Set();
+      let sectionComments = new Map();
       
       function initializeWeights() {
-        let totalItems = 0;
-        let itemsToWeight = [];
-
         sections.forEach((section, sectionIdx) => {
           if (sliderLevel === 'section') {
             if (section.hasSlider !== false) {
               const id = `section_${sectionIdx}`;
-              itemsToWeight.push({
-                id,
-                defaultWeight: section.defaultWeight || null
-              });
-              totalItems++;
+              const defaultWeight = section.defaultWeight || 0.5; // Par défaut à 50%
+              weights.set(id, defaultWeight);
             }
           } else if (sliderLevel === 'subsection') {
             if (section.subsections && Array.isArray(section.subsections)) {
               section.subsections.forEach((subsection, subIdx) => {
                 if (subsection.hasSlider !== false) {
                   const id = `subsection_${sectionIdx}_${subIdx}`;
-                  itemsToWeight.push({
-                    id,
-                    defaultWeight: subsection.defaultWeight || null
-                  });
-                  totalItems++;
+                  const defaultWeight = subsection.defaultWeight || 0.5;
+                  weights.set(id, defaultWeight);
                 }
               });
             }
           }
         });
-
-        const defaultWeight = 1.0 / totalItems;
-        
-        itemsToWeight.forEach(item => {
-          weights.set(item.id, item.defaultWeight || defaultWeight);
-        });
-
-        normalizeWeights();
       }
 
-      function normalizeWeights() {
-        const total = Array.from(weights.values()).reduce((sum, weight) => sum + weight, 0);
-        if (total > 0) {
-          for (let [id, weight] of weights) {
-            weights.set(id, weight / total);
-          }
-        }
-      }
-
-      function redistributeWeights(changedId, newValue) {
-        const oldValue = weights.get(changedId) || 0;
-        const otherIds = Array.from(weights.keys()).filter(id => id !== changedId && !lockedSliders.has(id));
-        
-        if (otherIds.length === 0) {
-          // Si tous les autres sont verrouillés, on ne peut pas redistribuer
-          const totalLocked = Array.from(weights.keys())
-            .filter(id => id !== changedId && lockedSliders.has(id))
-            .reduce((sum, id) => sum + weights.get(id), 0);
-          
-          const maxAvailable = 1.0 - totalLocked;
-          
-          if (newValue > maxAvailable) {
-            // Ne pas permettre de dépasser l'espace disponible
-            newValue = maxAvailable;
-          }
-          
-          weights.set(changedId, newValue);
-          return;
-        }
-
-        // Calculer le total des poids verrouillés
-        const lockedTotal = Array.from(lockedSliders).reduce((sum, id) => sum + weights.get(id), 0);
-        const remainingWeight = 1.0 - newValue - lockedTotal;
-        
-        // Si la nouvelle valeur + poids verrouillés dépasse 100%, ajuster
-        if (newValue + lockedTotal > 1.0) {
-          newValue = 1.0 - lockedTotal;
-        }
-        
-        // Redistribuer seulement parmi les non-verrouillés
-        const otherTotalOld = otherIds.reduce((sum, id) => sum + weights.get(id), 0);
-        
-        if (otherTotalOld > 0 && remainingWeight >= 0) {
-          otherIds.forEach(id => {
-            const oldWeight = weights.get(id);
-            const newWeight = (oldWeight / otherTotalOld) * remainingWeight;
-            weights.set(id, newWeight);
-          });
-        } else if (remainingWeight >= 0) {
-          const equalWeight = remainingWeight / otherIds.length;
-          otherIds.forEach(id => {
-            weights.set(id, equalWeight);
+      function handleSliderChange(changedId, newValue) {
+        // Si on met à 100%, mettre tous les autres à 0%
+        if (newValue === 1.0) {
+          weights.forEach((weight, id) => {
+            if (id !== changedId) {
+              weights.set(id, 0);
+            }
           });
         }
         
+        // Mettre à jour la valeur du slider modifié
         weights.set(changedId, newValue);
       }
 
       function updateDisplay() {
-        const weightValues = Array.from(weights.values());
-        const averageWeight = weightValues.reduce((sum, w) => sum + w, 0) / weightValues.length;
-        const maxWeight = Math.max(...weightValues);
-        const minWeight = Math.min(...weightValues);
-        
         for (let [id, weight] of weights) {
           const slider = sliderElements.get(id);
           const progressBar = progressBars.get(id);
@@ -291,40 +226,38 @@ export const WeightSelector = {
               valueDisplay.textContent = `${Math.round(weight * 100)}%`;
             }
             
-            // IMPORTANT: Mettre à jour le remplissage du slider (la barre verte)
+            // Mettre à jour le remplissage du slider
             slider.style.setProperty('--value', `${Math.round(weight * 100)}%`);
             
-            let weightClass = 'weight-medium';
-            if (weight >= maxWeight * 0.9 && weight > averageWeight * 1.2) {
-              weightClass = 'weight-high';
-            } else if (weight <= minWeight * 1.1 && weight < averageWeight * 0.8) {
-              weightClass = 'weight-low';
-            }
-            
             const sliderWrapper = slider.closest('.weight-selector-slider-wrapper');
-            if (sliderWrapper) {
-              sliderWrapper.className = `weight-selector-slider-wrapper ${weightClass}`;
-              // Conserver la classe locked si elle existe
-              if (lockedSliders.has(id)) {
-                sliderWrapper.classList.add('locked');
-              }
-            }
-            
             const sectionElement = slider.closest('.weight-selector-section');
+            
             if (sectionElement) {
-              sectionElement.className = `weight-selector-section ${weightClass}`;
+              // Retirer toutes les classes d'état
+              sectionElement.classList.remove('weight-zero', 'weight-full', 'weight-normal');
               
-              // Mise à jour de l'intensité de la bordure
-              const sectionColor = sectionElement.getAttribute('data-section-color') || global_button_color;
-              const intensity = 0.3 + (weight * 0.7);
-              sectionElement.style.borderColor = hexToRgba(sectionColor, intensity);
-              sectionElement.style.boxShadow = `0 0 ${20 * intensity}px ${hexToRgba(sectionColor, intensity * 0.4)}, inset 0 0 ${15 * intensity}px ${hexToRgba(sectionColor, intensity * 0.1)}`;
+              // Appliquer la classe appropriée selon le poids
+              if (weight === 0) {
+                sectionElement.classList.add('weight-zero');
+              } else if (weight === 1.0) {
+                sectionElement.classList.add('weight-full');
+              } else {
+                sectionElement.classList.add('weight-normal');
+              }
+              
+              // Mise à jour de l'intensité de la bordure uniquement si pas à 0
+              if (weight > 0) {
+                const sectionColor = sectionElement.getAttribute('data-section-color') || global_button_color;
+                const intensity = 0.3 + (weight * 0.7);
+                sectionElement.style.borderColor = hexToRgba(sectionColor, intensity);
+                sectionElement.style.boxShadow = `0 0 ${20 * intensity}px ${hexToRgba(sectionColor, intensity * 0.4)}, inset 0 0 ${15 * intensity}px ${hexToRgba(sectionColor, intensity * 0.1)}`;
+              }
             }
           }
           
           if (progressBar) {
             progressBar.style.width = `${weight * 100}%`;
-            const intensity = 0.3 + (weight * 0.7);
+            const intensity = weight > 0 ? 0.3 + (weight * 0.7) : 0;
             progressBar.style.opacity = intensity;
           }
         }
@@ -423,27 +356,55 @@ export const WeightSelector = {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
 }
 
-.weight-selector-section:hover { 
-  transform: translateY(-4px) !important; 
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12) !important;
-}
-
-/* Classes de poids avec effets visuels */
-.weight-selector-section.weight-high {
-  transform: scale(1.02) !important;
-  z-index: 10 !important;
-}
-
-.weight-selector-section.weight-high:hover {
-  transform: translateY(-6px) scale(1.02) !important;
-}
-
-.weight-selector-section.weight-low {
-  opacity: 0.85 !important;
-}
-
-.weight-selector-section.weight-low:hover {
+/* États visuels des sections */
+.weight-selector-section.weight-normal {
   opacity: 1 !important;
+}
+
+.weight-selector-section.weight-zero {
+  opacity: 0.4 !important;
+  background: #f5f5f5 !important;
+  border-color: #cccccc !important;
+  box-shadow: none !important;
+  transform: scale(0.98) !important;
+}
+
+.weight-selector-section.weight-zero .weight-selector-section-title {
+  background: linear-gradient(135deg, #e0e0e0, #f5f5f5) !important;
+  color: #999999 !important;
+}
+
+.weight-selector-section.weight-zero .weight-selector-section-title::after {
+  content: ' (0%)' !important;
+  font-size: 0.8em !important;
+  opacity: 0.7 !important;
+}
+
+.weight-selector-section.weight-full {
+  transform: scale(1.03) !important;
+  z-index: 10 !important;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.15) !important;
+}
+
+.weight-selector-section.weight-full .weight-selector-section-title {
+  background: linear-gradient(135deg, var(--ws-accent), rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.8)) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+.weight-selector-section.weight-full .weight-selector-section-title::after {
+  content: ' ★ 100%' !important;
+  font-size: 0.9em !important;
+  font-weight: 700 !important;
+}
+
+.weight-selector-section.weight-zero .weight-selector-slider-wrapper {
+  opacity: 0.6 !important;
+}
+
+.weight-selector-section.weight-zero .weight-selector-comment-textarea {
+  background: #f9f9f9 !important;
+  color: #666666 !important;
 }
 
 /* Titre de section */
@@ -456,6 +417,7 @@ export const WeightSelector = {
   border-bottom: 1px solid #e9ecef !important;
   margin: 0 !important;
   color: #2d3436 !important;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 /* Barre de progression */
@@ -577,7 +539,7 @@ export const WeightSelector = {
   cursor: pointer !important;
   transition: all 0.3s ease !important;
   position: relative !important;
-  z-index: 1 !important; /* Important pour que le slider soit cliquable */
+  z-index: 1 !important;
 }
 
 /* Webkit (Chrome, Safari) */
@@ -661,7 +623,25 @@ export const WeightSelector = {
   font-size: var(--ws-small-fs) !important;
   box-shadow: 0 2px 8px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.25) !important;
   transition: all 0.3s ease !important;
-  margin-right: 8px !important; /* Espace entre le pourcentage et le bouton lock */
+  margin-right: 8px !important;
+}
+
+/* Styles spéciaux pour les valeurs extrêmes */
+.weight-selector-section.weight-zero .weight-value {
+  background: #999999 !important;
+  box-shadow: none !important;
+}
+
+.weight-selector-section.weight-full .weight-value {
+  background: #4CAF50 !important;
+  box-shadow: 0 2px 12px rgba(76, 175, 80, 0.4) !important;
+  animation: pulse 2s infinite !important;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
 }
 
 /* Sous-sections */
@@ -805,6 +785,24 @@ export const WeightSelector = {
   pointer-events: none !important;
   filter: grayscale(30%) !important;
 }
+
+/* Message d'indication pour le total */
+.weight-selector-total-info {
+  text-align: center !important;
+  margin-bottom: 20px !important;
+  padding: 12px 20px !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-radius: 8px !important;
+  font-size: var(--ws-small-fs) !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.weight-selector-total-value {
+  font-weight: 700 !important;
+  font-size: var(--ws-base-fs) !important;
+  margin-left: 8px !important;
+}
       `;
       container.appendChild(styleEl);
 
@@ -826,6 +824,12 @@ export const WeightSelector = {
         subtitleEl.innerHTML = subtitle;
         container.appendChild(subtitleEl);
       }
+
+      // Info sur le total (optionnel)
+      const totalInfoEl = document.createElement('div');
+      totalInfoEl.className = 'weight-selector-total-info';
+      totalInfoEl.innerHTML = 'Les valeurs sont indépendantes. Mettre une section à 100% réinitialise les autres à 0%';
+      container.appendChild(totalInfoEl);
 
       // Grid des sections
       const sectionsGrid = document.createElement('div');
@@ -935,7 +939,7 @@ export const WeightSelector = {
           slider.addEventListener('input', () => {
             if (!lockedSliders.has(sectionId)) {
               const newWeight = parseInt(slider.value) / 100;
-              redistributeWeights(sectionId, newWeight);
+              handleSliderChange(sectionId, newWeight);
               updateDisplay();
               
               // Mettre à jour le remplissage du slider
@@ -1058,7 +1062,7 @@ export const WeightSelector = {
               slider.addEventListener('input', () => {
                 if (!lockedSliders.has(subsectionId)) {
                   const newWeight = parseInt(slider.value) / 100;
-                  redistributeWeights(subsectionId, newWeight);
+                  handleSliderChange(subsectionId, newWeight);
                   updateDisplay();
                   
                   // Mettre à jour le remplissage du slider
@@ -1127,12 +1131,13 @@ export const WeightSelector = {
             const result = {
               sliderLevel,
               weights: Object.fromEntries(weights),
-              lockedWeights: Array.from(lockedSliders), // Inclure les sliders verrouillés
+              lockedWeights: Array.from(lockedSliders),
               sections: sections.map((section, sectionIdx) => {
                 const sectionId = `section_${sectionIdx}`;
                 const sectionResult = {
                   label: section.label,
                   weight: sliderLevel === 'section' ? weights.get(sectionId) || 0 : null,
+                  percentage: sliderLevel === 'section' ? Math.round((weights.get(sectionId) || 0) * 100) : null,
                   locked: sliderLevel === 'section' ? lockedSliders.has(sectionId) : null,
                   comment: sliderLevel === 'section' ? (sectionComments.get(sectionId)?.value || '') : null,
                   subsections: []
@@ -1142,6 +1147,7 @@ export const WeightSelector = {
                   sectionResult.subsections = section.subsections.map((subsection, subIdx) => ({
                     label: subsection.label,
                     weight: sliderLevel === 'subsection' ? weights.get(`subsection_${sectionIdx}_${subIdx}`) || 0 : null,
+                    percentage: sliderLevel === 'subsection' ? Math.round((weights.get(`subsection_${sectionIdx}_${subIdx}`) || 0) * 100) : null,
                     locked: sliderLevel === 'subsection' ? lockedSliders.has(`subsection_${sectionIdx}_${subIdx}`) : null
                   }));
                 }

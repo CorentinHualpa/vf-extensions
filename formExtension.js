@@ -45,6 +45,85 @@ export const FormExtension = {
     const confidentialityText = trace.payload?.confidentialityText || '';
     const submitText = trace.payload?.submitText || 'Envoyer';
     const primaryColor = trace.payload?.primaryColor || '#2e6ee1';
+    const disableChat = trace.payload?.disableChat !== false; // true par défaut
+    const chatDisabledText = trace.payload?.chatDisabledText || '🚫 Veuillez remplir le formulaire';
+
+    // Variables pour gérer l'état du formulaire
+    let isSubmitted = false;
+
+    // Récupérer le root pour accéder au chat
+    const root = element.getRootNode();
+    const host = root instanceof ShadowRoot ? root : document;
+
+    // Fonctions pour gérer le chat (inspirées de ValueSlider)
+    function disableChatFunction() {
+      // Ne pas désactiver si déjà soumis
+      if (isSubmitted) return;
+      
+      const ic = host.querySelector('.vfrc-input-container');
+      if (!ic) return;
+      ic.style.opacity = '.5';
+      ic.style.cursor = 'not-allowed';
+      ic.setAttribute('title', chatDisabledText);
+      const ta = ic.querySelector('textarea.vfrc-chat-input');
+      if (ta) { 
+        ta.disabled = true; 
+        ta.setAttribute('title', chatDisabledText); 
+      }
+      const snd = host.querySelector('#vfrc-send-message');
+      if (snd) { 
+        snd.disabled = true; 
+        snd.setAttribute('title', chatDisabledText); 
+      }
+    }
+    
+    function enableChatFunction() {
+      // Marquer comme soumis pour éviter une désactivation future
+      isSubmitted = true;
+      
+      const ic = host.querySelector('.vfrc-input-container');
+      if (!ic) return;
+      
+      // Force réinitialisation complète des styles
+      ic.style.removeProperty('opacity');
+      ic.style.removeProperty('cursor');
+      ic.removeAttribute('title');
+      
+      const ta = ic.querySelector('textarea.vfrc-chat-input');
+      if (ta) { 
+        ta.disabled = false; 
+        ta.removeAttribute('title');
+        // Assure-toi que le textarea est prêt à recevoir la saisie
+        ta.style.pointerEvents = 'auto';
+      }
+      
+      const snd = host.querySelector('#vfrc-send-message');
+      if (snd) { 
+        snd.disabled = false;
+        snd.removeAttribute('title');
+        // Assure-toi que le bouton est prêt à être cliqué
+        snd.style.pointerEvents = 'auto';
+      }
+      
+      // S'assurer que tous les contrôles sont vraiment activés
+      setTimeout(() => {
+        if (ta) ta.disabled = false;
+        if (snd) snd.disabled = false;
+        // Vérifier aussi si d'autres éléments du chat sont désactivés
+        const chatElements = host.querySelectorAll('.vfrc-chat-input, #vfrc-send-message, .vfrc-input-container *');
+        chatElements.forEach(elem => {
+          if (elem) {
+            elem.disabled = false;
+            elem.style.pointerEvents = 'auto';
+          }
+        });
+      }, 100);
+    }
+
+    // Désactiver le chat si le paramètre est activé
+    if (disableChat) {
+      disableChatFunction();
+    }
 
     // 3) Dégradé
     function shadeColor(color, percent) {
@@ -133,12 +212,21 @@ export const FormExtension = {
         .submit-btn:hover {
           background: linear-gradient(to right, ${lighterColor}, ${primaryColor});
         }
+        .submit-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
         .form-footer {
           margin-top: 10px;
           font-size: 0.8em;
           color: #999;
           text-align: center;
           width: 100%;
+        }
+        /* État désactivé après soumission */
+        .form-card.submitted {
+          opacity: 0.7;
+          pointer-events: none;
         }
       </style>
       <div class="form-card">
@@ -190,21 +278,43 @@ export const FormExtension = {
     formElement.addEventListener('submit', function (event) {
       event.preventDefault();
       const formData = {};
+      let hasError = false;
+      
       fields.forEach((field) => {
         const input = formElement.querySelector(`input[name="${field.name}"]`);
         if (!input.checkValidity()) {
           input.classList.add('invalid');
+          hasError = true;
         } else {
           input.classList.remove('invalid');
         }
         formData[field.name] = input.value;
       });
-      if (!formElement.checkValidity()) return;
-      submitBtn.remove();
-      window.voiceflow.chat.interact({
-        type: 'complete',
-        payload: formData,
-      });
+      
+      if (hasError || !formElement.checkValidity()) return;
+      
+      // Désactiver le formulaire
+      formCard.classList.add('submitted');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Envoyé ✓';
+      
+      // Réactiver le chat si il était désactivé
+      if (disableChat) {
+        enableChatFunction();
+      }
+      
+      // Attendre un court moment pour s'assurer que le chat est bien réactivé
+      setTimeout(() => {
+        window.voiceflow.chat.interact({
+          type: 'complete',
+          payload: formData,
+        });
+        
+        // S'assurer à nouveau que le chat est réactivé après l'envoi
+        if (disableChat) {
+          setTimeout(enableChatFunction, 300);
+        }
+      }, 100);
     });
 
     // 9) Ajout au DOM et forçage de la largeur

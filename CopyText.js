@@ -6,8 +6,9 @@
  *  ║  • Support HTML avec préservation des balises            ║
  *  ║  • Options : copie HTML ou texte brut                    ║
  *  ║  • Feedback visuel et analytics                          ║
- *  ║  • Design glassmorphism élégant                          ║
+ *  ║  • Glassmorphism et effets visuels avancés               ║
  *  ║  • Optimisé pour WordPress                               ║
+ *  ║  • Support Text et JSON dans Custom Action               ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 
@@ -20,11 +21,55 @@ export const CopyText = {
 
   render: ({ trace, element }) => {
     try {
-      // Configuration depuis le payload
-      const payload = typeof trace.payload === 'string' 
-        ? JSON.parse(trace.payload) 
-        : trace.payload || {};
+      // Configuration depuis le payload avec support Text et JSON
+      let payload = {};
+      
+      // Vérifier si le payload est une string
+      if (typeof trace.payload === 'string') {
+        const trimmedPayload = trace.payload.trim();
+        
+        // Si ça commence par { ou [, c'est probablement du JSON
+        if (trimmedPayload.startsWith('{') || trimmedPayload.startsWith('[')) {
+          try {
+            payload = JSON.parse(trace.payload);
+          } catch (e) {
+            console.warn('Erreur parsing JSON, utilisation comme contenu direct:', e);
+            // En cas d'erreur JSON, utiliser comme contenu direct
+            payload = {
+              content: trace.payload,
+              title: "Contenu à copier",
+              subtitle: "Cliquez sur le bouton ou le texte pour copier",
+              backgroundColor: '#7E57C2',
+              copyButtonText: 'Copier',
+              showFormatOptions: true,
+              enableClickToCopy: true
+            };
+          }
+        } else {
+          // Si ce n'est pas du JSON, c'est du contenu direct (mode Text)
+          payload = {
+            content: trace.payload,
+            title: "Contenu à copier",
+            subtitle: "Cliquez sur le bouton ou le texte pour copier",
+            backgroundColor: '#7E57C2',
+            copyButtonText: 'Copier',
+            copyIconText: '📋',
+            copiedText: 'Copié !',
+            copiedIcon: '✅',
+            showFormatOptions: true,
+            enableClickToCopy: true,
+            maxHeight: 400
+          };
+        }
+      } else if (typeof trace.payload === 'object') {
+        // Si c'est déjà un objet
+        payload = trace.payload || {};
+      } else {
+        // Cas par défaut
+        payload = {};
+      }
 
+      // Valeurs par défaut pour tous les paramètres
       const {
         content = '',                    // Contenu HTML à afficher
         title = '',                      // Titre optionnel
@@ -542,6 +587,8 @@ ${enableClickToCopy ? `
             }
           });
           
+          console.log(`✅ Contenu copié (${format}) - ${textToCopy.length} caractères`);
+          
         } catch (err) {
           console.error('Erreur lors de la copie:', err);
           showTooltip('❌ Erreur de copie', event);
@@ -635,6 +682,8 @@ ${enableClickToCopy ? `
       // Ajout au DOM
       element.appendChild(container);
       
+      console.log(`✅ CopyText prêt (ID: ${uniqueInstanceId})`);
+      
       // Cleanup
       return () => {
         if (tooltip.parentNode) {
@@ -655,7 +704,11 @@ ${enableClickToCopy ? `
         border: 1px solid #f5c6cb;
         margin: 1rem 0;
       `;
-      errorEl.textContent = 'Erreur lors du chargement de l\'extension CopyText';
+      errorEl.innerHTML = `
+        <strong>Erreur CopyText:</strong><br>
+        ${error.message}<br>
+        <small>Vérifiez la console pour plus de détails.</small>
+      `;
       element.appendChild(errorEl);
       
       window.voiceflow.chat.interact({

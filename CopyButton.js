@@ -3,10 +3,9 @@
  *  ║  CopyButton – Voiceflow Response Extension                ║
  *  ║                                                           ║
  *  ║  • Bouton de copie minimaliste et élégant                ║
- *  ║  • S'intègre sous les blocs text Voiceflow               ║
+ *  ║  • Copie le contenu passé en paramètre                   ║
  *  ║  • Options : copie HTML ou texte brut                    ║
  *  ║  • Design subtil avec feedback visuel                    ║
- *  ║  • Copie le dernier message affiché                      ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 
@@ -18,19 +17,37 @@ export const CopyButton = {
 
   render: ({ trace, element }) => {
     try {
-      // Configuration
-      const payload = trace.payload || {};
+      // Configuration et contenu
+      let content = '';
+      let config = {};
+      
+      // Si le payload est une string, c'est le contenu direct
+      if (typeof trace.payload === 'string') {
+        content = trace.payload;
+        config = {};
+      } else if (typeof trace.payload === 'object') {
+        // Si c'est un objet, extraire le contenu et la config
+        content = trace.payload.content || '';
+        config = trace.payload;
+      }
+      
+      // Configuration avec valeurs par défaut
       const {
         buttonText = 'Copier le texte',
         copiedText = 'Copié !',
-        backgroundColor = 'transparent',
         accentColor = '#7E57C2',
         showIcon = true,
         iconText = '📋',
         copiedIcon = '✅',
         position = 'center', // left, center, right
         instanceId = null
-      } = typeof payload === 'string' ? {} : payload;
+      } = config;
+
+      // Si pas de contenu fourni, on abandonne
+      if (!content) {
+        console.warn('CopyButton: Aucun contenu à copier fourni');
+        return;
+      }
 
       // Générer un ID unique
       const uniqueInstanceId = instanceId || `cb_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -66,7 +83,7 @@ export const CopyButton = {
 /* Container principal - Design épuré */
 .copy-button-container {
   width: 100% !important;
-  margin: -0.5rem 0 1rem 0 !important; /* Marge négative pour se rapprocher du texte */
+  margin: 0.5rem 0 1rem 0 !important;
   padding: 0 !important;
   display: flex !important;
   justify-content: ${position} !important;
@@ -184,29 +201,16 @@ export const CopyButton = {
   font-size: 12px !important;
 }
 
-/* Divider */
-.copy-button-divider {
-  height: 1px !important;
-  background: #e0e0e0 !important;
-  margin: 4px 8px !important;
-}
-
-/* Indicateur visuel de connexion au texte */
+/* Ligne de connexion subtile */
 .copy-button-container::before {
   content: '' !important;
   position: absolute !important;
-  top: -8px !important;
+  top: -12px !important;
   left: 50% !important;
   transform: translateX(-50%) !important;
-  width: 20px !important;
-  height: 1px !important;
+  width: 1px !important;
+  height: 8px !important;
   background: rgba(var(--cb-accent-r), var(--cb-accent-g), var(--cb-accent-b), 0.2) !important;
-  opacity: 0 !important;
-  transition: opacity 0.2s ease !important;
-}
-
-.copy-button-container:hover::before {
-  opacity: 1 !important;
 }
 
 /* Toast de notification */
@@ -316,37 +320,20 @@ export const CopyButton = {
       toast.className = 'copy-button-toast';
       document.body.appendChild(toast);
 
-      // Fonction pour récupérer le dernier message texte
-      const getLastTextContent = () => {
-        const messages = element.closest('.vfrc-message')?.parentElement?.querySelectorAll('.vfrc-message') || [];
-        
-        // Chercher le message précédent qui contient du texte
-        for (let i = messages.length - 1; i >= 0; i--) {
-          const msg = messages[i];
-          if (msg === element.closest('.vfrc-message')) continue;
-          
-          const textElement = msg.querySelector('.vfrc-message--text');
-          if (textElement && textElement.textContent.trim()) {
-            return {
-              html: textElement.innerHTML,
-              text: textElement.textContent
-            };
-          }
-        }
-        
-        return null;
-      };
-
       // Fonction de copie
       const copyContent = async (format = 'html') => {
-        const content = getLastTextContent();
-        if (!content) {
-          showToast('❌ Aucun texte à copier');
-          return;
-        }
-
         try {
-          const textToCopy = format === 'html' ? content.html : content.text;
+          let textToCopy = '';
+          
+          if (format === 'html') {
+            textToCopy = content;
+          } else {
+            // Convertir HTML en texte brut
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            textToCopy = tempDiv.textContent || tempDiv.innerText || '';
+          }
+          
           await navigator.clipboard.writeText(textToCopy);
           
           // Feedback visuel
@@ -372,6 +359,8 @@ export const CopyButton = {
               }
             });
           }
+          
+          console.log(`✅ Contenu copié (${format}):`, textToCopy);
           
           // Réinitialiser après 2 secondes
           setTimeout(() => {
@@ -422,6 +411,14 @@ export const CopyButton = {
         menu.classList.remove('show');
       });
 
+      // Clic direct sur le bouton = copie HTML par défaut
+      mainButton.addEventListener('click', (e) => {
+        // Si le menu n'est pas visible, copier directement
+        if (!menu.classList.contains('show')) {
+          copyContent('html');
+        }
+      });
+
       // Assemblage
       wrapper.appendChild(mainButton);
       wrapper.appendChild(menu);
@@ -430,7 +427,7 @@ export const CopyButton = {
       // Ajout au DOM
       element.appendChild(container);
       
-      console.log(`✅ CopyButton prêt (ID: ${uniqueInstanceId})`);
+      console.log(`✅ CopyButton prêt (ID: ${uniqueInstanceId}) - Contenu: ${content.substring(0, 50)}...`);
       
       // Cleanup
       return () => {

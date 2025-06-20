@@ -3,7 +3,7 @@
  *  ║  DownloadReport – ChatInnov Edition                       ║
  *  ║                                                           ║
  *  ║  • Design premium avec bannière violet                   ║
- *  ║  • Export HTML/PDF/Markdown                              ║
+ *  ║  • Export HTML (navigateur) / PDF / Markdown             ║
  *  ║  • Style professionnel ChatInnov                         ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
@@ -28,17 +28,35 @@ export const DownloadReport = {
         formats: ['html', 'pdf', 'md']
       };
 
-      // Parser le payload
+      // Parser le payload - CORRECTION ICI
       let config = { ...defaultConfig };
       
       if (typeof trace.payload === 'string') {
         try {
-          config = { ...defaultConfig, ...JSON.parse(trace.payload) };
-        } catch {
+          // Nettoyer le string avant de parser
+          const cleanPayload = trace.payload.trim();
+          
+          // Si ça ressemble à du JSON, on parse
+          if (cleanPayload.startsWith('{') && cleanPayload.endsWith('}')) {
+            const parsed = JSON.parse(cleanPayload);
+            config = { ...defaultConfig, ...parsed };
+          } else {
+            // Sinon c'est du contenu direct
+            config.content = trace.payload;
+          }
+        } catch (e) {
+          // En cas d'erreur, on considère que c'est du contenu direct
+          console.warn('Parsing JSON failed, treating as content:', e);
           config.content = trace.payload;
         }
-      } else if (typeof trace.payload === 'object') {
+      } else if (typeof trace.payload === 'object' && trace.payload !== null) {
         config = { ...defaultConfig, ...trace.payload };
+      }
+
+      // Si pas de contenu, on abandonne
+      if (!config.content) {
+        console.warn('DownloadReport: Aucun contenu fourni');
+        return;
       }
 
       // Container principal
@@ -151,7 +169,7 @@ export const DownloadReport = {
       const menu = document.createElement('div');
       menu.className = 'download-report-menu';
 
-      // Options de format
+      // Options de format avec nouveaux labels
       const formatIcons = {
         html: '🌐',
         pdf: '📄',
@@ -159,7 +177,7 @@ export const DownloadReport = {
       };
 
       const formatLabels = {
-        html: 'HTML',
+        html: 'Ouvrir HTML',  // Changé de "HTML" à "Ouvrir HTML"
         pdf: 'PDF',
         md: 'Markdown'
       };
@@ -286,7 +304,7 @@ export const DownloadReport = {
       padding: 0 40px;
     }
     
-    /* Styles pour le contenu HTML */
+    /* Styles pour le contenu HTML préservé de Voiceflow */
     .main-content h2 {
       color: #1a1a1a;
       font-size: 28px;
@@ -338,6 +356,15 @@ export const DownloadReport = {
       border-bottom-color: #7c3aed;
     }
     
+    /* Préserver les styles des encadrés Voiceflow */
+    .main-content div[style*="border: 2px solid"] {
+      border-radius: 8px !important;
+      margin: 24px 0 !important;
+      padding: 20px !important;
+      background: #f0f4ff !important;
+      border-color: #7c3aed !important;
+    }
+    
     /* Tables ChatInnov style */
     .main-content table {
       width: 100%;
@@ -378,6 +405,10 @@ export const DownloadReport = {
       background: #f8f9fa;
     }
     
+    .main-content tbody tr:last-child td {
+      border-bottom: none;
+    }
+    
     .main-content tfoot {
       background: #f8f9fa;
       font-style: italic;
@@ -385,13 +416,10 @@ export const DownloadReport = {
       color: #666;
     }
     
-    /* Encadrés spéciaux */
-    .main-content div[style*="border: 2px solid"] {
-      border-radius: 8px !important;
-      margin: 24px 0 !important;
-      padding: 20px !important;
-      background: #f0f4ff !important;
-      border-color: #7c3aed !important;
+    /* Icônes dans le texte */
+    .main-content .no-gradient {
+      color: #7c3aed;
+      font-weight: normal;
     }
     
     /* Footer */
@@ -451,6 +479,15 @@ export const DownloadReport = {
       .main-content {
         padding: 0 20px;
       }
+      
+      .main-content table {
+        font-size: 14px;
+      }
+      
+      .main-content th,
+      .main-content td {
+        padding: 10px;
+      }
     }
   </style>
 </head>
@@ -502,8 +539,8 @@ export const DownloadReport = {
         // Convertir HTML en Markdown
         let content = config.content
           .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n')
-          .replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n')
-          .replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n\n')
+          .replace(/<h2[^>]*>.*?🔷.*?<\/span>\s*(.*?)<\/h2>/gi, '## 🔷 $1\n\n')
+          .replace(/<h3[^>]*>.*?🔹.*?<\/span>\s*(.*?)<\/h3>/gi, '### 🔹 $1\n\n')
           .replace(/<h4[^>]*>(.*?)<\/h4>/gi, '#### $1\n\n')
           .replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**')
           .replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**')
@@ -516,6 +553,11 @@ export const DownloadReport = {
           .replace(/<ul[^>]*>|<\/ul>/gi, '')
           .replace(/<ol[^>]*>|<\/ol>/gi, '')
           .replace(/<span[^>]*class="no-gradient"[^>]*>(.*?)<\/span>/gi, '$1')
+          .replace(/<table[^>]*>.*?<\/table>/gis, '[Tableau - voir version HTML]\n\n')
+          .replace(/<div[^>]*style[^>]*>.*?<\/div>/gis, function(match) {
+            const content = match.replace(/<[^>]+>/g, '');
+            return `\n> ${content}\n\n`;
+          })
           .replace(/<[^>]+>/g, '');
         
         md += content;
@@ -579,9 +621,17 @@ export const DownloadReport = {
         doc.setTextColor(0, 0, 0);
         doc.setFontSize(11);
         
-        // Extraire le texte du HTML
+        // Extraire le texte du HTML en préservant les emojis
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = config.content;
+        
+        // Remplacer les emojis par du texte
+        tempDiv.innerHTML = tempDiv.innerHTML
+          .replace(/🔷/g, '[◆]')
+          .replace(/🔹/g, '[◇]')
+          .replace(/📋/g, '[DOC]')
+          .replace(/✅/g, '[OK]');
+        
         const textContent = tempDiv.textContent || tempDiv.innerText || '';
         
         const contentLines = doc.splitTextToSize(textContent, pageWidth - 2 * margin);
@@ -603,7 +653,7 @@ export const DownloadReport = {
         return doc;
       };
 
-      // Fonction de téléchargement
+      // Fonction de téléchargement - MODIFICATION POUR HTML
       const downloadReport = async (format) => {
         mainButton.classList.add('generating');
         mainButton.querySelector('.download-report-icon').textContent = '⏳';
@@ -615,14 +665,19 @@ export const DownloadReport = {
           
           switch(format) {
             case 'html':
+              // NOUVEAU : Ouvrir dans le navigateur au lieu de télécharger
               const htmlContent = generateHTML();
               const htmlBlob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
               const htmlUrl = URL.createObjectURL(htmlBlob);
-              const htmlLink = document.createElement('a');
-              htmlLink.href = htmlUrl;
-              htmlLink.download = `${fileName}.html`;
-              htmlLink.click();
-              URL.revokeObjectURL(htmlUrl);
+              
+              // Ouvrir dans un nouvel onglet
+              const newWindow = window.open(htmlUrl, '_blank');
+              
+              // Libérer l'URL après un délai
+              setTimeout(() => {
+                URL.revokeObjectURL(htmlUrl);
+              }, 1000);
+              
               break;
               
             case 'md':
@@ -645,7 +700,10 @@ export const DownloadReport = {
           // Notification de succès
           const existingToast = document.querySelector('.copy-button-toast');
           if (existingToast) {
-            existingToast.textContent = `${formatLabels[format]} téléchargé avec succès`;
+            const successMessage = format === 'html' 
+              ? 'Rapport ouvert dans un nouvel onglet' 
+              : `${formatLabels[format]} téléchargé avec succès`;
+            existingToast.textContent = successMessage;
             existingToast.classList.add('show');
             setTimeout(() => existingToast.classList.remove('show'), 1500);
           }
@@ -689,7 +747,7 @@ export const DownloadReport = {
       container.appendChild(wrapper);
       element.appendChild(container);
       
-      console.log('✅ DownloadReport ChatInnov prêt');
+      console.log('✅ DownloadReport ChatInnov prêt - Content length:', config.content.length);
       
     } catch (error) {
       console.error('❌ DownloadReport Error:', error);

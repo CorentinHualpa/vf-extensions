@@ -1262,7 +1262,7 @@ export const DownloadReport = {
         htmlOption.className = 'action-menu-option';
         htmlOption.innerHTML = `
           <span class="action-menu-option-icon">🎨</span>
-          <span>Copy Text Formatted</span>
+          <span>Copy Formatted</span>
         `;
         htmlOption.title = 'Copy with formatting';
         
@@ -1270,7 +1270,7 @@ export const DownloadReport = {
         textOption.className = 'action-menu-option';
         textOption.innerHTML = `
           <span class="action-menu-option-icon">📝</span>
-          <span>Copy Text Brut</span>
+          <span>Copy Brut</span>
         `;
         textOption.title = 'Copy plain text';
         

@@ -668,7 +668,7 @@ export const DownloadReport = {
     <div class="hero-content">
       <h1 class="market-title">${config.marketTitle}</h1>
       <div class="date-time">
-        <strong>Date de génération :</strong> ${dateStr} à ${timeStr}
+        <strong>Date :</strong> ${dateStr} à ${timeStr}
       </div>
     </div>
   </div>

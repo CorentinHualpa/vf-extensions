@@ -4,7 +4,7 @@
  *  ║                                                           ║
  *  ║  • Support JSON et TEXT                                   ║
  *  ║  • Téléchargement : HTML / PDF / Markdown                ║
- *  ║  • Copie : Brut / Formaté                                ║
+ *  ║  • Copie : Formaté (riche) / Brut                        ║
  *  ║  • Support FR/EN                                         ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
@@ -125,24 +125,16 @@ export const DownloadReport = {
             }
           } else {
             // MODE TEXT avec options
-            // Format attendu :
-            // Contenu HTML...
-            // ###OPTIONS###
-            // showCopyButton=true
-            // showDownloadButton=false
-            // langue=fr
-            // marketTitle=Mon titre
-            // fileName=mon_fichier
-            
             const parts = cleanPayload.split('###OPTIONS###');
             
-            // Le contenu est la première partie (sans la partie OPTIONS)
+            // Le contenu est la première partie
             config.content = parts[0].trim();
             
             // IMPORTANT : S'assurer que la partie OPTIONS n'apparaît pas dans le contenu
             if (config.content.includes('###OPTIONS###')) {
               config.content = config.content.split('###OPTIONS###')[0].trim();
             }
+            
             // Parser les options si présentes
             if (parts[1]) {
               const optionsText = parts[1].trim();
@@ -152,7 +144,7 @@ export const DownloadReport = {
                 const trimmedLine = line.trim();
                 if (trimmedLine && trimmedLine.includes('=')) {
                   const [key, ...valueParts] = trimmedLine.split('=');
-                  const value = valueParts.join('=').trim(); // Au cas où la valeur contient des =
+                  const value = valueParts.join('=').trim();
                   const cleanKey = key.trim();
                   
                   // Conversion des types
@@ -161,10 +153,8 @@ export const DownloadReport = {
                   } else if (value === 'false') {
                     config[cleanKey] = false;
                   } else if (cleanKey === 'formats' && value.includes(',')) {
-                    // Support pour formats multiples : formats=html,pdf,md
                     config[cleanKey] = value.split(',').map(f => f.trim());
                   } else {
-                    // Garder comme string
                     config[cleanKey] = value;
                   }
                 }
@@ -175,7 +165,6 @@ export const DownloadReport = {
           }
         } catch (error) {
           console.error('Erreur de parsing:', error);
-          // En cas d'erreur totale, considérer tout comme contenu
           config.content = trace.payload;
         }
       } else if (typeof trace.payload === 'object' && trace.payload !== null) {
@@ -1385,42 +1374,66 @@ export const DownloadReport = {
         const htmlOption = document.createElement('button');
         htmlOption.className = 'action-menu-option';
         htmlOption.innerHTML = `
-          <span class="action-menu-option-icon">📝</span>
-          <span>Texte</span>
+          <span class="action-menu-option-icon">🎨</span>
+          <span>${t.copy.formatOption}</span>
         `;
         htmlOption.title = t.copy.formatTooltip;
         
         const textOption = document.createElement('button');
         textOption.className = 'action-menu-option';
         textOption.innerHTML = `
-          <span class="action-menu-option-icon">🏷️</span>
-          <span>HTML</span>
+          <span class="action-menu-option-icon">📝</span>
+          <span>${t.copy.rawOption}</span>
         `;
         textOption.title = t.copy.rawTooltip;
         
         copyMenu.appendChild(htmlOption);
         copyMenu.appendChild(textOption);
 
+        // CORRECTION : Copie formatée utilise l'API Clipboard moderne
         const copyContent = async (format = 'html') => {
           try {
-            let textToCopy = '';
-            
             if (format === 'html') {
-              textToCopy = config.content;
+              // Pour une vraie copie formatée, on utilise l'API Clipboard write
+              if (navigator.clipboard && navigator.clipboard.write) {
+                // Créer un élément temporaire pour avoir le rendu visuel
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = config.content;
+                tempDiv.style.position = 'absolute';
+                tempDiv.style.left = '-9999px';
+                document.body.appendChild(tempDiv);
+                
+                // Sélectionner et copier avec formatage
+                const range = document.createRange();
+                range.selectNodeContents(tempDiv);
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(range);
+                
+                document.execCommand('copy');
+                selection.removeAllRanges();
+                document.body.removeChild(tempDiv);
+                
+                showToast(t.copy.toastFormatted);
+              } else {
+                // Fallback : copier le HTML brut
+                await navigator.clipboard.writeText(config.content);
+                showToast(t.copy.toastFormatted + ' (HTML)');
+              }
             } else {
+              // Copie en texte brut
               const tempDiv = document.createElement('div');
               tempDiv.innerHTML = config.content;
-              textToCopy = tempDiv.textContent || tempDiv.innerText || '';
+              const textContent = tempDiv.textContent || tempDiv.innerText || '';
+              await navigator.clipboard.writeText(textContent);
+              showToast(t.copy.toastRaw);
             }
             
-            await navigator.clipboard.writeText(textToCopy);
-            
+            // Feedback visuel
             copyButton.classList.add('copied');
             copyButton.querySelector('.action-button-icon').textContent = config.copiedIcon;
             
-            showToast(format === 'html' ? t.copy.toastFormatted : t.copy.toastRaw);
-            
-            console.log(`✅ Contenu copié (${format}) - ${textToCopy.length} caractères`);
+            console.log(`✅ Contenu copié (${format})`);
             
             setTimeout(() => {
               copyButton.classList.remove('copied');

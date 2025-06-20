@@ -3,7 +3,7 @@
  *  ║  DownloadReport – ChatInnov Edition Multilingue           ║
  *  ║                                                           ║
  *  ║  • Support JSON et TEXT                                   ║
- *  ║  • Téléchargement : HTML / PDF / Markdown                ║
+ *  ║  • Téléchargement : HTML / PDF / Markdown / DOCX         ║
  *  ║  • Copie : Brut (HTML) / Formaté (texte propre)         ║
  *  ║  • Support FR/EN                                         ║
  *  ╚═══════════════════════════════════════════════════════════╝
@@ -21,7 +21,7 @@ export const DownloadReport = {
       const translations = {
         fr: {
           copy: {
-            buttonTitle: 'Copier',
+            buttonTitle: 'Copier texte',
             formatOption: 'Formaté',
             formatTooltip: 'Copier le texte formaté (sans HTML)',
             rawOption: 'Brut',
@@ -35,6 +35,7 @@ export const DownloadReport = {
             toastHTML: 'Rapport ouvert dans un nouvel onglet',
             toastPDF: 'PDF téléchargé avec succès',
             toastMarkdown: 'Markdown téléchargé avec succès',
+            toastDOCX: 'Document Word téléchargé avec succès',
             toastError: 'Erreur lors de la génération'
           },
           report: {
@@ -46,7 +47,7 @@ export const DownloadReport = {
         },
         en: {
           copy: {
-            buttonTitle: 'Copy',
+            buttonTitle: 'Copy text',
             formatOption: 'Formatted',
             formatTooltip: 'Copy formatted text (without HTML)',
             rawOption: 'Raw',
@@ -60,6 +61,7 @@ export const DownloadReport = {
             toastHTML: 'Report opened in new tab',
             toastPDF: 'PDF downloaded successfully',
             toastMarkdown: 'Markdown downloaded successfully',
+            toastDOCX: 'Word document downloaded successfully',
             toastError: 'Generation error'
           },
           report: {
@@ -82,7 +84,7 @@ export const DownloadReport = {
         downloadIconText: '📥',
         copyIconText: '📋',
         copiedIcon: '✅',
-        formats: ['html', 'pdf', 'md'],
+        formats: ['html', 'pdf', 'md', 'docx'],
         showCopyButton: true,
         showDownloadButton: true,
         langue: 'fr'
@@ -125,15 +127,6 @@ export const DownloadReport = {
             }
           } else {
             // MODE TEXT avec options
-            // Format attendu :
-            // Contenu HTML...
-            // ###OPTIONS###
-            // showCopyButton=true
-            // showDownloadButton=false
-            // langue=fr
-            // marketTitle=Mon titre
-            // fileName=mon_fichier
-            
             const parts = cleanPayload.split('###OPTIONS###');
             
             // Le contenu est la première partie
@@ -153,7 +146,7 @@ export const DownloadReport = {
                 const trimmedLine = line.trim();
                 if (trimmedLine && trimmedLine.includes('=')) {
                   const [key, ...valueParts] = trimmedLine.split('=');
-                  const value = valueParts.join('=').trim(); // Au cas où la valeur contient des =
+                  const value = valueParts.join('=').trim();
                   const cleanKey = key.trim();
                   
                   // Conversion des types
@@ -162,21 +155,16 @@ export const DownloadReport = {
                   } else if (value === 'false') {
                     config[cleanKey] = false;
                   } else if (cleanKey === 'formats' && value.includes(',')) {
-                    // Support pour formats multiples : formats=html,pdf,md
                     config[cleanKey] = value.split(',').map(f => f.trim());
                   } else {
-                    // Garder comme string
                     config[cleanKey] = value;
                   }
                 }
               });
             }
-            
-            console.log('Mode TEXT - Config finale:', config);
           }
         } catch (error) {
           console.error('Erreur de parsing:', error);
-          // En cas d'erreur totale, considérer tout comme contenu
           config.content = trace.payload;
         }
       } else if (typeof trace.payload === 'object' && trace.payload !== null) {
@@ -410,6 +398,42 @@ export const DownloadReport = {
       // Variables pour gérer l'état des menus
       let copyMenuVisible = false;
       let downloadMenuVisible = false;
+
+      // Fonction pour charger une image en base64
+      const loadImageAsBase64 = async (url) => {
+        try {
+          const response = await fetch(url);
+          const blob = await response.blob();
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+        } catch (error) {
+          console.error('Erreur de chargement de l\'image:', error);
+          return null;
+        }
+      };
+
+      // Fonction pour extraire les images du HTML
+      const extractImagesFromHTML = (html) => {
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = html;
+        const images = [];
+        const imgElements = tempDiv.querySelectorAll('img');
+        
+        imgElements.forEach((img, index) => {
+          images.push({
+            src: img.src,
+            alt: img.alt || `Image ${index + 1}`,
+            width: img.width || 200,
+            height: img.height || 150
+          });
+        });
+        
+        return images;
+      };
 
       // Fonction pour convertir un tableau HTML en Markdown
       const tableToMarkdown = (tableHtml) => {
@@ -648,6 +672,14 @@ export const DownloadReport = {
       border-bottom-color: #7c3aed;
     }
     
+    .main-content img {
+      max-width: 100%;
+      height: auto;
+      margin: 20px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
     .main-content div[style*="border: 2px solid"] {
       border-radius: 8px !important;
       margin: 24px 0 !important;
@@ -845,6 +877,7 @@ export const DownloadReport = {
             .replace(/<ul[^>]*>|<\/ul>/gi, '')
             .replace(/<ol[^>]*>|<\/ol>/gi, '')
             .replace(/<span[^>]*class="no-gradient"[^>]*>(.*?)<\/span>/gi, '$1')
+            .replace(/<img[^>]*src="([^"]*)"[^>]*alt="([^"]*)"[^>]*>/gi, '![$2]($1)\n\n')
             .replace(/<div[^>]*style[^>]*>.*?<\/div>/gis, function(match) {
               const content = match.replace(/<[^>]+>/g, '');
               return `\n> ${content}\n\n`;
@@ -908,7 +941,7 @@ export const DownloadReport = {
         return md;
       };
 
-      // Fonction pour générer le PDF
+      // Fonction pour générer le PDF (corrigée pour éviter les doublons)
       const generatePDF = async () => {
         if (!window.jspdf) {
           const script = document.createElement('script');
@@ -933,441 +966,646 @@ export const DownloadReport = {
         const lineHeight = 7;
         const maxWidth = pageWidth - 2 * margin;
         
-        doc.setFillColor(124, 58, 237);
-        doc.rect(0, 0, pageWidth, 50, 'F');
+        // Charger le logo
+        const logoBase64 = await loadImageAsBase64(config.url_logo);
         
+        // Header avec logo
+        doc.setFillColor(255, 255, 255);
+        doc.rect(0, 0, pageWidth, 30, 'F');
+        
+        if (logoBase64) {
+          doc.addImage(logoBase64, 'PNG', margin, 10, 30, 10);
+        }
+        
+        // Tagline
+        doc.setFontSize(8);
+        doc.setTextColor(124, 58, 237);
+        const taglineLines = doc.splitTextToSize(config.presentation_text, maxWidth - 40);
+        taglineLines.forEach((line, index) => {
+          doc.text(line, pageWidth - margin, 15 + (index * 4), { align: 'right' });
+        });
+        
+        // Bannière héros
+        doc.setFillColor(124, 58, 237);
+        doc.rect(0, 30, pageWidth, 40, 'F');
+        
+        // Titre
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(18);
         const titleLines = doc.splitTextToSize(config.marketTitle, maxWidth);
         titleLines.forEach((line, index) => {
-          doc.text(line, margin, 25 + (index * 8));
+          doc.text(line, margin, 45 + (index * 8));
         });
         
+        // Date
         doc.setFontSize(10);
         const date = new Date();
         const dateStr = date.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US') + 
                        ' ' + t.report.at + ' ' + 
                        date.toLocaleTimeString(lang === 'fr' ? 'fr-FR' : 'en-US');
-        doc.text(dateStr, margin, 42);
+        doc.text(dateStr, margin, 62);
         
-        yPosition = 65;
+        yPosition = 85;
         
-        doc.setTextColor(124, 58, 237);
-        doc.setFontSize(9);
-        const taglineLines = doc.splitTextToSize(config.presentation_text, maxWidth);
-        taglineLines.forEach(line => {
-          doc.text(line, margin, yPosition);
-          yPosition += 5;
-        });
-        
-        yPosition += 10;
-        
+        // Contenu principal
         doc.setTextColor(0, 0, 0);
         doc.setFontSize(11);
         
-        let textContent = config.content;
+        // Parser le HTML et éviter les doublons
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = config.content;
         
-        if (textContent.includes('<')) {
-          const tempDiv = document.createElement('div');
-          tempDiv.innerHTML = textContent;
-          
-          const extractText = (element, result = []) => {
-            for (const node of element.childNodes) {
-              if (node.nodeType === Node.TEXT_NODE) {
-                const text = node.textContent.trim();
-                if (text) result.push(text);
-              } else if (node.nodeType === Node.ELEMENT_NODE) {
-                const tagName = node.tagName.toLowerCase();
-                
-                if (tagName === 'h2') {
-                  result.push('\n[H2] ' + node.textContent.trim() + '\n');
-                } else if (tagName === 'h3') {
-                  result.push('\n[H3] ' + node.textContent.trim() + '\n');
-                } else if (tagName === 'h4') {
-                  result.push('\n[H4] ' + node.textContent.trim() + '\n');
-                } else if (tagName === 'p') {
-                  const pContent = [];
-                  for (const child of node.childNodes) {
-                    if (child.nodeType === Node.TEXT_NODE) {
-                      pContent.push(child.textContent);
-                    } else if (child.tagName && child.tagName.toLowerCase() === 'a') {
-                      const href = child.getAttribute('href');
-                      const linkText = child.textContent;
-                      pContent.push(`[LINK:${linkText}|${href}]`);
-                    } else {
-                      pContent.push(child.textContent || '');
-                    }
-                  }
-                  result.push(pContent.join('') + '\n');
-                } else if (tagName === 'li') {
-                  const liContent = [];
-                  for (const child of node.childNodes) {
-                    if (child.nodeType === Node.TEXT_NODE) {
-                      liContent.push(child.textContent);
-                    } else if (child.tagName && child.tagName.toLowerCase() === 'a') {
-                      const href = child.getAttribute('href');
-                      const linkText = child.textContent;
-                      liContent.push(`[LINK:${linkText}|${href}]`);
-                    } else {
-                      liContent.push(child.textContent || '');
-                    }
-                  }
-                  result.push('• ' + liContent.join('') + '\n');
-                } else if (tagName === 'a') {
-                  const href = node.getAttribute('href');
-                  const linkText = node.textContent;
-                  result.push(`[LINK:${linkText}|${href}]`);
-                } else if (tagName === 'table') {
-                  result.push('\n[TABLE_START]\n');
-                  
-                  const caption = node.querySelector('caption');
-                  if (caption) {
-                    result.push('[CAPTION] ' + caption.textContent.trim() + '\n');
-                  }
-                  
-                  const headers = node.querySelectorAll('thead th, tbody tr:first-child th');
-                  if (headers.length > 0) {
-                    result.push('[HEADERS] ');
-                    headers.forEach((header, index) => {
-                      result.push(header.textContent.trim());
-                      if (index < headers.length - 1) result.push(' | ');
-                    });
-                    result.push('\n');
-                  }
-                  
-                  const rows = node.querySelectorAll('tbody tr');
-                  rows.forEach(row => {
-                    const cells = row.querySelectorAll('td');
-                    if (cells.length > 0) {
-                      result.push('[ROW] ');
-                      cells.forEach((cell, index) => {
-                        result.push(cell.textContent.trim());
-                        if (index < cells.length - 1) result.push(' | ');
-                      });
-                      result.push('\n');
-                    }
-                  });
-                  
-                  const footer = node.querySelector('tfoot');
-                  if (footer) {
-                    result.push('[FOOTER] ' + footer.textContent.trim() + '\n');
-                  }
-                  
-                  result.push('[TABLE_END]\n\n');
-                } else {
-                  extractText(node, result);
-                }
-              }
+        // Créer un Set pour stocker le contenu déjà traité et éviter les doublons
+        const processedContent = new Set();
+        
+        const processNode = async (node) => {
+          if (node.nodeType === Node.TEXT_NODE) {
+            const text = node.textContent.trim();
+            if (text && !processedContent.has(text)) {
+              processedContent.add(text);
+              return text;
             }
-            return result;
-          };
-          
-          const textArray = extractText(tempDiv);
-          textContent = textArray.join('');
-        } else if (!textContent.includes('[TABLE_START]')) {
-          const lines = textContent.split('\n');
-          let processedLines = [];
-          let inTable = false;
-          let tableBuffer = [];
-          
-          for (let i = 0; i < lines.length; i++) {
-            const line = lines[i];
-            
-            if ((line.includes('\t') || line.includes('|')) && line.trim() !== '') {
-              if (!inTable) {
-                inTable = true;
-                processedLines.push('[TABLE_START]');
-                
-                if (i > 0 && lines[i-1].trim() !== '' && !lines[i-1].includes('\t') && !lines[i-1].includes('|')) {
-                  processedLines.push('[CAPTION] ' + lines[i-1].trim());
-                }
-              }
-              
-              const cells = line.split(/\t|\|/).map(cell => cell.trim()).filter(cell => cell);
-              if (cells.length > 0) {
-                if (tableBuffer.length === 0) {
-                  processedLines.push('[HEADERS] ' + cells.join(' | '));
-                } else {
-                  processedLines.push('[ROW] ' + cells.join(' | '));
-                }
-                tableBuffer.push(cells);
-              }
-            } else if (inTable) {
-              if (line.includes('Source:')) {
-                processedLines.push('[FOOTER] ' + line.trim());
-              }
-              processedLines.push('[TABLE_END]');
-              inTable = false;
-              tableBuffer = [];
-              
-              if (line.trim() !== '' && !line.includes('Source:')) {
-                processedLines.push(line);
-              }
-            } else {
-              processedLines.push(line);
-            }
+            return '';
           }
           
-          if (inTable) {
-            processedLines.push('[TABLE_END]');
-          }
-          
-          textContent = processedLines.join('\n');
-        }
-        
-        textContent = textContent
-          .replace(/[^\x00-\x7F\u00A0-\u00FF\u0100-\u017F\u0180-\u024F\[\]:|]/g, '')
-          .replace(/🔷/g, '[>]')
-          .replace(/🔹/g, '[•]')
-          .replace(/•/g, '•')
-          .replace(/–/g, '-')
-          .replace(/—/g, '--');
-        
-        const addLink = (text, url, x, y) => {
-          doc.setTextColor(124, 58, 237);
-          doc.textWithLink(text, x, y, { url: url });
-          doc.setTextColor(0, 0, 0);
-        };
-        
-        const lines = textContent.split('\n');
-        let inTable = false;
-        let tableData = {
-          caption: '',
-          headers: [],
-          rows: [],
-          footer: ''
-        };
-        
-        for (let i = 0; i < lines.length; i++) {
-          const line = lines[i].trim();
-          
-          if (line === '[TABLE_START]') {
-            inTable = true;
-            tableData = { caption: '', headers: [], rows: [], footer: '' };
-            continue;
-          } else if (line === '[TABLE_END]') {
-            inTable = false;
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            const tagName = node.tagName.toLowerCase();
+            const textContent = node.textContent.trim();
             
-            if (tableData.headers.length > 0 || tableData.rows.length > 0) {
-              yPosition += 5;
-              
-              if (tableData.caption) {
+            // Vérifier si ce contenu a déjà été traité
+            if (processedContent.has(textContent)) {
+              return '';
+            }
+            
+            processedContent.add(textContent);
+            
+            switch (tagName) {
+              case 'h2':
+                if (yPosition > pageHeight - margin - 20) {
+                  doc.addPage();
+                  yPosition = margin;
+                }
+                doc.setFontSize(14);
                 doc.setFont(undefined, 'bold');
-                doc.setFontSize(10);
-                const captionLines = doc.splitTextToSize(tableData.caption, maxWidth);
-                captionLines.forEach(captionLine => {
-                  if (yPosition > pageHeight - margin) {
-                    doc.addPage();
-                    yPosition = margin;
-                  }
-                  doc.text(captionLine, margin, yPosition);
-                  yPosition += lineHeight;
+                doc.setTextColor(26, 26, 26);
+                const h2Lines = doc.splitTextToSize(textContent, maxWidth);
+                h2Lines.forEach(line => {
+                  doc.text(line, margin, yPosition);
+                  yPosition += lineHeight + 2;
                 });
+                doc.setDrawColor(124, 58, 237);
+                doc.setLineWidth(0.5);
+                doc.line(margin, yPosition - 2, margin + 40, yPosition - 2);
+                yPosition += 5;
                 doc.setFont(undefined, 'normal');
+                doc.setTextColor(0, 0, 0);
                 doc.setFontSize(11);
-                yPosition += 2;
-              }
-              
-              const numCols = Math.max(tableData.headers.length, 
-                ...tableData.rows.map(row => row.length));
-              const colWidth = maxWidth / numCols;
-              
-              if (tableData.headers.length > 0) {
-                doc.setFillColor(237, 233, 254);
-                doc.rect(margin, yPosition - 5, maxWidth, 8, 'F');
+                break;
+                
+              case 'h3':
+                if (yPosition > pageHeight - margin - 15) {
+                  doc.addPage();
+                  yPosition = margin;
+                }
+                doc.setFontSize(12);
                 doc.setFont(undefined, 'bold');
-                doc.setFontSize(9);
-                
-                tableData.headers.forEach((header, index) => {
-                  const headerText = header.substring(0, Math.floor(colWidth / 2));
-                  doc.text(headerText, margin + (index * colWidth) + 2, yPosition);
+                doc.setTextColor(51, 51, 51);
+                const h3Lines = doc.splitTextToSize(textContent, maxWidth);
+                h3Lines.forEach(line => {
+                  doc.text(line, margin, yPosition);
+                  yPosition += lineHeight + 1;
                 });
-                
-                yPosition += 8;
+                yPosition += 3;
                 doc.setFont(undefined, 'normal');
-              }
-              
-              doc.setFontSize(9);
-              tableData.rows.forEach((row, rowIndex) => {
+                doc.setTextColor(0, 0, 0);
+                doc.setFontSize(11);
+                break;
+                
+              case 'p':
                 if (yPosition > pageHeight - margin - 10) {
                   doc.addPage();
                   yPosition = margin;
                 }
-                
-                if (rowIndex % 2 === 1) {
-                  doc.setFillColor(248, 249, 250);
-                  doc.rect(margin, yPosition - 4, maxWidth, 6, 'F');
-                }
-                
-                row.forEach((cell, index) => {
-                  const cellText = cell.substring(0, Math.floor(colWidth / 2));
-                  doc.text(cellText, margin + (index * colWidth) + 2, yPosition);
+                const pLines = doc.splitTextToSize(textContent, maxWidth);
+                pLines.forEach(line => {
+                  doc.text(line, margin, yPosition);
+                  yPosition += lineHeight;
                 });
+                yPosition += 3;
+                break;
                 
-                yPosition += 6;
-              });
-              
-              if (tableData.footer) {
-                doc.setFontSize(8);
-                doc.setFont(undefined, 'italic');
-                doc.setTextColor(100);
-                const footerLines = doc.splitTextToSize(tableData.footer, maxWidth);
-                footerLines.forEach(footerLine => {
-                  if (yPosition > pageHeight - margin) {
-                    doc.addPage();
-                    yPosition = margin;
-                  }
-                  doc.text(footerLine, margin, yPosition);
-                  yPosition += 5;
-                });
-                doc.setTextColor(0);
-                doc.setFont(undefined, 'normal');
-                doc.setFontSize(11);
-              }
-              
-              yPosition += 5;
-            }
-            continue;
-          }
-          
-          if (inTable) {
-            if (line.startsWith('[CAPTION]')) {
-              tableData.caption = line.replace('[CAPTION]', '').trim();
-            } else if (line.startsWith('[HEADERS]')) {
-              tableData.headers = line.replace('[HEADERS]', '').trim().split('|').map(h => h.trim());
-            } else if (line.startsWith('[ROW]')) {
-              tableData.rows.push(line.replace('[ROW]', '').trim().split('|').map(c => c.trim()));
-            } else if (line.startsWith('[FOOTER]')) {
-              tableData.footer = line.replace('[FOOTER]', '').trim();
-            }
-          } else if (line) {
-            if (line.startsWith('[H2]')) {
-              doc.setFontSize(14);
-              doc.setFont(undefined, 'bold');
-              const text = line.replace('[H2]', '').trim();
-              const textLines = doc.splitTextToSize(text, maxWidth);
-              textLines.forEach(textLine => {
-                if (yPosition > pageHeight - margin) {
-                  doc.addPage();
-                  yPosition = margin;
-                }
-                doc.text(textLine, margin, yPosition);
-                yPosition += lineHeight + 2;
-              });
-              doc.setFont(undefined, 'normal');
-              doc.setFontSize(11);
-              yPosition += 3;
-            } else if (line.startsWith('[H3]')) {
-              doc.setFontSize(12);
-              doc.setFont(undefined, 'bold');
-              const text = line.replace('[H3]', '').trim();
-              const textLines = doc.splitTextToSize(text, maxWidth);
-              textLines.forEach(textLine => {
-                if (yPosition > pageHeight - margin) {
-                  doc.addPage();
-                  yPosition = margin;
-                }
-                doc.text(textLine, margin, yPosition);
-                yPosition += lineHeight + 1;
-              });
-              doc.setFont(undefined, 'normal');
-              doc.setFontSize(11);
-              yPosition += 2;
-            } else if (line.startsWith('[H4]')) {
-              doc.setFont(undefined, 'bold');
-              const text = line.replace('[H4]', '').trim();
-              const textLines = doc.splitTextToSize(text, maxWidth);
-              textLines.forEach(textLine => {
-                if (yPosition > pageHeight - margin) {
-                  doc.addPage();
-                  yPosition = margin;
-                }
-                doc.text(textLine, margin, yPosition);
-                yPosition += lineHeight;
-              });
-              doc.setFont(undefined, 'normal');
-              yPosition += 2;
-            } else {
-              let currentX = margin;
-              
-              const linkRegex = /\[LINK:([^|]+)\|([^\]]+)\]/g;
-              let lastIndex = 0;
-              let match;
-              
-              while ((match = linkRegex.exec(line)) !== null) {
-                const beforeText = line.substring(lastIndex, match.index);
-                if (beforeText) {
-                  const beforeLines = doc.splitTextToSize(beforeText, maxWidth - (currentX - margin));
-                  beforeLines.forEach((textLine, index) => {
-                    if (yPosition > pageHeight - margin) {
+              case 'ul':
+              case 'ol':
+                const listItems = node.querySelectorAll('li');
+                listItems.forEach(li => {
+                  const liText = li.textContent.trim();
+                  if (!processedContent.has(liText)) {
+                    processedContent.add(liText);
+                    if (yPosition > pageHeight - margin - 10) {
                       doc.addPage();
                       yPosition = margin;
-                      currentX = margin;
                     }
-                    doc.text(textLine, currentX, yPosition);
-                    if (index < beforeLines.length - 1) {
+                    const bullet = tagName === 'ul' ? '• ' : `${Array.from(listItems).indexOf(li) + 1}. `;
+                    const liLines = doc.splitTextToSize(bullet + liText, maxWidth - 10);
+                    liLines.forEach((line, index) => {
+                      doc.text(line, margin + (index === 0 ? 0 : 10), yPosition);
                       yPosition += lineHeight;
-                      currentX = margin;
-                    } else {
-                      currentX += doc.getTextWidth(textLine);
+                    });
+                  }
+                });
+                yPosition += 3;
+                break;
+                
+              case 'table':
+                // Traitement des tableaux
+                if (yPosition > pageHeight - margin - 30) {
+                  doc.addPage();
+                  yPosition = margin;
+                }
+                
+                const caption = node.querySelector('caption');
+                if (caption) {
+                  doc.setFont(undefined, 'bold');
+                  doc.setFontSize(10);
+                  const captionText = caption.textContent.trim();
+                  const captionLines = doc.splitTextToSize(captionText, maxWidth);
+                  captionLines.forEach(line => {
+                    doc.text(line, margin, yPosition);
+                    yPosition += 6;
+                  });
+                  doc.setFont(undefined, 'normal');
+                  doc.setFontSize(11);
+                  yPosition += 2;
+                }
+                
+                const headers = Array.from(node.querySelectorAll('thead th, tbody tr:first-child th'));
+                const rows = Array.from(node.querySelectorAll('tbody tr'));
+                
+                if (headers.length > 0) {
+                  const colCount = headers.length;
+                  const colWidth = maxWidth / colCount;
+                  
+                  // Headers
+                  doc.setFillColor(124, 58, 237);
+                  doc.rect(margin, yPosition - 5, maxWidth, 8, 'F');
+                  doc.setTextColor(255, 255, 255);
+                  doc.setFont(undefined, 'bold');
+                  doc.setFontSize(9);
+                  
+                  headers.forEach((header, index) => {
+                    const headerText = header.textContent.trim().substring(0, Math.floor(colWidth / 2));
+                    doc.text(headerText, margin + (index * colWidth) + 2, yPosition);
+                  });
+                  
+                  yPosition += 10;
+                  doc.setTextColor(0, 0, 0);
+                  doc.setFont(undefined, 'normal');
+                  
+                  // Rows
+                  rows.forEach((row, rowIndex) => {
+                    if (yPosition > pageHeight - margin - 10) {
+                      doc.addPage();
+                      yPosition = margin;
+                    }
+                    
+                    const cells = row.querySelectorAll('td');
+                    if (cells.length > 0) {
+                      if (rowIndex % 2 === 0) {
+                        doc.setFillColor(248, 249, 250);
+                        doc.rect(margin, yPosition - 4, maxWidth, 6, 'F');
+                      }
+                      
+                      cells.forEach((cell, cellIndex) => {
+                        const cellText = cell.textContent.trim().substring(0, Math.floor(colWidth / 2));
+                        doc.text(cellText, margin + (cellIndex * colWidth) + 2, yPosition);
+                      });
+                      
+                      yPosition += 6;
                     }
                   });
                 }
                 
-                const linkText = match[1];
-                const linkUrl = match[2];
+                yPosition += 5;
+                break;
                 
-                if (yPosition > pageHeight - margin) {
-                  doc.addPage();
-                  yPosition = margin;
-                  currentX = margin;
+              case 'img':
+                // Traitement des images
+                const imgSrc = node.src;
+                const imgAlt = node.alt || 'Image';
+                
+                if (imgSrc && !processedContent.has(imgSrc)) {
+                  processedContent.add(imgSrc);
+                  try {
+                    const imgBase64 = await loadImageAsBase64(imgSrc);
+                    if (imgBase64) {
+                      if (yPosition > pageHeight - margin - 60) {
+                        doc.addPage();
+                        yPosition = margin;
+                      }
+                      
+                      const imgWidth = 80;
+                      const imgHeight = 60;
+                      const centerX = (pageWidth - imgWidth) / 2;
+                      
+                      doc.addImage(imgBase64, 'JPEG', centerX, yPosition, imgWidth, imgHeight);
+                      yPosition += imgHeight + 5;
+                      
+                      // Légende de l'image
+                      if (imgAlt) {
+                        doc.setFontSize(9);
+                        doc.setTextColor(100);
+                        doc.setFont(undefined, 'italic');
+                        doc.text(imgAlt, pageWidth / 2, yPosition, { align: 'center' });
+                        yPosition += 8;
+                        doc.setFont(undefined, 'normal');
+                        doc.setTextColor(0);
+                        doc.setFontSize(11);
+                      }
+                    }
+                  } catch (error) {
+                    console.error('Erreur lors du chargement de l\'image:', error);
+                  }
                 }
-                
-                addLink(linkText, linkUrl, currentX, yPosition);
-                currentX += doc.getTextWidth(linkText);
-                
-                lastIndex = match.index + match[0].length;
-              }
-              
-              const afterText = line.substring(lastIndex);
-              if (afterText) {
-                const afterLines = doc.splitTextToSize(afterText, maxWidth - (currentX - margin));
-                afterLines.forEach((textLine, index) => {
-                  if (yPosition > pageHeight - margin) {
-                    doc.addPage();
-                    yPosition = margin;
-                    currentX = margin;
-                  }
-                  doc.text(textLine, currentX, yPosition);
-                  if (index < afterLines.length - 1 || index === afterLines.length - 1) {
-                    yPosition += lineHeight;
-                    currentX = margin;
-                  }
-                });
-              } else if (line.includes('[LINK:')) {
-                yPosition += lineHeight;
-              }
-              
-              if (!line.includes('[LINK:')) {
-                const textLines = doc.splitTextToSize(line, maxWidth);
-                textLines.forEach(textLine => {
-                  if (yPosition > pageHeight - margin) {
-                    doc.addPage();
-                    yPosition = margin;
-                  }
-                  doc.text(textLine, margin, yPosition);
-                  yPosition += lineHeight;
-                });
-              }
+                break;
             }
           }
+        };
+        
+        // Traiter tous les noeuds enfants
+        for (const child of tempDiv.children) {
+          await processNode(child);
         }
         
-        doc.setFontSize(9);
-        doc.setTextColor(150);
-        doc.text(t.report.generatedBy, pageWidth / 2, pageHeight - 10, { align: 'center' });
+        // Footer
+        const totalPages = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= totalPages; i++) {
+          doc.setPage(i);
+          doc.setFontSize(9);
+          doc.setTextColor(150);
+          doc.text(t.report.generatedBy, pageWidth / 2, pageHeight - 10, { align: 'center' });
+          doc.text(`${i} / ${totalPages}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
+        }
         
         return doc;
+      };
+
+      // Fonction pour générer le DOCX
+      const generateDOCX = async () => {
+        // Charger la bibliothèque docx si nécessaire
+        if (!window.docx) {
+          const script = document.createElement('script');
+          script.src = 'https://unpkg.com/docx@7.8.0/build/index.js';
+          document.head.appendChild(script);
+          await new Promise(resolve => script.onload = resolve);
+        }
+
+        const { 
+          Document, 
+          Packer, 
+          Paragraph, 
+          TextRun, 
+          HeadingLevel,
+          Table,
+          TableRow,
+          TableCell,
+          ImageRun,
+          AlignmentType,
+          BorderStyle,
+          WidthType,
+          Header,
+          Footer,
+          PageNumber,
+          NumberFormat
+        } = window.docx;
+
+        const date = new Date();
+        const dateStr = date.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US') + 
+                       ' ' + t.report.at + ' ' + 
+                       date.toLocaleTimeString(lang === 'fr' ? 'fr-FR' : 'en-US');
+
+        // Créer le document
+        const doc = new Document({
+          sections: [{
+            properties: {
+              page: {
+                margin: {
+                  top: 1440,
+                  right: 1440,
+                  bottom: 1440,
+                  left: 1440
+                }
+              }
+            },
+            headers: {
+              default: new Header({
+                children: [
+                  new Paragraph({
+                    children: [
+                      new TextRun({
+                        text: config.presentation_text,
+                        size: 20,
+                        color: "7c3aed"
+                      })
+                    ],
+                    alignment: AlignmentType.RIGHT
+                  })
+                ]
+              })
+            },
+            footers: {
+              default: new Footer({
+                children: [
+                  new Paragraph({
+                    children: [
+                      new TextRun({
+                        text: t.report.generatedBy,
+                        size: 18,
+                        color: "666666"
+                      })
+                    ],
+                    alignment: AlignmentType.CENTER
+                  }),
+                  new Paragraph({
+                    children: [
+                      new TextRun({
+                        text: "Page ",
+                        size: 18
+                      }),
+                      new TextRun({
+                        children: [PageNumber.CURRENT],
+                        size: 18
+                      }),
+                      new TextRun({
+                        text: " / ",
+                        size: 18
+                      }),
+                      new TextRun({
+                        children: [PageNumber.TOTAL_PAGES],
+                        size: 18
+                      })
+                    ],
+                    alignment: AlignmentType.CENTER
+                  })
+                ]
+              })
+            },
+            children: []
+          }]
+        });
+
+        const children = [];
+
+        // Titre principal
+        children.push(
+          new Paragraph({
+            text: config.marketTitle,
+            heading: HeadingLevel.TITLE,
+            alignment: AlignmentType.CENTER
+          })
+        );
+
+        // Date
+        children.push(
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: `${t.report.generationDate}: `,
+                bold: true
+              }),
+              new TextRun({
+                text: dateStr
+              })
+            ],
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 400 }
+          })
+        );
+
+        // Parser le contenu HTML
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = config.content;
+
+        // Fonction pour traiter les noeuds
+        const processNodeForDocx = async (node) => {
+          if (node.nodeType === Node.TEXT_NODE) {
+            const text = node.textContent.trim();
+            if (text) {
+              return new TextRun({ text });
+            }
+            return null;
+          }
+
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            const tagName = node.tagName.toLowerCase();
+
+            switch (tagName) {
+              case 'h2':
+                children.push(
+                  new Paragraph({
+                    text: node.textContent.trim(),
+                    heading: HeadingLevel.HEADING_1,
+                    spacing: { before: 400, after: 200 }
+                  })
+                );
+                break;
+
+              case 'h3':
+                children.push(
+                  new Paragraph({
+                    text: node.textContent.trim(),
+                    heading: HeadingLevel.HEADING_2,
+                    spacing: { before: 300, after: 150 }
+                  })
+                );
+                break;
+
+              case 'h4':
+                children.push(
+                  new Paragraph({
+                    text: node.textContent.trim(),
+                    heading: HeadingLevel.HEADING_3,
+                    spacing: { before: 200, after: 100 }
+                  })
+                );
+                break;
+
+              case 'p':
+                const runs = [];
+                for (const child of node.childNodes) {
+                  if (child.nodeType === Node.TEXT_NODE) {
+                    runs.push(new TextRun({ text: child.textContent }));
+                  } else if (child.tagName) {
+                    const childTag = child.tagName.toLowerCase();
+                    if (childTag === 'strong' || childTag === 'b') {
+                      runs.push(new TextRun({ text: child.textContent, bold: true }));
+                    } else if (childTag === 'em' || childTag === 'i') {
+                      runs.push(new TextRun({ text: child.textContent, italics: true }));
+                    } else if (childTag === 'a') {
+                      runs.push(new TextRun({
+                        text: child.textContent,
+                        color: "7c3aed",
+                        underline: {}
+                      }));
+                    } else {
+                      runs.push(new TextRun({ text: child.textContent }));
+                    }
+                  }
+                }
+                children.push(
+                  new Paragraph({
+                    children: runs,
+                    spacing: { after: 200 }
+                  })
+                );
+                break;
+
+              case 'ul':
+              case 'ol':
+                const listItems = node.querySelectorAll('li');
+                listItems.forEach((li, index) => {
+                  children.push(
+                    new Paragraph({
+                      text: li.textContent.trim(),
+                      bullet: tagName === 'ul' ? { level: 0 } : undefined,
+                      numbering: tagName === 'ol' ? {
+                        reference: "default-numbering",
+                        level: 0
+                      } : undefined,
+                      spacing: { after: 100 }
+                    })
+                  );
+                });
+                children.push(new Paragraph({ text: "" })); // Espace après la liste
+                break;
+
+              case 'table':
+                const headers = Array.from(node.querySelectorAll('thead th, tbody tr:first-child th'));
+                const rows = Array.from(node.querySelectorAll('tbody tr'));
+                const tableRows = [];
+
+                // Caption
+                const caption = node.querySelector('caption');
+                if (caption) {
+                  children.push(
+                    new Paragraph({
+                      text: caption.textContent.trim(),
+                      bold: true,
+                      spacing: { before: 200, after: 100 }
+                    })
+                  );
+                }
+
+                // Headers
+                if (headers.length > 0) {
+                  tableRows.push(
+                    new TableRow({
+                      children: headers.map(header => 
+                        new TableCell({
+                          children: [new Paragraph({
+                            text: header.textContent.trim(),
+                            bold: true,
+                            alignment: AlignmentType.CENTER
+                          })],
+                          shading: {
+                            fill: "7c3aed",
+                            color: "ffffff"
+                          }
+                        })
+                      )
+                    })
+                  );
+                }
+
+                // Data rows
+                rows.forEach(row => {
+                  const cells = row.querySelectorAll('td');
+                  if (cells.length > 0) {
+                    tableRows.push(
+                      new TableRow({
+                        children: Array.from(cells).map(cell => 
+                          new TableCell({
+                            children: [new Paragraph({
+                              text: cell.textContent.trim()
+                            })]
+                          })
+                        )
+                      })
+                    );
+                  }
+                });
+
+                if (tableRows.length > 0) {
+                  children.push(
+                    new Table({
+                      rows: tableRows,
+                      width: {
+                        size: 100,
+                        type: WidthType.PERCENTAGE
+                      }
+                    })
+                  );
+                  children.push(new Paragraph({ text: "" })); // Espace après le tableau
+                }
+                break;
+
+              case 'img':
+                // Pour les images, on peut les inclure si elles sont en base64
+                const imgSrc = node.src;
+                if (imgSrc) {
+                  try {
+                    const imgBase64 = await loadImageAsBase64(imgSrc);
+                    if (imgBase64) {
+                      // Extraire la partie base64 pure
+                      const base64Data = imgBase64.split(',')[1];
+                      
+                      children.push(
+                        new Paragraph({
+                          children: [
+                            new ImageRun({
+                              data: Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)),
+                              transformation: {
+                                width: 400,
+                                height: 300
+                              }
+                            })
+                          ],
+                          alignment: AlignmentType.CENTER,
+                          spacing: { before: 200, after: 200 }
+                        })
+                      );
+
+                      // Légende
+                      if (node.alt) {
+                        children.push(
+                          new Paragraph({
+                            text: node.alt,
+                            italics: true,
+                            alignment: AlignmentType.CENTER,
+                            spacing: { after: 200 }
+                          })
+                        );
+                      }
+                    }
+                  } catch (error) {
+                    console.error('Erreur lors du chargement de l\'image pour DOCX:', error);
+                  }
+                }
+                break;
+            }
+          }
+        };
+
+        // Traiter tous les noeuds
+        for (const child of tempDiv.children) {
+          await processNodeForDocx(child);
+        }
+
+        // Mettre à jour le document avec les enfants
+        doc.sections[0].children = children;
+
+        // Générer le blob
+        const blob = await Packer.toBlob(doc);
+        return blob;
       };
 
       // BOUTON COPIER
@@ -1378,12 +1616,11 @@ export const DownloadReport = {
         const copyButton = document.createElement('button');
         copyButton.className = 'action-button';
         copyButton.innerHTML = `<span class="action-button-icon">${config.copyIconText}</span>`;
-        copyButton.title = t.copy.buttonTitle;
+        copyButton.title = t.copy.buttonTitle; // Utilise maintenant "Copier texte" ou "Copy text"
 
         const copyMenu = document.createElement('div');
         copyMenu.className = 'action-menu';
         
-        // CORRECTION ICI : Inversion des icônes et de la logique
         const htmlOption = document.createElement('button');
         htmlOption.className = 'action-menu-option';
         htmlOption.innerHTML = `
@@ -1403,7 +1640,6 @@ export const DownloadReport = {
         copyMenu.appendChild(htmlOption);
         copyMenu.appendChild(textOption);
 
-        // CORRECTION : Inversion de la logique de copie
         const copyContent = async (format = 'formatted') => {
           try {
             let textToCopy = '';
@@ -1424,8 +1660,6 @@ export const DownloadReport = {
             copyButton.querySelector('.action-button-icon').textContent = config.copiedIcon;
             
             showToast(format === 'formatted' ? t.copy.toastFormatted : t.copy.toastRaw);
-            
-            console.log(`✅ Contenu copié (${format}) - ${textToCopy.length} caractères`);
             
             setTimeout(() => {
               copyButton.classList.remove('copied');
@@ -1454,11 +1688,10 @@ export const DownloadReport = {
           }
         });
 
-        // CORRECTION : Appeler avec les bons formats
         htmlOption.addEventListener('click', (e) => {
           e.preventDefault();
           e.stopPropagation();
-          copyContent('formatted'); // Formaté = sans HTML
+          copyContent('formatted');
           copyMenu.classList.remove('show');
           copyMenuVisible = false;
         });
@@ -1466,7 +1699,7 @@ export const DownloadReport = {
         textOption.addEventListener('click', (e) => {
           e.preventDefault();
           e.stopPropagation();
-          copyContent('raw'); // Brut = avec HTML
+          copyContent('raw');
           copyMenu.classList.remove('show');
           copyMenuVisible = false;
         });
@@ -1492,13 +1725,15 @@ export const DownloadReport = {
         const formatIcons = {
           html: '🌐',
           pdf: '📄',
-          md: '📝'
+          md: '📝',
+          docx: '📃'
         };
 
         const formatLabels = {
           html: 'HTML',
           pdf: 'PDF',
-          md: 'Markdown'
+          md: 'Markdown',
+          docx: 'Word'
         };
 
         config.formats.forEach(format => {
@@ -1547,6 +1782,16 @@ export const DownloadReport = {
                 const pdf = await generatePDF();
                 pdf.save(`${fileName}.pdf`);
                 break;
+                
+              case 'docx':
+                const docxBlob = await generateDOCX();
+                const docxUrl = URL.createObjectURL(docxBlob);
+                const docxLink = document.createElement('a');
+                docxLink.href = docxUrl;
+                docxLink.download = `${fileName}.docx`;
+                docxLink.click();
+                URL.revokeObjectURL(docxUrl);
+                break;
             }
             
             let successMessage = '';
@@ -1559,6 +1804,9 @@ export const DownloadReport = {
                 break;
               case 'md':
                 successMessage = t.download.toastMarkdown;
+                break;
+              case 'docx':
+                successMessage = t.download.toastDOCX;
                 break;
             }
             
@@ -1620,7 +1868,7 @@ export const DownloadReport = {
         }
       }, 0);
       
-      console.log('✅ DownloadReport multilingue prêt');
+      console.log('✅ DownloadReport multilingue prêt avec support DOCX');
       
     } catch (error) {
       console.error('❌ DownloadReport Error:', error);

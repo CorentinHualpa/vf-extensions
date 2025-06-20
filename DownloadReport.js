@@ -4,7 +4,7 @@
  *  ║                                                           ║
  *  ║  • Support JSON et TEXT                                   ║
  *  ║  • Téléchargement : HTML / PDF / Markdown                ║
- *  ║  • Copie : Formaté (riche) / Brut                        ║
+ *  ║  • Copie : Brut (HTML) / Formaté (texte propre)         ║
  *  ║  • Support FR/EN                                         ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
@@ -23,11 +23,11 @@ export const DownloadReport = {
           copy: {
             buttonTitle: 'Copier',
             formatOption: 'Formaté',
-            formatTooltip: 'Copier avec la mise en forme',
+            formatTooltip: 'Copier le texte formaté (sans HTML)',
             rawOption: 'Brut',
-            rawTooltip: 'Copier le texte brut',
-            toastFormatted: 'Copié avec formatage',
-            toastRaw: 'Texte copié',
+            rawTooltip: 'Copier le code HTML brut',
+            toastFormatted: 'Texte formaté copié',
+            toastRaw: 'HTML brut copié',
             toastError: 'Erreur lors de la copie'
           },
           download: {
@@ -48,11 +48,11 @@ export const DownloadReport = {
           copy: {
             buttonTitle: 'Copy',
             formatOption: 'Formatted',
-            formatTooltip: 'Copy with formatting',
+            formatTooltip: 'Copy formatted text (without HTML)',
             rawOption: 'Raw',
-            rawTooltip: 'Copy plain text',
-            toastFormatted: 'Copied with formatting',
-            toastRaw: 'Text copied',
+            rawTooltip: 'Copy raw HTML code',
+            toastFormatted: 'Formatted text copied',
+            toastRaw: 'Raw HTML copied',
             toastError: 'Copy error'
           },
           download: {
@@ -125,6 +125,15 @@ export const DownloadReport = {
             }
           } else {
             // MODE TEXT avec options
+            // Format attendu :
+            // Contenu HTML...
+            // ###OPTIONS###
+            // showCopyButton=true
+            // showDownloadButton=false
+            // langue=fr
+            // marketTitle=Mon titre
+            // fileName=mon_fichier
+            
             const parts = cleanPayload.split('###OPTIONS###');
             
             // Le contenu est la première partie
@@ -144,7 +153,7 @@ export const DownloadReport = {
                 const trimmedLine = line.trim();
                 if (trimmedLine && trimmedLine.includes('=')) {
                   const [key, ...valueParts] = trimmedLine.split('=');
-                  const value = valueParts.join('=').trim();
+                  const value = valueParts.join('=').trim(); // Au cas où la valeur contient des =
                   const cleanKey = key.trim();
                   
                   // Conversion des types
@@ -153,8 +162,10 @@ export const DownloadReport = {
                   } else if (value === 'false') {
                     config[cleanKey] = false;
                   } else if (cleanKey === 'formats' && value.includes(',')) {
+                    // Support pour formats multiples : formats=html,pdf,md
                     config[cleanKey] = value.split(',').map(f => f.trim());
                   } else {
+                    // Garder comme string
                     config[cleanKey] = value;
                   }
                 }
@@ -165,6 +176,7 @@ export const DownloadReport = {
           }
         } catch (error) {
           console.error('Erreur de parsing:', error);
+          // En cas d'erreur totale, considérer tout comme contenu
           config.content = trace.payload;
         }
       } else if (typeof trace.payload === 'object' && trace.payload !== null) {
@@ -1371,6 +1383,7 @@ export const DownloadReport = {
         const copyMenu = document.createElement('div');
         copyMenu.className = 'action-menu';
         
+        // CORRECTION ICI : Inversion des icônes et de la logique
         const htmlOption = document.createElement('button');
         htmlOption.className = 'action-menu-option';
         htmlOption.innerHTML = `
@@ -1390,50 +1403,29 @@ export const DownloadReport = {
         copyMenu.appendChild(htmlOption);
         copyMenu.appendChild(textOption);
 
-        // CORRECTION : Copie formatée utilise l'API Clipboard moderne
-        const copyContent = async (format = 'html') => {
+        // CORRECTION : Inversion de la logique de copie
+        const copyContent = async (format = 'formatted') => {
           try {
-            if (format === 'html') {
-              // Pour une vraie copie formatée, on utilise l'API Clipboard write
-              if (navigator.clipboard && navigator.clipboard.write) {
-                // Créer un élément temporaire pour avoir le rendu visuel
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = config.content;
-                tempDiv.style.position = 'absolute';
-                tempDiv.style.left = '-9999px';
-                document.body.appendChild(tempDiv);
-                
-                // Sélectionner et copier avec formatage
-                const range = document.createRange();
-                range.selectNodeContents(tempDiv);
-                const selection = window.getSelection();
-                selection.removeAllRanges();
-                selection.addRange(range);
-                
-                document.execCommand('copy');
-                selection.removeAllRanges();
-                document.body.removeChild(tempDiv);
-                
-                showToast(t.copy.toastFormatted);
-              } else {
-                // Fallback : copier le HTML brut
-                await navigator.clipboard.writeText(config.content);
-                showToast(t.copy.toastFormatted + ' (HTML)');
-              }
-            } else {
-              // Copie en texte brut
+            let textToCopy = '';
+            
+            if (format === 'formatted') {
+              // Formaté = texte sans HTML
               const tempDiv = document.createElement('div');
               tempDiv.innerHTML = config.content;
-              const textContent = tempDiv.textContent || tempDiv.innerText || '';
-              await navigator.clipboard.writeText(textContent);
-              showToast(t.copy.toastRaw);
+              textToCopy = tempDiv.textContent || tempDiv.innerText || '';
+            } else {
+              // Brut = HTML avec toutes les balises
+              textToCopy = config.content;
             }
             
-            // Feedback visuel
+            await navigator.clipboard.writeText(textToCopy);
+            
             copyButton.classList.add('copied');
             copyButton.querySelector('.action-button-icon').textContent = config.copiedIcon;
             
-            console.log(`✅ Contenu copié (${format})`);
+            showToast(format === 'formatted' ? t.copy.toastFormatted : t.copy.toastRaw);
+            
+            console.log(`✅ Contenu copié (${format}) - ${textToCopy.length} caractères`);
             
             setTimeout(() => {
               copyButton.classList.remove('copied');
@@ -1462,10 +1454,11 @@ export const DownloadReport = {
           }
         });
 
+        // CORRECTION : Appeler avec les bons formats
         htmlOption.addEventListener('click', (e) => {
           e.preventDefault();
           e.stopPropagation();
-          copyContent('html');
+          copyContent('formatted'); // Formaté = sans HTML
           copyMenu.classList.remove('show');
           copyMenuVisible = false;
         });
@@ -1473,7 +1466,7 @@ export const DownloadReport = {
         textOption.addEventListener('click', (e) => {
           e.preventDefault();
           e.stopPropagation();
-          copyContent('text');
+          copyContent('raw'); // Brut = avec HTML
           copyMenu.classList.remove('show');
           copyMenuVisible = false;
         });

@@ -136,9 +136,13 @@ export const DownloadReport = {
             
             const parts = cleanPayload.split('###OPTIONS###');
             
-            // Le contenu est la première partie
+            // Le contenu est la première partie (sans la partie OPTIONS)
             config.content = parts[0].trim();
             
+            // IMPORTANT : S'assurer que la partie OPTIONS n'apparaît pas dans le contenu
+            if (config.content.includes('###OPTIONS###')) {
+              config.content = config.content.split('###OPTIONS###')[0].trim();
+            }
             // Parser les options si présentes
             if (parts[1]) {
               const optionsText = parts[1].trim();

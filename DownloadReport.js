@@ -1,11 +1,10 @@
 /**
  *  ╔═══════════════════════════════════════════════════════════╗
- *  ║  DownloadReport – Voiceflow Report Download Extension     ║
+ *  ║  DownloadReport – ChatInnov Edition                       ║
  *  ║                                                           ║
- *  ║  • Export multi-format : HTML/PDF/Markdown               ║
- *  ║  • Design minimaliste aligné avec CopyButton             ║
- *  ║  • Support multi-chapitres                               ║
- *  ║  • Métadonnées automatiques                              ║
+ *  ║  • Design premium avec bannière violet                   ║
+ *  ║  • Export HTML/PDF/Markdown                              ║
+ *  ║  • Style professionnel ChatInnov                         ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 
@@ -19,16 +18,14 @@ export const DownloadReport = {
     try {
       // Configuration par défaut
       const defaultConfig = {
-        title: 'Rapport',
-        imageUrl: null,
-        presentation: '',
-        chapters: [], // Array pour multi-chapitres
-        organizationId: '',
-        fileName: 'rapport',
+        marketTitle: 'Analyse de Marché',
+        content: '',
+        fileName: 'chatinnov_rapport',
+        url_logo: 'https://i.imgur.com/qWcV9Z9.png',
+        presentation_text: "L'IA GENERATIVE AU SERVICE DE L'INTELLIGENCE DES MARCHÉS ET DE L'INNOVATION À IMPACT",
         accentColor: '#666666',
         iconText: '📥',
-        formats: ['html', 'pdf', 'md'], // Formats disponibles
-        dateFormat: 'DD/MM/YYYY HH:mm'
+        formats: ['html', 'pdf', 'md']
       };
 
       // Parser le payload
@@ -38,23 +35,17 @@ export const DownloadReport = {
         try {
           config = { ...defaultConfig, ...JSON.parse(trace.payload) };
         } catch {
-          // Si c'est juste du texte, on le met comme chapitre unique
-          config.chapters = [{ title: 'Contenu', content: trace.payload }];
+          config.content = trace.payload;
         }
       } else if (typeof trace.payload === 'object') {
         config = { ...defaultConfig, ...trace.payload };
-        
-        // Support rétrocompatibilité : si 'content' existe, le convertir en chapitre
-        if (config.content && !config.chapters.length) {
-          config.chapters = [{ title: 'Contenu principal', content: config.content }];
-        }
       }
 
-      // HTML du composant (à côté du CopyButton)
+      // Container principal
       const container = document.createElement('div');
       container.className = 'download-report-container';
       
-      // Styles minimalistes
+      // Styles minimalistes alignés avec CopyButton
       const styleEl = document.createElement('style');
       styleEl.textContent = `
         /* Container aligné avec CopyButton */
@@ -147,7 +138,7 @@ export const DownloadReport = {
 
       container.appendChild(styleEl);
 
-      // Créer les éléments
+      // Créer les éléments UI
       const wrapper = document.createElement('div');
       wrapper.className = 'download-report-wrapper';
       wrapper.style.position = 'relative';
@@ -160,7 +151,7 @@ export const DownloadReport = {
       const menu = document.createElement('div');
       menu.className = 'download-report-menu';
 
-      // Créer les options de format
+      // Options de format
       const formatIcons = {
         html: '🌐',
         pdf: '📄',
@@ -184,130 +175,358 @@ export const DownloadReport = {
         menu.appendChild(option);
       });
 
-      // Fonctions de génération des rapports
+      // Fonction pour générer le HTML ChatInnov
       const generateHTML = () => {
         const date = new Date();
-        const dateStr = date.toLocaleDateString('fr-FR') + ' ' + date.toLocaleTimeString('fr-FR');
+        const dateStr = date.toLocaleDateString('fr-FR', {
+          day: '2-digit',
+          month: 'long',
+          year: 'numeric'
+        });
+        const timeStr = date.toLocaleTimeString('fr-FR', {
+          hour: '2-digit',
+          minute: '2-digit'
+        });
         
-        let html = `<!DOCTYPE html>
+        const html = `<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${config.title}</title>
+  <title>${config.marketTitle} - ChatInnov</title>
   <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
       line-height: 1.6;
       color: #333;
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 40px 20px;
+      background: #ffffff;
     }
+    
+    /* Header avec logo */
     .header {
-      text-align: center;
-      margin-bottom: 40px;
-      padding-bottom: 20px;
-      border-bottom: 2px solid #eee;
+      background: white;
+      padding: 20px 40px;
+      border-bottom: 1px solid #eee;
     }
-    .header img {
-      max-width: 300px;
-      height: auto;
+    
+    .logo-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    .logo {
+      height: 50px;
+      width: auto;
+    }
+    
+    .tagline {
+      color: #7c3aed;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      text-align: right;
+      max-width: 400px;
+    }
+    
+    /* Bannière violette avec titre */
+    .hero-banner {
+      background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+      padding: 60px 40px;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .hero-banner::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: -20%;
+      width: 60%;
+      height: 120%;
+      background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%);
+      transform: skewX(-20deg);
+    }
+    
+    .hero-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .market-title {
+      color: white;
+      font-size: 36px;
+      font-weight: 300;
+      letter-spacing: -0.5px;
       margin-bottom: 20px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
-    .metadata {
-      color: #666;
+    
+    .date-time {
+      color: rgba(255,255,255,0.9);
       font-size: 14px;
-      margin-bottom: 30px;
+      font-weight: 400;
     }
-    .presentation {
-      font-style: italic;
-      color: #555;
-      margin-bottom: 40px;
-      padding: 20px;
-      background: #f9f9f9;
-      border-radius: 8px;
+    
+    /* Contenu principal */
+    .main-content {
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 0 40px;
     }
-    .chapter {
-      margin-bottom: 40px;
-    }
-    .chapter h2 {
-      color: #2c3e50;
-      border-bottom: 1px solid #ddd;
+    
+    /* Styles pour le contenu HTML */
+    .main-content h2 {
+      color: #1a1a1a;
+      font-size: 28px;
+      font-weight: 600;
+      margin: 40px 0 20px 0;
       padding-bottom: 10px;
+      border-bottom: 2px solid #7c3aed;
+    }
+    
+    .main-content h3 {
+      color: #333;
+      font-size: 22px;
+      font-weight: 600;
+      margin: 30px 0 15px 0;
+    }
+    
+    .main-content h4 {
+      color: #555;
+      font-size: 18px;
+      font-weight: 600;
+      margin: 25px 0 15px 0;
+    }
+    
+    .main-content p {
+      color: #444;
+      line-height: 1.8;
+      margin-bottom: 16px;
+      text-align: justify;
+    }
+    
+    .main-content ul {
+      margin: 16px 0;
+      padding-left: 30px;
+    }
+    
+    .main-content li {
+      margin-bottom: 10px;
+      line-height: 1.7;
+    }
+    
+    .main-content a {
+      color: #7c3aed;
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.2s;
+    }
+    
+    .main-content a:hover {
+      border-bottom-color: #7c3aed;
+    }
+    
+    /* Tables ChatInnov style */
+    .main-content table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      background: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    
+    .main-content caption {
+      background: #f8f9fa;
+      padding: 16px;
+      font-weight: 600;
+      color: #333;
+      text-align: left;
+      border-bottom: 2px solid #7c3aed;
+    }
+    
+    .main-content th {
+      background: #7c3aed;
+      color: white;
+      padding: 14px 16px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .main-content td {
+      padding: 14px 16px;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .main-content tbody tr:hover {
+      background: #f8f9fa;
+    }
+    
+    .main-content tfoot {
+      background: #f8f9fa;
+      font-style: italic;
+      font-size: 13px;
+      color: #666;
+    }
+    
+    /* Encadrés spéciaux */
+    .main-content div[style*="border: 2px solid"] {
+      border-radius: 8px !important;
+      margin: 24px 0 !important;
+      padding: 20px !important;
+      background: #f0f4ff !important;
+      border-color: #7c3aed !important;
+    }
+    
+    /* Footer */
+    .footer {
+      margin-top: 80px;
+      padding: 30px 40px;
+      background: #f8f9fa;
+      border-top: 1px solid #e9ecef;
+      text-align: center;
+      color: #666;
+      font-size: 13px;
+    }
+    
+    .footer-logo {
+      height: 30px;
+      opacity: 0.6;
+      margin-bottom: 10px;
+    }
+    
+    /* Print styles */
+    @media print {
+      .hero-banner {
+        background: #7c3aed !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      
+      .main-content {
+        max-width: 100%;
+      }
+      
+      .footer {
+        display: none;
+      }
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+      .logo-container {
+        flex-direction: column;
+        gap: 10px;
+      }
+      
+      .tagline {
+        text-align: center;
+        font-size: 11px;
+      }
+      
+      .market-title {
+        font-size: 24px;
+      }
+      
+      .hero-banner {
+        padding: 40px 20px;
+      }
+      
+      .main-content {
+        padding: 0 20px;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="header">
-    ${config.imageUrl ? `<img src="${config.imageUrl}" alt="${config.title}">` : ''}
-    <h1>${config.title}</h1>
-  </div>
-  
-  <div class="metadata">
-    <p><strong>Date de génération :</strong> ${dateStr}</p>
-    ${config.organizationId ? `<p><strong>Organisation :</strong> ${config.organizationId}</p>` : ''}
-  </div>
-  
-  ${config.presentation ? `<div class="presentation">${config.presentation}</div>` : ''}
-  
-  ${config.chapters.map(chapter => `
-    <div class="chapter">
-      ${chapter.title ? `<h2>${chapter.title}</h2>` : ''}
-      <div class="content">${chapter.content}</div>
+  <!-- Header avec logo -->
+  <header class="header">
+    <div class="logo-container">
+      <img src="${config.url_logo}" alt="ChatInnov" class="logo">
+      <div class="tagline">${config.presentation_text}</div>
     </div>
-  `).join('')}
+  </header>
+  
+  <!-- Bannière violette avec titre -->
+  <div class="hero-banner">
+    <div class="hero-content">
+      <h1 class="market-title">${config.marketTitle}</h1>
+      <div class="date-time">
+        <strong>Date de génération :</strong> ${dateStr} à ${timeStr}
+      </div>
+    </div>
+  </div>
+  
+  <!-- Contenu principal -->
+  <main class="main-content">
+    ${config.content}
+  </main>
+  
+  <!-- Footer -->
+  <footer class="footer">
+    <img src="${config.url_logo}" alt="ChatInnov" class="footer-logo">
+    <p>© ${new Date().getFullYear()} ChatInnov - Rapport généré automatiquement</p>
+  </footer>
 </body>
 </html>`;
         
         return html;
       };
 
+      // Fonction pour générer le Markdown
       const generateMarkdown = () => {
         const date = new Date();
-        const dateStr = date.toLocaleDateString('fr-FR') + ' ' + date.toLocaleTimeString('fr-FR');
+        const dateStr = date.toLocaleDateString('fr-FR') + ' à ' + date.toLocaleTimeString('fr-FR');
         
-        let md = `# ${config.title}\n\n`;
+        let md = `# ${config.marketTitle}\n\n`;
+        md += `> ${config.presentation_text}\n\n`;
+        md += `**Date de génération :** ${dateStr}\n\n`;
+        md += `---\n\n`;
         
-        if (config.imageUrl) {
-          md += `![${config.title}](${config.imageUrl})\n\n`;
-        }
+        // Convertir HTML en Markdown
+        let content = config.content
+          .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n')
+          .replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n')
+          .replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n\n')
+          .replace(/<h4[^>]*>(.*?)<\/h4>/gi, '#### $1\n\n')
+          .replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**')
+          .replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**')
+          .replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*')
+          .replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*')
+          .replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)')
+          .replace(/<br[^>]*>/gi, '\n')
+          .replace(/<p[^>]*>(.*?)<\/p>/gi, '$1\n\n')
+          .replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1\n')
+          .replace(/<ul[^>]*>|<\/ul>/gi, '')
+          .replace(/<ol[^>]*>|<\/ol>/gi, '')
+          .replace(/<span[^>]*class="no-gradient"[^>]*>(.*?)<\/span>/gi, '$1')
+          .replace(/<[^>]+>/g, '');
         
-        md += `**Date de génération :** ${dateStr}\n`;
-        if (config.organizationId) {
-          md += `**Organisation :** ${config.organizationId}\n`;
-        }
-        md += '\n---\n\n';
-        
-        if (config.presentation) {
-          md += `> ${config.presentation}\n\n`;
-        }
-        
-        config.chapters.forEach(chapter => {
-          if (chapter.title) {
-            md += `## ${chapter.title}\n\n`;
-          }
-          // Convertir HTML en Markdown basique
-          let content = chapter.content
-            .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n')
-            .replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n')
-            .replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n')
-            .replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**')
-            .replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**')
-            .replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*')
-            .replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*')
-            .replace(/<br[^>]*>/gi, '\n')
-            .replace(/<p[^>]*>(.*?)<\/p>/gi, '$1\n\n')
-            .replace(/<[^>]+>/g, '');
-          
-          md += content + '\n\n';
-        });
+        md += content;
+        md += `\n\n---\n\n*Rapport généré par ChatInnov*`;
         
         return md;
       };
 
+      // Fonction pour générer le PDF
       const generatePDF = async () => {
-        // Charger jsPDF dynamiquement si pas déjà chargé
+        // Charger jsPDF si nécessaire
         if (!window.jspdf) {
           const script = document.createElement('script');
           script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
@@ -318,93 +537,86 @@ export const DownloadReport = {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
         
-        // Configuration de base
+        // Configuration
         let yPosition = 20;
         const pageHeight = doc.internal.pageSize.height;
+        const pageWidth = doc.internal.pageSize.width;
         const margin = 20;
         const lineHeight = 7;
         
-        // Titre
-        doc.setFontSize(20);
-        doc.text(config.title, margin, yPosition);
-        yPosition += 15;
+        // Header avec couleur violette
+        doc.setFillColor(124, 58, 237); // #7c3aed
+        doc.rect(0, 0, pageWidth, 50, 'F');
         
-        // Métadonnées
+        // Titre en blanc
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(18);
+        const titleLines = doc.splitTextToSize(config.marketTitle, pageWidth - 2 * margin);
+        titleLines.forEach((line, index) => {
+          doc.text(line, margin, 25 + (index * 8));
+        });
+        
+        // Date
         doc.setFontSize(10);
-        doc.setTextColor(100);
         const date = new Date();
-        const dateStr = date.toLocaleDateString('fr-FR') + ' ' + date.toLocaleTimeString('fr-FR');
-        doc.text(`Date: ${dateStr}`, margin, yPosition);
-        yPosition += lineHeight;
+        const dateStr = date.toLocaleDateString('fr-FR') + ' à ' + date.toLocaleTimeString('fr-FR');
+        doc.text(dateStr, margin, 42);
         
-        if (config.organizationId) {
-          doc.text(`Organisation: ${config.organizationId}`, margin, yPosition);
-          yPosition += lineHeight;
-        }
+        yPosition = 65;
+        
+        // Tagline
+        doc.setTextColor(124, 58, 237);
+        doc.setFontSize(9);
+        const taglineLines = doc.splitTextToSize(config.presentation_text, pageWidth - 2 * margin);
+        taglineLines.forEach(line => {
+          doc.text(line, margin, yPosition);
+          yPosition += 5;
+        });
         
         yPosition += 10;
         
-        // Présentation
-        if (config.presentation) {
-          doc.setTextColor(80);
-          doc.setFontSize(11);
-          const presentationLines = doc.splitTextToSize(config.presentation, 170);
-          presentationLines.forEach(line => {
-            if (yPosition > pageHeight - margin) {
-              doc.addPage();
-              yPosition = margin;
-            }
-            doc.text(line, margin, yPosition);
-            yPosition += lineHeight;
-          });
-          yPosition += 10;
-        }
+        // Contenu principal
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(11);
         
-        // Chapitres
-        doc.setTextColor(0);
-        config.chapters.forEach(chapter => {
-          if (chapter.title) {
-            doc.setFontSize(14);
-            doc.setFont(undefined, 'bold');
-            doc.text(chapter.title, margin, yPosition);
-            doc.setFont(undefined, 'normal');
-            yPosition += 10;
+        // Extraire le texte du HTML
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = config.content;
+        const textContent = tempDiv.textContent || tempDiv.innerText || '';
+        
+        const contentLines = doc.splitTextToSize(textContent, pageWidth - 2 * margin);
+        
+        contentLines.forEach(line => {
+          if (yPosition > pageHeight - margin) {
+            doc.addPage();
+            yPosition = margin;
           }
-          
-          doc.setFontSize(11);
-          // Convertir HTML en texte
-          const tempDiv = document.createElement('div');
-          tempDiv.innerHTML = chapter.content;
-          const text = tempDiv.textContent || tempDiv.innerText || '';
-          
-          const lines = doc.splitTextToSize(text, 170);
-          lines.forEach(line => {
-            if (yPosition > pageHeight - margin) {
-              doc.addPage();
-              yPosition = margin;
-            }
-            doc.text(line, margin, yPosition);
-            yPosition += lineHeight;
-          });
-          
-          yPosition += 10;
+          doc.text(line, margin, yPosition);
+          yPosition += lineHeight;
         });
+        
+        // Footer sur la dernière page
+        doc.setFontSize(9);
+        doc.setTextColor(150);
+        doc.text('© ChatInnov - Rapport généré automatiquement', pageWidth / 2, pageHeight - 10, { align: 'center' });
         
         return doc;
       };
 
+      // Fonction de téléchargement
       const downloadReport = async (format) => {
         mainButton.classList.add('generating');
         mainButton.querySelector('.download-report-icon').textContent = '⏳';
         menu.classList.remove('show');
         
         try {
-          const fileName = `${config.fileName}_${new Date().toISOString().slice(0,10)}`;
+          const date = new Date().toISOString().slice(0, 10);
+          const fileName = `${config.fileName}_${date}`;
           
           switch(format) {
             case 'html':
               const htmlContent = generateHTML();
-              const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
+              const htmlBlob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
               const htmlUrl = URL.createObjectURL(htmlBlob);
               const htmlLink = document.createElement('a');
               htmlLink.href = htmlUrl;
@@ -415,7 +627,7 @@ export const DownloadReport = {
               
             case 'md':
               const mdContent = generateMarkdown();
-              const mdBlob = new Blob([mdContent], { type: 'text/markdown' });
+              const mdBlob = new Blob([mdContent], { type: 'text/markdown;charset=utf-8' });
               const mdUrl = URL.createObjectURL(mdBlob);
               const mdLink = document.createElement('a');
               mdLink.href = mdUrl;
@@ -430,23 +642,25 @@ export const DownloadReport = {
               break;
           }
           
-          // Toast de succès (réutiliser celui de CopyButton si présent)
+          // Notification de succès
           const existingToast = document.querySelector('.copy-button-toast');
           if (existingToast) {
-            existingToast.textContent = `${formatLabels[format]} téléchargé`;
+            existingToast.textContent = `${formatLabels[format]} téléchargé avec succès`;
             existingToast.classList.add('show');
             setTimeout(() => existingToast.classList.remove('show'), 1500);
           }
           
+          console.log(`✅ Rapport ${format.toUpperCase()} généré : ${fileName}`);
+          
         } catch (error) {
-          console.error('Erreur de téléchargement:', error);
+          console.error('❌ Erreur de génération:', error);
         } finally {
           mainButton.classList.remove('generating');
           mainButton.querySelector('.download-report-icon').textContent = config.iconText;
         }
       };
 
-      // Événements
+      // Gestion des événements
       let menuVisible = false;
       
       mainButton.addEventListener('click', (e) => {
@@ -462,7 +676,6 @@ export const DownloadReport = {
         }
       });
 
-      // Fermer le menu en cliquant ailleurs
       document.addEventListener('click', (e) => {
         if (!wrapper.contains(e.target) && menuVisible) {
           menu.classList.remove('show');
@@ -476,7 +689,7 @@ export const DownloadReport = {
       container.appendChild(wrapper);
       element.appendChild(container);
       
-      console.log('✅ DownloadReport prêt');
+      console.log('✅ DownloadReport ChatInnov prêt');
       
     } catch (error) {
       console.error('❌ DownloadReport Error:', error);

@@ -2,10 +2,10 @@
  *  ╔═══════════════════════════════════════════════════════════╗
  *  ║  CopyButton – Voiceflow Response Extension                ║
  *  ║                                                           ║
- *  ║  • Bouton de copie minimaliste et élégant                ║
- *  ║  • Copie le contenu passé en paramètre                   ║
+ *  ║  • Bouton de copie avec design amélioré                  ║
+ *  ║  • Indicateur visuel de connexion au texte               ║
  *  ║  • Options : copie HTML ou texte brut                    ║
- *  ║  • Design subtil avec feedback visuel                    ║
+ *  ║  • Design visible avec feedback visuel                   ║
  *  ║  • Sans interaction avec Voiceflow                       ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
@@ -70,8 +70,9 @@ export const CopyButton = {
 
       const accentRgb = hexToRgb(accentColor);
 
-      // Styles CSS minimalistes
-styleEl.textContent = `
+      // Création de l'élément style
+      const styleEl = document.createElement('style');
+      styleEl.textContent = `
 /* Variables CSS */
 .copy-button-container {
   --cb-accent: ${accentColor};
@@ -161,25 +162,175 @@ styleEl.textContent = `
   box-shadow: 0 6px 20px rgba(var(--cb-accent-r), var(--cb-accent-g), var(--cb-accent-b), 0.4) !important;
 }
 
-/* Menu et autres styles restent identiques... */
-${/* Copiez le reste du CSS original ici */}
-`;
+.copy-button-main:active {
+  transform: translateY(0) !important;
+  box-shadow: none !important;
+}
 
-// Et modifiez la construction du HTML :
-// Flèche
-const arrowEl = document.createElement('span');
-arrowEl.className = 'copy-button-arrow';
-arrowEl.textContent = '⬆';
+/* État copié */
+.copy-button-main.copied {
+  background: #4CAF50 !important;
+  color: white !important;
+  animation: successPulse 0.6s ease !important;
+}
 
-// Label
-const labelEl = document.createElement('span');
-labelEl.className = 'copy-button-label';
-labelEl.textContent = 'Texte disponible pour copie :';
+@keyframes successPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
 
-// Assemblage modifié
-container.appendChild(arrowEl);
-container.appendChild(labelEl);
-container.appendChild(wrapper);
+/* Icône */
+.copy-button-icon {
+  font-size: 16px !important;
+  line-height: 1 !important;
+  transition: all 0.2s ease !important;
+}
+
+.copy-button-main:hover .copy-button-icon {
+  transform: scale(1.2) rotate(10deg) !important;
+}
+
+/* Menu déroulant pour les options */
+.copy-button-menu {
+  position: absolute !important;
+  top: calc(100% + 4px) !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  background: white !important;
+  border: 1px solid #e0e0e0 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+  padding: 4px !important;
+  min-width: 160px !important;
+  z-index: 1000 !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  transition: all 0.2s ease !important;
+}
+
+.copy-button-menu.show {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Options du menu */
+.copy-button-option {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 8px 12px !important;
+  border: none !important;
+  background: none !important;
+  color: #333 !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  border-radius: 6px !important;
+  transition: all 0.15s ease !important;
+  width: 100% !important;
+  text-align: left !important;
+}
+
+.copy-button-option:hover {
+  background: #f5f5f5 !important;
+  color: var(--cb-accent) !important;
+}
+
+.copy-button-option-icon {
+  opacity: 0.7 !important;
+  font-size: 12px !important;
+}
+
+/* Toast de notification */
+.copy-button-toast {
+  position: fixed !important;
+  bottom: 24px !important;
+  left: 50% !important;
+  transform: translateX(-50%) translateY(100px) !important;
+  background: rgba(0,0,0,0.8) !important;
+  color: white !important;
+  padding: 12px 24px !important;
+  border-radius: 24px !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
+  z-index: 10000 !important;
+  opacity: 0 !important;
+  transition: all 0.3s ease !important;
+  pointer-events: none !important;
+}
+
+.copy-button-toast.show {
+  transform: translateX(-50%) translateY(0) !important;
+  opacity: 1 !important;
+}
+
+/* Animation d'onde */
+@keyframes ripple {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+.copy-button-main::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: 50% !important;
+  background: white !important;
+  opacity: 0 !important;
+  transform: translate(-50%, -50%) scale(0) !important;
+  pointer-events: none !important;
+}
+
+.copy-button-main.ripple::after {
+  animation: ripple 0.6s ease-out !important;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .copy-button-container {
+    padding: 12px !important;
+    gap: 12px !important;
+  }
+  
+  .copy-button-main {
+    padding: 8px 16px !important;
+    font-size: 13px !important;
+  }
+  
+  .copy-button-label {
+    font-size: 13px !important;
+  }
+  
+  .copy-button-arrow {
+    font-size: 18px !important;
+  }
+  
+  .copy-button-menu {
+    min-width: 140px !important;
+  }
+}
+      `;
+      
+      container.appendChild(styleEl);
+
+      // Flèche indicatrice
+      const arrowEl = document.createElement('span');
+      arrowEl.className = 'copy-button-arrow';
+      arrowEl.textContent = '⬆';
+
+      // Label descriptif
+      const labelEl = document.createElement('span');
+      labelEl.className = 'copy-button-label';
+      labelEl.textContent = 'Texte disponible pour copie :';
 
       // Wrapper
       const wrapper = document.createElement('div');
@@ -330,6 +481,10 @@ container.appendChild(wrapper);
       // Assemblage
       wrapper.appendChild(mainButton);
       wrapper.appendChild(menu);
+      
+      // Ajouter tous les éléments au container
+      container.appendChild(arrowEl);
+      container.appendChild(labelEl);
       container.appendChild(wrapper);
       
       // Ajout au DOM

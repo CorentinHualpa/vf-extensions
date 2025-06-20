@@ -203,7 +203,7 @@ export const DownloadReport = {
       };
 
       const formatLabels = {
-        html: 'HTML',  // Changé de "Ouvrir HTML" à "HTML"
+        html: 'HTML',
         pdf: 'PDF',
         md: 'Markdown'
       };
@@ -218,6 +218,55 @@ export const DownloadReport = {
         option.addEventListener('click', () => downloadReport(format));
         menu.appendChild(option);
       });
+
+      // Fonction pour convertir un tableau HTML en Markdown
+      const tableToMarkdown = (tableHtml) => {
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = tableHtml;
+        const table = tempDiv.querySelector('table');
+        
+        if (!table) return tableHtml;
+        
+        let markdown = '\n\n';
+        
+        // Caption
+        const caption = table.querySelector('caption');
+        if (caption) {
+          markdown += `**${caption.textContent.trim()}**\n\n`;
+        }
+        
+        // Headers
+        const headers = Array.from(table.querySelectorAll('thead th, tbody tr:first-child th')).map(th => th.textContent.trim());
+        if (headers.length === 0) {
+          // Si pas de headers, prendre la première ligne
+          const firstRow = table.querySelector('tr');
+          if (firstRow) {
+            headers.push(...Array.from(firstRow.querySelectorAll('td, th')).map(cell => cell.textContent.trim()));
+          }
+        }
+        
+        if (headers.length > 0) {
+          markdown += '| ' + headers.join(' | ') + ' |\n';
+          markdown += '| ' + headers.map(() => '---').join(' | ') + ' |\n';
+        }
+        
+        // Body
+        const rows = table.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+          const cells = Array.from(row.querySelectorAll('td'));
+          if (cells.length > 0) {
+            markdown += '| ' + cells.map(cell => cell.textContent.trim()).join(' | ') + ' |\n';
+          }
+        });
+        
+        // Footer
+        const footer = table.querySelector('tfoot');
+        if (footer) {
+          markdown += `\n*${footer.textContent.trim()}*\n`;
+        }
+        
+        return markdown + '\n';
+      };
 
       // Fonction pour générer le HTML ChatInnov
       const generateHTML = () => {
@@ -608,6 +657,12 @@ export const DownloadReport = {
         
         // Si c'est du HTML, on le convertit
         if (content.includes('<')) {
+          // D'abord, convertir les tableaux
+          content = content.replace(/<table[^>]*>.*?<\/table>/gis, (match) => {
+            return tableToMarkdown(match);
+          });
+          
+          // Puis le reste du HTML
           content = content
             .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n')
             .replace(/<h2[^>]*>.*?🔷.*?<\/span>\s*(.*?)<\/h2>/gi, '## 🔷 $1\n\n')
@@ -624,28 +679,67 @@ export const DownloadReport = {
             .replace(/<ul[^>]*>|<\/ul>/gi, '')
             .replace(/<ol[^>]*>|<\/ol>/gi, '')
             .replace(/<span[^>]*class="no-gradient"[^>]*>(.*?)<\/span>/gi, '$1')
-            .replace(/<table[^>]*>.*?<\/table>/gis, '[Tableau - voir version HTML]\n\n')
             .replace(/<div[^>]*style[^>]*>.*?<\/div>/gis, function(match) {
               const content = match.replace(/<[^>]+>/g, '');
               return `\n> ${content}\n\n`;
             })
             .replace(/<[^>]+>/g, '');
         } else {
-          // Si c'est du texte brut, on ajoute juste un formatage basique
-          content = content
-            .split('\n')
-            .map(line => {
+          // Si c'est du texte brut avec tableau format texte
+          // Détecter et formater les tableaux texte
+          const lines = content.split('\n');
+          let inTable = false;
+          let tableData = [];
+          let processedContent = [];
+          
+          lines.forEach((line, index) => {
+            // Détecter le début d'un tableau
+            if (line.includes('\t') && !inTable) {
+              inTable = true;
+              tableData = [];
+            }
+            
+            if (inTable) {
+              if (line.includes('\t')) {
+                tableData.push(line.split('\t').map(cell => cell.trim()));
+              } else if (line.trim() === '' || !line.includes('\t')) {
+                // Fin du tableau, le convertir en Markdown
+                if (tableData.length > 0) {
+                  // Headers
+                  processedContent.push('| ' + tableData[0].join(' | ') + ' |');
+                  processedContent.push('| ' + tableData[0].map(() => '---').join(' | ') + ' |');
+                  
+                  // Rows
+                  for (let i = 1; i < tableData.length; i++) {
+                    processedContent.push('| ' + tableData[i].join(' | ') + ' |');
+                  }
+                  processedContent.push('');
+                }
+                inTable = false;
+                if (line.trim() !== '') {
+                  processedContent.push(line);
+                }
+              }
+            } else {
+              // Formatage normal
               line = line.trim();
-              if (!line) return '';
-              
-              if (line.startsWith('🔷')) return `## ${line}\n`;
-              if (line.startsWith('🔹')) return `### ${line}\n`;
-              if (/^\d+\./.test(line) && line.length < 100) return `#### ${line}\n`;
-              if (line.startsWith('•') || line.startsWith('-')) return `- ${line.substring(1).trim()}`;
-              
-              return line;
-            })
-            .join('\n');
+              if (!line) {
+                processedContent.push('');
+              } else if (line.startsWith('🔷')) {
+                processedContent.push(`## ${line}\n`);
+              } else if (line.startsWith('🔹')) {
+                processedContent.push(`### ${line}\n`);
+              } else if (/^\d+\./.test(line) && line.length < 100) {
+                processedContent.push(`#### ${line}\n`);
+              } else if (line.startsWith('•') || line.startsWith('-')) {
+                processedContent.push(`- ${line.substring(1).trim()}`);
+              } else {
+                processedContent.push(line);
+              }
+            }
+          });
+          
+          content = processedContent.join('\n');
         }
         
         md += content;
@@ -654,7 +748,7 @@ export const DownloadReport = {
         return md;
       };
 
-      // Fonction pour générer le PDF
+      // Fonction pour générer le PDF - VERSION CORRIGÉE
       const generatePDF = async () => {
         // Charger jsPDF si nécessaire
         if (!window.jspdf) {
@@ -665,7 +759,14 @@ export const DownloadReport = {
         }
 
         const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
+        const doc = new jsPDF({
+          unit: 'mm',
+          format: 'a4',
+          orientation: 'portrait'
+        });
+        
+        // Ajouter une police qui supporte l'UTF-8
+        doc.setFont('helvetica');
         
         // Configuration
         let yPosition = 20;
@@ -673,6 +774,7 @@ export const DownloadReport = {
         const pageWidth = doc.internal.pageSize.width;
         const margin = 20;
         const lineHeight = 7;
+        const maxWidth = pageWidth - 2 * margin;
         
         // Header avec couleur violette
         doc.setFillColor(124, 58, 237); // #7c3aed
@@ -681,7 +783,7 @@ export const DownloadReport = {
         // Titre en blanc
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(18);
-        const titleLines = doc.splitTextToSize(config.marketTitle, pageWidth - 2 * margin);
+        const titleLines = doc.splitTextToSize(config.marketTitle, maxWidth);
         titleLines.forEach((line, index) => {
           doc.text(line, margin, 25 + (index * 8));
         });
@@ -697,7 +799,7 @@ export const DownloadReport = {
         // Tagline
         doc.setTextColor(124, 58, 237);
         doc.setFontSize(9);
-        const taglineLines = doc.splitTextToSize(config.presentation_text, pageWidth - 2 * margin);
+        const taglineLines = doc.splitTextToSize(config.presentation_text, maxWidth);
         taglineLines.forEach(line => {
           doc.text(line, margin, yPosition);
           yPosition += 5;
@@ -709,33 +811,143 @@ export const DownloadReport = {
         doc.setTextColor(0, 0, 0);
         doc.setFontSize(11);
         
-        // Convertir le contenu en texte
+        // Préparer le contenu en nettoyant le HTML et en préservant la structure
         let textContent = config.content;
         
-        // Si c'est du HTML, extraire le texte
+        // Si c'est du HTML, extraire le texte proprement
         if (textContent.includes('<')) {
+          // Créer un élément temporaire pour parser le HTML
           const tempDiv = document.createElement('div');
           tempDiv.innerHTML = textContent;
-          textContent = tempDiv.textContent || tempDiv.innerText || '';
+          
+          // Fonction récursive pour extraire le texte avec structure
+          const extractText = (element, result = []) => {
+            for (const node of element.childNodes) {
+              if (node.nodeType === Node.TEXT_NODE) {
+                const text = node.textContent.trim();
+                if (text) result.push(text);
+              } else if (node.nodeType === Node.ELEMENT_NODE) {
+                const tagName = node.tagName.toLowerCase();
+                
+                // Ajouter des marqueurs pour la structure
+                if (tagName === 'h2') {
+                  result.push('\n[H2] ' + node.textContent.trim() + '\n');
+                } else if (tagName === 'h3') {
+                  result.push('\n[H3] ' + node.textContent.trim() + '\n');
+                } else if (tagName === 'h4') {
+                  result.push('\n[H4] ' + node.textContent.trim() + '\n');
+                } else if (tagName === 'p') {
+                  result.push(node.textContent.trim() + '\n');
+                } else if (tagName === 'li') {
+                  result.push('• ' + node.textContent.trim() + '\n');
+                } else if (tagName === 'table') {
+                  result.push('\n[TABLEAU]\n');
+                  // Extraire le contenu du tableau
+                  const rows = node.querySelectorAll('tr');
+                  rows.forEach(row => {
+                    const cells = row.querySelectorAll('td, th');
+                    const rowText = Array.from(cells).map(cell => cell.textContent.trim()).join(' | ');
+                    result.push(rowText + '\n');
+                  });
+                  result.push('\n');
+                } else {
+                  extractText(node, result);
+                }
+              }
+            }
+            return result;
+          };
+          
+          const textArray = extractText(tempDiv);
+          textContent = textArray.join('');
         }
         
-        // Remplacer les emojis
+        // Nettoyer les caractères problématiques
         textContent = textContent
-          .replace(/🔷/g, '[◆]')
-          .replace(/🔹/g, '[◇]')
+          .replace(/[^\x00-\x7F\u00A0-\u00FF\u0100-\u017F\u0180-\u024F]/g, '') // Garder Latin étendu
+          .replace(/🔷/g, '[>]')
+          .replace(/🔹/g, '[•]')
           .replace(/📋/g, '[DOC]')
-          .replace(/✅/g, '[OK]');
+          .replace(/✅/g, '[OK]')
+          .replace(/•/g, '•')
+          .replace(/–/g, '-')
+          .replace(/—/g, '--')
+          .replace(/'/g, "'")
+          .replace(/'/g, "'")
+          .replace(/"/g, '"')
+          .replace(/"/g, '"');
         
-        const contentLines = doc.splitTextToSize(textContent, pageWidth - 2 * margin);
+        // Diviser le contenu en lignes et traiter
+        const lines = textContent.split('\n');
         
-        contentLines.forEach(line => {
-          if (yPosition > pageHeight - margin) {
-            doc.addPage();
-            yPosition = margin;
+        for (const line of lines) {
+          if (line.trim()) {
+            // Déterminer le style selon les marqueurs
+            if (line.startsWith('[H2]')) {
+              doc.setFontSize(14);
+              doc.setFont(undefined, 'bold');
+              const text = line.replace('[H2]', '').trim();
+              const textLines = doc.splitTextToSize(text, maxWidth);
+              textLines.forEach(textLine => {
+                if (yPosition > pageHeight - margin) {
+                  doc.addPage();
+                  yPosition = margin;
+                }
+                doc.text(textLine, margin, yPosition);
+                yPosition += lineHeight + 2;
+              });
+              doc.setFont(undefined, 'normal');
+              doc.setFontSize(11);
+              yPosition += 3;
+            } else if (line.startsWith('[H3]')) {
+              doc.setFontSize(12);
+              doc.setFont(undefined, 'bold');
+              const text = line.replace('[H3]', '').trim();
+              const textLines = doc.splitTextToSize(text, maxWidth);
+              textLines.forEach(textLine => {
+                if (yPosition > pageHeight - margin) {
+                  doc.addPage();
+                  yPosition = margin;
+                }
+                doc.text(textLine, margin, yPosition);
+                yPosition += lineHeight + 1;
+              });
+              doc.setFont(undefined, 'normal');
+              doc.setFontSize(11);
+              yPosition += 2;
+            } else if (line.startsWith('[H4]')) {
+              doc.setFont(undefined, 'bold');
+              const text = line.replace('[H4]', '').trim();
+              const textLines = doc.splitTextToSize(text, maxWidth);
+              textLines.forEach(textLine => {
+                if (yPosition > pageHeight - margin) {
+                  doc.addPage();
+                  yPosition = margin;
+                }
+                doc.text(textLine, margin, yPosition);
+                yPosition += lineHeight;
+              });
+              doc.setFont(undefined, 'normal');
+              yPosition += 2;
+            } else if (line.startsWith('[TABLEAU]')) {
+              doc.setFont(undefined, 'italic');
+              doc.text('[Voir tableau dans la version HTML]', margin, yPosition);
+              doc.setFont(undefined, 'normal');
+              yPosition += lineHeight;
+            } else {
+              // Texte normal
+              const textLines = doc.splitTextToSize(line, maxWidth);
+              textLines.forEach(textLine => {
+                if (yPosition > pageHeight - margin) {
+                  doc.addPage();
+                  yPosition = margin;
+                }
+                doc.text(textLine, margin, yPosition);
+                yPosition += lineHeight;
+              });
+            }
           }
-          doc.text(line, margin, yPosition);
-          yPosition += lineHeight;
-        });
+        }
         
         // Footer sur la dernière page
         doc.setFontSize(9);

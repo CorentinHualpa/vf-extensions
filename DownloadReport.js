@@ -1262,7 +1262,7 @@ export const DownloadReport = {
         htmlOption.className = 'action-menu-option';
         htmlOption.innerHTML = `
           <span class="action-menu-option-icon">🎨</span>
-          <span>Formaté</span>
+          <span>Formatted</span>
         `;
         htmlOption.title = 'Copy with formatting';
         

@@ -6,6 +6,7 @@
  *  ║  • Copie le contenu passé en paramètre                   ║
  *  ║  • Options : copie HTML ou texte brut                    ║
  *  ║  • Design subtil avec feedback visuel                    ║
+ *  ║  • Sans interaction avec Voiceflow                       ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 
@@ -345,22 +346,25 @@ export const CopyButton = {
           
           showToast(`${copiedIcon} ${format === 'html' ? 'Copié avec formatage' : 'Texte copié'}`);
           
-          // Analytics
-          if (window.voiceflow?.chat?.interact) {
-            window.voiceflow.chat.interact({
-              type: 'track',
-              payload: {
-                event: 'copy_button_click',
-                properties: {
-                  format: format,
-                  contentLength: textToCopy.length,
-                  instanceId: uniqueInstanceId
-                }
-              }
-            });
-          }
+          // Log simple sans interaction Voiceflow
+          console.log(`✅ CopyButton: Contenu copié (${format}) - ${textToCopy.length} caractères`);
           
-          console.log(`✅ Contenu copié (${format}):`, textToCopy);
+          // Stocker les stats localement si besoin (sans déclencher d'interaction)
+          if (window.copyButtonStats) {
+            window.copyButtonStats.push({
+              timestamp: new Date().toISOString(),
+              format: format,
+              length: textToCopy.length,
+              instanceId: uniqueInstanceId
+            });
+          } else {
+            window.copyButtonStats = [{
+              timestamp: new Date().toISOString(),
+              format: format,
+              length: textToCopy.length,
+              instanceId: uniqueInstanceId
+            }];
+          }
           
           // Réinitialiser après 2 secondes
           setTimeout(() => {
@@ -401,18 +405,24 @@ export const CopyButton = {
         }, 300);
       });
 
-      htmlOption.addEventListener('click', () => {
+      htmlOption.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         copyContent('html');
         menu.classList.remove('show');
       });
 
-      textOption.addEventListener('click', () => {
+      textOption.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         copyContent('text');
         menu.classList.remove('show');
       });
 
       // Clic direct sur le bouton = copie HTML par défaut
       mainButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         // Si le menu n'est pas visible, copier directement
         if (!menu.classList.contains('show')) {
           copyContent('html');
@@ -427,7 +437,7 @@ export const CopyButton = {
       // Ajout au DOM
       element.appendChild(container);
       
-      console.log(`✅ CopyButton prêt (ID: ${uniqueInstanceId}) - Contenu: ${content.substring(0, 50)}...`);
+      console.log(`✅ CopyButton prêt (ID: ${uniqueInstanceId})`);
       
       // Cleanup
       return () => {

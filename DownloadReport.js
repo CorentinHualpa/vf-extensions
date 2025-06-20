@@ -28,54 +28,60 @@ export const DownloadReport = {
         formats: ['html', 'pdf', 'md']
       };
 
-      // Parser le payload - CORRECTION IMPORTANTE ICI
+      // Parser le payload - VERSION CORRIGÉE
       let config = { ...defaultConfig };
       
       if (typeof trace.payload === 'string') {
         try {
-          // Nettoyer le string des espaces et retours à la ligne
+          // Nettoyer et parser le JSON même avec des retours à la ligne
           let cleanPayload = trace.payload.trim();
           
-          // Tentative de parsing JSON
-          if (cleanPayload.startsWith('{') && cleanPayload.includes('"content"')) {
-            // Extraire le JSON même s'il est mal formaté
-            const jsonMatch = cleanPayload.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-              const parsed = JSON.parse(jsonMatch[0]);
+          // Si ça ressemble à du JSON
+          if (cleanPayload.includes('"marketTitle"') || cleanPayload.includes('"content"')) {
+            // Essayer de parser directement
+            try {
+              const parsed = JSON.parse(cleanPayload);
               config = { ...defaultConfig, ...parsed };
+            } catch (e) {
+              // Si ça échoue, essayer de nettoyer les retours à la ligne dans le JSON
+              console.log('Tentative de nettoyage du JSON...');
               
-              // IMPORTANT : Nettoyer le contenu des retours à la ligne du JSON
-              if (config.content) {
-                config.content = config.content
-                  .replace(/\\n/g, '\n')  // Remplacer les \n littéraux
-                  .replace(/\n{3,}/g, '\n\n')  // Limiter les sauts de ligne multiples
-                  .trim();
+              // Méthode alternative : extraire les valeurs manuellement
+              const marketTitleMatch = cleanPayload.match(/"marketTitle"\s*:\s*"([^"]+)"/);
+              const fileNameMatch = cleanPayload.match(/"fileName"\s*:\s*"([^"]+)"/);
+              const urlLogoMatch = cleanPayload.match(/"url_logo"\s*:\s*"([^"]+)"/);
+              const presentationMatch = cleanPayload.match(/"presentation_text"\s*:\s*"([^"]+)"/);
+              
+              // Pour le content, prendre tout entre "content": " et ", "fileName"
+              const contentMatch = cleanPayload.match(/"content"\s*:\s*"([\s\S]*?)"\s*,\s*"fileName"/);
+              
+              if (marketTitleMatch) config.marketTitle = marketTitleMatch[1];
+              if (fileNameMatch) config.fileName = fileNameMatch[1];
+              if (urlLogoMatch) config.url_logo = urlLogoMatch[1];
+              if (presentationMatch) config.presentation_text = presentationMatch[1];
+              if (contentMatch) {
+                // Nettoyer le contenu extrait
+                config.content = contentMatch[1]
+                  .replace(/\\n/g, '\n')  // Convertir les \n en vrais retours à la ligne
+                  .replace(/\\"/g, '"')   // Convertir les \" en "
+                  .replace(/\\/g, '');    // Supprimer les \ restants
               }
             }
           } else {
-            // Si ce n'est pas du JSON, traiter comme du contenu direct
+            // Si ce n'est pas du JSON, c'est du contenu direct
             config.content = cleanPayload;
           }
-        } catch (e) {
-          console.error('Erreur de parsing JSON:', e);
-          // En cas d'erreur, essayer d'extraire le contenu différemment
-          const contentMatch = trace.payload.match(/"content":\s*"([^"]+)"/);
-          if (contentMatch) {
-            config.content = contentMatch[1]
-              .replace(/\\n/g, '\n')
-              .replace(/\n{3,}/g, '\n\n')
-              .trim();
-          } else {
-            config.content = trace.payload;
-          }
+        } catch (error) {
+          console.error('Erreur de parsing:', error);
+          config.content = trace.payload;
         }
       } else if (typeof trace.payload === 'object' && trace.payload !== null) {
         config = { ...defaultConfig, ...trace.payload };
       }
 
-      // Vérifier qu'on a bien du contenu
+      // Si pas de contenu, on abandonne
       if (!config.content || config.content.trim() === '') {
-        console.warn('DownloadReport: Aucun contenu trouvé dans le payload');
+        console.warn('DownloadReport: Aucun contenu fourni');
         return;
       }
 
@@ -158,11 +164,6 @@ export const DownloadReport = {
           background: #f0f0f0 !important;
         }
 
-        /* Séparateur entre options */
-        .download-report-option + .download-report-option {
-          border-top: 1px solid #f0f0f0 !important;
-        }
-
         /* État de génération */
         .download-report-main.generating {
           opacity: 0.6 !important;
@@ -194,7 +195,7 @@ export const DownloadReport = {
       const menu = document.createElement('div');
       menu.className = 'download-report-menu';
 
-      // Options de format avec labels simples
+      // Options de format
       const formatIcons = {
         html: '🌐',
         pdf: '📄',
@@ -218,21 +219,6 @@ export const DownloadReport = {
         menu.appendChild(option);
       });
 
-      // Fonction pour formater le contenu HTML
-      const formatContent = (content) => {
-        // Si le contenu ressemble à du texte brut avec des emojis, le convertir en HTML
-        if (!content.includes('<') && content.includes('🔷')) {
-          return content
-            .replace(/🔷\s*(.+?)(?=\n|$)/g, '<h2><span class="no-gradient">🔷</span> $1</h2>')
-            .replace(/🔹\s*(.+?)(?=\n|$)/g, '<h3><span class="no-gradient">🔹</span> $1</h3>')
-            .replace(/\n\n/g, '</p><p>')
-            .replace(/^/, '<p>')
-            .replace(/$/, '</p>')
-            .replace(/<p><\/p>/g, '');
-        }
-        return content;
-      };
-
       // Fonction pour générer le HTML ChatInnov
       const generateHTML = () => {
         const date = new Date();
@@ -246,8 +232,46 @@ export const DownloadReport = {
           minute: '2-digit'
         });
         
-        // Formater le contenu si nécessaire
-        const formattedContent = formatContent(config.content);
+        // Convertir le contenu texte en HTML si nécessaire
+        let htmlContent = config.content;
+        
+        // Si le contenu n'a pas de balises HTML, on le convertit
+        if (!htmlContent.includes('<')) {
+          htmlContent = htmlContent
+            .split('\n')
+            .map(line => {
+              line = line.trim();
+              if (!line) return '';
+              
+              // Titres avec emojis
+              if (line.startsWith('🔷')) {
+                return `<h2><span class="no-gradient">🔷</span> ${line.substring(2).trim()}</h2>`;
+              }
+              if (line.startsWith('🔹')) {
+                return `<h3><span class="no-gradient">🔹</span> ${line.substring(2).trim()}</h3>`;
+              }
+              
+              // Sous-titres numérotés
+              if (/^\d+\./.test(line) && line.length < 100) {
+                return `<h4>${line}</h4>`;
+              }
+              
+              // Listes
+              if (line.startsWith('•') || line.startsWith('-')) {
+                return `<li>${line.substring(1).trim()}</li>`;
+              }
+              
+              // Liens
+              line = line.replace(/([A-Za-z]+)\s*–\s*([^(]+)\s*\(([^)]+)\)/g, 
+                '<a href="$3" target="_blank">$1 – $2</a>');
+              
+              // Paragraphes normaux
+              return `<p>${line}</p>`;
+            })
+            .join('\n')
+            .replace(/<li>/g, '<ul><li>')
+            .replace(/<\/li>\n(?!<li>)/g, '</li></ul>\n');
+        }
         
         const html = `<!DOCTYPE html>
 <html lang="fr">
@@ -347,7 +371,7 @@ export const DownloadReport = {
       padding: 0 40px;
     }
     
-    /* Styles pour le contenu HTML préservé de Voiceflow */
+    /* Styles pour le contenu */
     .main-content h2 {
       color: #1a1a1a;
       font-size: 28px;
@@ -399,7 +423,7 @@ export const DownloadReport = {
       border-bottom-color: #7c3aed;
     }
     
-    /* Préserver les styles des encadrés Voiceflow */
+    /* Encadrés spéciaux */
     .main-content div[style*="border: 2px solid"] {
       border-radius: 8px !important;
       margin: 24px 0 !important;
@@ -408,7 +432,7 @@ export const DownloadReport = {
       border-color: #7c3aed !important;
     }
     
-    /* Tables ChatInnov style */
+    /* Tables */
     .main-content table {
       width: 100%;
       border-collapse: collapse;
@@ -555,7 +579,7 @@ export const DownloadReport = {
   
   <!-- Contenu principal -->
   <main class="main-content">
-    ${formattedContent}
+    ${htmlContent}
   </main>
   
   <!-- Footer -->
@@ -569,10 +593,159 @@ export const DownloadReport = {
         return html;
       };
 
-      // Les autres fonctions restent identiques...
-      // (generateMarkdown, generatePDF, downloadReport, etc.)
+      // Fonction pour générer le Markdown
+      const generateMarkdown = () => {
+        const date = new Date();
+        const dateStr = date.toLocaleDateString('fr-FR') + ' à ' + date.toLocaleTimeString('fr-FR');
+        
+        let md = `# ${config.marketTitle}\n\n`;
+        md += `> ${config.presentation_text}\n\n`;
+        md += `**Date de génération :** ${dateStr}\n\n`;
+        md += `---\n\n`;
+        
+        // Convertir le contenu en Markdown
+        let content = config.content;
+        
+        // Si c'est du HTML, on le convertit
+        if (content.includes('<')) {
+          content = content
+            .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n')
+            .replace(/<h2[^>]*>.*?🔷.*?<\/span>\s*(.*?)<\/h2>/gi, '## 🔷 $1\n\n')
+            .replace(/<h3[^>]*>.*?🔹.*?<\/span>\s*(.*?)<\/h3>/gi, '### 🔹 $1\n\n')
+            .replace(/<h4[^>]*>(.*?)<\/h4>/gi, '#### $1\n\n')
+            .replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**')
+            .replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**')
+            .replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*')
+            .replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*')
+            .replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)')
+            .replace(/<br[^>]*>/gi, '\n')
+            .replace(/<p[^>]*>(.*?)<\/p>/gi, '$1\n\n')
+            .replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1\n')
+            .replace(/<ul[^>]*>|<\/ul>/gi, '')
+            .replace(/<ol[^>]*>|<\/ol>/gi, '')
+            .replace(/<span[^>]*class="no-gradient"[^>]*>(.*?)<\/span>/gi, '$1')
+            .replace(/<table[^>]*>.*?<\/table>/gis, '[Tableau - voir version HTML]\n\n')
+            .replace(/<div[^>]*style[^>]*>.*?<\/div>/gis, function(match) {
+              const content = match.replace(/<[^>]+>/g, '');
+              return `\n> ${content}\n\n`;
+            })
+            .replace(/<[^>]+>/g, '');
+        } else {
+          // Si c'est du texte brut, on ajoute juste un formatage basique
+          content = content
+            .split('\n')
+            .map(line => {
+              line = line.trim();
+              if (!line) return '';
+              
+              if (line.startsWith('🔷')) return `## ${line}\n`;
+              if (line.startsWith('🔹')) return `### ${line}\n`;
+              if (/^\d+\./.test(line) && line.length < 100) return `#### ${line}\n`;
+              if (line.startsWith('•') || line.startsWith('-')) return `- ${line.substring(1).trim()}`;
+              
+              return line;
+            })
+            .join('\n');
+        }
+        
+        md += content;
+        md += `\n\n---\n\n*Rapport généré par ChatInnov*`;
+        
+        return md;
+      };
 
-      // Je mets juste la partie downloadReport modifiée pour la notification
+      // Fonction pour générer le PDF
+      const generatePDF = async () => {
+        // Charger jsPDF si nécessaire
+        if (!window.jspdf) {
+          const script = document.createElement('script');
+          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+          document.head.appendChild(script);
+          await new Promise(resolve => script.onload = resolve);
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        // Configuration
+        let yPosition = 20;
+        const pageHeight = doc.internal.pageSize.height;
+        const pageWidth = doc.internal.pageSize.width;
+        const margin = 20;
+        const lineHeight = 7;
+        
+        // Header avec couleur violette
+        doc.setFillColor(124, 58, 237); // #7c3aed
+        doc.rect(0, 0, pageWidth, 50, 'F');
+        
+        // Titre en blanc
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(18);
+        const titleLines = doc.splitTextToSize(config.marketTitle, pageWidth - 2 * margin);
+        titleLines.forEach((line, index) => {
+          doc.text(line, margin, 25 + (index * 8));
+        });
+        
+        // Date
+        doc.setFontSize(10);
+        const date = new Date();
+        const dateStr = date.toLocaleDateString('fr-FR') + ' à ' + date.toLocaleTimeString('fr-FR');
+        doc.text(dateStr, margin, 42);
+        
+        yPosition = 65;
+        
+        // Tagline
+        doc.setTextColor(124, 58, 237);
+        doc.setFontSize(9);
+        const taglineLines = doc.splitTextToSize(config.presentation_text, pageWidth - 2 * margin);
+        taglineLines.forEach(line => {
+          doc.text(line, margin, yPosition);
+          yPosition += 5;
+        });
+        
+        yPosition += 10;
+        
+        // Contenu principal
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(11);
+        
+        // Convertir le contenu en texte
+        let textContent = config.content;
+        
+        // Si c'est du HTML, extraire le texte
+        if (textContent.includes('<')) {
+          const tempDiv = document.createElement('div');
+          tempDiv.innerHTML = textContent;
+          textContent = tempDiv.textContent || tempDiv.innerText || '';
+        }
+        
+        // Remplacer les emojis
+        textContent = textContent
+          .replace(/🔷/g, '[◆]')
+          .replace(/🔹/g, '[◇]')
+          .replace(/📋/g, '[DOC]')
+          .replace(/✅/g, '[OK]');
+        
+        const contentLines = doc.splitTextToSize(textContent, pageWidth - 2 * margin);
+        
+        contentLines.forEach(line => {
+          if (yPosition > pageHeight - margin) {
+            doc.addPage();
+            yPosition = margin;
+          }
+          doc.text(line, margin, yPosition);
+          yPosition += lineHeight;
+        });
+        
+        // Footer sur la dernière page
+        doc.setFontSize(9);
+        doc.setTextColor(150);
+        doc.text('© ChatInnov - Rapport généré automatiquement', pageWidth / 2, pageHeight - 10, { align: 'center' });
+        
+        return doc;
+      };
+
+      // Fonction de téléchargement
       const downloadReport = async (format) => {
         mainButton.classList.add('generating');
         mainButton.querySelector('.download-report-icon').textContent = '⏳';
@@ -584,12 +757,13 @@ export const DownloadReport = {
           
           switch(format) {
             case 'html':
+              // Ouvrir dans le navigateur
               const htmlContent = generateHTML();
               const htmlBlob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
               const htmlUrl = URL.createObjectURL(htmlBlob);
               
               // Ouvrir dans un nouvel onglet
-              const newWindow = window.open(htmlUrl, '_blank');
+              window.open(htmlUrl, '_blank');
               
               // Libérer l'URL après un délai
               setTimeout(() => {
@@ -599,11 +773,19 @@ export const DownloadReport = {
               break;
               
             case 'md':
-              // Code pour Markdown...
+              const mdContent = generateMarkdown();
+              const mdBlob = new Blob([mdContent], { type: 'text/markdown;charset=utf-8' });
+              const mdUrl = URL.createObjectURL(mdBlob);
+              const mdLink = document.createElement('a');
+              mdLink.href = mdUrl;
+              mdLink.download = `${fileName}.md`;
+              mdLink.click();
+              URL.revokeObjectURL(mdUrl);
               break;
               
             case 'pdf':
-              // Code pour PDF...
+              const pdf = await generatePDF();
+              pdf.save(`${fileName}.pdf`);
               break;
           }
           
@@ -612,14 +794,13 @@ export const DownloadReport = {
           if (existingToast) {
             const successMessage = format === 'html' 
               ? 'Rapport ouvert dans un nouvel onglet' 
-              : `${formatLabels[format]} téléchargé`;
+              : `${formatLabels[format]} téléchargé avec succès`;
             existingToast.textContent = successMessage;
             existingToast.classList.add('show');
             setTimeout(() => existingToast.classList.remove('show'), 1500);
           }
           
-          console.log(`✅ Rapport ${format.toUpperCase()} généré`);
-          console.log('Content preview:', config.content.substring(0, 100) + '...');
+          console.log(`✅ Rapport ${format.toUpperCase()} généré : ${fileName}`);
           
         } catch (error) {
           console.error('❌ Erreur de génération:', error);
@@ -629,5 +810,46 @@ export const DownloadReport = {
         }
       };
 
-      // Reste du code identique...
-      // (événements, assemblage, etc.)
+      // Gestion des événements
+      let menuVisible = false;
+      
+      mainButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        if (!menuVisible) {
+          menu.classList.add('show');
+          menuVisible = true;
+        } else {
+          menu.classList.remove('show');
+          menuVisible = false;
+        }
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!wrapper.contains(e.target) && menuVisible) {
+          menu.classList.remove('show');
+          menuVisible = false;
+        }
+      });
+
+      // Assemblage
+      wrapper.appendChild(mainButton);
+      wrapper.appendChild(menu);
+      container.appendChild(wrapper);
+      element.appendChild(container);
+      
+      console.log('✅ DownloadReport ChatInnov prêt');
+      console.log('Config finale:', {
+        marketTitle: config.marketTitle,
+        contentLength: config.content.length,
+        contentPreview: config.content.substring(0, 100) + '...'
+      });
+      
+    } catch (error) {
+      console.error('❌ DownloadReport Error:', error);
+    }
+  }
+};
+
+export default DownloadReport;

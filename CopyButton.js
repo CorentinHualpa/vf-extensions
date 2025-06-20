@@ -2,10 +2,10 @@
  *  ╔═══════════════════════════════════════════════════════════╗
  *  ║  CopyButton – Voiceflow Response Extension                ║
  *  ║                                                           ║
- *  ║  • Bouton de copie avec design amélioré                  ║
- *  ║  • Indicateur visuel de connexion au texte               ║
- *  ║  • Options : copie HTML ou texte brut                    ║
- *  ║  • Design visible avec feedback visuel                   ║
+ *  ║  • Design minimaliste style ChatGPT/Claude               ║
+ *  ║  • Bouton discret avec icône uniquement                  ║
+ *  ║  • Options compactes : Brut / Formaté                    ║
+ *  ║  • Sans cadre ni fond coloré                             ║
  *  ║  • Sans interaction avec Voiceflow                       ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
@@ -34,13 +34,9 @@ export const CopyButton = {
       
       // Configuration avec valeurs par défaut
       const {
-        buttonText = 'Copier le texte',
-        copiedText = 'Copié !',
-        accentColor = '#7E57C2',
-        showIcon = true,
+        accentColor = '#666666',
         iconText = '📋',
         copiedIcon = '✅',
-        position = 'center', // left, center, right
         instanceId = null
       } = config;
 
@@ -81,50 +77,18 @@ export const CopyButton = {
   --cb-accent-b: ${accentRgb.b};
 }
 
-/* Container principal avec fond subtil */
+/* Container principal ultra-minimaliste */
 .copy-button-container {
-  width: 100% !important;
-  margin: 0.25rem 0 1rem 0 !important;
-  padding: 16px !important;
-  background: linear-gradient(135deg, 
-    rgba(var(--cb-accent-r), var(--cb-accent-g), var(--cb-accent-b), 0.08),
-    rgba(var(--cb-accent-r), var(--cb-accent-g), var(--cb-accent-b), 0.03)) !important;
-  border-radius: 12px !important;
-  border: 1px dashed rgba(var(--cb-accent-r), var(--cb-accent-g), var(--cb-accent-b), 0.3) !important;
+  width: auto !important;
+  margin: -0.75rem 0 0.5rem 0 !important; /* Marge négative pour coller au texte */
+  padding: 0 !important;
   display: flex !important;
-  justify-content: center !important;
+  justify-content: flex-end !important;
   align-items: center !important;
-  gap: 16px !important;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
   position: relative !important;
-  transition: all 0.3s ease !important;
-}
-
-.copy-button-container:hover {
-  background: linear-gradient(135deg, 
-    rgba(var(--cb-accent-r), var(--cb-accent-g), var(--cb-accent-b), 0.12),
-    rgba(var(--cb-accent-r), var(--cb-accent-g), var(--cb-accent-b), 0.05)) !important;
-  border-style: solid !important;
-}
-
-/* Flèche indicatrice */
-.copy-button-arrow {
-  color: var(--cb-accent) !important;
-  font-size: 20px !important;
-  opacity: 0.5 !important;
-  animation: pointUp 2s ease-in-out infinite !important;
-}
-
-@keyframes pointUp {
-  0%, 100% { transform: translateY(0); opacity: 0.5; }
-  50% { transform: translateY(-5px); opacity: 0.8; }
-}
-
-/* Label descriptif */
-.copy-button-label {
-  font-size: 14px !important;
-  color: #555 !important;
-  font-weight: 500 !important;
+  background: none !important;
+  border: none !important;
 }
 
 /* Wrapper pour l'alignement */
@@ -132,80 +96,63 @@ export const CopyButton = {
   position: relative !important;
   display: inline-flex !important;
   align-items: center !important;
-  gap: 8px !important;
 }
 
-/* Bouton principal plus visible */
+/* Bouton principal - Style icône uniquement */
 .copy-button-main {
-  background: var(--cb-accent) !important;
-  color: white !important;
-  border: none !important;
-  padding: 10px 24px !important;
-  border-radius: 24px !important;
-  font-size: 14px !important;
-  font-weight: 600 !important;
+  background: transparent !important;
+  color: var(--cb-accent) !important;
+  border: 1px solid transparent !important;
+  padding: 4px 8px !important;
+  border-radius: 6px !important;
+  font-size: 16px !important;
   cursor: pointer !important;
   display: inline-flex !important;
   align-items: center !important;
-  gap: 8px !important;
+  justify-content: center !important;
   transition: all 0.2s ease !important;
-  white-space: nowrap !important;
   position: relative !important;
-  overflow: hidden !important;
-  box-shadow: 0 4px 12px rgba(var(--cb-accent-r), var(--cb-accent-g), var(--cb-accent-b), 0.3) !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.5px !important;
+  min-width: 32px !important;
+  height: 32px !important;
 }
 
 .copy-button-main:hover {
-  transform: translateY(-2px) scale(1.05) !important;
-  box-shadow: 0 6px 20px rgba(var(--cb-accent-r), var(--cb-accent-g), var(--cb-accent-b), 0.4) !important;
-}
-
-.copy-button-main:active {
-  transform: translateY(0) !important;
-  box-shadow: none !important;
+  background: rgba(0, 0, 0, 0.05) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
 }
 
 /* État copié */
 .copy-button-main.copied {
-  background: #4CAF50 !important;
-  color: white !important;
-  animation: successPulse 0.6s ease !important;
-}
-
-@keyframes successPulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.08); }
+  color: #4CAF50 !important;
 }
 
 /* Icône */
 .copy-button-icon {
   font-size: 16px !important;
   line-height: 1 !important;
+  opacity: 0.7 !important;
   transition: all 0.2s ease !important;
 }
 
 .copy-button-main:hover .copy-button-icon {
-  transform: scale(1.2) rotate(10deg) !important;
+  opacity: 1 !important;
 }
 
-/* Menu déroulant pour les options */
+/* Menu déroulant compact */
 .copy-button-menu {
   position: absolute !important;
-  top: calc(100% + 4px) !important;
-  left: 50% !important;
-  transform: translateX(-50%) !important;
+  top: calc(100% + 2px) !important;
+  right: 0 !important;
   background: white !important;
   border: 1px solid #e0e0e0 !important;
-  border-radius: 8px !important;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
-  padding: 4px !important;
-  min-width: 160px !important;
+  border-radius: 6px !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+  padding: 2px !important;
+  min-width: auto !important;
   z-index: 1000 !important;
   opacity: 0 !important;
   visibility: hidden !important;
-  transition: all 0.2s ease !important;
+  transition: all 0.15s ease !important;
 }
 
 .copy-button-menu.show {
@@ -213,154 +160,125 @@ export const CopyButton = {
   visibility: visible !important;
 }
 
-/* Options du menu */
+/* Options du menu - Style compact */
 .copy-button-option {
   display: flex !important;
   align-items: center !important;
-  gap: 8px !important;
-  padding: 8px 12px !important;
+  gap: 6px !important;
+  padding: 6px 12px !important;
   border: none !important;
   background: none !important;
   color: #333 !important;
-  font-size: 13px !important;
+  font-size: 12px !important;
   cursor: pointer !important;
-  border-radius: 6px !important;
-  transition: all 0.15s ease !important;
+  border-radius: 4px !important;
+  transition: all 0.1s ease !important;
   width: 100% !important;
   text-align: left !important;
+  white-space: nowrap !important;
 }
 
 .copy-button-option:hover {
-  background: #f5f5f5 !important;
-  color: var(--cb-accent) !important;
+  background: #f0f0f0 !important;
 }
 
 .copy-button-option-icon {
-  opacity: 0.7 !important;
-  font-size: 12px !important;
+  opacity: 0.8 !important;
+  font-size: 14px !important;
 }
 
-/* Toast de notification */
+/* Séparateur entre options */
+.copy-button-option + .copy-button-option {
+  border-top: 1px solid #f0f0f0 !important;
+}
+
+/* Toast de notification minimaliste */
 .copy-button-toast {
   position: fixed !important;
-  bottom: 24px !important;
-  left: 50% !important;
-  transform: translateX(-50%) translateY(100px) !important;
+  bottom: 20px !important;
+  right: 20px !important;
   background: rgba(0,0,0,0.8) !important;
   color: white !important;
-  padding: 12px 24px !important;
-  border-radius: 24px !important;
-  font-size: 14px !important;
-  font-weight: 500 !important;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
+  padding: 8px 16px !important;
+  border-radius: 6px !important;
+  font-size: 13px !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2) !important;
   z-index: 10000 !important;
   opacity: 0 !important;
-  transition: all 0.3s ease !important;
+  transform: translateY(10px) !important;
+  transition: all 0.2s ease !important;
   pointer-events: none !important;
 }
 
 .copy-button-toast.show {
-  transform: translateX(-50%) translateY(0) !important;
   opacity: 1 !important;
+  transform: translateY(0) !important;
 }
 
-/* Animation d'onde */
-@keyframes ripple {
-  0% {
-    transform: scale(0);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(4);
-    opacity: 0;
-  }
+/* Masquer le background gris du message Voiceflow */
+.vfrc-message--extension-CopyButton {
+  background: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
-.copy-button-main::after {
-  content: '' !important;
-  position: absolute !important;
-  top: 50% !important;
-  left: 50% !important;
-  width: 20px !important;
-  height: 20px !important;
-  border-radius: 50% !important;
-  background: white !important;
-  opacity: 0 !important;
-  transform: translate(-50%, -50%) scale(0) !important;
-  pointer-events: none !important;
+/* Animation subtile */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-.copy-button-main.ripple::after {
-  animation: ripple 0.6s ease-out !important;
+.copy-button-main {
+  animation: fadeIn 0.3s ease-out !important;
 }
 
 /* Responsive */
 @media (max-width: 480px) {
-  .copy-button-container {
-    padding: 12px !important;
-    gap: 12px !important;
-  }
-  
   .copy-button-main {
-    padding: 8px 16px !important;
-    font-size: 13px !important;
+    padding: 6px !important;
+    min-width: 28px !important;
+    height: 28px !important;
   }
   
-  .copy-button-label {
-    font-size: 13px !important;
-  }
-  
-  .copy-button-arrow {
-    font-size: 18px !important;
-  }
-  
-  .copy-button-menu {
-    min-width: 140px !important;
+  .copy-button-icon {
+    font-size: 14px !important;
   }
 }
       `;
       
       container.appendChild(styleEl);
 
-      // Flèche indicatrice
-      const arrowEl = document.createElement('span');
-      arrowEl.className = 'copy-button-arrow';
-      arrowEl.textContent = '⬆';
-
-      // Label descriptif
-      const labelEl = document.createElement('span');
-      labelEl.className = 'copy-button-label';
-      labelEl.textContent = 'Texte disponible pour copie :';
-
       // Wrapper
       const wrapper = document.createElement('div');
       wrapper.className = 'copy-button-wrapper';
 
-      // Bouton principal
+      // Bouton principal (icône uniquement)
       const mainButton = document.createElement('button');
       mainButton.className = 'copy-button-main';
-      mainButton.innerHTML = `
-        ${showIcon ? `<span class="copy-button-icon">${iconText}</span>` : ''}
-        <span class="copy-button-text">${buttonText}</span>
-      `;
+      mainButton.innerHTML = `<span class="copy-button-icon">${iconText}</span>`;
+      mainButton.title = 'Copier';
 
-      // Menu des options
+      // Menu des options compact
       const menu = document.createElement('div');
       menu.className = 'copy-button-menu';
       
       const htmlOption = document.createElement('button');
       htmlOption.className = 'copy-button-option';
       htmlOption.innerHTML = `
-        <span class="copy-button-option-icon">📄</span>
-        <span>Avec formatage</span>
+        <span class="copy-button-option-icon">🎨</span>
+        <span>Formaté</span>
       `;
+      htmlOption.title = 'Copier avec la mise en forme';
       
       const textOption = document.createElement('button');
       textOption.className = 'copy-button-option';
       textOption.innerHTML = `
         <span class="copy-button-option-icon">📝</span>
-        <span>Texte brut</span>
+        <span>Brut</span>
       `;
+      textOption.title = 'Copier le texte brut';
       
       menu.appendChild(htmlOption);
       menu.appendChild(textOption);
@@ -386,47 +304,24 @@ export const CopyButton = {
           
           await navigator.clipboard.writeText(textToCopy);
           
-          // Feedback visuel
-          mainButton.classList.add('copied', 'ripple');
-          mainButton.innerHTML = `
-            ${showIcon ? `<span class="copy-button-icon">${copiedIcon}</span>` : ''}
-            <span class="copy-button-text">${copiedText}</span>
-          `;
+          // Feedback visuel minimaliste
+          mainButton.classList.add('copied');
+          mainButton.querySelector('.copy-button-icon').textContent = copiedIcon;
           
-          showToast(`${copiedIcon} ${format === 'html' ? 'Copié avec formatage' : 'Texte copié'}`);
+          showToast(format === 'html' ? 'Copié avec formatage' : 'Texte copié');
           
           // Log simple sans interaction Voiceflow
           console.log(`✅ CopyButton: Contenu copié (${format}) - ${textToCopy.length} caractères`);
           
-          // Stocker les stats localement si besoin (sans déclencher d'interaction)
-          if (window.copyButtonStats) {
-            window.copyButtonStats.push({
-              timestamp: new Date().toISOString(),
-              format: format,
-              length: textToCopy.length,
-              instanceId: uniqueInstanceId
-            });
-          } else {
-            window.copyButtonStats = [{
-              timestamp: new Date().toISOString(),
-              format: format,
-              length: textToCopy.length,
-              instanceId: uniqueInstanceId
-            }];
-          }
-          
           // Réinitialiser après 2 secondes
           setTimeout(() => {
-            mainButton.classList.remove('copied', 'ripple');
-            mainButton.innerHTML = `
-              ${showIcon ? `<span class="copy-button-icon">${iconText}</span>` : ''}
-              <span class="copy-button-text">${buttonText}</span>
-            `;
+            mainButton.classList.remove('copied');
+            mainButton.querySelector('.copy-button-icon').textContent = iconText;
           }, 2000);
           
         } catch (err) {
           console.error('Erreur de copie:', err);
-          showToast('❌ Erreur lors de la copie');
+          showToast('Erreur lors de la copie');
         }
       };
 
@@ -437,21 +332,31 @@ export const CopyButton = {
         
         setTimeout(() => {
           toast.classList.remove('show');
-        }, 2000);
+        }, 1500);
       };
 
-      // Événements
-      let menuTimeout;
+      // Événements simplifiés
+      let menuVisible = false;
       
-      mainButton.addEventListener('mouseenter', () => {
-        clearTimeout(menuTimeout);
-        menu.classList.add('show');
+      mainButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        if (!menuVisible) {
+          menu.classList.add('show');
+          menuVisible = true;
+        } else {
+          menu.classList.remove('show');
+          menuVisible = false;
+        }
       });
 
-      wrapper.addEventListener('mouseleave', () => {
-        menuTimeout = setTimeout(() => {
+      // Fermer le menu en cliquant ailleurs
+      document.addEventListener('click', (e) => {
+        if (!wrapper.contains(e.target) && menuVisible) {
           menu.classList.remove('show');
-        }, 300);
+          menuVisible = false;
+        }
       });
 
       htmlOption.addEventListener('click', (e) => {
@@ -459,6 +364,7 @@ export const CopyButton = {
         e.stopPropagation();
         copyContent('html');
         menu.classList.remove('show');
+        menuVisible = false;
       });
 
       textOption.addEventListener('click', (e) => {
@@ -466,29 +372,28 @@ export const CopyButton = {
         e.stopPropagation();
         copyContent('text');
         menu.classList.remove('show');
-      });
-
-      // Clic direct sur le bouton = copie HTML par défaut
-      mainButton.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        // Si le menu n'est pas visible, copier directement
-        if (!menu.classList.contains('show')) {
-          copyContent('html');
-        }
+        menuVisible = false;
       });
 
       // Assemblage
       wrapper.appendChild(mainButton);
       wrapper.appendChild(menu);
-      
-      // Ajouter tous les éléments au container
-      container.appendChild(arrowEl);
-      container.appendChild(labelEl);
       container.appendChild(wrapper);
       
       // Ajout au DOM
       element.appendChild(container);
+      
+      // Forcer la suppression du style du conteneur parent
+      setTimeout(() => {
+        const parentMessage = element.closest('.vfrc-message');
+        if (parentMessage) {
+          parentMessage.style.background = 'transparent';
+          parentMessage.style.padding = '0';
+          parentMessage.style.margin = '0';
+          parentMessage.style.border = 'none';
+          parentMessage.style.boxShadow = 'none';
+        }
+      }, 0);
       
       console.log(`✅ CopyButton prêt (ID: ${uniqueInstanceId})`);
       

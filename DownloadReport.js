@@ -1385,16 +1385,16 @@ export const DownloadReport = {
         const htmlOption = document.createElement('button');
         htmlOption.className = 'action-menu-option';
         htmlOption.innerHTML = `
-          <span class="action-menu-option-icon">🎨</span>
-          <span>${t.copy.formatOption}</span>
+          <span class="action-menu-option-icon">📝</span>
+          <span>Texte</span>
         `;
         htmlOption.title = t.copy.formatTooltip;
         
         const textOption = document.createElement('button');
         textOption.className = 'action-menu-option';
         textOption.innerHTML = `
-          <span class="action-menu-option-icon">📝</span>
-          <span>${t.copy.rawOption}</span>
+          <span class="action-menu-option-icon">🏷️</span>
+          <span>HTML</span>
         `;
         textOption.title = t.copy.rawTooltip;
         

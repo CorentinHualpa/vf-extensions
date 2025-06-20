@@ -2,10 +2,10 @@
  *  ╔═══════════════════════════════════════════════════════════╗
  *  ║  DownloadReport – ChatInnov Edition Multilingue           ║
  *  ║                                                           ║
+ *  ║  • Support JSON et TEXT                                   ║
  *  ║  • Téléchargement : HTML / PDF / Markdown                ║
  *  ║  • Copie : Brut / Formaté                                ║
  *  ║  • Support FR/EN                                         ║
- *  ║  • Design minimaliste unifié                             ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 
@@ -83,9 +83,9 @@ export const DownloadReport = {
         copyIconText: '📋',
         copiedIcon: '✅',
         formats: ['html', 'pdf', 'md'],
-        showCopyButton: true,      // Par défaut true
-        showDownloadButton: true,  // Par défaut true
-        langue: 'fr'              // Par défaut français
+        showCopyButton: true,
+        showDownloadButton: true,
+        langue: 'fr'
       };
 
       // Parser le payload
@@ -95,18 +95,20 @@ export const DownloadReport = {
         try {
           let cleanPayload = trace.payload.trim();
           
-          if (cleanPayload.includes('"marketTitle"') || cleanPayload.includes('"content"')) {
+          // Si c'est du JSON (commence par {)
+          if (cleanPayload.startsWith('{')) {
             try {
               const parsed = JSON.parse(cleanPayload);
               config = { ...defaultConfig, ...parsed };
             } catch (e) {
               console.log('Tentative de nettoyage du JSON...');
               
+              // Parsing manuel en cas d'échec
               const marketTitleMatch = cleanPayload.match(/"marketTitle"\s*:\s*"([^"]+)"/);
               const fileNameMatch = cleanPayload.match(/"fileName"\s*:\s*"([^"]+)"/);
               const urlLogoMatch = cleanPayload.match(/"url_logo"\s*:\s*"([^"]+)"/);
               const presentationMatch = cleanPayload.match(/"presentation_text"\s*:\s*"([^"]+)"/);
-              const contentMatch = cleanPayload.match(/"content"\s*:\s*"([\s\S]*?)"\s*,\s*"fileName"/);
+              const contentMatch = cleanPayload.match(/"content"\s*:\s*"([\s\S]*?)"\s*,\s*"[^"]+"\s*:/);
               const langueMatch = cleanPayload.match(/"langue"\s*:\s*"([^"]+)"/);
               
               if (marketTitleMatch) config.marketTitle = marketTitleMatch[1];
@@ -122,10 +124,54 @@ export const DownloadReport = {
               }
             }
           } else {
-            config.content = cleanPayload;
+            // MODE TEXT avec options
+            // Format attendu :
+            // Contenu HTML...
+            // ###OPTIONS###
+            // showCopyButton=true
+            // showDownloadButton=false
+            // langue=fr
+            // marketTitle=Mon titre
+            // fileName=mon_fichier
+            
+            const parts = cleanPayload.split('###OPTIONS###');
+            
+            // Le contenu est la première partie
+            config.content = parts[0].trim();
+            
+            // Parser les options si présentes
+            if (parts[1]) {
+              const optionsText = parts[1].trim();
+              const lines = optionsText.split('\n');
+              
+              lines.forEach(line => {
+                const trimmedLine = line.trim();
+                if (trimmedLine && trimmedLine.includes('=')) {
+                  const [key, ...valueParts] = trimmedLine.split('=');
+                  const value = valueParts.join('=').trim(); // Au cas où la valeur contient des =
+                  const cleanKey = key.trim();
+                  
+                  // Conversion des types
+                  if (value === 'true') {
+                    config[cleanKey] = true;
+                  } else if (value === 'false') {
+                    config[cleanKey] = false;
+                  } else if (cleanKey === 'formats' && value.includes(',')) {
+                    // Support pour formats multiples : formats=html,pdf,md
+                    config[cleanKey] = value.split(',').map(f => f.trim());
+                  } else {
+                    // Garder comme string
+                    config[cleanKey] = value;
+                  }
+                }
+              });
+            }
+            
+            console.log('Mode TEXT - Config finale:', config);
           }
         } catch (error) {
           console.error('Erreur de parsing:', error);
+          // En cas d'erreur totale, considérer tout comme contenu
           config.content = trace.payload;
         }
       } else if (typeof trace.payload === 'object' && trace.payload !== null) {
@@ -1493,7 +1539,6 @@ export const DownloadReport = {
                 break;
             }
             
-            // Message selon le format
             let successMessage = '';
             switch(format) {
               case 'html':

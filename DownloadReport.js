@@ -642,114 +642,117 @@ export const DownloadReport = {
         return html;
       };
 
-      // Fonction pour générer le Markdown
-      const generateMarkdown = () => {
-        const date = new Date();
-        const dateStr = date.toLocaleDateString('fr-FR') + ' à ' + date.toLocaleTimeString('fr-FR');
-        
-        let md = `# ${config.marketTitle}\n\n`;
-        md += `> ${config.presentation_text}\n\n`;
-        md += `**Date de génération :** ${dateStr}\n\n`;
-        md += `---\n\n`;
-        
-        // Convertir le contenu en Markdown
-        let content = config.content;
-        
-        // Si c'est du HTML, on le convertit
-        if (content.includes('<')) {
-          // D'abord, convertir les tableaux
-          content = content.replace(/<table[^>]*>.*?<\/table>/gis, (match) => {
-            return tableToMarkdown(match);
-          });
-          
-          // Puis le reste du HTML
-          content = content
-            .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n')
-            .replace(/<h2[^>]*>.*?🔷.*?<\/span>\s*(.*?)<\/h2>/gi, '## 🔷 $1\n\n')
-            .replace(/<h3[^>]*>.*?🔹.*?<\/span>\s*(.*?)<\/h3>/gi, '### 🔹 $1\n\n')
-            .replace(/<h4[^>]*>(.*?)<\/h4>/gi, '#### $1\n\n')
-            .replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**')
-            .replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**')
-            .replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*')
-            .replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*')
-            .replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)')
-            .replace(/<br[^>]*>/gi, '\n')
-            .replace(/<p[^>]*>(.*?)<\/p>/gi, '$1\n\n')
-            .replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1\n')
-            .replace(/<ul[^>]*>|<\/ul>/gi, '')
-            .replace(/<ol[^>]*>|<\/ol>/gi, '')
-            .replace(/<span[^>]*class="no-gradient"[^>]*>(.*?)<\/span>/gi, '$1')
-            .replace(/<div[^>]*style[^>]*>.*?<\/div>/gis, function(match) {
-              const content = match.replace(/<[^>]+>/g, '');
-              return `\n> ${content}\n\n`;
-            })
-            .replace(/<[^>]+>/g, '');
-        } else {
-          // Si c'est du texte brut avec tableau format texte
-          // Détecter et formater les tableaux texte
-          const lines = content.split('\n');
-          let inTable = false;
-          let tableData = [];
-          let processedContent = [];
-          
-          lines.forEach((line, index) => {
-            // Détecter le début d'un tableau
-            if (line.includes('\t') && !inTable) {
-              inTable = true;
-              tableData = [];
-            }
+// Fonction pour générer le Markdown - VERSION CORRIGÉE POUR LES LIENS
+const generateMarkdown = () => {
+  const date = new Date();
+  const dateStr = date.toLocaleDateString('fr-FR') + ' à ' + date.toLocaleTimeString('fr-FR');
+  
+  let md = `# ${config.marketTitle}\n\n`;
+  md += `> ${config.presentation_text}\n\n`;
+  md += `**Date de génération :** ${dateStr}\n\n`;
+  md += `---\n\n`;
+  
+  // Convertir le contenu en Markdown
+  let content = config.content;
+  
+  // Si c'est du HTML, on le convertit
+  if (content.includes('<')) {
+    // D'abord, convertir les tableaux
+    content = content.replace(/<table[^>]*>.*?<\/table>/gis, (match) => {
+      return tableToMarkdown(match);
+    });
+    
+    // Puis le reste du HTML
+    content = content
+      .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n')
+      .replace(/<h2[^>]*>.*?🔷.*?<\/span>\s*(.*?)<\/h2>/gi, '## 🔷 $1\n\n')
+      .replace(/<h3[^>]*>.*?🔹.*?<\/span>\s*(.*?)<\/h3>/gi, '### 🔹 $1\n\n')
+      .replace(/<h4[^>]*>(.*?)<\/h4>/gi, '#### $1\n\n')
+      .replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**')
+      .replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**')
+      .replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*')
+      .replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*')
+      // MODIFICATION : Afficher les liens en texte complet
+      .replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, (match, url, text) => {
+        return `${text} (${url})`;
+      })
+      .replace(/<br[^>]*>/gi, '\n')
+      .replace(/<p[^>]*>(.*?)<\/p>/gi, '$1\n\n')
+      .replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1\n')
+      .replace(/<ul[^>]*>|<\/ul>/gi, '')
+      .replace(/<ol[^>]*>|<\/ol>/gi, '')
+      .replace(/<span[^>]*class="no-gradient"[^>]*>(.*?)<\/span>/gi, '$1')
+      .replace(/<div[^>]*style[^>]*>.*?<\/div>/gis, function(match) {
+        const content = match.replace(/<[^>]+>/g, '');
+        return `\n> ${content}\n\n`;
+      })
+      .replace(/<[^>]+>/g, '');
+  } else {
+    // Si c'est du texte brut avec tableau format texte
+    const lines = content.split('\n');
+    let inTable = false;
+    let tableData = [];
+    let processedContent = [];
+    
+    lines.forEach((line, index) => {
+      // Détecter le début d'un tableau
+      if (line.includes('\t') && !inTable) {
+        inTable = true;
+        tableData = [];
+      }
+      
+      if (inTable) {
+        if (line.includes('\t')) {
+          tableData.push(line.split('\t').map(cell => cell.trim()));
+        } else if (line.trim() === '' || !line.includes('\t')) {
+          // Fin du tableau, le convertir en Markdown
+          if (tableData.length > 0) {
+            // Headers
+            processedContent.push('| ' + tableData[0].join(' | ') + ' |');
+            processedContent.push('| ' + tableData[0].map(() => '---').join(' | ') + ' |');
             
-            if (inTable) {
-              if (line.includes('\t')) {
-                tableData.push(line.split('\t').map(cell => cell.trim()));
-              } else if (line.trim() === '' || !line.includes('\t')) {
-                // Fin du tableau, le convertir en Markdown
-                if (tableData.length > 0) {
-                  // Headers
-                  processedContent.push('| ' + tableData[0].join(' | ') + ' |');
-                  processedContent.push('| ' + tableData[0].map(() => '---').join(' | ') + ' |');
-                  
-                  // Rows
-                  for (let i = 1; i < tableData.length; i++) {
-                    processedContent.push('| ' + tableData[i].join(' | ') + ' |');
-                  }
-                  processedContent.push('');
-                }
-                inTable = false;
-                if (line.trim() !== '') {
-                  processedContent.push(line);
-                }
-              }
-            } else {
-              // Formatage normal
-              line = line.trim();
-              if (!line) {
-                processedContent.push('');
-              } else if (line.startsWith('🔷')) {
-                processedContent.push(`## ${line}\n`);
-              } else if (line.startsWith('🔹')) {
-                processedContent.push(`### ${line}\n`);
-              } else if (/^\d+\./.test(line) && line.length < 100) {
-                processedContent.push(`#### ${line}\n`);
-              } else if (line.startsWith('•') || line.startsWith('-')) {
-                processedContent.push(`- ${line.substring(1).trim()}`);
-              } else {
-                processedContent.push(line);
-              }
+            // Rows
+            for (let i = 1; i < tableData.length; i++) {
+              processedContent.push('| ' + tableData[i].join(' | ') + ' |');
             }
-          });
-          
-          content = processedContent.join('\n');
+            processedContent.push('');
+          }
+          inTable = false;
+          if (line.trim() !== '') {
+            processedContent.push(line);
+          }
         }
-        
-        md += content;
-        md += `\n\n---\n\n*Rapport généré par ChatInnov*`;
-        
-        return md;
-      };
+      } else {
+        // Formatage normal
+        line = line.trim();
+        if (!line) {
+          processedContent.push('');
+        } else if (line.startsWith('🔷')) {
+          processedContent.push(`## ${line}\n`);
+        } else if (line.startsWith('🔹')) {
+          processedContent.push(`### ${line}\n`);
+        } else if (/^\d+\./.test(line) && line.length < 100) {
+          processedContent.push(`#### ${line}\n`);
+        } else if (line.startsWith('•') || line.startsWith('-')) {
+          processedContent.push(`- ${line.substring(1).trim()}`);
+        } else {
+          // MODIFICATION : Détecter et formater les liens dans le texte brut
+          line = line.replace(/([A-Za-z]+)\s*–\s*([^(]+)\s*\(([^)]+)\)/g, '$1 – $2 ($3)');
+          processedContent.push(line);
+        }
+      }
+    });
+    
+    content = processedContent.join('\n');
+  }
+  
+  md += content;
+  md += `\n\n---\n\n*Rapport généré par ChatInnov*`;
+  
+  return md;
+};
 
-      // Fonction pour générer le PDF - VERSION CORRIGÉE
-// Fonction pour générer le PDF - VERSION CORRIGÉE AVEC TABLEAUX
+// Fonction pour générer le PDF avec hyperliens - VERSION CORRIGÉE
 const generatePDF = async () => {
   // Charger jsPDF si nécessaire
   if (!window.jspdf) {
@@ -776,6 +779,9 @@ const generatePDF = async () => {
   const margin = 20;
   const lineHeight = 7;
   const maxWidth = pageWidth - 2 * margin;
+  
+  // Pour stocker les liens
+  const links = [];
   
   // Header avec couleur violette
   doc.setFillColor(124, 58, 237); // #7c3aed
@@ -838,20 +844,49 @@ const generatePDF = async () => {
           } else if (tagName === 'h4') {
             result.push('\n[H4] ' + node.textContent.trim() + '\n');
           } else if (tagName === 'p') {
-            result.push(node.textContent.trim() + '\n');
+            // Extraire le texte en préservant les liens
+            const pContent = [];
+            for (const child of node.childNodes) {
+              if (child.nodeType === Node.TEXT_NODE) {
+                pContent.push(child.textContent);
+              } else if (child.tagName && child.tagName.toLowerCase() === 'a') {
+                const href = child.getAttribute('href');
+                const linkText = child.textContent;
+                pContent.push(`[LINK:${linkText}|${href}]`);
+              } else {
+                pContent.push(child.textContent || '');
+              }
+            }
+            result.push(pContent.join('') + '\n');
           } else if (tagName === 'li') {
-            result.push('• ' + node.textContent.trim() + '\n');
+            // Même traitement pour les listes
+            const liContent = [];
+            for (const child of node.childNodes) {
+              if (child.nodeType === Node.TEXT_NODE) {
+                liContent.push(child.textContent);
+              } else if (child.tagName && child.tagName.toLowerCase() === 'a') {
+                const href = child.getAttribute('href');
+                const linkText = child.textContent;
+                liContent.push(`[LINK:${linkText}|${href}]`);
+              } else {
+                liContent.push(child.textContent || '');
+              }
+            }
+            result.push('• ' + liContent.join('') + '\n');
+          } else if (tagName === 'a') {
+            // Lien isolé
+            const href = node.getAttribute('href');
+            const linkText = node.textContent;
+            result.push(`[LINK:${linkText}|${href}]`);
           } else if (tagName === 'table') {
-            // NOUVEAU : Extraire le contenu du tableau de manière structurée
+            // Traitement des tableaux (comme avant)
             result.push('\n[TABLE_START]\n');
             
-            // Caption
             const caption = node.querySelector('caption');
             if (caption) {
               result.push('[CAPTION] ' + caption.textContent.trim() + '\n');
             }
             
-            // Headers
             const headers = node.querySelectorAll('thead th, tbody tr:first-child th');
             if (headers.length > 0) {
               result.push('[HEADERS] ');
@@ -862,7 +897,6 @@ const generatePDF = async () => {
               result.push('\n');
             }
             
-            // Body rows
             const rows = node.querySelectorAll('tbody tr');
             rows.forEach(row => {
               const cells = row.querySelectorAll('td');
@@ -876,7 +910,6 @@ const generatePDF = async () => {
               }
             });
             
-            // Footer
             const footer = node.querySelector('tfoot');
             if (footer) {
               result.push('[FOOTER] ' + footer.textContent.trim() + '\n');
@@ -893,77 +926,23 @@ const generatePDF = async () => {
     
     const textArray = extractText(tempDiv);
     textContent = textArray.join('');
-  } else if (!textContent.includes('[TABLE_START]')) {
-    // Si c'est du texte brut avec des tableaux format tabulé
-    const lines = textContent.split('\n');
-    let processedLines = [];
-    let inTable = false;
-    let tableBuffer = [];
-    
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      
-      // Détecter les lignes de tableau (contiennent des | ou des tabs)
-      if ((line.includes('\t') || line.includes('|')) && line.trim() !== '') {
-        if (!inTable) {
-          inTable = true;
-          processedLines.push('[TABLE_START]');
-          
-          // Chercher un titre de tableau dans les lignes précédentes
-          if (i > 0 && lines[i-1].trim() !== '' && !lines[i-1].includes('\t') && !lines[i-1].includes('|')) {
-            processedLines.push('[CAPTION] ' + lines[i-1].trim());
-          }
-        }
-        
-        // Traiter la ligne de tableau
-        const cells = line.split(/\t|\|/).map(cell => cell.trim()).filter(cell => cell);
-        if (cells.length > 0) {
-          // Première ligne = headers
-          if (tableBuffer.length === 0) {
-            processedLines.push('[HEADERS] ' + cells.join(' | '));
-          } else {
-            processedLines.push('[ROW] ' + cells.join(' | '));
-          }
-          tableBuffer.push(cells);
-        }
-      } else if (inTable) {
-        // Fin du tableau
-        if (line.includes('Source:')) {
-          processedLines.push('[FOOTER] ' + line.trim());
-        }
-        processedLines.push('[TABLE_END]');
-        inTable = false;
-        tableBuffer = [];
-        
-        if (line.trim() !== '' && !line.includes('Source:')) {
-          processedLines.push(line);
-        }
-      } else {
-        processedLines.push(line);
-      }
-    }
-    
-    if (inTable) {
-      processedLines.push('[TABLE_END]');
-    }
-    
-    textContent = processedLines.join('\n');
   }
   
   // Nettoyer les caractères problématiques
   textContent = textContent
-    .replace(/[^\x00-\x7F\u00A0-\u00FF\u0100-\u017F\u0180-\u024F]/g, '') // Garder Latin étendu
+    .replace(/[^\x00-\x7F\u00A0-\u00FF\u0100-\u017F\u0180-\u024F\[\]:|]/g, '') // Garder les marqueurs de liens
     .replace(/🔷/g, '[>]')
     .replace(/🔹/g, '[•]')
-    .replace(/📋/g, '[DOC]')
-    .replace(/✅/g, '[OK]')
     .replace(/•/g, '•')
     .replace(/–/g, '-')
-    .replace(/—/g, '--')
-    .replace(/'/g, "'")
-    .replace(/'/g, "'")
-    .replace(/"/g, '"')
-    .replace(/"/g, '"');
+    .replace(/—/g, '--');
+  
+  // Fonction pour ajouter un lien cliquable
+  const addLink = (text, url, x, y) => {
+    doc.setTextColor(124, 58, 237); // Couleur violette pour les liens
+    doc.textWithLink(text, x, y, { url: url });
+    doc.setTextColor(0, 0, 0); // Retour au noir
+  };
   
   // Diviser le contenu en lignes et traiter
   const lines = textContent.split('\n');
@@ -985,11 +964,10 @@ const generatePDF = async () => {
     } else if (line === '[TABLE_END]') {
       inTable = false;
       
-      // Dessiner le tableau
+      // Dessiner le tableau (comme avant)
       if (tableData.headers.length > 0 || tableData.rows.length > 0) {
         yPosition += 5;
         
-        // Caption
         if (tableData.caption) {
           doc.setFont(undefined, 'bold');
           doc.setFontSize(10);
@@ -1007,14 +985,12 @@ const generatePDF = async () => {
           yPosition += 2;
         }
         
-        // Calculer la largeur des colonnes
         const numCols = Math.max(tableData.headers.length, 
           ...tableData.rows.map(row => row.length));
         const colWidth = maxWidth / numCols;
         
-        // Headers avec fond violet clair
         if (tableData.headers.length > 0) {
-          doc.setFillColor(237, 233, 254); // Violet très clair
+          doc.setFillColor(237, 233, 254);
           doc.rect(margin, yPosition - 5, maxWidth, 8, 'F');
           doc.setFont(undefined, 'bold');
           doc.setFontSize(9);
@@ -1028,7 +1004,6 @@ const generatePDF = async () => {
           doc.setFont(undefined, 'normal');
         }
         
-        // Rows
         doc.setFontSize(9);
         tableData.rows.forEach((row, rowIndex) => {
           if (yPosition > pageHeight - margin - 10) {
@@ -1036,7 +1011,6 @@ const generatePDF = async () => {
             yPosition = margin;
           }
           
-          // Alternance de couleurs de fond
           if (rowIndex % 2 === 1) {
             doc.setFillColor(248, 249, 250);
             doc.rect(margin, yPosition - 4, maxWidth, 6, 'F');
@@ -1050,7 +1024,6 @@ const generatePDF = async () => {
           yPosition += 6;
         });
         
-        // Footer
         if (tableData.footer) {
           doc.setFontSize(8);
           doc.setFont(undefined, 'italic');
@@ -1134,16 +1107,84 @@ const generatePDF = async () => {
         doc.setFont(undefined, 'normal');
         yPosition += 2;
       } else {
-        // Texte normal
-        const textLines = doc.splitTextToSize(line, maxWidth);
-        textLines.forEach(textLine => {
+        // Texte normal avec gestion des liens
+        let currentX = margin;
+        
+        // Détecter et traiter les liens
+        const linkRegex = /\[LINK:([^|]+)\|([^\]]+)\]/g;
+        let lastIndex = 0;
+        let match;
+        
+        while ((match = linkRegex.exec(line)) !== null) {
+          // Texte avant le lien
+          const beforeText = line.substring(lastIndex, match.index);
+          if (beforeText) {
+            const beforeLines = doc.splitTextToSize(beforeText, maxWidth - (currentX - margin));
+            beforeLines.forEach((textLine, index) => {
+              if (yPosition > pageHeight - margin) {
+                doc.addPage();
+                yPosition = margin;
+                currentX = margin;
+              }
+              doc.text(textLine, currentX, yPosition);
+              if (index < beforeLines.length - 1) {
+                yPosition += lineHeight;
+                currentX = margin;
+              } else {
+                currentX += doc.getTextWidth(textLine);
+              }
+            });
+          }
+          
+          // Le lien lui-même
+          const linkText = match[1];
+          const linkUrl = match[2];
+          
           if (yPosition > pageHeight - margin) {
             doc.addPage();
             yPosition = margin;
+            currentX = margin;
           }
-          doc.text(textLine, margin, yPosition);
+          
+          // Ajouter le lien cliquable
+          addLink(linkText, linkUrl, currentX, yPosition);
+          currentX += doc.getTextWidth(linkText);
+          
+          lastIndex = match.index + match[0].length;
+        }
+        
+        // Texte après le dernier lien
+        const afterText = line.substring(lastIndex);
+        if (afterText) {
+          const afterLines = doc.splitTextToSize(afterText, maxWidth - (currentX - margin));
+          afterLines.forEach((textLine, index) => {
+            if (yPosition > pageHeight - margin) {
+              doc.addPage();
+              yPosition = margin;
+              currentX = margin;
+            }
+            doc.text(textLine, currentX, yPosition);
+            if (index < afterLines.length - 1 || index === afterLines.length - 1) {
+              yPosition += lineHeight;
+              currentX = margin;
+            }
+          });
+        } else if (line.includes('[LINK:')) {
           yPosition += lineHeight;
-        });
+        }
+        
+        // Si pas de liens, traiter normalement
+        if (!line.includes('[LINK:')) {
+          const textLines = doc.splitTextToSize(line, maxWidth);
+          textLines.forEach(textLine => {
+            if (yPosition > pageHeight - margin) {
+              doc.addPage();
+              yPosition = margin;
+            }
+            doc.text(textLine, margin, yPosition);
+            yPosition += lineHeight;
+          });
+        }
       }
     }
   }
@@ -1155,7 +1196,6 @@ const generatePDF = async () => {
   
   return doc;
 };
-
       // Fonction de téléchargement
       const downloadReport = async (format) => {
         mainButton.classList.add('generating');

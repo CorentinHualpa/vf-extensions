@@ -1253,7 +1253,7 @@ export const DownloadReport = {
         const copyButton = document.createElement('button');
         copyButton.className = 'action-button';
         copyButton.innerHTML = `<span class="action-button-icon">${config.copyIconText}</span>`;
-        copyButton.title = 'Copier';
+        copyButton.title = 'Copy';
 
         const copyMenu = document.createElement('div');
         copyMenu.className = 'action-menu';
@@ -1264,7 +1264,7 @@ export const DownloadReport = {
           <span class="action-menu-option-icon">🎨</span>
           <span>Formaté</span>
         `;
-        htmlOption.title = 'Copier avec la mise en forme';
+        htmlOption.title = 'Copy with formatting';
         
         const textOption = document.createElement('button');
         textOption.className = 'action-menu-option';
@@ -1272,7 +1272,7 @@ export const DownloadReport = {
           <span class="action-menu-option-icon">📝</span>
           <span>Brut</span>
         `;
-        textOption.title = 'Copier le texte brut';
+        textOption.title = 'Copy plain text';
         
         copyMenu.appendChild(htmlOption);
         copyMenu.appendChild(textOption);

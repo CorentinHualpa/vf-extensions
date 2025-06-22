@@ -253,18 +253,25 @@ export const DownloadReport = {
         /* Menu déroulant commun */
         .action-menu {
           position: absolute !important;
-          top: calc(100% + 2px) !important;
+          bottom: calc(100% + 2px) !important;
           right: 0 !important;
           background: white !important;
           border: 1px solid #e0e0e0 !important;
           border-radius: 6px !important;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+          box-shadow: 0 -2px 8px rgba(0,0,0,0.1) !important;
           padding: 2px !important;
           z-index: 1000 !important;
           opacity: 0 !important;
           visibility: hidden !important;
           transition: all 0.15s ease !important;
           min-width: auto !important;
+        }
+
+        /* Si le menu risque de sortir en haut de l'écran, le placer en bas */
+        .action-menu.menu-below {
+          bottom: auto !important;
+          top: calc(100% + 2px) !important;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
         }
 
         .action-menu.show {
@@ -1249,363 +1256,377 @@ export const DownloadReport = {
         return doc;
       };
 
-      // Fonction pour générer le DOCX
+      // Fonction pour générer le DOCX (corrigée)
       const generateDOCX = async () => {
-        // Charger la bibliothèque docx si nécessaire
-        if (!window.docx) {
-          const script = document.createElement('script');
-          script.src = 'https://unpkg.com/docx@7.8.0/build/index.js';
-          document.head.appendChild(script);
-          await new Promise(resolve => script.onload = resolve);
-        }
-
-        const { 
-          Document, 
-          Packer, 
-          Paragraph, 
-          TextRun, 
-          HeadingLevel,
-          Table,
-          TableRow,
-          TableCell,
-          ImageRun,
-          AlignmentType,
-          BorderStyle,
-          WidthType,
-          Header,
-          Footer,
-          PageNumber,
-          NumberFormat
-        } = window.docx;
-
-        const date = new Date();
-        const dateStr = date.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US') + 
-                       ' ' + t.report.at + ' ' + 
-                       date.toLocaleTimeString(lang === 'fr' ? 'fr-FR' : 'en-US');
-
-        // Créer le document
-        const doc = new Document({
-          sections: [{
-            properties: {
-              page: {
-                margin: {
-                  top: 1440,
-                  right: 1440,
-                  bottom: 1440,
-                  left: 1440
-                }
-              }
-            },
-            headers: {
-              default: new Header({
-                children: [
-                  new Paragraph({
-                    children: [
-                      new TextRun({
-                        text: config.presentation_text,
-                        size: 20,
-                        color: "7c3aed"
-                      })
-                    ],
-                    alignment: AlignmentType.RIGHT
-                  })
-                ]
-              })
-            },
-            footers: {
-              default: new Footer({
-                children: [
-                  new Paragraph({
-                    children: [
-                      new TextRun({
-                        text: t.report.generatedBy,
-                        size: 18,
-                        color: "666666"
-                      })
-                    ],
-                    alignment: AlignmentType.CENTER
-                  }),
-                  new Paragraph({
-                    children: [
-                      new TextRun({
-                        text: "Page ",
-                        size: 18
-                      }),
-                      new TextRun({
-                        children: [PageNumber.CURRENT],
-                        size: 18
-                      }),
-                      new TextRun({
-                        text: " / ",
-                        size: 18
-                      }),
-                      new TextRun({
-                        children: [PageNumber.TOTAL_PAGES],
-                        size: 18
-                      })
-                    ],
-                    alignment: AlignmentType.CENTER
-                  })
-                ]
-              })
-            },
-            children: []
-          }]
-        });
-
-        const children = [];
-
-        // Titre principal
-        children.push(
-          new Paragraph({
-            text: config.marketTitle,
-            heading: HeadingLevel.TITLE,
-            alignment: AlignmentType.CENTER
-          })
-        );
-
-        // Date
-        children.push(
-          new Paragraph({
-            children: [
-              new TextRun({
-                text: `${t.report.generationDate}: `,
-                bold: true
-              }),
-              new TextRun({
-                text: dateStr
-              })
-            ],
-            alignment: AlignmentType.CENTER,
-            spacing: { after: 400 }
-          })
-        );
-
-        // Parser le contenu HTML
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = config.content;
-
-        // Fonction pour traiter les noeuds
-        const processNodeForDocx = async (node) => {
-          if (node.nodeType === Node.TEXT_NODE) {
-            const text = node.textContent.trim();
-            if (text) {
-              return new TextRun({ text });
-            }
-            return null;
+        try {
+          // Charger la bibliothèque docx si nécessaire
+          if (!window.docx) {
+            const script = document.createElement('script');
+            script.src = 'https://unpkg.com/docx@8.5.0/build/index.js';
+            document.head.appendChild(script);
+            await new Promise((resolve, reject) => {
+              script.onload = resolve;
+              script.onerror = reject;
+            });
           }
 
-          if (node.nodeType === Node.ELEMENT_NODE) {
-            const tagName = node.tagName.toLowerCase();
+          // Vérifier que la bibliothèque est bien chargée
+          if (!window.docx) {
+            throw new Error('Impossible de charger la bibliothèque docx');
+          }
 
-            switch (tagName) {
-              case 'h2':
-                children.push(
-                  new Paragraph({
-                    text: node.textContent.trim(),
-                    heading: HeadingLevel.HEADING_1,
-                    spacing: { before: 400, after: 200 }
-                  })
-                );
-                break;
+          const { 
+            Document, 
+            Packer, 
+            Paragraph, 
+            TextRun, 
+            HeadingLevel,
+            Table,
+            TableRow,
+            TableCell,
+            ImageRun,
+            AlignmentType,
+            WidthType,
+            Header,
+            Footer,
+            PageNumber
+          } = window.docx;
 
-              case 'h3':
-                children.push(
-                  new Paragraph({
-                    text: node.textContent.trim(),
-                    heading: HeadingLevel.HEADING_2,
-                    spacing: { before: 300, after: 150 }
-                  })
-                );
-                break;
+          const date = new Date();
+          const dateStr = date.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US') + 
+                         ' ' + t.report.at + ' ' + 
+                         date.toLocaleTimeString(lang === 'fr' ? 'fr-FR' : 'en-US');
 
-              case 'h4':
-                children.push(
-                  new Paragraph({
-                    text: node.textContent.trim(),
-                    heading: HeadingLevel.HEADING_3,
-                    spacing: { before: 200, after: 100 }
-                  })
-                );
-                break;
+          // Tableau pour stocker les enfants du document
+          const children = [];
 
-              case 'p':
-                const runs = [];
-                for (const child of node.childNodes) {
-                  if (child.nodeType === Node.TEXT_NODE) {
-                    runs.push(new TextRun({ text: child.textContent }));
-                  } else if (child.tagName) {
-                    const childTag = child.tagName.toLowerCase();
-                    if (childTag === 'strong' || childTag === 'b') {
-                      runs.push(new TextRun({ text: child.textContent, bold: true }));
-                    } else if (childTag === 'em' || childTag === 'i') {
-                      runs.push(new TextRun({ text: child.textContent, italics: true }));
-                    } else if (childTag === 'a') {
-                      runs.push(new TextRun({
-                        text: child.textContent,
-                        color: "7c3aed",
-                        underline: {}
-                      }));
-                    } else {
-                      runs.push(new TextRun({ text: child.textContent }));
-                    }
-                  }
-                }
-                children.push(
-                  new Paragraph({
-                    children: runs,
-                    spacing: { after: 200 }
-                  })
-                );
-                break;
+          // Titre principal
+          children.push(
+            new Paragraph({
+              text: config.marketTitle,
+              heading: HeadingLevel.TITLE,
+              alignment: AlignmentType.CENTER
+            })
+          );
 
-              case 'ul':
-              case 'ol':
-                const listItems = node.querySelectorAll('li');
-                listItems.forEach((li, index) => {
+          // Date
+          children.push(
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: `${t.report.generationDate}: `,
+                  bold: true
+                }),
+                new TextRun({
+                  text: dateStr
+                })
+              ],
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 400 }
+            })
+          );
+
+          // Parser le contenu HTML
+          const tempDiv = document.createElement('div');
+          tempDiv.innerHTML = config.content;
+
+          // Fonction pour traiter les noeuds
+          const processNodeForDocx = async (node) => {
+            if (node.nodeType === Node.TEXT_NODE) {
+              const text = node.textContent.trim();
+              if (text) {
+                return new TextRun({ text });
+              }
+              return null;
+            }
+
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              const tagName = node.tagName.toLowerCase();
+
+              switch (tagName) {
+                case 'h2':
                   children.push(
                     new Paragraph({
-                      text: li.textContent.trim(),
-                      bullet: tagName === 'ul' ? { level: 0 } : undefined,
-                      numbering: tagName === 'ol' ? {
-                        reference: "default-numbering",
-                        level: 0
-                      } : undefined,
-                      spacing: { after: 100 }
+                      text: node.textContent.trim(),
+                      heading: HeadingLevel.HEADING_1,
+                      spacing: { before: 400, after: 200 }
                     })
                   );
-                });
-                children.push(new Paragraph({ text: "" })); // Espace après la liste
-                break;
+                  break;
 
-              case 'table':
-                const headers = Array.from(node.querySelectorAll('thead th, tbody tr:first-child th'));
-                const rows = Array.from(node.querySelectorAll('tbody tr'));
-                const tableRows = [];
-
-                // Caption
-                const caption = node.querySelector('caption');
-                if (caption) {
+                case 'h3':
                   children.push(
                     new Paragraph({
-                      text: caption.textContent.trim(),
-                      bold: true,
+                      text: node.textContent.trim(),
+                      heading: HeadingLevel.HEADING_2,
+                      spacing: { before: 300, after: 150 }
+                    })
+                  );
+                  break;
+
+                case 'h4':
+                  children.push(
+                    new Paragraph({
+                      text: node.textContent.trim(),
+                      heading: HeadingLevel.HEADING_3,
                       spacing: { before: 200, after: 100 }
                     })
                   );
-                }
+                  break;
 
-                // Headers
-                if (headers.length > 0) {
-                  tableRows.push(
-                    new TableRow({
-                      children: headers.map(header => 
-                        new TableCell({
-                          children: [new Paragraph({
-                            text: header.textContent.trim(),
-                            bold: true,
-                            alignment: AlignmentType.CENTER
-                          })],
-                          shading: {
-                            fill: "7c3aed",
-                            color: "ffffff"
-                          }
-                        })
-                      )
-                    })
-                  );
-                }
+                case 'p':
+                  const runs = [];
+                  for (const child of node.childNodes) {
+                    if (child.nodeType === Node.TEXT_NODE) {
+                      const text = child.textContent;
+                      if (text.trim()) {
+                        runs.push(new TextRun({ text }));
+                      }
+                    } else if (child.nodeType === Node.ELEMENT_NODE) {
+                      const childTag = child.tagName.toLowerCase();
+                      const childText = child.textContent;
+                      
+                      if (childTag === 'strong' || childTag === 'b') {
+                        runs.push(new TextRun({ text: childText, bold: true }));
+                      } else if (childTag === 'em' || childTag === 'i') {
+                        runs.push(new TextRun({ text: childText, italics: true }));
+                      } else if (childTag === 'a') {
+                        runs.push(new TextRun({
+                          text: childText,
+                          color: "7c3aed",
+                          underline: { type: 'single' }
+                        }));
+                      } else {
+                        runs.push(new TextRun({ text: childText }));
+                      }
+                    }
+                  }
+                  
+                  if (runs.length > 0) {
+                    children.push(
+                      new Paragraph({
+                        children: runs,
+                        spacing: { after: 200 }
+                      })
+                    );
+                  }
+                  break;
 
-                // Data rows
-                rows.forEach(row => {
-                  const cells = row.querySelectorAll('td');
-                  if (cells.length > 0) {
+                case 'ul':
+                case 'ol':
+                  const listItems = node.querySelectorAll('li');
+                  listItems.forEach((li, index) => {
+                    const bullet = tagName === 'ul' ? { level: 0 } : undefined;
+                    const numbering = tagName === 'ol' ? {
+                      reference: "default-numbering",
+                      level: 0
+                    } : undefined;
+                    
+                    children.push(
+                      new Paragraph({
+                        text: li.textContent.trim(),
+                        bullet: bullet,
+                        numbering: numbering,
+                        spacing: { after: 100 }
+                      })
+                    );
+                  });
+                  children.push(new Paragraph({ text: "" })); // Espace après la liste
+                  break;
+
+                case 'table':
+                  const headers = Array.from(node.querySelectorAll('thead th, tbody tr:first-child th'));
+                  const rows = Array.from(node.querySelectorAll('tbody tr'));
+                  const tableRows = [];
+
+                  // Caption
+                  const caption = node.querySelector('caption');
+                  if (caption) {
+                    children.push(
+                      new Paragraph({
+                        text: caption.textContent.trim(),
+                        bold: true,
+                        spacing: { before: 200, after: 100 }
+                      })
+                    );
+                  }
+
+                  // Headers
+                  if (headers.length > 0) {
                     tableRows.push(
                       new TableRow({
-                        children: Array.from(cells).map(cell => 
+                        children: headers.map(header => 
                           new TableCell({
                             children: [new Paragraph({
-                              text: cell.textContent.trim()
-                            })]
+                              text: header.textContent.trim(),
+                              bold: true,
+                              alignment: AlignmentType.CENTER
+                            })],
+                            shading: {
+                              fill: "7c3aed"
+                            }
                           })
                         )
                       })
                     );
                   }
-                });
 
-                if (tableRows.length > 0) {
-                  children.push(
-                    new Table({
-                      rows: tableRows,
-                      width: {
-                        size: 100,
-                        type: WidthType.PERCENTAGE
-                      }
-                    })
-                  );
-                  children.push(new Paragraph({ text: "" })); // Espace après le tableau
-                }
-                break;
-
-              case 'img':
-                // Pour les images, on peut les inclure si elles sont en base64
-                const imgSrc = node.src;
-                if (imgSrc) {
-                  try {
-                    const imgBase64 = await loadImageAsBase64(imgSrc);
-                    if (imgBase64) {
-                      // Extraire la partie base64 pure
-                      const base64Data = imgBase64.split(',')[1];
-                      
-                      children.push(
-                        new Paragraph({
-                          children: [
-                            new ImageRun({
-                              data: Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)),
-                              transformation: {
-                                width: 400,
-                                height: 300
-                              }
+                  // Data rows
+                  rows.forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    if (cells.length > 0) {
+                      tableRows.push(
+                        new TableRow({
+                          children: Array.from(cells).map(cell => 
+                            new TableCell({
+                              children: [new Paragraph({
+                                text: cell.textContent.trim()
+                              })]
                             })
-                          ],
-                          alignment: AlignmentType.CENTER,
-                          spacing: { before: 200, after: 200 }
+                          )
                         })
                       );
-
-                      // Légende
-                      if (node.alt) {
-                        children.push(
-                          new Paragraph({
-                            text: node.alt,
-                            italics: true,
-                            alignment: AlignmentType.CENTER,
-                            spacing: { after: 200 }
-                          })
-                        );
-                      }
                     }
-                  } catch (error) {
-                    console.error('Erreur lors du chargement de l\'image pour DOCX:', error);
+                  });
+
+                  if (tableRows.length > 0) {
+                    children.push(
+                      new Table({
+                        rows: tableRows,
+                        width: {
+                          size: 100,
+                          type: WidthType.PERCENTAGE
+                        }
+                      })
+                    );
+                    children.push(new Paragraph({ text: "" })); // Espace après le tableau
+                  }
+                  break;
+
+                case 'img':
+                  // Pour les images, on peut les inclure si elles sont en base64
+                  const imgSrc = node.src;
+                  if (imgSrc) {
+                    try {
+                      const imgBase64 = await loadImageAsBase64(imgSrc);
+                      if (imgBase64) {
+                        // Extraire la partie base64 pure
+                        const base64Data = imgBase64.split(',')[1];
+                        
+                        if (base64Data) {
+                          children.push(
+                            new Paragraph({
+                              children: [
+                                new ImageRun({
+                                  data: Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)),
+                                  transformation: {
+                                    width: 400,
+                                    height: 300
+                                  }
+                                })
+                              ],
+                              alignment: AlignmentType.CENTER,
+                              spacing: { before: 200, after: 200 }
+                            })
+                          );
+
+                          // Légende
+                          if (node.alt) {
+                            children.push(
+                              new Paragraph({
+                                text: node.alt,
+                                italics: true,
+                                alignment: AlignmentType.CENTER,
+                                spacing: { after: 200 }
+                              })
+                            );
+                          }
+                        }
+                      }
+                    } catch (error) {
+                      console.error('Erreur lors du chargement de l\'image pour DOCX:', error);
+                    }
+                  }
+                  break;
+              }
+            }
+          };
+
+          // Traiter tous les noeuds
+          for (const child of tempDiv.children) {
+            await processNodeForDocx(child);
+          }
+
+          // Créer le document avec les sections correctement définies
+          const doc = new Document({
+            sections: [{
+              properties: {
+                page: {
+                  margin: {
+                    top: 1440,
+                    right: 1440,
+                    bottom: 1440,
+                    left: 1440
                   }
                 }
-                break;
-            }
-          }
-        };
+              },
+              headers: {
+                default: new Header({
+                  children: [
+                    new Paragraph({
+                      children: [
+                        new TextRun({
+                          text: config.presentation_text,
+                          size: 20,
+                          color: "7c3aed"
+                        })
+                      ],
+                      alignment: AlignmentType.RIGHT
+                    })
+                  ]
+                })
+              },
+              footers: {
+                default: new Footer({
+                  children: [
+                    new Paragraph({
+                      children: [
+                        new TextRun({
+                          text: t.report.generatedBy,
+                          size: 18,
+                          color: "666666"
+                        })
+                      ],
+                      alignment: AlignmentType.CENTER
+                    })
+                  ]
+                })
+              },
+              children: children
+            }]
+          });
 
-        // Traiter tous les noeuds
-        for (const child of tempDiv.children) {
-          await processNodeForDocx(child);
+          // Générer le blob
+          const blob = await Packer.toBlob(doc);
+          return blob;
+          
+        } catch (error) {
+          console.error('Erreur détaillée dans generateDOCX:', error);
+          throw error;
         }
+      };
 
-        // Mettre à jour le document avec les enfants
-        doc.sections[0].children = children;
-
-        // Générer le blob
-        const blob = await Packer.toBlob(doc);
-        return blob;
+      // Fonction pour vérifier la position du menu
+      const checkMenuPosition = (menu, button) => {
+        const buttonRect = button.getBoundingClientRect();
+        const menuHeight = 150; // Hauteur estimée du menu
+        
+        // Si le menu risque de sortir en haut de l'écran
+        if (buttonRect.top < menuHeight) {
+          menu.classList.add('menu-below');
+        } else {
+          menu.classList.remove('menu-below');
+        }
       };
 
       // BOUTON COPIER
@@ -1616,7 +1637,7 @@ export const DownloadReport = {
         const copyButton = document.createElement('button');
         copyButton.className = 'action-button';
         copyButton.innerHTML = `<span class="action-button-icon">${config.copyIconText}</span>`;
-        copyButton.title = t.copy.buttonTitle; // Utilise maintenant "Copier texte" ou "Copy text"
+        copyButton.title = t.copy.buttonTitle;
 
         const copyMenu = document.createElement('div');
         copyMenu.className = 'action-menu';
@@ -1677,6 +1698,7 @@ export const DownloadReport = {
           e.stopPropagation();
           
           if (!copyMenuVisible) {
+            checkMenuPosition(copyMenu, copyButton);
             copyMenu.classList.add('show');
             copyMenuVisible = true;
             const downloadMenu = container.querySelector('.download-menu');
@@ -1828,6 +1850,7 @@ export const DownloadReport = {
           e.stopPropagation();
           
           if (!downloadMenuVisible) {
+            checkMenuPosition(downloadMenu, downloadButton);
             downloadMenu.classList.add('show');
             downloadMenuVisible = true;
             const copyMenu = container.querySelector('.action-menu:not(.download-menu)');

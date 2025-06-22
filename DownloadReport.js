@@ -948,7 +948,7 @@ export const DownloadReport = {
         return md;
       };
 
-      // Fonction pour générer le PDF (corrigée pour éviter les doublons)
+      // Fonction pour générer le PDF
       const generatePDF = async () => {
         if (!window.jspdf) {
           const script = document.createElement('script');
@@ -1256,364 +1256,140 @@ export const DownloadReport = {
         return doc;
       };
 
-      // Fonction pour générer le DOCX (corrigée)
+      // Fonction pour générer le DOCX (version simplifiée et corrigée)
       const generateDOCX = async () => {
         try {
-          // Charger la bibliothèque docx si nécessaire
-          if (!window.docx) {
-            const script = document.createElement('script');
-            script.src = 'https://unpkg.com/docx@8.5.0/build/index.js';
-            document.head.appendChild(script);
-            await new Promise((resolve, reject) => {
-              script.onload = resolve;
-              script.onerror = reject;
-            });
-          }
-
-          // Vérifier que la bibliothèque est bien chargée
-          if (!window.docx) {
-            throw new Error('Impossible de charger la bibliothèque docx');
-          }
-
-          const { 
-            Document, 
-            Packer, 
-            Paragraph, 
-            TextRun, 
-            HeadingLevel,
-            Table,
-            TableRow,
-            TableCell,
-            ImageRun,
-            AlignmentType,
-            WidthType,
-            Header,
-            Footer,
-            PageNumber
-          } = window.docx;
-
-          const date = new Date();
-          const dateStr = date.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US') + 
-                         ' ' + t.report.at + ' ' + 
-                         date.toLocaleTimeString(lang === 'fr' ? 'fr-FR' : 'en-US');
-
-          // Tableau pour stocker les enfants du document
-          const children = [];
-
-          // Titre principal
-          children.push(
-            new Paragraph({
-              text: config.marketTitle,
-              heading: HeadingLevel.TITLE,
-              alignment: AlignmentType.CENTER
-            })
-          );
-
-          // Date
-          children.push(
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: `${t.report.generationDate}: `,
-                  bold: true
-                }),
-                new TextRun({
-                  text: dateStr
-                })
-              ],
-              alignment: AlignmentType.CENTER,
-              spacing: { after: 400 }
-            })
-          );
-
-          // Parser le contenu HTML
-          const tempDiv = document.createElement('div');
-          tempDiv.innerHTML = config.content;
-
-          // Fonction pour traiter les noeuds
-          const processNodeForDocx = async (node) => {
-            if (node.nodeType === Node.TEXT_NODE) {
-              const text = node.textContent.trim();
-              if (text) {
-                return new TextRun({ text });
-              }
-              return null;
-            }
-
-            if (node.nodeType === Node.ELEMENT_NODE) {
-              const tagName = node.tagName.toLowerCase();
-
-              switch (tagName) {
-                case 'h2':
-                  children.push(
-                    new Paragraph({
-                      text: node.textContent.trim(),
-                      heading: HeadingLevel.HEADING_1,
-                      spacing: { before: 400, after: 200 }
-                    })
-                  );
-                  break;
-
-                case 'h3':
-                  children.push(
-                    new Paragraph({
-                      text: node.textContent.trim(),
-                      heading: HeadingLevel.HEADING_2,
-                      spacing: { before: 300, after: 150 }
-                    })
-                  );
-                  break;
-
-                case 'h4':
-                  children.push(
-                    new Paragraph({
-                      text: node.textContent.trim(),
-                      heading: HeadingLevel.HEADING_3,
-                      spacing: { before: 200, after: 100 }
-                    })
-                  );
-                  break;
-
-                case 'p':
-                  const runs = [];
-                  for (const child of node.childNodes) {
-                    if (child.nodeType === Node.TEXT_NODE) {
-                      const text = child.textContent;
-                      if (text.trim()) {
-                        runs.push(new TextRun({ text }));
-                      }
-                    } else if (child.nodeType === Node.ELEMENT_NODE) {
-                      const childTag = child.tagName.toLowerCase();
-                      const childText = child.textContent;
-                      
-                      if (childTag === 'strong' || childTag === 'b') {
-                        runs.push(new TextRun({ text: childText, bold: true }));
-                      } else if (childTag === 'em' || childTag === 'i') {
-                        runs.push(new TextRun({ text: childText, italics: true }));
-                      } else if (childTag === 'a') {
-                        runs.push(new TextRun({
-                          text: childText,
-                          color: "7c3aed",
-                          underline: { type: 'single' }
-                        }));
-                      } else {
-                        runs.push(new TextRun({ text: childText }));
-                      }
-                    }
-                  }
-                  
-                  if (runs.length > 0) {
-                    children.push(
-                      new Paragraph({
-                        children: runs,
-                        spacing: { after: 200 }
-                      })
-                    );
-                  }
-                  break;
-
-                case 'ul':
-                case 'ol':
-                  const listItems = node.querySelectorAll('li');
-                  listItems.forEach((li, index) => {
-                    const bullet = tagName === 'ul' ? { level: 0 } : undefined;
-                    const numbering = tagName === 'ol' ? {
-                      reference: "default-numbering",
-                      level: 0
-                    } : undefined;
-                    
-                    children.push(
-                      new Paragraph({
-                        text: li.textContent.trim(),
-                        bullet: bullet,
-                        numbering: numbering,
-                        spacing: { after: 100 }
-                      })
-                    );
-                  });
-                  children.push(new Paragraph({ text: "" })); // Espace après la liste
-                  break;
-
-                case 'table':
-                  const headers = Array.from(node.querySelectorAll('thead th, tbody tr:first-child th'));
-                  const rows = Array.from(node.querySelectorAll('tbody tr'));
-                  const tableRows = [];
-
-                  // Caption
-                  const caption = node.querySelector('caption');
-                  if (caption) {
-                    children.push(
-                      new Paragraph({
-                        text: caption.textContent.trim(),
-                        bold: true,
-                        spacing: { before: 200, after: 100 }
-                      })
-                    );
-                  }
-
-                  // Headers
-                  if (headers.length > 0) {
-                    tableRows.push(
-                      new TableRow({
-                        children: headers.map(header => 
-                          new TableCell({
-                            children: [new Paragraph({
-                              text: header.textContent.trim(),
-                              bold: true,
-                              alignment: AlignmentType.CENTER
-                            })],
-                            shading: {
-                              fill: "7c3aed"
-                            }
-                          })
-                        )
-                      })
-                    );
-                  }
-
-                  // Data rows
-                  rows.forEach(row => {
-                    const cells = row.querySelectorAll('td');
-                    if (cells.length > 0) {
-                      tableRows.push(
-                        new TableRow({
-                          children: Array.from(cells).map(cell => 
-                            new TableCell({
-                              children: [new Paragraph({
-                                text: cell.textContent.trim()
-                              })]
-                            })
-                          )
-                        })
-                      );
-                    }
-                  });
-
-                  if (tableRows.length > 0) {
-                    children.push(
-                      new Table({
-                        rows: tableRows,
-                        width: {
-                          size: 100,
-                          type: WidthType.PERCENTAGE
-                        }
-                      })
-                    );
-                    children.push(new Paragraph({ text: "" })); // Espace après le tableau
-                  }
-                  break;
-
-                case 'img':
-                  // Pour les images, on peut les inclure si elles sont en base64
-                  const imgSrc = node.src;
-                  if (imgSrc) {
-                    try {
-                      const imgBase64 = await loadImageAsBase64(imgSrc);
-                      if (imgBase64) {
-                        // Extraire la partie base64 pure
-                        const base64Data = imgBase64.split(',')[1];
-                        
-                        if (base64Data) {
-                          children.push(
-                            new Paragraph({
-                              children: [
-                                new ImageRun({
-                                  data: Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)),
-                                  transformation: {
-                                    width: 400,
-                                    height: 300
-                                  }
-                                })
-                              ],
-                              alignment: AlignmentType.CENTER,
-                              spacing: { before: 200, after: 200 }
-                            })
-                          );
-
-                          // Légende
-                          if (node.alt) {
-                            children.push(
-                              new Paragraph({
-                                text: node.alt,
-                                italics: true,
-                                alignment: AlignmentType.CENTER,
-                                spacing: { after: 200 }
-                              })
-                            );
-                          }
-                        }
-                      }
-                    } catch (error) {
-                      console.error('Erreur lors du chargement de l\'image pour DOCX:', error);
-                    }
-                  }
-                  break;
-              }
-            }
-          };
-
-          // Traiter tous les noeuds
-          for (const child of tempDiv.children) {
-            await processNodeForDocx(child);
-          }
-
-          // Créer le document avec les sections correctement définies
-          const doc = new Document({
-            sections: [{
-              properties: {
-                page: {
-                  margin: {
-                    top: 1440,
-                    right: 1440,
-                    bottom: 1440,
-                    left: 1440
-                  }
-                }
-              },
-              headers: {
-                default: new Header({
-                  children: [
-                    new Paragraph({
-                      children: [
-                        new TextRun({
-                          text: config.presentation_text,
-                          size: 20,
-                          color: "7c3aed"
-                        })
-                      ],
-                      alignment: AlignmentType.RIGHT
-                    })
-                  ]
-                })
-              },
-              footers: {
-                default: new Footer({
-                  children: [
-                    new Paragraph({
-                      children: [
-                        new TextRun({
-                          text: t.report.generatedBy,
-                          size: 18,
-                          color: "666666"
-                        })
-                      ],
-                      alignment: AlignmentType.CENTER
-                    })
-                  ]
-                })
-              },
-              children: children
-            }]
-          });
-
-          // Générer le blob
-          const blob = await Packer.toBlob(doc);
+          // Utiliser une approche alternative plus simple pour DOCX
+          // Convertir le contenu en RTF et le sauvegarder comme .doc
+          const rtf = await generateRTF();
+          const blob = new Blob([rtf], { type: 'application/msword' });
           return blob;
-          
         } catch (error) {
-          console.error('Erreur détaillée dans generateDOCX:', error);
-          throw error;
+          console.error('Erreur dans generateDOCX:', error);
+          // Fallback : utiliser le HTML converti
+          const html = generateHTML();
+          const blob = new Blob([html], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+          return blob;
         }
+      };
+
+      // Nouvelle fonction pour générer du RTF (format compatible Word)
+      const generateRTF = async () => {
+        const date = new Date();
+        const dateStr = date.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US') + 
+                       ' ' + t.report.at + ' ' + 
+                       date.toLocaleTimeString(lang === 'fr' ? 'fr-FR' : 'en-US');
+
+        let rtf = '{\\rtf1\\ansi\\deff0 {\\fonttbl{\\f0 Times New Roman;}}';
+        rtf += '\\viewkind4\\uc1\\pard\\f0\\fs24';
+        
+        // Titre
+        rtf += '\\qc\\b\\fs36 ' + escapeRTF(config.marketTitle) + '\\b0\\fs24\\par\\par';
+        
+        // Date
+        rtf += '\\qc ' + escapeRTF(`${t.report.generationDate}: ${dateStr}`) + '\\par\\par';
+        
+        // Ligne de séparation
+        rtf += '\\pard\\qc\\emdash\\emdash\\emdash\\emdash\\emdash\\emdash\\emdash\\emdash\\emdash\\emdash\\par\\par';
+        
+        // Contenu principal
+        rtf += '\\pard\\ql\\fs22';
+        
+        // Parser le contenu
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = config.content;
+        
+        const processNodeRTF = (node) => {
+          if (node.nodeType === Node.TEXT_NODE) {
+            return escapeRTF(node.textContent);
+          }
+          
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            const tagName = node.tagName.toLowerCase();
+            let result = '';
+            
+            switch (tagName) {
+              case 'h2':
+                result = '\\par\\b\\fs28 ' + escapeRTF(node.textContent) + '\\b0\\fs22\\par\\par';
+                break;
+              case 'h3':
+                result = '\\par\\b\\fs26 ' + escapeRTF(node.textContent) + '\\b0\\fs22\\par\\par';
+                break;
+              case 'h4':
+                result = '\\par\\b\\fs24 ' + escapeRTF(node.textContent) + '\\b0\\fs22\\par\\par';
+                break;
+              case 'p':
+                result = escapeRTF(node.textContent) + '\\par\\par';
+                break;
+              case 'ul':
+              case 'ol':
+                const items = node.querySelectorAll('li');
+                items.forEach((li, index) => {
+                  const bullet = tagName === 'ul' ? '\\bullet ' : (index + 1) + '. ';
+                  result += bullet + escapeRTF(li.textContent) + '\\par';
+                });
+                result += '\\par';
+                break;
+              case 'strong':
+              case 'b':
+                result = '\\b ' + escapeRTF(node.textContent) + '\\b0 ';
+                break;
+              case 'em':
+              case 'i':
+                result = '\\i ' + escapeRTF(node.textContent) + '\\i0 ';
+                break;
+              default:
+                // Pour les autres éléments, traiter les enfants
+                for (const child of node.childNodes) {
+                  result += processNodeRTF(child);
+                }
+            }
+            
+            return result;
+          }
+          
+          return '';
+        };
+        
+        // Traiter tous les noeuds
+        for (const child of tempDiv.children) {
+          rtf += processNodeRTF(child);
+        }
+        
+        // Footer
+        rtf += '\\par\\par\\pard\\qc\\fs18\\i ' + escapeRTF(t.report.generatedBy) + '\\i0\\fs22\\par';
+        
+        rtf += '}';
+        
+        return rtf;
+      };
+
+      // Fonction helper pour échapper les caractères spéciaux RTF
+      const escapeRTF = (text) => {
+        return text
+          .replace(/\\/g, '\\\\')
+          .replace(/\{/g, '\\{')
+          .replace(/\}/g, '\\}')
+          .replace(/\n/g, '\\par ')
+          .replace(/[àáâãäå]/g, '\\\'{e0}')
+          .replace(/[èéêë]/g, '\\\'{e8}')
+          .replace(/[ìíîï]/g, '\\\'{ec}')
+          .replace(/[òóôõö]/g, '\\\'{f2}')
+          .replace(/[ùúûü]/g, '\\\'{f9}')
+          .replace(/[ÀÁÂÃÄÅ]/g, '\\\'{c0}')
+          .replace(/[ÈÉÊË]/g, '\\\'{c8}')
+          .replace(/[ÌÍÎÏ]/g, '\\\'{cc}')
+          .replace(/[ÒÓÔÕÖ]/g, '\\\'{d2}')
+          .replace(/[ÙÚÛÜ]/g, '\\\'{d9}')
+          .replace(/ç/g, '\\\'{e7}')
+          .replace(/Ç/g, '\\\'{c7}')
+          .replace(/€/g, '\\\'80')
+          .replace(/'/g, '\\\'92')
+          .replace(/"/g, '\\\'93')
+          .replace(/"/g, '\\\'94')
+          .replace(/–/g, '\\\'96')
+          .replace(/—/g, '\\\'97')
+          .replace(/…/g, '\\\'85');
       };
 
       // Fonction pour vérifier la position du menu
@@ -1773,6 +1549,7 @@ export const DownloadReport = {
           downloadButton.classList.add('generating');
           downloadButton.querySelector('.action-button-icon').textContent = '⏳';
           downloadMenu.classList.remove('show');
+          downloadMenuVisible = false;
           
           try {
             const date = new Date().toISOString().slice(0, 10);
@@ -1787,6 +1564,7 @@ export const DownloadReport = {
                 setTimeout(() => {
                   URL.revokeObjectURL(htmlUrl);
                 }, 1000);
+                showToast(t.download.toastHTML);
                 break;
                 
               case 'md':
@@ -1798,11 +1576,13 @@ export const DownloadReport = {
                 mdLink.download = `${fileName}.md`;
                 mdLink.click();
                 URL.revokeObjectURL(mdUrl);
+                showToast(t.download.toastMarkdown);
                 break;
                 
               case 'pdf':
                 const pdf = await generatePDF();
                 pdf.save(`${fileName}.pdf`);
+                showToast(t.download.toastPDF);
                 break;
                 
               case 'docx':
@@ -1810,29 +1590,12 @@ export const DownloadReport = {
                 const docxUrl = URL.createObjectURL(docxBlob);
                 const docxLink = document.createElement('a');
                 docxLink.href = docxUrl;
-                docxLink.download = `${fileName}.docx`;
+                docxLink.download = `${fileName}.doc`; // Utiliser .doc au lieu de .docx
                 docxLink.click();
                 URL.revokeObjectURL(docxUrl);
+                showToast(t.download.toastDOCX);
                 break;
             }
-            
-            let successMessage = '';
-            switch(format) {
-              case 'html':
-                successMessage = t.download.toastHTML;
-                break;
-              case 'pdf':
-                successMessage = t.download.toastPDF;
-                break;
-              case 'md':
-                successMessage = t.download.toastMarkdown;
-                break;
-              case 'docx':
-                successMessage = t.download.toastDOCX;
-                break;
-            }
-            
-            showToast(successMessage);
             
             console.log(`✅ Rapport ${format.toUpperCase()} généré : ${fileName}`);
             
@@ -1891,7 +1654,7 @@ export const DownloadReport = {
         }
       }, 0);
       
-      console.log('✅ DownloadReport multilingue prêt avec support DOCX');
+      console.log('✅ DownloadReport multilingue prêt avec support DOCX/RTF');
       
     } catch (error) {
       console.error('❌ DownloadReport Error:', error);

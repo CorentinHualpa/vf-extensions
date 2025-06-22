@@ -171,6 +171,42 @@ export const DownloadReport = {
         config = { ...defaultConfig, ...trace.payload };
       }
 
+      // Fonction pour nettoyer les caractères mal encodés
+      const cleanContent = (text) => {
+        return text
+          // Remplacer les caractères mal encodés
+          .replace(/ðŸ"·/g, '🔷')
+          .replace(/ðŸ"¹/g, '🔹')
+          .replace(/â€™/g, "'")
+          .replace(/â€"/g, "–")
+          .replace(/â€œ/g, '"')
+          .replace(/â€/g, '"')
+          .replace(/â€¦/g, '...')
+          .replace(/â€¢/g, '•')
+          .replace(/â€"/g, '—')
+          .replace(/Ã©/g, 'é')
+          .replace(/Ã¨/g, 'è')
+          .replace(/Ã /g, 'à')
+          .replace(/Ã§/g, 'ç')
+          .replace(/Ã¢/g, 'â')
+          .replace(/Ãª/g, 'ê')
+          .replace(/Ã®/g, 'î')
+          .replace(/Ã´/g, 'ô')
+          .replace(/Ã»/g, 'û')
+          .replace(/Ã‰/g, 'É')
+          .replace(/Ãˆ/g, 'È')
+          .replace(/Ã€/g, 'À')
+          .replace(/Ã‡/g, 'Ç')
+          .replace(/Ã‚/g, 'Â')
+          .replace(/ÃŠ/g, 'Ê')
+          .replace(/ÃŽ/g, 'Î')
+          .replace(/Ã"/g, 'Ô')
+          .replace(/Ã›/g, 'Û');
+      };
+
+      // Nettoyer le contenu
+      config.content = cleanContent(config.content);
+
       // Vérifier si on a du contenu
       if (!config.content || config.content.trim() === '') {
         console.warn('DownloadReport: Aucun contenu fourni');
@@ -1280,7 +1316,7 @@ export const DownloadReport = {
                        ' ' + t.report.at + ' ' + 
                        date.toLocaleTimeString(lang === 'fr' ? 'fr-FR' : 'en-US');
 
-        let rtf = '{\\rtf1\\ansi\\deff0 {\\fonttbl{\\f0 Times New Roman;}}';
+        let rtf = '{\\rtf1\\ansi\\ansicpg1252\\deff0 {\\fonttbl{\\f0 Times New Roman;}}';
         rtf += '\\viewkind4\\uc1\\pard\\f0\\fs24';
         
         // Titre
@@ -1330,6 +1366,37 @@ export const DownloadReport = {
                 });
                 result += '\\par';
                 break;
+              case 'table':
+                // Traitement simplifié des tableaux
+                result += '\\par{\\trowd\\trgaph180';
+                const rows = node.querySelectorAll('tr');
+                const firstRow = rows[0];
+                const cellCount = firstRow ? firstRow.querySelectorAll('th, td').length : 0;
+                
+                // Définir les colonnes
+                for (let i = 0; i < cellCount; i++) {
+                  const cellWidth = Math.floor(9000 / cellCount); // 9000 twips = largeur de page approx
+                  result += `\\cellx${(i + 1) * cellWidth}`;
+                }
+                
+                // Traiter chaque ligne
+                rows.forEach((row, rowIndex) => {
+                  const cells = row.querySelectorAll('th, td');
+                  cells.forEach((cell, cellIndex) => {
+                    const isHeader = cell.tagName.toLowerCase() === 'th';
+                    if (isHeader) {
+                      result += '\\intbl\\b ' + escapeRTF(cell.textContent) + '\\b0';
+                    } else {
+                      result += '\\intbl ' + escapeRTF(cell.textContent);
+                    }
+                    if (cellIndex < cells.length - 1) {
+                      result += '\\cell ';
+                    }
+                  });
+                  result += '\\row ';
+                });
+                result += '}\\par\\par';
+                break;
               case 'strong':
               case 'b':
                 result = '\\b ' + escapeRTF(node.textContent) + '\\b0 ';
@@ -1364,32 +1431,56 @@ export const DownloadReport = {
         return rtf;
       };
 
-      // Fonction helper pour échapper les caractères spéciaux RTF
+      // Fonction helper pour échapper les caractères spéciaux RTF (corrigée)
       const escapeRTF = (text) => {
         return text
           .replace(/\\/g, '\\\\')
           .replace(/\{/g, '\\{')
           .replace(/\}/g, '\\}')
           .replace(/\n/g, '\\par ')
-          .replace(/[àáâãäå]/g, '\\\'{e0}')
-          .replace(/[èéêë]/g, '\\\'{e8}')
-          .replace(/[ìíîï]/g, '\\\'{ec}')
-          .replace(/[òóôõö]/g, '\\\'{f2}')
-          .replace(/[ùúûü]/g, '\\\'{f9}')
-          .replace(/[ÀÁÂÃÄÅ]/g, '\\\'{c0}')
-          .replace(/[ÈÉÊË]/g, '\\\'{c8}')
-          .replace(/[ÌÍÎÏ]/g, '\\\'{cc}')
-          .replace(/[ÒÓÔÕÖ]/g, '\\\'{d2}')
-          .replace(/[ÙÚÛÜ]/g, '\\\'{d9}')
-          .replace(/ç/g, '\\\'{e7}')
-          .replace(/Ç/g, '\\\'{c7}')
-          .replace(/€/g, '\\\'80')
-          .replace(/'/g, '\\\'92')
-          .replace(/"/g, '\\\'93')
-          .replace(/"/g, '\\\'94')
-          .replace(/–/g, '\\\'96')
-          .replace(/—/g, '\\\'97')
-          .replace(/…/g, '\\\'85');
+          // Caractères accentués
+          .replace(/[àáâãäå]/g, "\\'e0")
+          .replace(/[èéêë]/g, "\\'e8")
+          .replace(/[ìíîï]/g, "\\'ec")
+          .replace(/[òóôõö]/g, "\\'f2")
+          .replace(/[ùúûü]/g, "\\'f9")
+          .replace(/[ÀÁÂÃÄÅ]/g, "\\'c0")
+          .replace(/[ÈÉÊË]/g, "\\'c8")
+          .replace(/[ÌÍÎÏ]/g, "\\'cc")
+          .replace(/[ÒÓÔÕÖ]/g, "\\'d2")
+          .replace(/[ÙÚÛÜ]/g, "\\'d9")
+          .replace(/ç/g, "\\'e7")
+          .replace(/Ç/g, "\\'c7")
+          .replace(/ñ/g, "\\'f1")
+          .replace(/Ñ/g, "\\'d1")
+          // Caractères spéciaux
+          .replace(/€/g, "\\'80")
+          .replace(/'/g, "\\'92")
+          .replace(/'/g, "\\'92")
+          .replace(/"/g, "\\'93")
+          .replace(/"/g, "\\'94")
+          .replace(/–/g, "\\'96")
+          .replace(/—/g, "\\'97")
+          .replace(/…/g, "\\'85")
+          .replace(/•/g, "\\'95")
+          // Emojis et symboles
+          .replace(/🔷/g, '[>] ')
+          .replace(/🔹/g, '[>] ')
+          .replace(/✓/g, '[OK] ')
+          .replace(/✔/g, '[OK] ')
+          .replace(/✅/g, '[OK] ')
+          .replace(/❌/g, '[X] ')
+          .replace(/⚠️/g, '[!] ')
+          .replace(/📌/g, '[*] ')
+          .replace(/🎯/g, '[o] ')
+          .replace(/💡/g, '[i] ')
+          // Autres caractères Unicode qui pourraient poser problème
+          .replace(/[\u0080-\u00FF]/g, function(match) {
+            return '\\' + "'" + match.charCodeAt(0).toString(16);
+          })
+          .replace(/[\u0100-\uFFFF]/g, function(match) {
+            return '\\u' + match.charCodeAt(0) + '?';
+          });
       };
 
       // Fonction pour vérifier la position du menu
@@ -1654,7 +1745,7 @@ export const DownloadReport = {
         }
       }, 0);
       
-      console.log('✅ DownloadReport multilingue prêt avec support DOCX/RTF');
+      console.log('✅ DownloadReport multilingue prêt avec support DOCX/RTF amélioré');
       
     } catch (error) {
       console.error('❌ DownloadReport Error:', error);

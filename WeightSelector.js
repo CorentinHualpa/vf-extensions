@@ -201,17 +201,19 @@ export const WeightSelector = {
       }
 
       function handleSliderChange(changedId, newValue) {
-        // Si on met à 100%, mettre tous les autres à 0%
-        if (newValue === 1.0) {
+        // Simplement mettre à jour la valeur
+        weights.set(changedId, newValue);
+        
+        // Optionnel : normaliser pour que le total fasse 100%
+        // Si vous voulez cette fonctionnalité, décommentez les lignes suivantes :
+        /*
+        const total = Array.from(weights.values()).reduce((sum, w) => sum + w, 0);
+        if (total > 0 && total !== 1) {
           weights.forEach((weight, id) => {
-            if (id !== changedId) {
-              weights.set(id, 0);
-            }
+            weights.set(id, weight / total);
           });
         }
-        
-        // Mettre à jour la valeur du slider modifié
-        weights.set(changedId, newValue);
+        */
       }
 
       function updateDisplay() {
@@ -245,13 +247,11 @@ export const WeightSelector = {
                 sectionElement.classList.add('weight-normal');
               }
               
-              // Mise à jour de l'intensité de la bordure uniquement si pas à 0
-              if (weight > 0) {
-                const sectionColor = sectionElement.getAttribute('data-section-color') || global_button_color;
-                const intensity = 0.3 + (weight * 0.7);
-                sectionElement.style.borderColor = hexToRgba(sectionColor, intensity);
-                sectionElement.style.boxShadow = `0 0 ${20 * intensity}px ${hexToRgba(sectionColor, intensity * 0.4)}, inset 0 0 ${15 * intensity}px ${hexToRgba(sectionColor, intensity * 0.1)}`;
-              }
+              // Mise à jour de l'intensité de la bordure
+              const sectionColor = sectionElement.getAttribute('data-section-color') || global_button_color;
+              const intensity = 0.3 + (weight * 0.7);
+              sectionElement.style.borderColor = hexToRgba(sectionColor, intensity);
+              sectionElement.style.boxShadow = `0 0 ${20 * intensity}px ${hexToRgba(sectionColor, intensity * 0.4)}, inset 0 0 ${15 * intensity}px ${hexToRgba(sectionColor, intensity * 0.1)}`;
             }
           }
           
@@ -277,7 +277,7 @@ export const WeightSelector = {
   --ws-heading-fs: 24px;
   --ws-base-fs: 16px;
   --ws-small-fs: 14px;
-  --ws-gap: 20px;
+  --ws-gap: 12px;
 }
 
 /* Reset et styles de base */
@@ -293,7 +293,7 @@ export const WeightSelector = {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
   font-size: var(--ws-base-fs) !important; 
   color: #ffffff !important;
-  padding: 2rem !important;
+  padding: 1.5rem !important;
   border-radius: 20px !important;
   background: linear-gradient(135deg, 
     rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.9), 
@@ -318,7 +318,7 @@ export const WeightSelector = {
 .weight-selector-subtitle {
   font-size: var(--ws-base-fs) !important;
   text-align: center !important;
-  margin-bottom: 2.5rem !important;
+  margin-bottom: 1.5rem !important;
   color: rgba(255, 255, 255, 0.9) !important;
   font-weight: 400 !important;
 }
@@ -328,7 +328,7 @@ export const WeightSelector = {
   display: grid !important; 
   grid-template-columns: 1fr !important;
   gap: var(--ws-gap) !important;
-  margin-bottom: 2.5rem !important;
+  margin-bottom: 1.5rem !important;
 }
 
 .weight-selector-container.grid-2-cols .weight-selector-sections-grid { 
@@ -362,15 +362,14 @@ export const WeightSelector = {
 }
 
 .weight-selector-section.weight-zero {
-  opacity: 0.4 !important;
-  background: #f5f5f5 !important;
-  border-color: #cccccc !important;
-  box-shadow: none !important;
-  transform: scale(0.98) !important;
+  opacity: 0.8 !important;
+  background: #fafafa !important;
+  border-color: #dee2e6 !important;
+  transform: scale(1) !important;
 }
 
 .weight-selector-section.weight-zero .weight-selector-section-title {
-  background: linear-gradient(135deg, #e0e0e0, #f5f5f5) !important;
+  background: linear-gradient(135deg, #f0f0f0, #fafafa) !important;
   color: #999999 !important;
 }
 
@@ -381,9 +380,9 @@ export const WeightSelector = {
 }
 
 .weight-selector-section.weight-full {
-  transform: scale(1.03) !important;
+  transform: scale(1.02) !important;
   z-index: 10 !important;
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.15) !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12) !important;
 }
 
 .weight-selector-section.weight-full .weight-selector-section-title {
@@ -399,7 +398,7 @@ export const WeightSelector = {
 }
 
 .weight-selector-section.weight-zero .weight-selector-slider-wrapper {
-  opacity: 0.6 !important;
+  opacity: 0.8 !important;
 }
 
 .weight-selector-section.weight-zero .weight-selector-comment-textarea {
@@ -409,7 +408,7 @@ export const WeightSelector = {
 
 /* Titre de section */
 .weight-selector-section-title { 
-  padding: 20px 24px !important; 
+  padding: 16px 20px !important; 
   font-weight: 600 !important;
   font-size: 18px !important;
   letter-spacing: -0.3px !important;
@@ -423,10 +422,10 @@ export const WeightSelector = {
 /* Barre de progression */
 .weight-selector-progress-container {
   position: relative !important;
-  height: 8px !important;
+  height: 6px !important;
   background: #f0f0f0 !important;
-  margin: 0 24px 20px !important;
-  border-radius: 4px !important;
+  margin: 0 20px 16px !important;
+  border-radius: 3px !important;
   overflow: hidden !important;
 }
 
@@ -436,14 +435,14 @@ export const WeightSelector = {
   top: 0 !important;
   height: 100% !important;
   background: var(--ws-accent) !important;
-  border-radius: 4px !important;
+  border-radius: 3px !important;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
   width: 0% !important;
 }
 
 /* Container de slider */
 .weight-selector-slider-container {
-  padding: 0 24px 24px !important;
+  padding: 0 20px 20px !important;
   position: relative !important;
 }
 
@@ -451,9 +450,9 @@ export const WeightSelector = {
   display: flex !important;
   align-items: center !important;
   gap: 12px !important;
-  margin-bottom: 16px !important;
-  padding: 16px !important;
-  padding-right: 52px !important; /* Espace pour le bouton de verrouillage */
+  margin-bottom: 12px !important;
+  padding: 12px !important;
+  padding-right: 48px !important; /* Espace pour le bouton de verrouillage */
   background: #f8f9fa !important;
   border-radius: 12px !important;
   transition: all 0.3s ease !important;
@@ -489,8 +488,8 @@ export const WeightSelector = {
   right: 10px !important;
   top: 50% !important;
   transform: translateY(-50%) !important;
-  width: 32px !important;
-  height: 32px !important;
+  width: 28px !important;
+  height: 28px !important;
   border-radius: 6px !important;
   border: 1px solid #dee2e6 !important;
   background: #ffffff !important;
@@ -499,7 +498,7 @@ export const WeightSelector = {
   align-items: center !important;
   justify-content: center !important;
   transition: all 0.2s ease !important;
-  font-size: 16px !important;
+  font-size: 14px !important;
   z-index: 3 !important;
 }
 
@@ -546,8 +545,8 @@ export const WeightSelector = {
 .weight-selector-slider-input::-webkit-slider-thumb {
   appearance: none !important;
   -webkit-appearance: none !important;
-  width: 24px !important;
-  height: 24px !important;
+  width: 20px !important;
+  height: 20px !important;
   background: #ffffff !important;
   border: 3px solid var(--ws-accent) !important;
   border-radius: 50% !important;
@@ -559,8 +558,8 @@ export const WeightSelector = {
 }
 
 .weight-selector-slider-input::-webkit-slider-thumb:hover {
-  transform: scale(1.2) !important;
-  box-shadow: 0 4px 16px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.3) !important;
+  transform: scale(1.15) !important;
+  box-shadow: 0 4px 12px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.3) !important;
 }
 
 .weight-selector-slider-input::-webkit-slider-thumb:active {
@@ -570,8 +569,8 @@ export const WeightSelector = {
 /* Firefox */
 .weight-selector-slider-input::-moz-range-thumb {
   appearance: none !important;
-  width: 24px !important;
-  height: 24px !important;
+  width: 20px !important;
+  height: 20px !important;
   background: #ffffff !important;
   border: 3px solid var(--ws-accent) !important;
   border-radius: 50% !important;
@@ -583,8 +582,8 @@ export const WeightSelector = {
 }
 
 .weight-selector-slider-input::-moz-range-thumb:hover {
-  transform: scale(1.2) !important;
-  box-shadow: 0 4px 16px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.3) !important;
+  transform: scale(1.15) !important;
+  box-shadow: 0 4px 12px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.3) !important;
 }
 
 /* Track avec gradient */
@@ -616,14 +615,14 @@ export const WeightSelector = {
   font-weight: 600 !important;
   background: var(--ws-accent) !important;
   color: white !important;
-  padding: 6px 12px !important;
-  border-radius: 8px !important;
-  min-width: 60px !important;
+  padding: 4px 10px !important;
+  border-radius: 6px !important;
+  min-width: 50px !important;
   text-align: center !important;
   font-size: var(--ws-small-fs) !important;
-  box-shadow: 0 2px 8px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.25) !important;
+  box-shadow: 0 2px 6px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.25) !important;
   transition: all 0.3s ease !important;
-  margin-right: 8px !important;
+  margin-right: 6px !important;
 }
 
 /* Styles spéciaux pour les valeurs extrêmes */
@@ -634,26 +633,19 @@ export const WeightSelector = {
 
 .weight-selector-section.weight-full .weight-value {
   background: #4CAF50 !important;
-  box-shadow: 0 2px 12px rgba(76, 175, 80, 0.4) !important;
-  animation: pulse 2s infinite !important;
-}
-
-@keyframes pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3) !important;
 }
 
 /* Sous-sections */
 .weight-selector-subsections {
-  padding: 0 24px 20px !important;
+  padding: 0 20px 16px !important;
 }
 
 .weight-selector-subsection {
   background: #f8f9fa !important;
-  border-radius: 12px !important;
-  padding: 16px !important;
-  margin-bottom: 12px !important;
+  border-radius: 10px !important;
+  padding: 12px !important;
+  margin-bottom: 10px !important;
   border: 1px solid #e9ecef !important;
   transition: all 0.3s ease !important;
 }
@@ -666,7 +658,7 @@ export const WeightSelector = {
 .weight-selector-subsection-title {
   font-size: var(--ws-small-fs) !important;
   font-weight: 500 !important;
-  margin-bottom: 12px !important;
+  margin-bottom: 10px !important;
   color: #495057 !important;
 }
 
@@ -675,25 +667,25 @@ export const WeightSelector = {
   display: flex !important;
   flex-wrap: wrap !important;
   justify-content: center !important;
-  gap: 16px !important;
-  padding-top: 20px !important;
+  gap: 12px !important;
+  padding-top: 16px !important;
   width: 100% !important;
 }
 
 .weight-selector-submit-btn {
   background: var(--ws-accent) !important;
   color: white !important;
-  padding: 16px 32px !important; 
-  border-radius: 12px !important;
+  padding: 14px 28px !important; 
+  border-radius: 10px !important;
   font-weight: 600 !important; 
   font-size: 16px !important;
   cursor: pointer !important;
   border: none !important;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  box-shadow: 0 4px 16px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.25) !important;
+  box-shadow: 0 4px 12px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.25) !important;
   position: relative !important;
   overflow: hidden !important;
-  min-width: 200px !important;
+  min-width: 160px !important;
 }
 
 .weight-selector-submit-btn::before {
@@ -711,7 +703,7 @@ export const WeightSelector = {
 
 .weight-selector-submit-btn:hover {
   transform: translateY(-2px) !important;
-  box-shadow: 0 6px 24px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.35) !important;
+  box-shadow: 0 6px 20px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.35) !important;
 }
 
 .weight-selector-submit-btn:hover::before {
@@ -729,18 +721,18 @@ export const WeightSelector = {
   background: #ffffff !important;
   color: var(--ws-accent) !important;
   border: 2px solid var(--ws-accent) !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
 }
 
 .weight-selector-submit-btn.light-button:hover {
   background: var(--ws-accent) !important;
   color: white !important;
-  box-shadow: 0 6px 24px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.35) !important;
+  box-shadow: 0 6px 20px rgba(var(--ws-accent-r), var(--ws-accent-g), var(--ws-accent-b), 0.35) !important;
 }
 
 /* Champ de commentaire de section */
 .weight-selector-comment-container {
-  padding: 0 24px 24px !important;
+  padding: 0 20px 20px !important;
   margin-top: -8px !important;
 }
 
@@ -748,15 +740,15 @@ export const WeightSelector = {
   font-size: var(--ws-small-fs) !important;
   font-weight: 500 !important;
   color: #6c757d !important;
-  margin-bottom: 8px !important;
+  margin-bottom: 6px !important;
   display: block !important;
   font-style: italic !important;
 }
 
 .weight-selector-comment-textarea {
   width: 100% !important;
-  min-height: 80px !important;
-  padding: 12px !important;
+  min-height: 60px !important;
+  padding: 10px !important;
   border: 1px solid #dee2e6 !important;
   border-radius: 8px !important;
   background: #ffffff !important;
@@ -789,8 +781,8 @@ export const WeightSelector = {
 /* Message d'indication pour le total */
 .weight-selector-total-info {
   text-align: center !important;
-  margin-bottom: 20px !important;
-  padding: 12px 20px !important;
+  margin-bottom: 16px !important;
+  padding: 10px 16px !important;
   background: rgba(255, 255, 255, 0.1) !important;
   border-radius: 8px !important;
   font-size: var(--ws-small-fs) !important;
@@ -828,7 +820,7 @@ export const WeightSelector = {
       // Info sur le total (optionnel)
       const totalInfoEl = document.createElement('div');
       totalInfoEl.className = 'weight-selector-total-info';
-      totalInfoEl.innerHTML = 'Les valeurs sont indépendantes. Mettre une section à 100% réinitialise les autres à 0%';
+      totalInfoEl.innerHTML = 'Ajustez librement chaque pondération de 0% à 100% selon vos priorités';
       container.appendChild(totalInfoEl);
 
       // Grid des sections

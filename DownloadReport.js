@@ -1292,21 +1292,11 @@ export const DownloadReport = {
         return doc;
       };
 
-      // Fonction pour générer le DOCX (version simplifiée et corrigée)
+      // Fonction pour générer le DOCX (version simplifiée - HTML avec extension .doc)
       const generateDOCX = async () => {
-        try {
-          // Utiliser une approche alternative plus simple pour DOCX
-          // Convertir le contenu en RTF et le sauvegarder comme .doc
-          const rtf = await generateRTF();
-          const blob = new Blob([rtf], { type: 'application/msword' });
-          return blob;
-        } catch (error) {
-          console.error('Erreur dans generateDOCX:', error);
-          // Fallback : utiliser le HTML converti
-          const html = generateHTML();
-          const blob = new Blob([html], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-          return blob;
-        }
+        const html = generateHTML();
+        const blob = new Blob([html], { type: 'application/msword' });
+        return blob;
       };
 
       // Nouvelle fonction pour générer du RTF (format compatible Word)

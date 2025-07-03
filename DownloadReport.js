@@ -525,6 +525,7 @@ export const DownloadReport = {
       // Fonction pour générer le HTML
 // Fonction pour générer le HTML
 // Fonction pour générer le HTML
+// Fonction pour générer le HTML
 const generateHTML = () => {
   const date = new Date();
   const dateStr = date.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US', {
@@ -576,9 +577,9 @@ const generateHTML = () => {
     /<div style="border: 2px solid[^>]+>([\s\S]*?)<\/div>/gi,
     function(match, content) {
       return `
-        <table style="width: 100%; margin: 20px 0; border: none; background: white;">
+        <table style="width: 100%; margin: 20px 0; border: none;">
           <tr>
-            <td style="background: #f0f4ff !important; padding: 20px; border: 2px solid #7c3aed;">
+            <td style="background: #f0f4ff; padding: 20px; border: 2px solid #7c3aed; border-radius: 8px;">
               ${content}
             </td>
           </tr>
@@ -592,36 +593,27 @@ const generateHTML = () => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="ProgId" content="Word.Document">
   <title>${config.marketTitle} - ChatInnov</title>
   <style>
-    /* Forcer le fond blanc partout */
-    * {
-      background-color: white !important;
-    }
-    
-    html {
-      background: white !important;
-      background-color: white !important;
+    /* Base styles avec fond blanc */
+    html, body {
+      background: white;
+      background-color: white;
+      margin: 0;
+      padding: 0;
     }
     
     body {
-      font-family: Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
       line-height: 1.6;
-      color: #333 !important;
+      color: #333;
       margin: 20px;
       padding: 0;
-      background: white !important;
-      background-color: white !important;
     }
     
-    /* Forcer le fond blanc sur tous les éléments */
-    div, table, tr, p, h1, h2, h3, h4, ul, li {
-      background: white !important;
-      background-color: white !important;
-    }
-    
-    /* Sauf pour les cellules td qui peuvent avoir des fonds colorés */
-    td {
+    /* Forcer le fond blanc sur les éléments de structure */
+    .page-header, .main-content, .page-footer {
       background: white;
     }
     
@@ -629,142 +621,162 @@ const generateHTML = () => {
       margin-bottom: 30px;
       padding-bottom: 15px;
       border-bottom: 2px solid #7c3aed;
-      background: white !important;
     }
     
     .header-table {
       width: 100%;
       border: none;
-      background: white !important;
+      background: white;
     }
     
     .header-table td {
       border: none;
       padding: 5px;
       vertical-align: middle;
-      background: white !important;
+      background: white;
     }
     
     .logo-cell {
       width: 120px;
       text-align: left;
-      background: white !important;
     }
     
     .title-cell {
       text-align: center;
       padding: 0 20px;
-      background: white !important;
     }
     
     .tagline-cell {
       width: 200px;
       text-align: right;
-      background: white !important;
     }
     
     h1 {
-      color: #1a1a1a !important;
+      color: #1a1a1a;
       font-size: 22px;
       font-weight: bold;
       margin: 5px 0;
-      background: white !important;
     }
     
     .date-info {
-      color: #666 !important;
+      color: #666;
       font-size: 12px;
       margin-top: 5px;
-      background: white !important;
     }
     
     .tagline-text {
-      color: #7c3aed !important;
+      color: #7c3aed;
       font-size: 10px;
       font-weight: bold;
       text-transform: uppercase;
       line-height: 1.2;
-      background: white !important;
-    }
-    
-    .main-content {
-      background: white !important;
     }
     
     .main-content h2 {
-      color: #1a1a1a !important;
+      color: #1a1a1a;
       font-size: 20px;
       font-weight: bold;
       margin: 25px 0 15px 0;
       padding-bottom: 5px;
       border-bottom: 1px solid #7c3aed;
-      background: white !important;
     }
     
     .main-content h3 {
-      color: #333 !important;
+      color: #333;
       font-size: 18px;
       font-weight: bold;
       margin: 20px 0 10px 0;
-      background: white !important;
     }
     
     .main-content h4 {
-      color: #555 !important;
+      color: #555;
       font-size: 16px;
       font-weight: bold;
       margin: 15px 0 10px 0;
-      background: white !important;
     }
     
     .main-content p {
       margin-bottom: 12px;
       text-align: justify;
-      color: #333 !important;
-      background: white !important;
+      color: #333;
     }
     
     .main-content ul {
       margin: 10px 0;
       padding-left: 25px;
-      background: white !important;
     }
     
     .main-content li {
       margin-bottom: 5px;
-      color: #333 !important;
-      background: white !important;
+      color: #333;
     }
     
     .main-content a {
-      color: #7c3aed !important;
+      color: #7c3aed;
       text-decoration: none;
-      background: white !important;
     }
     
+    /* Styles des tableaux - conservés pour la beauté */
     .main-content table {
       width: 100%;
       border-collapse: collapse;
-      margin: 15px 0;
-      background: white !important;
+      margin: 20px 0;
+      background: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    
+    .main-content caption {
+      background: #f8f9fa;
+      padding: 16px;
+      font-weight: bold;
+      color: #333;
+      text-align: center;
+      border-bottom: 2px solid #7c3aed;
+      font-size: 14px;
     }
     
     .main-content th {
-      background: #7c3aed !important;
-      color: white !important;
-      padding: 8px;
+      background: #7c3aed;
+      color: white;
+      padding: 12px;
       text-align: left;
+      font-weight: bold;
       font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
     
     .main-content td {
-      padding: 8px;
+      padding: 12px;
       border-bottom: 1px solid #eee;
-      color: #333 !important;
+      color: #333;
+      background: white;
     }
     
-    /* Style spécifique pour les cellules avec fond coloré */
-    td[style*="background: #f0f4ff"] {
+    .main-content tbody tr:hover {
+      background: #f8f9fa;
+    }
+    
+    .main-content tbody tr:last-child td {
+      border-bottom: none;
+    }
+    
+    .main-content tfoot {
+      background: #f8f9fa;
+      font-style: italic;
+      font-size: 12px;
+      color: #666;
+    }
+    
+    .main-content tfoot td {
+      padding: 12px;
+      background: #f8f9fa;
+    }
+    
+    /* Encadrés avec fond coloré */
+    .main-content table[style*="border: none"] td[style*="background: #f0f4ff"] {
       background: #f0f4ff !important;
     }
     
@@ -772,13 +784,13 @@ const generateHTML = () => {
       margin-top: 40px;
       padding-top: 15px;
       border-top: 2px solid #7c3aed;
-      background: white !important;
+      background: white;
     }
     
     .footer-table {
       width: 100%;
       border: none;
-      background: white !important;
+      background: white;
     }
     
     .footer-table td {
@@ -786,51 +798,53 @@ const generateHTML = () => {
       padding: 5px;
       vertical-align: middle;
       text-align: center;
-      background: white !important;
+      background: white;
     }
     
     .footer-text {
-      color: #666 !important;
+      color: #666;
       font-size: 11px;
       margin-top: 5px;
-      background: white !important;
     }
     
     .no-gradient {
-      color: #7c3aed !important;
+      color: #7c3aed;
       font-weight: normal;
-      background: white !important;
     }
     
-    /* Forcer le fond blanc même en impression */
+    /* Styles pour Word */
     @media print {
-      * {
-        background: white !important;
-        background-color: white !important;
+      body {
+        background: white;
+        color: #333;
       }
       
-      body {
-        background: white !important;
-        color: #333 !important;
+      .main-content table {
+        box-shadow: none;
       }
+    }
+    
+    /* Fix pour Word - forcer le fond blanc sur le body et html */
+    @page {
+      background: white;
     }
   </style>
 </head>
-<body style="background: white !important;">
+<body bgcolor="white" style="background-color: white;">
   <!-- Header avec tableau pour meilleure compatibilité Word -->
-  <div class="page-header" style="background: white !important;">
-    <table class="header-table" cellpadding="0" cellspacing="0" style="background: white !important;">
+  <div class="page-header">
+    <table class="header-table" cellpadding="0" cellspacing="0">
       <tr>
-        <td class="logo-cell" style="background: white !important;">
+        <td class="logo-cell">
           <img src="${config.url_logo}" alt="ChatInnov" width="100" height="35" style="display: block;">
         </td>
-        <td class="title-cell" style="background: white !important;">
+        <td class="title-cell">
           <h1>${config.marketTitle}</h1>
           <div class="date-info">
             <strong>${t.report.generationDate} :</strong> ${dateStr} ${t.report.at} ${timeStr}
           </div>
         </td>
-        <td class="tagline-cell" style="background: white !important;">
+        <td class="tagline-cell">
           <div class="tagline-text">${config.presentation_text}</div>
         </td>
       </tr>
@@ -838,15 +852,15 @@ const generateHTML = () => {
   </div>
   
   <!-- Contenu principal -->
-  <div class="main-content" style="background: white !important;">
+  <div class="main-content">
     ${htmlContent}
   </div>
   
   <!-- Footer avec tableau -->
-  <div class="page-footer" style="background: white !important;">
-    <table class="footer-table" cellpadding="0" cellspacing="0" style="background: white !important;">
+  <div class="page-footer">
+    <table class="footer-table" cellpadding="0" cellspacing="0">
       <tr>
-        <td style="background: white !important;">
+        <td>
           <img src="${config.url_logo}" alt="ChatInnov" width="80" height="28" style="display: block; margin: 0 auto;">
           <div class="footer-text">${t.report.generatedBy}</div>
         </td>

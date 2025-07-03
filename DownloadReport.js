@@ -570,7 +570,7 @@ const generateHTML = () => {
       .replace(/<\/li>\n(?!<li>)/g, '</li></ul>\n');
   }
   
-  // NOUVELLE CORRECTION : Convertir les divs avec bordures en tableaux pour Word
+  // Convertir les divs avec bordures en tableaux pour Word
   htmlContent = htmlContent.replace(
     /<div style="border: 2px solid[^>]+>([\s\S]*?)<\/div>/gi,
     function(match, content) {
@@ -611,116 +611,106 @@ const generateHTML = () => {
     .header {
       background: white;
       padding: 20px 40px;
-      border-bottom: 1px solid #eee;
+      border-bottom: 3px solid #7c3aed;
+      margin-bottom: 30px;
     }
     
-    .logo-container {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      max-width: 1200px;
-      margin: 0 auto;
+    .header-content {
+      display: table;
+      width: 100%;
+    }
+    
+    .header-left {
+      display: table-cell;
+      vertical-align: middle;
+      width: 200px;
+    }
+    
+    .header-center {
+      display: table-cell;
+      vertical-align: middle;
+      text-align: center;
+      padding: 0 20px;
+    }
+    
+    .header-right {
+      display: table-cell;
+      vertical-align: middle;
+      text-align: right;
+      width: 250px;
     }
     
     .logo {
-      height: 50px;
+      height: 40px;
       width: auto;
     }
     
     .tagline {
       color: #7c3aed;
-      font-size: 13px;
+      font-size: 11px;
       font-weight: 500;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.3px;
       text-transform: uppercase;
-      text-align: right;
-      max-width: 400px;
-    }
-    
-    .hero-banner {
-      background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
-      padding: 60px 40px;
-      position: relative;
-      overflow: hidden;
-    }
-    
-    .hero-banner::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      right: -20%;
-      width: 60%;
-      height: 120%;
-      background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%);
-      transform: skewX(-20deg);
-    }
-    
-    .hero-content {
-      max-width: 1200px;
-      margin: 0 auto;
-      position: relative;
-      z-index: 1;
+      line-height: 1.3;
     }
     
     .market-title {
-      color: white;
-      font-size: 36px;
-      font-weight: 300;
-      letter-spacing: -0.5px;
-      margin-bottom: 20px;
-      text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      color: #1a1a1a;
+      font-size: 28px;
+      font-weight: 600;
+      margin: 10px 0;
     }
     
     .date-time {
-      color: rgba(255,255,255,0.9);
-      font-size: 14px;
-      font-weight: 400;
+      color: #666;
+      font-size: 13px;
+      margin-top: 5px;
     }
     
     .main-content {
       max-width: 1200px;
-      margin: 40px auto;
+      margin: 20px auto;
       padding: 0 40px;
     }
     
     .main-content h2 {
       color: #1a1a1a;
-      font-size: 28px;
+      font-size: 24px;
       font-weight: 600;
-      margin: 40px 0 20px 0;
-      padding-bottom: 10px;
+      margin: 30px 0 15px 0;
+      padding-bottom: 8px;
       border-bottom: 2px solid #7c3aed;
     }
     
     .main-content h3 {
       color: #333;
-      font-size: 22px;
+      font-size: 20px;
       font-weight: 600;
-      margin: 30px 0 15px 0;
+      margin: 25px 0 12px 0;
     }
     
     .main-content h4 {
       color: #555;
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 600;
-      margin: 25px 0 15px 0;
+      margin: 20px 0 10px 0;
     }
     
     .main-content p {
       color: #444;
-      line-height: 1.8;
-      margin-bottom: 16px;
+      line-height: 1.7;
+      margin-bottom: 14px;
       text-align: justify;
     }
     
     .main-content ul {
-      margin: 16px 0;
-      padding-left: 30px;
+      margin: 14px 0;
+      padding-left: 25px;
     }
     
     .main-content li {
-      margin-bottom: 10px;
-      line-height: 1.7;
+      margin-bottom: 8px;
+      line-height: 1.6;
     }
     
     .main-content a {
@@ -737,32 +727,24 @@ const generateHTML = () => {
     .main-content img {
       max-width: 100%;
       height: auto;
-      margin: 20px 0;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    
-    .main-content div[style*="border: 2px solid"] {
-      border-radius: 8px !important;
-      margin: 24px 0 !important;
-      padding: 20px !important;
-      background: #f0f4ff !important;
-      border-color: #7c3aed !important;
+      margin: 15px 0;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
     
     .main-content table {
       width: 100%;
       border-collapse: collapse;
-      margin: 20px 0;
+      margin: 15px 0;
       background: white;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      border-radius: 6px;
       overflow: hidden;
     }
     
     .main-content caption {
       background: #f8f9fa;
-      padding: 16px;
+      padding: 12px;
       font-weight: 600;
       color: #333;
       text-align: left;
@@ -772,16 +754,16 @@ const generateHTML = () => {
     .main-content th {
       background: #7c3aed;
       color: white;
-      padding: 14px 16px;
+      padding: 10px 12px;
       text-align: left;
       font-weight: 600;
-      font-size: 14px;
+      font-size: 13px;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.3px;
     }
     
     .main-content td {
-      padding: 14px 16px;
+      padding: 10px 12px;
       border-bottom: 1px solid #eee;
     }
     
@@ -796,7 +778,7 @@ const generateHTML = () => {
     .main-content tfoot {
       background: #f8f9fa;
       font-style: italic;
-      font-size: 13px;
+      font-size: 12px;
       color: #666;
     }
     
@@ -806,24 +788,45 @@ const generateHTML = () => {
     }
     
     .footer {
-      margin-top: 80px;
-      padding: 30px 40px;
+      margin-top: 40px;
+      padding: 20px 40px;
       background: #f8f9fa;
-      border-top: 1px solid #e9ecef;
+      border-top: 3px solid #7c3aed;
       text-align: center;
       color: #666;
-      font-size: 13px;
+      font-size: 12px;
+      page-break-inside: avoid;
+    }
+    
+    .footer-content {
+      display: table;
+      width: 100%;
+      margin: 0 auto;
+    }
+    
+    .footer-logo-container {
+      display: table-cell;
+      vertical-align: middle;
+      width: 150px;
+      text-align: left;
+    }
+    
+    .footer-text {
+      display: table-cell;
+      vertical-align: middle;
+      text-align: center;
+      padding: 0 20px;
     }
     
     .footer-logo {
-      height: 30px;
-      opacity: 0.6;
-      margin-bottom: 10px;
+      height: 25px;
+      opacity: 0.7;
     }
     
     @media print {
-      .hero-banner {
-        background: #7c3aed !important;
+      .header {
+        background: white !important;
+        border-bottom: 2px solid #7c3aed !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
       }
@@ -833,68 +836,67 @@ const generateHTML = () => {
       }
       
       .footer {
-        display: none;
+        position: relative;
+        bottom: 0;
+        width: 100%;
+        background: #f8f9fa !important;
+        border-top: 2px solid #7c3aed !important;
       }
     }
     
-    @media (max-width: 768px) {
-      .logo-container {
-        flex-direction: column;
-        gap: 10px;
-      }
-      
-      .tagline {
-        text-align: center;
-        font-size: 11px;
-      }
-      
-      .market-title {
-        font-size: 24px;
-      }
-      
-      .hero-banner {
-        padding: 40px 20px;
-      }
-      
-      .main-content {
-        padding: 0 20px;
-      }
-      
-      .main-content table {
-        font-size: 14px;
-      }
-      
-      .main-content th,
-      .main-content td {
-        padding: 10px;
+    /* Styles spécifiques pour Word */
+    @page {
+      margin: 1in;
+    }
+    
+    @media screen {
+      body {
+        max-width: 8.5in;
+        margin: 0 auto;
       }
     }
   </style>
 </head>
 <body>
   <header class="header">
-    <div class="logo-container">
-      <img src="${config.url_logo}" alt="ChatInnov" class="logo" style="height: 50px; width: auto; max-width: 200px;">
-      <div class="tagline">${config.presentation_text}</div>
-    </div>
+    <table style="width: 100%; border: none;">
+      <tr>
+        <td style="width: 150px; vertical-align: middle; border: none;">
+          <img src="${config.url_logo}" alt="ChatInnov" style="height: 40px; width: auto;">
+        </td>
+        <td style="text-align: center; vertical-align: middle; padding: 0 20px; border: none;">
+          <h1 style="color: #1a1a1a; font-size: 24px; font-weight: 600; margin: 5px 0;">${config.marketTitle}</h1>
+          <div style="color: #666; font-size: 12px; margin-top: 5px;">
+            <strong>${t.report.generationDate} :</strong> ${dateStr} ${t.report.at} ${timeStr}
+          </div>
+        </td>
+        <td style="width: 200px; text-align: right; vertical-align: middle; border: none;">
+          <div style="color: #7c3aed; font-size: 10px; font-weight: 500; text-transform: uppercase; line-height: 1.3;">
+            ${config.presentation_text}
+          </div>
+        </td>
+      </tr>
+    </table>
   </header>
-  
-  <div class="hero-banner">
-    <div class="hero-content">
-      <h1 class="market-title">${config.marketTitle}</h1>
-      <div class="date-time">
-        <strong>${t.report.generationDate} :</strong> ${dateStr} ${t.report.at} ${timeStr}
-      </div>
-    </div>
-  </div>
   
   <main class="main-content">
     ${htmlContent}
   </main>
   
   <footer class="footer">
-    <img src="${config.url_logo}" alt="ChatInnov" class="footer-logo" style="height: 30px; width: auto; max-width: 150px; display: inline-block;">
-    <p>${t.report.generatedBy}</p>
+    <table style="width: 100%; border: none;">
+      <tr>
+        <td style="width: 120px; vertical-align: middle; border: none;">
+          <img src="${config.url_logo}" alt="ChatInnov" style="height: 25px; width: auto; opacity: 0.7;">
+        </td>
+        <td style="text-align: center; vertical-align: middle; padding: 0 20px; border: none;">
+          <p style="margin: 0; color: #666; font-size: 11px;">${t.report.generatedBy}</p>
+        </td>
+        <td style="width: 120px; border: none;">
+          <!-- Espace pour équilibrer la mise en page -->
+        </td>
+      </tr>
+    </table>
   </footer>
 </body>
 </html>`;

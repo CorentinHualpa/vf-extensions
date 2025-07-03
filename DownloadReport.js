@@ -524,6 +524,7 @@ export const DownloadReport = {
 
       // Fonction pour générer le HTML
 // Fonction pour générer le HTML
+// Fonction pour générer le HTML
 const generateHTML = () => {
   const date = new Date();
   const dateStr = date.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US', {
@@ -575,9 +576,9 @@ const generateHTML = () => {
     /<div style="border: 2px solid[^>]+>([\s\S]*?)<\/div>/gi,
     function(match, content) {
       return `
-        <table style="width: 100%; margin: 20px 0; border: none;">
+        <table style="width: 100%; margin: 20px 0; border: none; background: white;">
           <tr>
-            <td style="background: #f0f4ff; padding: 20px; border: 2px solid #7c3aed;">
+            <td style="background: #f0f4ff !important; padding: 20px; border: 2px solid #7c3aed;">
               ${content}
             </td>
           </tr>
@@ -593,118 +594,164 @@ const generateHTML = () => {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${config.marketTitle} - ChatInnov</title>
   <style>
+    /* Forcer le fond blanc partout */
+    * {
+      background-color: white !important;
+    }
+    
+    html {
+      background: white !important;
+      background-color: white !important;
+    }
+    
     body {
       font-family: Arial, sans-serif;
       line-height: 1.6;
-      color: #333;
+      color: #333 !important;
       margin: 20px;
       padding: 0;
+      background: white !important;
+      background-color: white !important;
+    }
+    
+    /* Forcer le fond blanc sur tous les éléments */
+    div, table, tr, p, h1, h2, h3, h4, ul, li {
+      background: white !important;
+      background-color: white !important;
+    }
+    
+    /* Sauf pour les cellules td qui peuvent avoir des fonds colorés */
+    td {
+      background: white;
     }
     
     .page-header {
       margin-bottom: 30px;
       padding-bottom: 15px;
       border-bottom: 2px solid #7c3aed;
+      background: white !important;
     }
     
     .header-table {
       width: 100%;
       border: none;
+      background: white !important;
     }
     
     .header-table td {
       border: none;
       padding: 5px;
       vertical-align: middle;
+      background: white !important;
     }
     
     .logo-cell {
       width: 120px;
       text-align: left;
+      background: white !important;
     }
     
     .title-cell {
       text-align: center;
       padding: 0 20px;
+      background: white !important;
     }
     
     .tagline-cell {
       width: 200px;
       text-align: right;
+      background: white !important;
     }
     
     h1 {
-      color: #1a1a1a;
+      color: #1a1a1a !important;
       font-size: 22px;
       font-weight: bold;
       margin: 5px 0;
+      background: white !important;
     }
     
     .date-info {
-      color: #666;
+      color: #666 !important;
       font-size: 12px;
       margin-top: 5px;
+      background: white !important;
     }
     
     .tagline-text {
-      color: #7c3aed;
+      color: #7c3aed !important;
       font-size: 10px;
       font-weight: bold;
       text-transform: uppercase;
       line-height: 1.2;
+      background: white !important;
+    }
+    
+    .main-content {
+      background: white !important;
     }
     
     .main-content h2 {
-      color: #1a1a1a;
+      color: #1a1a1a !important;
       font-size: 20px;
       font-weight: bold;
       margin: 25px 0 15px 0;
       padding-bottom: 5px;
       border-bottom: 1px solid #7c3aed;
+      background: white !important;
     }
     
     .main-content h3 {
-      color: #333;
+      color: #333 !important;
       font-size: 18px;
       font-weight: bold;
       margin: 20px 0 10px 0;
+      background: white !important;
     }
     
     .main-content h4 {
-      color: #555;
+      color: #555 !important;
       font-size: 16px;
       font-weight: bold;
       margin: 15px 0 10px 0;
+      background: white !important;
     }
     
     .main-content p {
       margin-bottom: 12px;
       text-align: justify;
+      color: #333 !important;
+      background: white !important;
     }
     
     .main-content ul {
       margin: 10px 0;
       padding-left: 25px;
+      background: white !important;
     }
     
     .main-content li {
       margin-bottom: 5px;
+      color: #333 !important;
+      background: white !important;
     }
     
     .main-content a {
-      color: #7c3aed;
+      color: #7c3aed !important;
       text-decoration: none;
+      background: white !important;
     }
     
     .main-content table {
       width: 100%;
       border-collapse: collapse;
       margin: 15px 0;
+      background: white !important;
     }
     
     .main-content th {
-      background: #7c3aed;
-      color: white;
+      background: #7c3aed !important;
+      color: white !important;
       padding: 8px;
       text-align: left;
       font-size: 13px;
@@ -713,17 +760,25 @@ const generateHTML = () => {
     .main-content td {
       padding: 8px;
       border-bottom: 1px solid #eee;
+      color: #333 !important;
+    }
+    
+    /* Style spécifique pour les cellules avec fond coloré */
+    td[style*="background: #f0f4ff"] {
+      background: #f0f4ff !important;
     }
     
     .page-footer {
       margin-top: 40px;
       padding-top: 15px;
       border-top: 2px solid #7c3aed;
+      background: white !important;
     }
     
     .footer-table {
       width: 100%;
       border: none;
+      background: white !important;
     }
     
     .footer-table td {
@@ -731,30 +786,51 @@ const generateHTML = () => {
       padding: 5px;
       vertical-align: middle;
       text-align: center;
+      background: white !important;
     }
     
     .footer-text {
-      color: #666;
+      color: #666 !important;
       font-size: 11px;
       margin-top: 5px;
+      background: white !important;
+    }
+    
+    .no-gradient {
+      color: #7c3aed !important;
+      font-weight: normal;
+      background: white !important;
+    }
+    
+    /* Forcer le fond blanc même en impression */
+    @media print {
+      * {
+        background: white !important;
+        background-color: white !important;
+      }
+      
+      body {
+        background: white !important;
+        color: #333 !important;
+      }
     }
   </style>
 </head>
-<body>
+<body style="background: white !important;">
   <!-- Header avec tableau pour meilleure compatibilité Word -->
-  <div class="page-header">
-    <table class="header-table" cellpadding="0" cellspacing="0">
+  <div class="page-header" style="background: white !important;">
+    <table class="header-table" cellpadding="0" cellspacing="0" style="background: white !important;">
       <tr>
-        <td class="logo-cell">
+        <td class="logo-cell" style="background: white !important;">
           <img src="${config.url_logo}" alt="ChatInnov" width="100" height="35" style="display: block;">
         </td>
-        <td class="title-cell">
+        <td class="title-cell" style="background: white !important;">
           <h1>${config.marketTitle}</h1>
           <div class="date-info">
             <strong>${t.report.generationDate} :</strong> ${dateStr} ${t.report.at} ${timeStr}
           </div>
         </td>
-        <td class="tagline-cell">
+        <td class="tagline-cell" style="background: white !important;">
           <div class="tagline-text">${config.presentation_text}</div>
         </td>
       </tr>
@@ -762,15 +838,15 @@ const generateHTML = () => {
   </div>
   
   <!-- Contenu principal -->
-  <div class="main-content">
+  <div class="main-content" style="background: white !important;">
     ${htmlContent}
   </div>
   
   <!-- Footer avec tableau -->
-  <div class="page-footer">
-    <table class="footer-table" cellpadding="0" cellspacing="0">
+  <div class="page-footer" style="background: white !important;">
+    <table class="footer-table" cellpadding="0" cellspacing="0" style="background: white !important;">
       <tr>
-        <td>
+        <td style="background: white !important;">
           <img src="${config.url_logo}" alt="ChatInnov" width="80" height="28" style="display: block; margin: 0 auto;">
           <div class="footer-text">${t.report.generatedBy}</div>
         </td>

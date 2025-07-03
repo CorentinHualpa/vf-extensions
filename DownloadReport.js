@@ -523,57 +523,76 @@ export const DownloadReport = {
       };
 
       // Fonction pour générer le HTML
-      const generateHTML = () => {
-        const date = new Date();
-        const dateStr = date.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US', {
-          day: '2-digit',
-          month: 'long',
-          year: 'numeric'
-        });
-        const timeStr = date.toLocaleTimeString(lang === 'fr' ? 'fr-FR' : 'en-US', {
-          hour: '2-digit',
-          minute: '2-digit'
-        });
+// Fonction pour générer le HTML
+const generateHTML = () => {
+  const date = new Date();
+  const dateStr = date.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric'
+  });
+  const timeStr = date.toLocaleTimeString(lang === 'fr' ? 'fr-FR' : 'en-US', {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+  
+  let htmlContent = config.content;
+  
+  if (!htmlContent.includes('<')) {
+    htmlContent = htmlContent
+      .split('\n')
+      .map(line => {
+        line = line.trim();
+        if (!line) return '';
         
-        let htmlContent = config.content;
-        
-        if (!htmlContent.includes('<')) {
-          htmlContent = htmlContent
-            .split('\n')
-            .map(line => {
-              line = line.trim();
-              if (!line) return '';
-              
-              if (line.startsWith('🔷')) {
-                return `<h2><span class="no-gradient">🔷</span> ${line.substring(2).trim()}</h2>`;
-              }
-              if (line.startsWith('🔹')) {
-                return `<h3><span class="no-gradient">🔹</span> ${line.substring(2).trim()}</h3>`;
-              }
-              
-              if (/^\d+\./.test(line) && line.length < 100) {
-                return `<h4>${line}</h4>`;
-              }
-              
-              if (line.startsWith('•') || line.startsWith('-')) {
-                return `<li>${line.substring(1).trim()}</li>`;
-              }
-              
-              line = line.replace(/([A-Za-z]+)\s*–\s*([^(]+)\s*\(([^)]+)\)/g, 
-                '<a href="$3" target="_blank">$1 – $2</a>');
-              
-              return `<p>${line}</p>`;
-            })
-            .join('\n')
-            .replace(/<li>/g, '<ul><li>')
-            .replace(/<\/li>\n(?!<li>)/g, '</li></ul>\n');
+        if (line.startsWith('🔷')) {
+          return `<h2><span class="no-gradient">🔷</span> ${line.substring(2).trim()}</h2>`;
+        }
+        if (line.startsWith('🔹')) {
+          return `<h3><span class="no-gradient">🔹</span> ${line.substring(2).trim()}</h3>`;
         }
         
-        const html = `<!DOCTYPE html>
+        if (/^\d+\./.test(line) && line.length < 100) {
+          return `<h4>${line}</h4>`;
+        }
+        
+        if (line.startsWith('•') || line.startsWith('-')) {
+          return `<li>${line.substring(1).trim()}</li>`;
+        }
+        
+        line = line.replace(/([A-Za-z]+)\s*–\s*([^(]+)\s*\(([^)]+)\)/g, 
+          '<a href="$3" target="_blank">$1 – $2</a>');
+        
+        return `<p>${line}</p>`;
+      })
+      .join('\n')
+      .replace(/<li>/g, '<ul><li>')
+      .replace(/<\/li>\n(?!<li>)/g, '</li></ul>\n');
+  }
+  
+  // NOUVELLE CORRECTION : Convertir les divs avec bordures en tableaux pour Word
+  htmlContent = htmlContent.replace(
+    /<div style="border: 2px solid[^>]+>([\s\S]*?)<\/div>/gi,
+    function(match, content) {
+      return `
+        <table style="width: 100%; margin: 20px 0; border: none;">
+          <tr>
+            <td style="background: #f0f4ff; padding: 20px; border: 2px solid #7c3aed;">
+              ${content}
+            </td>
+          </tr>
+        </table>
+      `;
+    }
+  );
+  
+  const html = `<!DOCTYPE html>
 <html lang="${lang}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="ProgId" content="Word.Document">
+  <meta name="Generator" content="Microsoft Word">
   <title>${config.marketTitle} - ChatInnov</title>
   <style>
     * {
@@ -855,7 +874,7 @@ export const DownloadReport = {
 <body>
   <header class="header">
     <div class="logo-container">
-      <img src="${config.url_logo}" alt="ChatInnov" class="logo">
+      <img src="${config.url_logo}" alt="ChatInnov" class="logo" style="height: 50px; width: auto; max-width: 200px;">
       <div class="tagline">${config.presentation_text}</div>
     </div>
   </header>
@@ -874,14 +893,14 @@ export const DownloadReport = {
   </main>
   
   <footer class="footer">
-    <img src="${config.url_logo}" alt="ChatInnov" class="footer-logo">
+    <img src="${config.url_logo}" alt="ChatInnov" class="footer-logo" style="height: 30px; width: auto; max-width: 150px; display: inline-block;">
     <p>${t.report.generatedBy}</p>
   </footer>
 </body>
 </html>`;
-        
-        return html;
-      };
+  
+  return html;
+};
 
       // Fonction pour générer le Markdown
       const generateMarkdown = () => {

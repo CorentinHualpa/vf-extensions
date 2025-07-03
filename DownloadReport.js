@@ -591,319 +591,197 @@ const generateHTML = () => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="ProgId" content="Word.Document">
-  <meta name="Generator" content="Microsoft Word">
   <title>${config.marketTitle} - ChatInnov</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+      font-family: Arial, sans-serif;
       line-height: 1.6;
       color: #333;
-      background: #ffffff;
+      margin: 20px;
+      padding: 0;
     }
     
-    .header {
-      background: white;
-      padding: 20px 40px;
-      border-bottom: 3px solid #7c3aed;
+    .page-header {
       margin-bottom: 30px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid #7c3aed;
     }
     
-    .header-content {
-      display: table;
+    .header-table {
       width: 100%;
+      border: none;
     }
     
-    .header-left {
-      display: table-cell;
+    .header-table td {
+      border: none;
+      padding: 5px;
       vertical-align: middle;
-      width: 200px;
     }
     
-    .header-center {
-      display: table-cell;
-      vertical-align: middle;
+    .logo-cell {
+      width: 120px;
+      text-align: left;
+    }
+    
+    .title-cell {
       text-align: center;
       padding: 0 20px;
     }
     
-    .header-right {
-      display: table-cell;
-      vertical-align: middle;
+    .tagline-cell {
+      width: 200px;
       text-align: right;
-      width: 250px;
     }
     
-    .logo {
-      height: 40px;
-      width: auto;
-    }
-    
-    .tagline {
-      color: #7c3aed;
-      font-size: 11px;
-      font-weight: 500;
-      letter-spacing: 0.3px;
-      text-transform: uppercase;
-      line-height: 1.3;
-    }
-    
-    .market-title {
+    h1 {
       color: #1a1a1a;
-      font-size: 28px;
-      font-weight: 600;
-      margin: 10px 0;
+      font-size: 22px;
+      font-weight: bold;
+      margin: 5px 0;
     }
     
-    .date-time {
+    .date-info {
       color: #666;
-      font-size: 13px;
+      font-size: 12px;
       margin-top: 5px;
     }
     
-    .main-content {
-      max-width: 1200px;
-      margin: 20px auto;
-      padding: 0 40px;
+    .tagline-text {
+      color: #7c3aed;
+      font-size: 10px;
+      font-weight: bold;
+      text-transform: uppercase;
+      line-height: 1.2;
     }
     
     .main-content h2 {
       color: #1a1a1a;
-      font-size: 24px;
-      font-weight: 600;
-      margin: 30px 0 15px 0;
-      padding-bottom: 8px;
-      border-bottom: 2px solid #7c3aed;
+      font-size: 20px;
+      font-weight: bold;
+      margin: 25px 0 15px 0;
+      padding-bottom: 5px;
+      border-bottom: 1px solid #7c3aed;
     }
     
     .main-content h3 {
       color: #333;
-      font-size: 20px;
-      font-weight: 600;
-      margin: 25px 0 12px 0;
+      font-size: 18px;
+      font-weight: bold;
+      margin: 20px 0 10px 0;
     }
     
     .main-content h4 {
       color: #555;
       font-size: 16px;
-      font-weight: 600;
-      margin: 20px 0 10px 0;
+      font-weight: bold;
+      margin: 15px 0 10px 0;
     }
     
     .main-content p {
-      color: #444;
-      line-height: 1.7;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
       text-align: justify;
     }
     
     .main-content ul {
-      margin: 14px 0;
+      margin: 10px 0;
       padding-left: 25px;
     }
     
     .main-content li {
-      margin-bottom: 8px;
-      line-height: 1.6;
+      margin-bottom: 5px;
     }
     
     .main-content a {
       color: #7c3aed;
       text-decoration: none;
-      border-bottom: 1px solid transparent;
-      transition: border-color 0.2s;
-    }
-    
-    .main-content a:hover {
-      border-bottom-color: #7c3aed;
-    }
-    
-    .main-content img {
-      max-width: 100%;
-      height: auto;
-      margin: 15px 0;
-      border-radius: 6px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
     
     .main-content table {
       width: 100%;
       border-collapse: collapse;
       margin: 15px 0;
-      background: white;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-      border-radius: 6px;
-      overflow: hidden;
-    }
-    
-    .main-content caption {
-      background: #f8f9fa;
-      padding: 12px;
-      font-weight: 600;
-      color: #333;
-      text-align: left;
-      border-bottom: 2px solid #7c3aed;
     }
     
     .main-content th {
       background: #7c3aed;
       color: white;
-      padding: 10px 12px;
+      padding: 8px;
       text-align: left;
-      font-weight: 600;
       font-size: 13px;
-      text-transform: uppercase;
-      letter-spacing: 0.3px;
     }
     
     .main-content td {
-      padding: 10px 12px;
+      padding: 8px;
       border-bottom: 1px solid #eee;
     }
     
-    .main-content tbody tr:hover {
-      background: #f8f9fa;
-    }
-    
-    .main-content tbody tr:last-child td {
-      border-bottom: none;
-    }
-    
-    .main-content tfoot {
-      background: #f8f9fa;
-      font-style: italic;
-      font-size: 12px;
-      color: #666;
-    }
-    
-    .main-content .no-gradient {
-      color: #7c3aed;
-      font-weight: normal;
-    }
-    
-    .footer {
+    .page-footer {
       margin-top: 40px;
-      padding: 20px 40px;
-      background: #f8f9fa;
-      border-top: 3px solid #7c3aed;
-      text-align: center;
-      color: #666;
-      font-size: 12px;
-      page-break-inside: avoid;
+      padding-top: 15px;
+      border-top: 2px solid #7c3aed;
     }
     
-    .footer-content {
-      display: table;
+    .footer-table {
       width: 100%;
-      margin: 0 auto;
+      border: none;
     }
     
-    .footer-logo-container {
-      display: table-cell;
+    .footer-table td {
+      border: none;
+      padding: 5px;
       vertical-align: middle;
-      width: 150px;
-      text-align: left;
+      text-align: center;
     }
     
     .footer-text {
-      display: table-cell;
-      vertical-align: middle;
-      text-align: center;
-      padding: 0 20px;
-    }
-    
-    .footer-logo {
-      height: 25px;
-      opacity: 0.7;
-    }
-    
-    @media print {
-      .header {
-        background: white !important;
-        border-bottom: 2px solid #7c3aed !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-      }
-      
-      .main-content {
-        max-width: 100%;
-      }
-      
-      .footer {
-        position: relative;
-        bottom: 0;
-        width: 100%;
-        background: #f8f9fa !important;
-        border-top: 2px solid #7c3aed !important;
-      }
-    }
-    
-    /* Styles spécifiques pour Word */
-    @page {
-      margin: 1in;
-    }
-    
-    @media screen {
-      body {
-        max-width: 8.5in;
-        margin: 0 auto;
-      }
+      color: #666;
+      font-size: 11px;
+      margin-top: 5px;
     }
   </style>
 </head>
 <body>
-  <header class="header">
-    <table style="width: 100%; border: none;">
+  <!-- Header avec tableau pour meilleure compatibilité Word -->
+  <div class="page-header">
+    <table class="header-table" cellpadding="0" cellspacing="0">
       <tr>
-        <td style="width: 150px; vertical-align: middle; border: none;">
-          <img src="${config.url_logo}" alt="ChatInnov" style="height: 40px; width: auto;">
+        <td class="logo-cell">
+          <img src="${config.url_logo}" alt="ChatInnov" width="100" height="35" style="display: block;">
         </td>
-        <td style="text-align: center; vertical-align: middle; padding: 0 20px; border: none;">
-          <h1 style="color: #1a1a1a; font-size: 24px; font-weight: 600; margin: 5px 0;">${config.marketTitle}</h1>
-          <div style="color: #666; font-size: 12px; margin-top: 5px;">
+        <td class="title-cell">
+          <h1>${config.marketTitle}</h1>
+          <div class="date-info">
             <strong>${t.report.generationDate} :</strong> ${dateStr} ${t.report.at} ${timeStr}
           </div>
         </td>
-        <td style="width: 200px; text-align: right; vertical-align: middle; border: none;">
-          <div style="color: #7c3aed; font-size: 10px; font-weight: 500; text-transform: uppercase; line-height: 1.3;">
-            ${config.presentation_text}
-          </div>
+        <td class="tagline-cell">
+          <div class="tagline-text">${config.presentation_text}</div>
         </td>
       </tr>
     </table>
-  </header>
+  </div>
   
-  <main class="main-content">
+  <!-- Contenu principal -->
+  <div class="main-content">
     ${htmlContent}
-  </main>
+  </div>
   
-  <footer class="footer">
-    <table style="width: 100%; border: none;">
+  <!-- Footer avec tableau -->
+  <div class="page-footer">
+    <table class="footer-table" cellpadding="0" cellspacing="0">
       <tr>
-        <td style="width: 120px; vertical-align: middle; border: none;">
-          <img src="${config.url_logo}" alt="ChatInnov" style="height: 25px; width: auto; opacity: 0.7;">
-        </td>
-        <td style="text-align: center; vertical-align: middle; padding: 0 20px; border: none;">
-          <p style="margin: 0; color: #666; font-size: 11px;">${t.report.generatedBy}</p>
-        </td>
-        <td style="width: 120px; border: none;">
-          <!-- Espace pour équilibrer la mise en page -->
+        <td>
+          <img src="${config.url_logo}" alt="ChatInnov" width="80" height="28" style="display: block; margin: 0 auto;">
+          <div class="footer-text">${t.report.generatedBy}</div>
         </td>
       </tr>
     </table>
-  </footer>
+  </div>
 </body>
 </html>`;
   
   return html;
 };
-
       // Fonction pour générer le Markdown
       const generateMarkdown = () => {
         const date = new Date();

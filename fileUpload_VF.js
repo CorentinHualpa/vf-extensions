@@ -14,7 +14,7 @@ export const fileUpload_VF = {
   name: 'FileUpload_VF',
   type: 'response',
   
-  match: ({ trace }) => trace.payload?.name === 'FileUpload_VF',
+  match: ({ trace }) => trace.payload?.name === 'file_upload',
   
   render: ({ trace, element }) => {
     try {

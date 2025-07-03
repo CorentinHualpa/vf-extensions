@@ -1,6 +1,6 @@
 /**
  *  ╔═══════════════════════════════════════════════════════════╗
- *  ║  FileUpload – Voiceflow KB Upload Extension              ║
+ *  ║  FileUpload_VF – Voiceflow KB Upload Extension           ║
  *  ║                                                           ║
  *  ║  • Upload direct dans Voiceflow Knowledge Base           ║
  *  ║  • Support des métadonnées personnalisables              ║
@@ -10,11 +10,12 @@
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 
-export const fileUpload_VF = {
+export const FileUpload_VF = {
   name: 'FileUpload_VF',
   type: 'response',
   
-  match: ({ trace }) => trace.payload?.name === 'file_upload',
+  // ⚠️ IMPORTANT: Utilise un nom différent pour éviter le conflit
+  match: ({ trace }) => trace.payload?.name === 'file_upload_vf',
   
   render: ({ trace, element }) => {
     try {
@@ -54,8 +55,8 @@ export const fileUpload_VF = {
         throw new Error("API Key Voiceflow manquante dans le payload");
       }
 
-      // Générer un ID unique
-      const uniqueId = instanceId || `fileUpload_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      // Générer un ID unique avec préfixe VF pour éviter les conflits
+      const uniqueId = instanceId || `fileUploadVF_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
       
       // Variables pour accumuler les uploads
       let allUploadedDocs = []; // Stockera les documentIDs retournés par Voiceflow
@@ -98,7 +99,7 @@ export const fileUpload_VF = {
         processedBackgroundImage = backgroundImage.replace(/\[img\](.*?)\[\/img\]/g, '$1');
       }
 
-      // Création du container (STYLE IDENTIQUE)
+      // Création du container
       const container = document.createElement('div');
       container.id = uniqueId;
       
@@ -566,7 +567,7 @@ export const fileUpload_VF = {
         }
       };
       
-      // 🚀 NOUVELLE FONCTION D'UPLOAD VERS VOICEFLOW KB
+      // 🚀 FONCTION D'UPLOAD VERS VOICEFLOW KB
       const uploadToVoiceflowKB = async (file) => {
         const formData = new FormData();
         formData.append('file', file);
@@ -771,10 +772,10 @@ export const fileUpload_VF = {
         });
       });
       
-      console.log(`✅ FileUpload Extension Voiceflow KB prête (ID: ${uniqueId})`);
+      console.log(`✅ FileUpload_VF Extension prête (ID: ${uniqueId})`);
       
     } catch (error) {
-      console.error('❌ FileUpload Error:', error);
+      console.error('❌ FileUpload_VF Error:', error);
       
       // Formulaire de secours
       const errorDiv = document.createElement('div');
@@ -798,4 +799,4 @@ export const fileUpload_VF = {
   }
 };
 
-export default FileUpload;
+export default FileUpload_VF;

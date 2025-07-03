@@ -11,10 +11,10 @@
  */
 
 export const fileUpload_VF = {
-  name: 'FileUpload',
+  name: 'FileUpload_VF',
   type: 'response',
   
-  match: ({ trace }) => trace.payload?.name === 'file_upload',
+  match: ({ trace }) => trace.payload?.name === 'FileUpload_VF',
   
   render: ({ trace, element }) => {
     try {

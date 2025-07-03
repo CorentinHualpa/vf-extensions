@@ -1,6 +1,6 @@
 /**
  *  ╔═══════════════════════════════════════════════════════════╗
- *  ║  FileUpload_VF – Voiceflow KB Upload Extension           ║
+ *  ║  FileUploadVF – Voiceflow KB Upload Extension           ║
  *  ║                                                           ║
  *  ║  • Upload direct dans Voiceflow Knowledge Base           ║
  *  ║  • Support des métadonnées personnalisables              ║
@@ -10,8 +10,8 @@
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 
-export const FileUpload_VF = {
-  name: 'FileUpload_VF',
+export const FileUploadVF = {
+  name: 'FileUploadVF',
   type: 'response',
   
   // ⚠️ IMPORTANT: Utilise un nom différent pour éviter le conflit
@@ -772,10 +772,10 @@ export const FileUpload_VF = {
         });
       });
       
-      console.log(`✅ FileUpload_VF Extension prête (ID: ${uniqueId})`);
+      console.log(`✅ FileUploadVF Extension prête (ID: ${uniqueId})`);
       
     } catch (error) {
-      console.error('❌ FileUpload_VF Error:', error);
+      console.error('❌ FileUploadVF Error:', error);
       
       // Formulaire de secours
       const errorDiv = document.createElement('div');
@@ -799,4 +799,4 @@ export const FileUpload_VF = {
   }
 };
 
-export default FileUpload_VF;
+export default FileUploadVF;

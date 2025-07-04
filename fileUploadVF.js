@@ -10,8 +10,8 @@
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 
-export const FileUpload_VF = {
-  name: 'FileUpload_VF',
+export const FileUploadVF = {
+  name: 'FileUploadvF',
   type: 'response',
   
   // ⚠️ IMPORTANT: Utilise un nom différent pour éviter le conflit
@@ -799,4 +799,4 @@ export const FileUpload_VF = {
   }
 };
 
-export default FileUpload_VF;
+export default FileUploadVF;

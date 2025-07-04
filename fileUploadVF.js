@@ -6,7 +6,7 @@
  *  ║  • Support des métadonnées personnalisables              ║
  *  ║  • Upload multiple avec appels successifs                ║
  *  ║  • Anti-doublons avec codes aléatoires                   ║
- *  ║  • Design glassmorphism conservé                         ║
+ *  ║  • Désactivation des boutons pendant l'upload            ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 
@@ -86,6 +86,7 @@ export const FileUploadVF = {
       // Variables pour accumuler les uploads
       let allUploadedDocs = [];
       let uploadedFileNames = [];
+      let isUploading = false; // 🆕 NOUVEAU: État d'upload
       
       // Récupérer le root pour gérer le chat
       const root = element.getRootNode();
@@ -248,6 +249,12 @@ export const FileUploadVF = {
             box-shadow: 0 0 20px rgba(76, 175, 80, 0.3);
           }
           
+          /* 🆕 NOUVEAU: État d'upload en cours */
+          #${uniqueId}.uploading .upload-container {
+            pointer-events: none;
+            opacity: 0.6;
+          }
+          
           #${uniqueId} .upload-input {
             position: absolute;
             top: 0;
@@ -385,7 +392,19 @@ export const FileUploadVF = {
             white-space: normal!important;
           }
           
-          #${uniqueId} .upload-button:hover {
+          /* 🆕 NOUVEAU: État désactivé pendant l'upload */
+          #${uniqueId}.uploading .upload-button {
+            pointer-events: none!important;
+            opacity: 0.5!important;
+            cursor: not-allowed!important;
+            background: #808080!important;
+          }
+          
+          #${uniqueId}.uploading .upload-button::after {
+            content: ' ⏳'!important;
+          }
+          
+          #${uniqueId} .upload-button:hover:not(:disabled) {
             transform: translateY(-2px)!important;
             box-shadow: 0 6px 20px rgba(0,0,0,0.4),
                         inset 0 3px 0 rgba(255,255,255,0.3),
@@ -393,7 +412,7 @@ export const FileUploadVF = {
             text-shadow: 0 1px 3px rgba(0,0,0,0.4), 0 0 6px rgba(0,0,0,0.3)!important;
           }
           
-          #${uniqueId} .upload-button:active {
+          #${uniqueId} .upload-button:active:not(:disabled) {
             transform: translateY(1px)!important;
             box-shadow: 0 2px 6px rgba(0,0,0,0.3),
                         inset 0 1px 0 rgba(255,255,255,0.1),
@@ -453,7 +472,7 @@ export const FileUploadVF = {
             position: relative!important;
           }
           
-          #${uniqueId} .upload-button[style*="background"]:hover {
+          #${uniqueId} .upload-button[style*="background"]:hover:not(:disabled) {
             filter: brightness(1.1)!important;
             transform: translateY(-2px)!important;
             box-shadow: 0 6px 20px rgba(0,0,0,0.5),
@@ -590,7 +609,7 @@ export const FileUploadVF = {
         }
       };
       
-      // 🚀 FONCTION D'UPLOAD VERS VOICEFLOW KB (MODIFIÉE)
+      // 🚀 FONCTION D'UPLOAD VERS VOICEFLOW KB
       const uploadToVoiceflowKB = async (file, originalFileName) => {
         // 🎲 Créer un nouveau fichier avec nom modifié
         const newFileName = addRandomCodeToFilename(originalFileName);
@@ -659,9 +678,15 @@ export const FileUploadVF = {
         }
       };
       
-      // Fonction d'upload principal (modifiée)
+      // Fonction d'upload principal (MODIFIÉE avec gestion de l'état)
       const upload = async (files) => {
         if (!files.length) return;
+        
+        // 🆕 NOUVEAU: Vérifier si upload déjà en cours
+        if (isUploading) {
+          showStatus('⏳ Upload déjà en cours, veuillez patienter...', 'loading');
+          return;
+        }
         
         // Validation : Vérifier la limite AVANT l'upload
         if (allUploadedDocs.length + files.length > maxFiles) {
@@ -678,7 +703,11 @@ export const FileUploadVF = {
         
         hideValidationError();
         
-        showStatus(`Upload de ${files.length} fichier(s) vers Voiceflow KB…`, 'loading');
+        // 🆕 NOUVEAU: Marquer le début de l'upload et désactiver l'interface
+        isUploading = true;
+        container.classList.add('uploading');
+        
+        showStatus(`📤 Upload de ${files.length} fichier(s) vers Voiceflow KB... Veuillez patienter avant de cliquer sur les boutons.`, 'loading');
         
         // Upload successif de chaque fichier
         const results = [];
@@ -688,7 +717,7 @@ export const FileUploadVF = {
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
           const originalName = file.name;
-          showStatus(`Upload ${i + 1}/${files.length}: ${originalName}…`, 'loading');
+          showStatus(`📤 Upload ${i + 1}/${files.length}: ${originalName}... Ne cliquez pas encore !`, 'loading');
           
           const result = await uploadToVoiceflowKB(file, originalName);
           results.push(result);
@@ -708,13 +737,17 @@ export const FileUploadVF = {
           }
         }
         
+        // 🆕 NOUVEAU: Fin de l'upload, réactiver l'interface
+        isUploading = false;
+        container.classList.remove('uploading');
+        
         // Afficher le résultat final
         if (errorCount === 0) {
-          showStatus(`${successMessage} (${successCount} fichier(s))`, 'success');
+          showStatus(`${successMessage} (${successCount} fichier(s)) - Vous pouvez maintenant cliquer sur les boutons !`, 'success');
         } else if (successCount === 0) {
           showStatus(`${errorMessage}: Tous les uploads ont échoué`, 'error');
         } else {
-          showStatus(`Upload partiel: ${successCount} réussi(s), ${errorCount} échec(s)`, 'error');
+          showStatus(`Upload partiel: ${successCount} réussi(s), ${errorCount} échec(s) - Vous pouvez maintenant continuer`, 'error');
         }
         
         updateStats();
@@ -744,9 +777,17 @@ export const FileUploadVF = {
         });
       });
       
-      // Event listeners pour les boutons
+      // Event listeners pour les boutons (MODIFIÉ)
       container.querySelectorAll('.upload-button').forEach((btn, btnIndex) => {
         btn.addEventListener('click', () => {
+          // 🆕 NOUVEAU: Vérifier si upload en cours
+          if (isUploading) {
+            showValidationError('⏳ Upload en cours ! Veuillez attendre la fin de l\'upload avant de cliquer.');
+            btn.classList.add('shake');
+            setTimeout(() => btn.classList.remove('shake'), 500);
+            return;
+          }
+          
           const action = btn.getAttribute('data-action');
           const path = btn.getAttribute('data-path');
           const buttonIndex = btn.getAttribute('data-button-index');
@@ -805,10 +846,10 @@ export const FileUploadVF = {
         });
       });
       
-      console.log(`✅ FileUpload_VF Extension prête (ID: ${uniqueId})`);
+      console.log(`✅ FileUploadVF Extension prête (ID: ${uniqueId})`);
       
     } catch (error) {
-      console.error('❌ FileUpload_VF Error:', error);
+      console.error('❌ FileUploadVF Error:', error);
       
       // Formulaire de secours
       const errorDiv = document.createElement('div');

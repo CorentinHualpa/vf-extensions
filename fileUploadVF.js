@@ -10,8 +10,8 @@
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 
-export const FileUpload_VF = {
-  name: 'FileUpload_VF',
+export const FileUploadVF = {
+  name: 'FileUploadVF',
   type: 'response',
   
   match: ({ trace }) => trace.payload?.name === 'file_upload_vf',
@@ -832,4 +832,4 @@ export const FileUpload_VF = {
   }
 };
 
-export default FileUpload_VF;
+export default FileUploadVF;

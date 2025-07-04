@@ -1,20 +1,19 @@
 /**
  *  ╔═══════════════════════════════════════════════════════════╗
- *  ║  FileUploadVF – Voiceflow KB Upload Extension           ║
+ *  ║  FileUpload_VF – Voiceflow KB Upload Extension           ║
  *  ║                                                           ║
  *  ║  • Upload direct dans Voiceflow Knowledge Base           ║
  *  ║  • Support des métadonnées personnalisables              ║
  *  ║  • Upload multiple avec appels successifs                ║
+ *  ║  • Anti-doublons avec codes aléatoires                   ║
  *  ║  • Design glassmorphism conservé                         ║
- *  ║  • Validation robuste et gestion d'erreurs               ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 
-export const FileUploadVF = {
-  name: 'FileUploadVF',
+export const FileUpload_VF = {
+  name: 'FileUpload_VF',
   type: 'response',
   
-  // ⚠️ IMPORTANT: Utilise un nom différent pour éviter le conflit
   match: ({ trace }) => trace.payload?.name === 'file_upload_vf',
   
   render: ({ trace, element }) => {
@@ -36,14 +35,14 @@ export const FileUploadVF = {
         noFilesErrorMessage = "❌ Veuillez uploader au moins 1 document avant de continuer",
         limitExceededErrorMessage = "❌ Limite de {maxFiles} fichiers dépassée. Veuillez recommencer.",
         maxFiles = 20,
-        allowedTypes = ['pdf', 'docx', 'text'], // Aligné sur Voiceflow KB
+        allowedTypes = ['pdf', 'docx', 'text'],
         primaryColor = '#9C27B0',
         backgroundImage = null,
         backgroundOpacity = { high: 0.5, low: 0.3 },
         chat = false,
         chatDisabledText = '🚫 Veuillez uploader vos documents',
         buttons = [
-          { text: "✅ Terminer et traiter les documents", action: "exit", path: "process_documents", color: "#4CAF50" },
+          { text: "✅ Terminer et utiliser les documents", action: "exit", path: "process_documents", color: "#4CAF50" },
           { text: "▶️ Passer à la suite sans upload", action: "exit", path: "skip_upload", color: "#2196F3" },
           { text: "◀️ Étape précédente", action: "exit", path: "previous_step", color: "#D35400" }
         ],
@@ -55,12 +54,38 @@ export const FileUploadVF = {
         throw new Error("API Key Voiceflow manquante dans le payload");
       }
 
-      // Générer un ID unique avec préfixe VF pour éviter les conflits
+      // 🎲 FONCTION POUR GÉNÉRER UN CODE ALÉATOIRE
+      const generateRandomCode = (length = 7) => {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        let code = '';
+        for (let i = 0; i < length; i++) {
+          code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return code;
+      };
+
+      // 📝 FONCTION POUR RENOMMER LE FICHIER AVEC CODE ALÉATOIRE
+      const addRandomCodeToFilename = (originalName) => {
+        const randomCode = generateRandomCode();
+        const lastDotIndex = originalName.lastIndexOf('.');
+        
+        if (lastDotIndex === -1) {
+          // Pas d'extension
+          return `${originalName}_${randomCode}`;
+        } else {
+          // Avec extension
+          const nameWithoutExt = originalName.substring(0, lastDotIndex);
+          const extension = originalName.substring(lastDotIndex);
+          return `${nameWithoutExt}_${randomCode}${extension}`;
+        }
+      };
+
+      // Générer un ID unique avec préfixe VF
       const uniqueId = instanceId || `fileUploadVF_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
       
       // Variables pour accumuler les uploads
-      let allUploadedDocs = []; // Stockera les documentIDs retournés par Voiceflow
-      let uploadedFileNames = []; // Pour l'affichage
+      let allUploadedDocs = [];
+      let uploadedFileNames = [];
       
       // Récupérer le root pour gérer le chat
       const root = element.getRootNode();
@@ -109,10 +134,8 @@ export const FileUploadVF = {
       const colorG = (colorRgb >> 8) & 255;
       const colorB = colorRgb & 255;
       
-      // HTML avec types de fichiers ajustés pour Voiceflow
       container.innerHTML = `
         <style>
-          /* TOUS LES STYLES CONSERVÉS IDENTIQUES */
           #${uniqueId} {
             --primary: ${primaryColor};
             --primary-r: ${colorR};
@@ -567,10 +590,16 @@ export const FileUploadVF = {
         }
       };
       
-      // 🚀 FONCTION D'UPLOAD VERS VOICEFLOW KB
-      const uploadToVoiceflowKB = async (file) => {
+      // 🚀 FONCTION D'UPLOAD VERS VOICEFLOW KB (MODIFIÉE)
+      const uploadToVoiceflowKB = async (file, originalFileName) => {
+        // 🎲 Créer un nouveau fichier avec nom modifié
+        const newFileName = addRandomCodeToFilename(originalFileName);
+        const modifiedFile = new File([file], newFileName, { type: file.type });
+        
+        console.log(`📝 Renommage: "${originalFileName}" → "${newFileName}"`);
+        
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('file', modifiedFile);
         
         // Construire l'URL avec les paramètres
         let url = `https://api.voiceflow.com/v1/knowledge-base/docs/upload?`;
@@ -613,23 +642,24 @@ export const FileUploadVF = {
             return {
               success: true,
               documentID: result.data.documentID,
-              fileName: file.name
+              fileName: newFileName,        // Nom modifié
+              originalFileName: originalFileName  // Nom original
             };
           } else {
             throw new Error('Pas de documentID dans la réponse');
           }
           
         } catch (error) {
-          console.error(`Erreur upload ${file.name}:`, error);
+          console.error(`Erreur upload ${originalFileName}:`, error);
           return {
             success: false,
             error: error.message,
-            fileName: file.name
+            fileName: originalFileName
           };
         }
       };
       
-      // Fonction d'upload principal (modifiée pour appels successifs)
+      // Fonction d'upload principal (modifiée)
       const upload = async (files) => {
         if (!files.length) return;
         
@@ -657,22 +687,24 @@ export const FileUploadVF = {
         
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
-          showStatus(`Upload ${i + 1}/${files.length}: ${file.name}…`, 'loading');
+          const originalName = file.name;
+          showStatus(`Upload ${i + 1}/${files.length}: ${originalName}…`, 'loading');
           
-          const result = await uploadToVoiceflowKB(file);
+          const result = await uploadToVoiceflowKB(file, originalName);
           results.push(result);
           
           if (result.success) {
             successCount++;
             allUploadedDocs.push({
               documentID: result.documentID,
-              fileName: result.fileName
+              fileName: result.fileName,
+              originalFileName: result.originalFileName
             });
             uploadedFileNames.push(result.fileName);
-            console.log(`✅ Upload réussi: ${file.name} → ID: ${result.documentID}`);
+            console.log(`✅ Upload réussi: ${originalName} → ${result.fileName} (ID: ${result.documentID})`);
           } else {
             errorCount++;
-            console.error(`❌ Échec upload: ${file.name} → ${result.error}`);
+            console.error(`❌ Échec upload: ${originalName} → ${result.error}`);
           }
         }
         
@@ -741,11 +773,12 @@ export const FileUploadVF = {
             
             if (!chat) enableChat();
             
-            // Payload de sortie adapté pour Voiceflow KB
+            // Payload de sortie avec noms originaux et modifiés
             const payloadToSend = {
               success: true,
-              documents: allUploadedDocs, // Liste des {documentID, fileName}
+              documents: allUploadedDocs, // Liste des {documentID, fileName, originalFileName}
               fileNames: uploadedFileNames,
+              originalFileNames: allUploadedDocs.map(doc => doc.originalFileName),
               totalFiles: allUploadedDocs.length,
               buttonPath: path,
               buttonText: buttonText,
@@ -772,10 +805,10 @@ export const FileUploadVF = {
         });
       });
       
-      console.log(`✅ FileUploadVF Extension prête (ID: ${uniqueId})`);
+      console.log(`✅ FileUpload_VF Extension prête (ID: ${uniqueId})`);
       
     } catch (error) {
-      console.error('❌ FileUploadVF Error:', error);
+      console.error('❌ FileUpload_VF Error:', error);
       
       // Formulaire de secours
       const errorDiv = document.createElement('div');
@@ -799,4 +832,4 @@ export const FileUploadVF = {
   }
 };
 
-export default FileUploadVF;
+export default FileUpload_VF;

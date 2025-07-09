@@ -1007,7 +1007,6 @@ export const DownloadReport = {
         return md;
       };
 
-      // Fonction améliorée pour générer le PDF avec meilleure gestion des emojis
 // Fonction améliorée pour générer le PDF avec meilleure gestion des emojis et des encadrés
 const generatePDF = async () => {
   if (!window.jspdf) {
@@ -1090,6 +1089,9 @@ const generatePDF = async () => {
   
   // Créer un Set pour stocker le contenu déjà traité et éviter les doublons
   const processedContent = new Set();
+  
+  // Stocker les éléments d'encadrés pour les dessiner plus tard
+  const boxedContent = [];
   
   // Fonction pour nettoyer et remplacer les emojis
   const cleanTextForPDF = (text) => {
@@ -1242,6 +1244,8 @@ const generatePDF = async () => {
             addHeader();
             yPosition = 40;
           }
+          // S'assurer que la couleur du texte est noire
+          doc.setTextColor(0, 0, 0);
           const pLines = doc.splitTextToSize(cleanText, maxWidth - (isInsideBox ? 10 : 0));
           pLines.forEach(line => {
             doc.text(line, margin + (isInsideBox ? 5 : 0), yPosition);
@@ -1260,6 +1264,8 @@ const generatePDF = async () => {
               addHeader();
               yPosition = 40;
             }
+            // S'assurer que la couleur du texte est noire
+            doc.setTextColor(0, 0, 0);
             const bullet = tagName === 'ul' ? '• ' : `${index + 1}. `;
             const liLines = doc.splitTextToSize(bullet + liText, maxWidth - 10 - (isInsideBox ? 10 : 0));
             liLines.forEach((line, lineIndex) => {
@@ -1394,28 +1400,63 @@ const generatePDF = async () => {
               yPosition = 40;
             }
             
-            // Sauvegarder la position de départ
+            // Sauvegarder la position de départ et l'état actuel
             const boxStartY = yPosition;
+            const currentPageNumber = doc.internal.getNumberOfPages();
             
             // Ajouter un peu d'espace avant l'encadré
             yPosition += 5;
             
-            // Traiter le contenu du div
+            // Collecter tout le contenu de l'encadré d'abord
+            const boxElements = [];
+            const tempYPosition = yPosition;
+            
+            // Premier passage : mesurer la hauteur nécessaire
             for (const child of node.children) {
-              await processNode(child, true); // Passer isInsideBox = true
+              await processNode(child, true);
             }
             
-            // Ajouter un peu d'espace après le contenu
-            yPosition += 5;
+            // Calculer la hauteur totale nécessaire
+            const boxHeight = yPosition - boxStartY + 5;
             
-            // Calculer la hauteur de l'encadré
-            const boxHeight = yPosition - boxStartY;
+            // Si on a changé de page pendant le traitement, revenir à la position initiale
+            if (doc.internal.getNumberOfPages() > currentPageNumber) {
+              // Supprimer les pages ajoutées
+              while (doc.internal.getNumberOfPages() > currentPageNumber) {
+                doc.deletePage(doc.internal.getNumberOfPages());
+              }
+              doc.setPage(currentPageNumber);
+              yPosition = boxStartY;
+            } else {
+              // Revenir à la position de départ
+              yPosition = boxStartY;
+            }
             
-            // Dessiner l'encadré avec le fond et la bordure
+            // Vérifier si l'encadré entier tient sur la page actuelle
+            if (yPosition + boxHeight > pageHeight - margin) {
+              doc.addPage();
+              addHeader();
+              yPosition = 40;
+            }
+            
+            // Dessiner l'encadré AVANT le contenu
             doc.setFillColor(227, 242, 253); // Fond bleu clair
             doc.setDrawColor(25, 118, 210); // Bordure bleue
             doc.setLineWidth(0.5);
-            doc.roundedRect(margin, boxStartY, maxWidth, boxHeight, 3, 3, 'FD');
+            doc.roundedRect(margin, yPosition, maxWidth, boxHeight, 3, 3, 'FD');
+            
+            // Maintenant, redessiner le contenu par-dessus l'encadré
+            yPosition += 5;
+            
+            // S'assurer que la couleur du texte est noire avant de dessiner le contenu
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(11);
+            doc.setFont(undefined, 'normal');
+            
+            // Deuxième passage : dessiner réellement le contenu
+            for (const child of node.children) {
+              await processNode(child, true);
+            }
             
             // Ajouter un peu d'espace après l'encadré
             yPosition += 5;
@@ -1424,6 +1465,30 @@ const generatePDF = async () => {
             for (const child of node.children) {
               await processNode(child, isInsideBox);
             }
+          }
+          break;
+          
+        case 'strong':
+        case 'b':
+          // Pour les éléments en gras dans les encadrés
+          if (isInsideBox) {
+            doc.setFont(undefined, 'bold');
+            doc.setTextColor(0, 0, 0); // S'assurer que c'est noir
+          }
+          // Traiter le contenu
+          if (node.childNodes.length > 0) {
+            for (const child of node.childNodes) {
+              await processNode(child, isInsideBox);
+            }
+          } else if (textContent) {
+            const lines = doc.splitTextToSize(cleanText, maxWidth - (isInsideBox ? 10 : 0));
+            lines.forEach(line => {
+              doc.text(line, margin + (isInsideBox ? 5 : 0), yPosition);
+              yPosition += lineHeight;
+            });
+          }
+          if (isInsideBox) {
+            doc.setFont(undefined, 'normal');
           }
           break;
           
@@ -1440,6 +1505,8 @@ const generatePDF = async () => {
               addHeader();
               yPosition = 40;
             }
+            // S'assurer que la couleur du texte est noire
+            doc.setTextColor(0, 0, 0);
             const lines = doc.splitTextToSize(cleanText, maxWidth - (isInsideBox ? 10 : 0));
             lines.forEach(line => {
               doc.text(line, margin + (isInsideBox ? 5 : 0), yPosition);

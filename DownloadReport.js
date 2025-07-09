@@ -1255,22 +1255,72 @@ const generatePDF = async () => {
         case 'ol':
           const listItems = node.querySelectorAll('li');
           listItems.forEach((li, index) => {
-            const liText = cleanTextForPDF(li.textContent.trim());
             if (yPosition > pageHeight - margin - 10) {
               doc.addPage();
               addHeader();
               yPosition = 40;
             }
+            
             // S'assurer que la couleur du texte est noire
             doc.setTextColor(0, 0, 0);
             const bullet = tagName === 'ul' ? '• ' : `${index + 1}. `;
-            const liLines = doc.splitTextToSize(bullet + liText, maxWidth - 10 - (isInsideBox ? 10 : 0));
-            liLines.forEach((line, lineIndex) => {
-              doc.text(line, margin + (lineIndex === 0 ? 0 : 10) + (isInsideBox ? 5 : 0), yPosition);
-              yPosition += lineHeight;
-            });
+            
+            // Traiter les liens dans les éléments de liste
+            const links = li.querySelectorAll('a');
+            if (links.length > 0) {
+              let liContent = li.innerHTML;
+              links.forEach(link => {
+                const linkText = link.textContent;
+                const linkHref = link.href;
+                liContent = liContent.replace(link.outerHTML, linkText);
+              });
+              
+              const tempLi = document.createElement('li');
+              tempLi.innerHTML = liContent;
+              const liText = cleanTextForPDF(tempLi.textContent.trim());
+              
+              const liLines = doc.splitTextToSize(bullet + liText, maxWidth - 10 - (isInsideBox ? 10 : 0));
+              liLines.forEach((line, lineIndex) => {
+                doc.text(line, margin + (lineIndex === 0 ? 0 : 10) + (isInsideBox ? 5 : 0), yPosition);
+                yPosition += lineHeight;
+              });
+              
+              // Ajouter les liens
+              links.forEach(link => {
+                const linkText = link.textContent;
+                const linkHref = link.href;
+                if (linkHref) {
+                  // Trouver la position du texte du lien dans le PDF
+                  doc.setTextColor(124, 58, 237); // Couleur violette pour les liens
+                  doc.textWithLink(linkText, margin + 10 + (isInsideBox ? 5 : 0), yPosition - lineHeight, { url: linkHref });
+                  doc.setTextColor(0, 0, 0); // Retour au noir
+                }
+              });
+            } else {
+              const liText = cleanTextForPDF(li.textContent.trim());
+              const liLines = doc.splitTextToSize(bullet + liText, maxWidth - 10 - (isInsideBox ? 10 : 0));
+              liLines.forEach((line, lineIndex) => {
+                doc.text(line, margin + (lineIndex === 0 ? 0 : 10) + (isInsideBox ? 5 : 0), yPosition);
+                yPosition += lineHeight;
+              });
+            }
           });
           yPosition += 3;
+          break;
+          
+        case 'a':
+          // Traitement des liens
+          const href = node.href;
+          const linkText = cleanTextForPDF(node.textContent);
+          
+          if (href && linkText) {
+            doc.setTextColor(124, 58, 237); // Couleur violette pour les liens
+            doc.textWithLink(linkText, margin + (isInsideBox ? 5 : 0), yPosition, { url: href });
+            doc.setTextColor(0, 0, 0); // Retour au noir
+            
+            const linkLines = doc.splitTextToSize(linkText, maxWidth - (isInsideBox ? 10 : 0));
+            yPosition += linkLines.length * lineHeight;
+          }
           break;
           
         case 'table':
@@ -1447,8 +1497,8 @@ const generatePDF = async () => {
             
             await calculateHeight(node);
             
-            // Calculer la hauteur totale de l'encadré
-            const boxHeight = tempYPosition - yPosition + 10; // +10 pour l'espace en bas
+            // Calculer la hauteur totale de l'encadré avec un padding plus réduit
+            const boxHeight = tempYPosition - yPosition + 5; // Réduit de 10 à 5
             
             // Vérifier si l'encadré entier tient sur la page actuelle
             if (boxStartY + boxHeight > pageHeight - margin) {

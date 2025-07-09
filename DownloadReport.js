@@ -6,6 +6,7 @@
  *  ║  • Téléchargement : HTML / PDF / Markdown / DOCX         ║
  *  ║  • Copie : Brut (HTML) / Formaté (texte propre)         ║
  *  ║  • Support FR/EN                                         ║
+ *  ║  • Sauts de page sur <hr> pour tous les formats         ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 
@@ -522,7 +523,7 @@ export const DownloadReport = {
         return markdown + '\n';
       };
 
-      // Fonction pour générer le HTML
+      // Fonction pour générer le HTML avec sauts de page
       const generateHTML = () => {
         const date = new Date();
         const dateStr = date.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US', {
@@ -536,6 +537,10 @@ export const DownloadReport = {
         });
         
         let htmlContent = config.content;
+        
+        // Traiter les sauts de page pour HTML
+        // Injecter un style pour forcer le saut de page après chaque <hr>
+        htmlContent = htmlContent.replace(/<hr[^>]*>/gi, '<hr style="page-break-after: always; margin: 0;">');
         
         if (!htmlContent.includes('<')) {
           htmlContent = htmlContent
@@ -584,9 +589,6 @@ export const DownloadReport = {
             `;
           }
         );
-
-        // Remplacer les <hr> par des divs avec classe page-break
-        htmlContent = htmlContent.replace(/<hr[^>]*>/gi, '<div class="page-break"></div>');
         
         const html = `<!DOCTYPE html>
 <html lang="${lang}">
@@ -615,23 +617,6 @@ export const DownloadReport = {
     /* Forcer le fond blanc sur les éléments de structure */
     .page-header, .main-content, .page-footer {
       background: white;
-    }
-    
-    /* Style pour les sauts de page */
-    .page-break {
-      page-break-before: always;
-      break-before: page;
-      height: 0;
-      margin: 0;
-      border: none;
-    }
-    
-    /* Pour Word */
-    @media print {
-      .page-break {
-        mso-special-character: line-break;
-        page-break-before: always;
-      }
     }
     
     .page-header {
@@ -829,6 +814,23 @@ export const DownloadReport = {
       font-weight: normal;
     }
     
+    /* Styles pour sauts de page */
+    hr[style*="page-break-after: always"] {
+      page-break-after: always;
+      break-after: page;
+      border: none;
+      margin: 0;
+      padding: 0;
+      height: 0;
+      visibility: hidden;
+    }
+    
+    /* Pour Word - forcer le saut de page */
+    hr[style*="page-break-after: always"] + * {
+      page-break-before: always;
+      break-before: page;
+    }
+    
     /* Styles pour Word */
     @media print {
       body {
@@ -840,10 +842,14 @@ export const DownloadReport = {
         box-shadow: none;
       }
       
-      .page-break {
+      hr[style*="page-break-after: always"] {
+        page-break-after: always;
+        break-after: page;
+      }
+      
+      hr[style*="page-break-after: always"] + * {
         page-break-before: always;
-        mso-special-character: line-break;
-        page-break-before: always;
+        break-before: page;
       }
     }
     
@@ -910,13 +916,15 @@ export const DownloadReport = {
         
         let content = config.content;
         
+        // Traiter les sauts de page pour Markdown (utiliser --- pour séparer)
+        content = content.replace(/<hr[^>]*>/gi, '\n\n---\n\n');
+        
         if (content.includes('<')) {
           content = content.replace(/<table[^>]*>.*?<\/table>/gis, (match) => {
             return tableToMarkdown(match);
           });
           
           content = content
-            .replace(/<hr[^>]*>/gi, '\n\n---\n\n')
             .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n')
             .replace(/<h2[^>]*>.*?🔷.*?<\/span>\s*(.*?)<\/h2>/gi, '## 🔷 $1\n\n')
             .replace(/<h3[^>]*>.*?🔹.*?<\/span>\s*(.*?)<\/h3>/gi, '### 🔹 $1\n\n')
@@ -998,30 +1006,7 @@ export const DownloadReport = {
         return md;
       };
 
-      // Fonction pour remplacer les emojis par des symboles compatibles PDF
-      const replaceEmojisForPDF = (text) => {
-        return text
-          .replace(/🔷/g, '◆')
-          .replace(/🔹/g, '◇')
-          .replace(/🎯/g, '⊙')
-          .replace(/⚠️/g, '!')
-          .replace(/✅/g, '✓')
-          .replace(/❌/g, '✗')
-          .replace(/📌/g, '•')
-          .replace(/💡/g, '★')
-          .replace(/📋/g, '□')
-          .replace(/📥/g, '⬇')
-          .replace(/©/g, '(c)')
-          .replace(/€/g, 'EUR')
-          .replace(/£/g, 'GBP')
-          .replace(/¥/g, 'JPY')
-          .replace(/🌐/g, 'WEB')
-          .replace(/📄/g, 'DOC')
-          .replace(/📝/g, 'TXT')
-          .replace(/📃/g, 'DOC');
-      };
-
-      // Fonction pour générer le PDF
+      // Fonction pour générer le PDF avec gestion des sauts de page et emojis
       const generatePDF = async () => {
         if (!window.jspdf) {
           const script = document.createElement('script');
@@ -1049,23 +1034,29 @@ export const DownloadReport = {
         // Charger le logo
         const logoBase64 = await loadImageAsBase64(config.url_logo);
         
-        // Header avec logo
-        doc.setFillColor(255, 255, 255);
-        doc.rect(0, 0, pageWidth, 30, 'F');
+        // Fonction pour ajouter l'en-tête sur chaque page
+        const addHeader = () => {
+          // Header avec logo
+          doc.setFillColor(255, 255, 255);
+          doc.rect(0, 0, pageWidth, 30, 'F');
+          
+          if (logoBase64) {
+            doc.addImage(logoBase64, 'PNG', margin, 10, 30, 10);
+          }
+          
+          // Tagline
+          doc.setFontSize(8);
+          doc.setTextColor(124, 58, 237);
+          const taglineLines = doc.splitTextToSize(config.presentation_text, maxWidth - 40);
+          taglineLines.forEach((line, index) => {
+            doc.text(line, pageWidth - margin, 15 + (index * 4), { align: 'right' });
+          });
+        };
         
-        if (logoBase64) {
-          doc.addImage(logoBase64, 'PNG', margin, 10, 30, 10);
-        }
+        // Ajouter l'en-tête sur la première page
+        addHeader();
         
-        // Tagline
-        doc.setFontSize(8);
-        doc.setTextColor(124, 58, 237);
-        const taglineLines = doc.splitTextToSize(config.presentation_text, maxWidth - 40);
-        taglineLines.forEach((line, index) => {
-          doc.text(replaceEmojisForPDF(line), pageWidth - margin, 15 + (index * 4), { align: 'right' });
-        });
-        
-        // Bannière héros
+        // Bannière héros sur la première page uniquement
         doc.setFillColor(124, 58, 237);
         doc.rect(0, 30, pageWidth, 40, 'F');
         
@@ -1074,7 +1065,7 @@ export const DownloadReport = {
         doc.setFontSize(18);
         const titleLines = doc.splitTextToSize(config.marketTitle, maxWidth);
         titleLines.forEach((line, index) => {
-          doc.text(replaceEmojisForPDF(line), margin, 45 + (index * 8));
+          doc.text(line, margin, 45 + (index * 8));
         });
         
         // Date
@@ -1103,72 +1094,56 @@ export const DownloadReport = {
             const text = node.textContent.trim();
             if (text && !processedContent.has(text)) {
               processedContent.add(text);
-              return replaceEmojisForPDF(text);
+              return text;
             }
             return '';
           }
           
           if (node.nodeType === Node.ELEMENT_NODE) {
             const tagName = node.tagName.toLowerCase();
-            const textContent = replaceEmojisForPDF(node.textContent.trim());
+            const textContent = node.textContent.trim();
+            
+            // Gestion spéciale pour les <hr> - saut de page
+            if (tagName === 'hr') {
+              doc.addPage();
+              addHeader();
+              yPosition = 40; // Position après l'en-tête
+              return;
+            }
             
             // Vérifier si ce contenu a déjà été traité
             if (processedContent.has(textContent)) {
               return '';
             }
             
-            // Gérer les <hr> pour les sauts de page
-            if (tagName === 'hr') {
-              doc.addPage();
-              yPosition = margin;
-              
-              // Ajouter le header sur la nouvelle page
-              if (logoBase64) {
-                doc.addImage(logoBase64, 'PNG', margin, 10, 30, 10);
-              }
-              
-              doc.setFontSize(8);
-              doc.setTextColor(124, 58, 237);
-              doc.text(replaceEmojisForPDF(config.presentation_text), pageWidth - margin, 15, { align: 'right' });
-              
-              yPosition = 40;
-              doc.setTextColor(0, 0, 0);
-              doc.setFontSize(11);
-              
-              return '';
-            }
-            
             processedContent.add(textContent);
             
+            // Remplacer les emojis problématiques avant le traitement
+            const cleanText = textContent
+              .replace(/🔷/g, '[►] ')
+              .replace(/🔹/g, '[•] ')
+              .replace(/✓/g, '[✓] ')
+              .replace(/✔/g, '[✓] ')
+              .replace(/✅/g, '[OK] ')
+              .replace(/❌/g, '[X] ')
+              .replace(/⚠️/g, '[!] ')
+              .replace(/📌/g, '[*] ')
+              .replace(/🎯/g, '[o] ')
+              .replace(/💡/g, '[i] ')
+              .replace(/📥/g, '[↓] ')
+              .replace(/📋/g, '[□] ');
+            
             switch (tagName) {
-              case 'h1':
-                if (yPosition > pageHeight - margin - 25) {
-                  doc.addPage();
-                  yPosition = margin;
-                }
-                doc.setFontSize(16);
-                doc.setFont(undefined, 'bold');
-                doc.setTextColor(26, 26, 26);
-                const h1Lines = doc.splitTextToSize(textContent, maxWidth);
-                h1Lines.forEach(line => {
-                  doc.text(line, margin, yPosition);
-                  yPosition += lineHeight + 3;
-                });
-                yPosition += 8;
-                doc.setFont(undefined, 'normal');
-                doc.setTextColor(0, 0, 0);
-                doc.setFontSize(11);
-                break;
-                
               case 'h2':
                 if (yPosition > pageHeight - margin - 20) {
                   doc.addPage();
-                  yPosition = margin;
+                  addHeader();
+                  yPosition = 40;
                 }
                 doc.setFontSize(14);
                 doc.setFont(undefined, 'bold');
                 doc.setTextColor(26, 26, 26);
-                const h2Lines = doc.splitTextToSize(textContent, maxWidth);
+                const h2Lines = doc.splitTextToSize(cleanText, maxWidth);
                 h2Lines.forEach(line => {
                   doc.text(line, margin, yPosition);
                   yPosition += lineHeight + 2;
@@ -1185,12 +1160,13 @@ export const DownloadReport = {
               case 'h3':
                 if (yPosition > pageHeight - margin - 15) {
                   doc.addPage();
-                  yPosition = margin;
+                  addHeader();
+                  yPosition = 40;
                 }
                 doc.setFontSize(12);
                 doc.setFont(undefined, 'bold');
                 doc.setTextColor(51, 51, 51);
-                const h3Lines = doc.splitTextToSize(textContent, maxWidth);
+                const h3Lines = doc.splitTextToSize(cleanText, maxWidth);
                 h3Lines.forEach(line => {
                   doc.text(line, margin, yPosition);
                   yPosition += lineHeight + 1;
@@ -1204,9 +1180,10 @@ export const DownloadReport = {
               case 'p':
                 if (yPosition > pageHeight - margin - 10) {
                   doc.addPage();
-                  yPosition = margin;
+                  addHeader();
+                  yPosition = 40;
                 }
-                const pLines = doc.splitTextToSize(textContent, maxWidth);
+                const pLines = doc.splitTextToSize(cleanText, maxWidth);
                 pLines.forEach(line => {
                   doc.text(line, margin, yPosition);
                   yPosition += lineHeight;
@@ -1218,12 +1195,15 @@ export const DownloadReport = {
               case 'ol':
                 const listItems = node.querySelectorAll('li');
                 listItems.forEach(li => {
-                  const liText = replaceEmojisForPDF(li.textContent.trim());
+                  const liText = li.textContent.trim()
+                    .replace(/🔷/g, '[►] ')
+                    .replace(/🔹/g, '[•] ');
                   if (!processedContent.has(liText)) {
                     processedContent.add(liText);
                     if (yPosition > pageHeight - margin - 10) {
                       doc.addPage();
-                      yPosition = margin;
+                      addHeader();
+                      yPosition = 40;
                     }
                     const bullet = tagName === 'ul' ? '• ' : `${Array.from(listItems).indexOf(li) + 1}. `;
                     const liLines = doc.splitTextToSize(bullet + liText, maxWidth - 10);
@@ -1240,14 +1220,15 @@ export const DownloadReport = {
                 // Traitement des tableaux
                 if (yPosition > pageHeight - margin - 30) {
                   doc.addPage();
-                  yPosition = margin;
+                  addHeader();
+                  yPosition = 40;
                 }
                 
                 const caption = node.querySelector('caption');
                 if (caption) {
                   doc.setFont(undefined, 'bold');
                   doc.setFontSize(10);
-                  const captionText = replaceEmojisForPDF(caption.textContent.trim());
+                  const captionText = caption.textContent.trim();
                   const captionLines = doc.splitTextToSize(captionText, maxWidth);
                   captionLines.forEach(line => {
                     doc.text(line, margin, yPosition);
@@ -1273,7 +1254,7 @@ export const DownloadReport = {
                   doc.setFontSize(9);
                   
                   headers.forEach((header, index) => {
-                    const headerText = replaceEmojisForPDF(header.textContent.trim().substring(0, Math.floor(colWidth / 2)));
+                    const headerText = header.textContent.trim().substring(0, Math.floor(colWidth / 2));
                     doc.text(headerText, margin + (index * colWidth) + 2, yPosition);
                   });
                   
@@ -1285,7 +1266,8 @@ export const DownloadReport = {
                   rows.forEach((row, rowIndex) => {
                     if (yPosition > pageHeight - margin - 10) {
                       doc.addPage();
-                      yPosition = margin;
+                      addHeader();
+                      yPosition = 40;
                     }
                     
                     const cells = row.querySelectorAll('td');
@@ -1296,7 +1278,7 @@ export const DownloadReport = {
                       }
                       
                       cells.forEach((cell, cellIndex) => {
-                        const cellText = replaceEmojisForPDF(cell.textContent.trim().substring(0, Math.floor(colWidth / 2)));
+                        const cellText = cell.textContent.trim().substring(0, Math.floor(colWidth / 2));
                         doc.text(cellText, margin + (cellIndex * colWidth) + 2, yPosition);
                       });
                       
@@ -1320,7 +1302,8 @@ export const DownloadReport = {
                     if (imgBase64) {
                       if (yPosition > pageHeight - margin - 60) {
                         doc.addPage();
-                        yPosition = margin;
+                        addHeader();
+                        yPosition = 40;
                       }
                       
                       const imgWidth = 80;
@@ -1335,7 +1318,7 @@ export const DownloadReport = {
                         doc.setFontSize(9);
                         doc.setTextColor(100);
                         doc.setFont(undefined, 'italic');
-                        doc.text(replaceEmojisForPDF(imgAlt), pageWidth / 2, yPosition, { align: 'center' });
+                        doc.text(imgAlt, pageWidth / 2, yPosition, { align: 'center' });
                         yPosition += 8;
                         doc.setFont(undefined, 'normal');
                         doc.setTextColor(0);
@@ -1362,14 +1345,14 @@ export const DownloadReport = {
           doc.setPage(i);
           doc.setFontSize(9);
           doc.setTextColor(150);
-          doc.text(replaceEmojisForPDF(t.report.generatedBy), pageWidth / 2, pageHeight - 10, { align: 'center' });
+          doc.text(t.report.generatedBy, pageWidth / 2, pageHeight - 10, { align: 'center' });
           doc.text(`${i} / ${totalPages}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
         }
         
         return doc;
       };
 
-      // Fonction pour générer le DOCX (HTML avec sauts de page)
+      // Fonction pour générer le DOCX (version simplifiée - HTML avec extension .doc)
       const generateDOCX = async () => {
         const html = generateHTML();
         const blob = new Blob([html], { type: 'application/msword' });
@@ -1638,7 +1621,7 @@ export const DownloadReport = {
         }
       }, 0);
       
-      console.log('✅ DownloadReport multilingue prêt avec support sauts de page et emojis corrigés');
+      console.log('✅ DownloadReport multilingue prêt avec sauts de page et emojis corrigés');
       
     } catch (error) {
       console.error('❌ DownloadReport Error:', error);

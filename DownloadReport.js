@@ -7,6 +7,7 @@
  *  ║  • Copie : Brut (HTML) / Formaté (texte propre)         ║
  *  ║  • Support FR/EN                                         ║
  *  ║  • Sauts de page sur <hr> pour tous les formats         ║
+ *  ║  • Gestion améliorée des emojis dans PDF                ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 
@@ -1006,7 +1007,7 @@ export const DownloadReport = {
         return md;
       };
 
-      // Fonction pour générer le PDF avec gestion des sauts de page et emojis
+      // Fonction améliorée pour générer le PDF avec meilleure gestion des emojis
       const generatePDF = async () => {
         if (!window.jspdf) {
           const script = document.createElement('script');
@@ -1089,19 +1090,48 @@ export const DownloadReport = {
         // Créer un Set pour stocker le contenu déjà traité et éviter les doublons
         const processedContent = new Set();
         
+        // Fonction pour nettoyer et remplacer les emojis
+        const cleanTextForPDF = (text) => {
+          return text
+            .replace(/🔷/g, '>')
+            .replace(/🔹/g, '•')
+            .replace(/✓/g, '[OK]')
+            .replace(/✔/g, '[OK]')
+            .replace(/✅/g, '[OK]')
+            .replace(/❌/g, '[X]')
+            .replace(/⚠️/g, '[!]')
+            .replace(/📌/g, '[*]')
+            .replace(/🎯/g, '[o]')
+            .replace(/💡/g, '[i]')
+            .replace(/📥/g, '[v]')
+            .replace(/📋/g, '[=]')
+            .replace(/🌐/g, '[W]')
+            .replace(/📄/g, '[D]')
+            .replace(/📝/g, '[T]')
+            .replace(/📃/g, '[P]')
+            .replace(/⏳/g, '...')
+            .replace(/•/g, '•')
+            .replace(/–/g, '-')
+            .replace(/—/g, '--')
+            .replace(/'/g, "'")
+            .replace(/'/g, "'")
+            .replace(/"/g, '"')
+            .replace(/"/g, '"')
+            .replace(/…/g, '...');
+        };
+        
         const processNode = async (node) => {
           if (node.nodeType === Node.TEXT_NODE) {
             const text = node.textContent.trim();
             if (text && !processedContent.has(text)) {
               processedContent.add(text);
-              return text;
+              return cleanTextForPDF(text);
             }
             return '';
           }
           
           if (node.nodeType === Node.ELEMENT_NODE) {
             const tagName = node.tagName.toLowerCase();
-            const textContent = node.textContent.trim();
             
             // Gestion spéciale pour les <hr> - saut de page
             if (tagName === 'hr') {
@@ -1111,6 +1141,19 @@ export const DownloadReport = {
               return;
             }
             
+            // Extraire le texte en gérant les spans avec emojis
+            let textContent = '';
+            
+            // Si c'est un h2 ou h3 avec span.no-gradient, extraire correctement
+            if ((tagName === 'h2' || tagName === 'h3') && node.querySelector('span.no-gradient')) {
+              const span = node.querySelector('span.no-gradient');
+              const emoji = span ? span.textContent : '';
+              const remainingText = node.textContent.replace(emoji, '').trim();
+              textContent = cleanTextForPDF(emoji) + ' ' + remainingText;
+            } else {
+              textContent = node.textContent.trim();
+            }
+            
             // Vérifier si ce contenu a déjà été traité
             if (processedContent.has(textContent)) {
               return '';
@@ -1118,20 +1161,8 @@ export const DownloadReport = {
             
             processedContent.add(textContent);
             
-            // Remplacer les emojis problématiques avant le traitement
-            const cleanText = textContent
-              .replace(/🔷/g, '[►] ')
-              .replace(/🔹/g, '[•] ')
-              .replace(/✓/g, '[✓] ')
-              .replace(/✔/g, '[✓] ')
-              .replace(/✅/g, '[OK] ')
-              .replace(/❌/g, '[X] ')
-              .replace(/⚠️/g, '[!] ')
-              .replace(/📌/g, '[*] ')
-              .replace(/🎯/g, '[o] ')
-              .replace(/💡/g, '[i] ')
-              .replace(/📥/g, '[↓] ')
-              .replace(/📋/g, '[□] ');
+            // Nettoyer le texte pour le PDF
+            const cleanText = cleanTextForPDF(textContent);
             
             switch (tagName) {
               case 'h2':
@@ -1143,11 +1174,13 @@ export const DownloadReport = {
                 doc.setFontSize(14);
                 doc.setFont(undefined, 'bold');
                 doc.setTextColor(26, 26, 26);
+                
                 const h2Lines = doc.splitTextToSize(cleanText, maxWidth);
                 h2Lines.forEach(line => {
                   doc.text(line, margin, yPosition);
                   yPosition += lineHeight + 2;
                 });
+                
                 doc.setDrawColor(124, 58, 237);
                 doc.setLineWidth(0.5);
                 doc.line(margin, yPosition - 2, margin + 40, yPosition - 2);
@@ -1166,15 +1199,38 @@ export const DownloadReport = {
                 doc.setFontSize(12);
                 doc.setFont(undefined, 'bold');
                 doc.setTextColor(51, 51, 51);
+                
                 const h3Lines = doc.splitTextToSize(cleanText, maxWidth);
                 h3Lines.forEach(line => {
                   doc.text(line, margin, yPosition);
                   yPosition += lineHeight + 1;
                 });
+                
                 yPosition += 3;
                 doc.setFont(undefined, 'normal');
                 doc.setTextColor(0, 0, 0);
                 doc.setFontSize(11);
+                break;
+                
+              case 'h4':
+                if (yPosition > pageHeight - margin - 12) {
+                  doc.addPage();
+                  addHeader();
+                  yPosition = 40;
+                }
+                doc.setFontSize(11);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(85, 85, 85);
+                
+                const h4Lines = doc.splitTextToSize(cleanText, maxWidth);
+                h4Lines.forEach(line => {
+                  doc.text(line, margin, yPosition);
+                  yPosition += lineHeight;
+                });
+                
+                yPosition += 2;
+                doc.setFont(undefined, 'normal');
+                doc.setTextColor(0, 0, 0);
                 break;
                 
               case 'p':
@@ -1194,10 +1250,8 @@ export const DownloadReport = {
               case 'ul':
               case 'ol':
                 const listItems = node.querySelectorAll('li');
-                listItems.forEach(li => {
-                  const liText = li.textContent.trim()
-                    .replace(/🔷/g, '[►] ')
-                    .replace(/🔹/g, '[•] ');
+                listItems.forEach((li, index) => {
+                  const liText = cleanTextForPDF(li.textContent.trim());
                   if (!processedContent.has(liText)) {
                     processedContent.add(liText);
                     if (yPosition > pageHeight - margin - 10) {
@@ -1205,10 +1259,10 @@ export const DownloadReport = {
                       addHeader();
                       yPosition = 40;
                     }
-                    const bullet = tagName === 'ul' ? '• ' : `${Array.from(listItems).indexOf(li) + 1}. `;
+                    const bullet = tagName === 'ul' ? '• ' : `${index + 1}. `;
                     const liLines = doc.splitTextToSize(bullet + liText, maxWidth - 10);
-                    liLines.forEach((line, index) => {
-                      doc.text(line, margin + (index === 0 ? 0 : 10), yPosition);
+                    liLines.forEach((line, lineIndex) => {
+                      doc.text(line, margin + (lineIndex === 0 ? 0 : 10), yPosition);
                       yPosition += lineHeight;
                     });
                   }
@@ -1228,7 +1282,7 @@ export const DownloadReport = {
                 if (caption) {
                   doc.setFont(undefined, 'bold');
                   doc.setFontSize(10);
-                  const captionText = caption.textContent.trim();
+                  const captionText = cleanTextForPDF(caption.textContent.trim());
                   const captionLines = doc.splitTextToSize(captionText, maxWidth);
                   captionLines.forEach(line => {
                     doc.text(line, margin, yPosition);
@@ -1254,7 +1308,7 @@ export const DownloadReport = {
                   doc.setFontSize(9);
                   
                   headers.forEach((header, index) => {
-                    const headerText = header.textContent.trim().substring(0, Math.floor(colWidth / 2));
+                    const headerText = cleanTextForPDF(header.textContent.trim()).substring(0, Math.floor(colWidth / 2));
                     doc.text(headerText, margin + (index * colWidth) + 2, yPosition);
                   });
                   
@@ -1278,7 +1332,7 @@ export const DownloadReport = {
                       }
                       
                       cells.forEach((cell, cellIndex) => {
-                        const cellText = cell.textContent.trim().substring(0, Math.floor(colWidth / 2));
+                        const cellText = cleanTextForPDF(cell.textContent.trim()).substring(0, Math.floor(colWidth / 2));
                         doc.text(cellText, margin + (cellIndex * colWidth) + 2, yPosition);
                       });
                       
@@ -1330,6 +1384,61 @@ export const DownloadReport = {
                   }
                 }
                 break;
+                
+              case 'div':
+                // Traiter les divs avec bordures spéciales
+                if (node.style.border && node.style.border.includes('solid')) {
+                  if (yPosition > pageHeight - margin - 20) {
+                    doc.addPage();
+                    addHeader();
+                    yPosition = 40;
+                  }
+                  
+                  // Dessiner un cadre
+                  doc.setDrawColor(25, 118, 210);
+                  doc.setFillColor(227, 242, 253);
+                  doc.roundedRect(margin, yPosition - 5, maxWidth, 0, 3, 3, 'FD');
+                  
+                  yPosition += 5;
+                  
+                  // Traiter le contenu du div
+                  for (const child of node.children) {
+                    await processNode(child);
+                  }
+                  
+                  // Finaliser le cadre
+                  const endY = yPosition + 5;
+                  const boxHeight = endY - (yPosition - 5);
+                  doc.roundedRect(margin, yPosition - boxHeight - 5, maxWidth, boxHeight, 3, 3, 'D');
+                  
+                  yPosition = endY;
+                } else {
+                  // Traiter les enfants normalement
+                  for (const child of node.children) {
+                    await processNode(child);
+                  }
+                }
+                break;
+                
+              default:
+                // Pour les autres éléments, traiter les enfants
+                if (node.children.length > 0) {
+                  for (const child of node.children) {
+                    await processNode(child);
+                  }
+                } else if (textContent) {
+                  // Si pas d'enfants mais du texte, l'afficher
+                  if (yPosition > pageHeight - margin - 10) {
+                    doc.addPage();
+                    addHeader();
+                    yPosition = 40;
+                  }
+                  const lines = doc.splitTextToSize(cleanText, maxWidth);
+                  lines.forEach(line => {
+                    doc.text(line, margin, yPosition);
+                    yPosition += lineHeight;
+                  });
+                }
             }
           }
         };

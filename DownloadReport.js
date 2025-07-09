@@ -523,72 +523,72 @@ export const DownloadReport = {
       };
 
       // Fonction pour générer le HTML
-// Fonction pour générer le HTML
-// Fonction pour générer le HTML
-// Fonction pour générer le HTML
-const generateHTML = () => {
-  const date = new Date();
-  const dateStr = date.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric'
-  });
-  const timeStr = date.toLocaleTimeString(lang === 'fr' ? 'fr-FR' : 'en-US', {
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-  
-  let htmlContent = config.content;
-  
-  if (!htmlContent.includes('<')) {
-    htmlContent = htmlContent
-      .split('\n')
-      .map(line => {
-        line = line.trim();
-        if (!line) return '';
+      const generateHTML = () => {
+        const date = new Date();
+        const dateStr = date.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US', {
+          day: '2-digit',
+          month: 'long',
+          year: 'numeric'
+        });
+        const timeStr = date.toLocaleTimeString(lang === 'fr' ? 'fr-FR' : 'en-US', {
+          hour: '2-digit',
+          minute: '2-digit'
+        });
         
-        if (line.startsWith('🔷')) {
-          return `<h2><span class="no-gradient">🔷</span> ${line.substring(2).trim()}</h2>`;
+        let htmlContent = config.content;
+        
+        if (!htmlContent.includes('<')) {
+          htmlContent = htmlContent
+            .split('\n')
+            .map(line => {
+              line = line.trim();
+              if (!line) return '';
+              
+              if (line.startsWith('🔷')) {
+                return `<h2><span class="no-gradient">🔷</span> ${line.substring(2).trim()}</h2>`;
+              }
+              if (line.startsWith('🔹')) {
+                return `<h3><span class="no-gradient">🔹</span> ${line.substring(2).trim()}</h3>`;
+              }
+              
+              if (/^\d+\./.test(line) && line.length < 100) {
+                return `<h4>${line}</h4>`;
+              }
+              
+              if (line.startsWith('•') || line.startsWith('-')) {
+                return `<li>${line.substring(1).trim()}</li>`;
+              }
+              
+              line = line.replace(/([A-Za-z]+)\s*–\s*([^(]+)\s*\(([^)]+)\)/g, 
+                '<a href="$3" target="_blank">$1 – $2</a>');
+              
+              return `<p>${line}</p>`;
+            })
+            .join('\n')
+            .replace(/<li>/g, '<ul><li>')
+            .replace(/<\/li>\n(?!<li>)/g, '</li></ul>\n');
         }
-        if (line.startsWith('🔹')) {
-          return `<h3><span class="no-gradient">🔹</span> ${line.substring(2).trim()}</h3>`;
-        }
         
-        if (/^\d+\./.test(line) && line.length < 100) {
-          return `<h4>${line}</h4>`;
-        }
+        // Convertir les divs avec bordures en tableaux pour Word
+        htmlContent = htmlContent.replace(
+          /<div style="border: 2px solid[^>]+>([\s\S]*?)<\/div>/gi,
+          function(match, content) {
+            return `
+              <table style="width: 100%; margin: 20px 0; border: none;">
+                <tr>
+                  <td style="background: #f0f4ff; padding: 20px; border: 2px solid #7c3aed; border-radius: 8px;">
+                    ${content}
+                  </td>
+                </tr>
+              </table>
+            `;
+          }
+        );
+
+        // Remplacer les <hr> par des divs avec classe page-break
+        htmlContent = htmlContent.replace(/<hr[^>]*>/gi, '<div class="page-break"></div>');
         
-        if (line.startsWith('•') || line.startsWith('-')) {
-          return `<li>${line.substring(1).trim()}</li>`;
-        }
-        
-        line = line.replace(/([A-Za-z]+)\s*–\s*([^(]+)\s*\(([^)]+)\)/g, 
-          '<a href="$3" target="_blank">$1 – $2</a>');
-        
-        return `<p>${line}</p>`;
-      })
-      .join('\n')
-      .replace(/<li>/g, '<ul><li>')
-      .replace(/<\/li>\n(?!<li>)/g, '</li></ul>\n');
-  }
-  
-  // Convertir les divs avec bordures en tableaux pour Word
-  htmlContent = htmlContent.replace(
-    /<div style="border: 2px solid[^>]+>([\s\S]*?)<\/div>/gi,
-    function(match, content) {
-      return `
-        <table style="width: 100%; margin: 20px 0; border: none;">
-          <tr>
-            <td style="background: #f0f4ff; padding: 20px; border: 2px solid #7c3aed; border-radius: 8px;">
-              ${content}
-            </td>
-          </tr>
-        </table>
-      `;
-    }
-  );
-  
-  const html = `<!DOCTYPE html>
+        const html = `<!DOCTYPE html>
 <html lang="${lang}">
 <head>
   <meta charset="UTF-8">
@@ -615,6 +615,23 @@ const generateHTML = () => {
     /* Forcer le fond blanc sur les éléments de structure */
     .page-header, .main-content, .page-footer {
       background: white;
+    }
+    
+    /* Style pour les sauts de page */
+    .page-break {
+      page-break-before: always;
+      break-before: page;
+      height: 0;
+      margin: 0;
+      border: none;
+    }
+    
+    /* Pour Word */
+    @media print {
+      .page-break {
+        mso-special-character: line-break;
+        page-break-before: always;
+      }
     }
     
     .page-header {
@@ -822,6 +839,12 @@ const generateHTML = () => {
       .main-content table {
         box-shadow: none;
       }
+      
+      .page-break {
+        page-break-before: always;
+        mso-special-character: line-break;
+        page-break-before: always;
+      }
     }
     
     /* Fix pour Word - forcer le fond blanc sur le body et html */
@@ -869,9 +892,10 @@ const generateHTML = () => {
   </div>
 </body>
 </html>`;
-  
-  return html;
-};
+        
+        return html;
+      };
+
       // Fonction pour générer le Markdown
       const generateMarkdown = () => {
         const date = new Date();
@@ -892,6 +916,7 @@ const generateHTML = () => {
           });
           
           content = content
+            .replace(/<hr[^>]*>/gi, '\n\n---\n\n')
             .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n')
             .replace(/<h2[^>]*>.*?🔷.*?<\/span>\s*(.*?)<\/h2>/gi, '## 🔷 $1\n\n')
             .replace(/<h3[^>]*>.*?🔹.*?<\/span>\s*(.*?)<\/h3>/gi, '### 🔹 $1\n\n')
@@ -973,6 +998,29 @@ const generateHTML = () => {
         return md;
       };
 
+      // Fonction pour remplacer les emojis par des symboles compatibles PDF
+      const replaceEmojisForPDF = (text) => {
+        return text
+          .replace(/🔷/g, '◆')
+          .replace(/🔹/g, '◇')
+          .replace(/🎯/g, '⊙')
+          .replace(/⚠️/g, '!')
+          .replace(/✅/g, '✓')
+          .replace(/❌/g, '✗')
+          .replace(/📌/g, '•')
+          .replace(/💡/g, '★')
+          .replace(/📋/g, '□')
+          .replace(/📥/g, '⬇')
+          .replace(/©/g, '(c)')
+          .replace(/€/g, 'EUR')
+          .replace(/£/g, 'GBP')
+          .replace(/¥/g, 'JPY')
+          .replace(/🌐/g, 'WEB')
+          .replace(/📄/g, 'DOC')
+          .replace(/📝/g, 'TXT')
+          .replace(/📃/g, 'DOC');
+      };
+
       // Fonction pour générer le PDF
       const generatePDF = async () => {
         if (!window.jspdf) {
@@ -1014,7 +1062,7 @@ const generateHTML = () => {
         doc.setTextColor(124, 58, 237);
         const taglineLines = doc.splitTextToSize(config.presentation_text, maxWidth - 40);
         taglineLines.forEach((line, index) => {
-          doc.text(line, pageWidth - margin, 15 + (index * 4), { align: 'right' });
+          doc.text(replaceEmojisForPDF(line), pageWidth - margin, 15 + (index * 4), { align: 'right' });
         });
         
         // Bannière héros
@@ -1026,7 +1074,7 @@ const generateHTML = () => {
         doc.setFontSize(18);
         const titleLines = doc.splitTextToSize(config.marketTitle, maxWidth);
         titleLines.forEach((line, index) => {
-          doc.text(line, margin, 45 + (index * 8));
+          doc.text(replaceEmojisForPDF(line), margin, 45 + (index * 8));
         });
         
         // Date
@@ -1055,23 +1103,63 @@ const generateHTML = () => {
             const text = node.textContent.trim();
             if (text && !processedContent.has(text)) {
               processedContent.add(text);
-              return text;
+              return replaceEmojisForPDF(text);
             }
             return '';
           }
           
           if (node.nodeType === Node.ELEMENT_NODE) {
             const tagName = node.tagName.toLowerCase();
-            const textContent = node.textContent.trim();
+            const textContent = replaceEmojisForPDF(node.textContent.trim());
             
             // Vérifier si ce contenu a déjà été traité
             if (processedContent.has(textContent)) {
               return '';
             }
             
+            // Gérer les <hr> pour les sauts de page
+            if (tagName === 'hr') {
+              doc.addPage();
+              yPosition = margin;
+              
+              // Ajouter le header sur la nouvelle page
+              if (logoBase64) {
+                doc.addImage(logoBase64, 'PNG', margin, 10, 30, 10);
+              }
+              
+              doc.setFontSize(8);
+              doc.setTextColor(124, 58, 237);
+              doc.text(replaceEmojisForPDF(config.presentation_text), pageWidth - margin, 15, { align: 'right' });
+              
+              yPosition = 40;
+              doc.setTextColor(0, 0, 0);
+              doc.setFontSize(11);
+              
+              return '';
+            }
+            
             processedContent.add(textContent);
             
             switch (tagName) {
+              case 'h1':
+                if (yPosition > pageHeight - margin - 25) {
+                  doc.addPage();
+                  yPosition = margin;
+                }
+                doc.setFontSize(16);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(26, 26, 26);
+                const h1Lines = doc.splitTextToSize(textContent, maxWidth);
+                h1Lines.forEach(line => {
+                  doc.text(line, margin, yPosition);
+                  yPosition += lineHeight + 3;
+                });
+                yPosition += 8;
+                doc.setFont(undefined, 'normal');
+                doc.setTextColor(0, 0, 0);
+                doc.setFontSize(11);
+                break;
+                
               case 'h2':
                 if (yPosition > pageHeight - margin - 20) {
                   doc.addPage();
@@ -1130,7 +1218,7 @@ const generateHTML = () => {
               case 'ol':
                 const listItems = node.querySelectorAll('li');
                 listItems.forEach(li => {
-                  const liText = li.textContent.trim();
+                  const liText = replaceEmojisForPDF(li.textContent.trim());
                   if (!processedContent.has(liText)) {
                     processedContent.add(liText);
                     if (yPosition > pageHeight - margin - 10) {
@@ -1159,7 +1247,7 @@ const generateHTML = () => {
                 if (caption) {
                   doc.setFont(undefined, 'bold');
                   doc.setFontSize(10);
-                  const captionText = caption.textContent.trim();
+                  const captionText = replaceEmojisForPDF(caption.textContent.trim());
                   const captionLines = doc.splitTextToSize(captionText, maxWidth);
                   captionLines.forEach(line => {
                     doc.text(line, margin, yPosition);
@@ -1185,7 +1273,7 @@ const generateHTML = () => {
                   doc.setFontSize(9);
                   
                   headers.forEach((header, index) => {
-                    const headerText = header.textContent.trim().substring(0, Math.floor(colWidth / 2));
+                    const headerText = replaceEmojisForPDF(header.textContent.trim().substring(0, Math.floor(colWidth / 2)));
                     doc.text(headerText, margin + (index * colWidth) + 2, yPosition);
                   });
                   
@@ -1208,7 +1296,7 @@ const generateHTML = () => {
                       }
                       
                       cells.forEach((cell, cellIndex) => {
-                        const cellText = cell.textContent.trim().substring(0, Math.floor(colWidth / 2));
+                        const cellText = replaceEmojisForPDF(cell.textContent.trim().substring(0, Math.floor(colWidth / 2)));
                         doc.text(cellText, margin + (cellIndex * colWidth) + 2, yPosition);
                       });
                       
@@ -1247,7 +1335,7 @@ const generateHTML = () => {
                         doc.setFontSize(9);
                         doc.setTextColor(100);
                         doc.setFont(undefined, 'italic');
-                        doc.text(imgAlt, pageWidth / 2, yPosition, { align: 'center' });
+                        doc.text(replaceEmojisForPDF(imgAlt), pageWidth / 2, yPosition, { align: 'center' });
                         yPosition += 8;
                         doc.setFont(undefined, 'normal');
                         doc.setTextColor(0);
@@ -1274,192 +1362,18 @@ const generateHTML = () => {
           doc.setPage(i);
           doc.setFontSize(9);
           doc.setTextColor(150);
-          doc.text(t.report.generatedBy, pageWidth / 2, pageHeight - 10, { align: 'center' });
+          doc.text(replaceEmojisForPDF(t.report.generatedBy), pageWidth / 2, pageHeight - 10, { align: 'center' });
           doc.text(`${i} / ${totalPages}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
         }
         
         return doc;
       };
 
-      // Fonction pour générer le DOCX (version simplifiée - HTML avec extension .doc)
+      // Fonction pour générer le DOCX (HTML avec sauts de page)
       const generateDOCX = async () => {
         const html = generateHTML();
         const blob = new Blob([html], { type: 'application/msword' });
         return blob;
-      };
-
-      // Nouvelle fonction pour générer du RTF (format compatible Word)
-      const generateRTF = async () => {
-        const date = new Date();
-        const dateStr = date.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US') + 
-                       ' ' + t.report.at + ' ' + 
-                       date.toLocaleTimeString(lang === 'fr' ? 'fr-FR' : 'en-US');
-
-        let rtf = '{\\rtf1\\ansi\\ansicpg1252\\deff0 {\\fonttbl{\\f0 Times New Roman;}}';
-        rtf += '\\viewkind4\\uc1\\pard\\f0\\fs24';
-        
-        // Titre
-        rtf += '\\qc\\b\\fs36 ' + escapeRTF(config.marketTitle) + '\\b0\\fs24\\par\\par';
-        
-        // Date
-        rtf += '\\qc ' + escapeRTF(`${t.report.generationDate}: ${dateStr}`) + '\\par\\par';
-        
-        // Ligne de séparation
-        rtf += '\\pard\\qc\\emdash\\emdash\\emdash\\emdash\\emdash\\emdash\\emdash\\emdash\\emdash\\emdash\\par\\par';
-        
-        // Contenu principal
-        rtf += '\\pard\\ql\\fs22';
-        
-        // Parser le contenu
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = config.content;
-        
-        const processNodeRTF = (node) => {
-          if (node.nodeType === Node.TEXT_NODE) {
-            return escapeRTF(node.textContent);
-          }
-          
-          if (node.nodeType === Node.ELEMENT_NODE) {
-            const tagName = node.tagName.toLowerCase();
-            let result = '';
-            
-            switch (tagName) {
-              case 'h2':
-                result = '\\par\\b\\fs28 ' + escapeRTF(node.textContent) + '\\b0\\fs22\\par\\par';
-                break;
-              case 'h3':
-                result = '\\par\\b\\fs26 ' + escapeRTF(node.textContent) + '\\b0\\fs22\\par\\par';
-                break;
-              case 'h4':
-                result = '\\par\\b\\fs24 ' + escapeRTF(node.textContent) + '\\b0\\fs22\\par\\par';
-                break;
-              case 'p':
-                result = escapeRTF(node.textContent) + '\\par\\par';
-                break;
-              case 'ul':
-              case 'ol':
-                const items = node.querySelectorAll('li');
-                items.forEach((li, index) => {
-                  const bullet = tagName === 'ul' ? '\\bullet ' : (index + 1) + '. ';
-                  result += bullet + escapeRTF(li.textContent) + '\\par';
-                });
-                result += '\\par';
-                break;
-              case 'table':
-                // Traitement simplifié des tableaux
-                result += '\\par{\\trowd\\trgaph180';
-                const rows = node.querySelectorAll('tr');
-                const firstRow = rows[0];
-                const cellCount = firstRow ? firstRow.querySelectorAll('th, td').length : 0;
-                
-                // Définir les colonnes
-                for (let i = 0; i < cellCount; i++) {
-                  const cellWidth = Math.floor(9000 / cellCount); // 9000 twips = largeur de page approx
-                  result += `\\cellx${(i + 1) * cellWidth}`;
-                }
-                
-                // Traiter chaque ligne
-                rows.forEach((row, rowIndex) => {
-                  const cells = row.querySelectorAll('th, td');
-                  cells.forEach((cell, cellIndex) => {
-                    const isHeader = cell.tagName.toLowerCase() === 'th';
-                    if (isHeader) {
-                      result += '\\intbl\\b ' + escapeRTF(cell.textContent) + '\\b0';
-                    } else {
-                      result += '\\intbl ' + escapeRTF(cell.textContent);
-                    }
-                    if (cellIndex < cells.length - 1) {
-                      result += '\\cell ';
-                    }
-                  });
-                  result += '\\row ';
-                });
-                result += '}\\par\\par';
-                break;
-              case 'strong':
-              case 'b':
-                result = '\\b ' + escapeRTF(node.textContent) + '\\b0 ';
-                break;
-              case 'em':
-              case 'i':
-                result = '\\i ' + escapeRTF(node.textContent) + '\\i0 ';
-                break;
-              default:
-                // Pour les autres éléments, traiter les enfants
-                for (const child of node.childNodes) {
-                  result += processNodeRTF(child);
-                }
-            }
-            
-            return result;
-          }
-          
-          return '';
-        };
-        
-        // Traiter tous les noeuds
-        for (const child of tempDiv.children) {
-          rtf += processNodeRTF(child);
-        }
-        
-        // Footer
-        rtf += '\\par\\par\\pard\\qc\\fs18\\i ' + escapeRTF(t.report.generatedBy) + '\\i0\\fs22\\par';
-        
-        rtf += '}';
-        
-        return rtf;
-      };
-
-      // Fonction helper pour échapper les caractères spéciaux RTF (corrigée)
-      const escapeRTF = (text) => {
-        return text
-          .replace(/\\/g, '\\\\')
-          .replace(/\{/g, '\\{')
-          .replace(/\}/g, '\\}')
-          .replace(/\n/g, '\\par ')
-          // Caractères accentués
-          .replace(/[àáâãäå]/g, "\\'e0")
-          .replace(/[èéêë]/g, "\\'e8")
-          .replace(/[ìíîï]/g, "\\'ec")
-          .replace(/[òóôõö]/g, "\\'f2")
-          .replace(/[ùúûü]/g, "\\'f9")
-          .replace(/[ÀÁÂÃÄÅ]/g, "\\'c0")
-          .replace(/[ÈÉÊË]/g, "\\'c8")
-          .replace(/[ÌÍÎÏ]/g, "\\'cc")
-          .replace(/[ÒÓÔÕÖ]/g, "\\'d2")
-          .replace(/[ÙÚÛÜ]/g, "\\'d9")
-          .replace(/ç/g, "\\'e7")
-          .replace(/Ç/g, "\\'c7")
-          .replace(/ñ/g, "\\'f1")
-          .replace(/Ñ/g, "\\'d1")
-          // Caractères spéciaux
-          .replace(/€/g, "\\'80")
-          .replace(/'/g, "\\'92")
-          .replace(/'/g, "\\'92")
-          .replace(/"/g, "\\'93")
-          .replace(/"/g, "\\'94")
-          .replace(/–/g, "\\'96")
-          .replace(/—/g, "\\'97")
-          .replace(/…/g, "\\'85")
-          .replace(/•/g, "\\'95")
-          // Emojis et symboles
-          .replace(/🔷/g, '[>] ')
-          .replace(/🔹/g, '[>] ')
-          .replace(/✓/g, '[OK] ')
-          .replace(/✔/g, '[OK] ')
-          .replace(/✅/g, '[OK] ')
-          .replace(/❌/g, '[X] ')
-          .replace(/⚠️/g, '[!] ')
-          .replace(/📌/g, '[*] ')
-          .replace(/🎯/g, '[o] ')
-          .replace(/💡/g, '[i] ')
-          // Autres caractères Unicode qui pourraient poser problème
-          .replace(/[\u0080-\u00FF]/g, function(match) {
-            return '\\' + "'" + match.charCodeAt(0).toString(16);
-          })
-          .replace(/[\u0100-\uFFFF]/g, function(match) {
-            return '\\u' + match.charCodeAt(0) + '?';
-          });
       };
 
       // Fonction pour vérifier la position du menu
@@ -1724,7 +1638,7 @@ const generateHTML = () => {
         }
       }, 0);
       
-      console.log('✅ DownloadReport multilingue prêt avec support DOCX/RTF amélioré');
+      console.log('✅ DownloadReport multilingue prêt avec support sauts de page et emojis corrigés');
       
     } catch (error) {
       console.error('❌ DownloadReport Error:', error);

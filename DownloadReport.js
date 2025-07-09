@@ -1008,459 +1008,467 @@ export const DownloadReport = {
       };
 
       // Fonction améliorée pour générer le PDF avec meilleure gestion des emojis
-      const generatePDF = async () => {
-        if (!window.jspdf) {
-          const script = document.createElement('script');
-          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-          document.head.appendChild(script);
-          await new Promise(resolve => script.onload = resolve);
-        }
+// Fonction améliorée pour générer le PDF avec meilleure gestion des emojis et des encadrés
+const generatePDF = async () => {
+  if (!window.jspdf) {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    document.head.appendChild(script);
+    await new Promise(resolve => script.onload = resolve);
+  }
 
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF({
-          unit: 'mm',
-          format: 'a4',
-          orientation: 'portrait'
-        });
-        
-        doc.setFont('helvetica');
-        
-        let yPosition = 20;
-        const pageHeight = doc.internal.pageSize.height;
-        const pageWidth = doc.internal.pageSize.width;
-        const margin = 20;
-        const lineHeight = 7;
-        const maxWidth = pageWidth - 2 * margin;
-        
-        // Charger le logo
-        const logoBase64 = await loadImageAsBase64(config.url_logo);
-        
-        // Fonction pour ajouter l'en-tête sur chaque page
-        const addHeader = () => {
-          // Header avec logo
-          doc.setFillColor(255, 255, 255);
-          doc.rect(0, 0, pageWidth, 30, 'F');
-          
-          if (logoBase64) {
-            doc.addImage(logoBase64, 'PNG', margin, 10, 30, 10);
-          }
-          
-          // Tagline
-          doc.setFontSize(8);
-          doc.setTextColor(124, 58, 237);
-          const taglineLines = doc.splitTextToSize(config.presentation_text, maxWidth - 40);
-          taglineLines.forEach((line, index) => {
-            doc.text(line, pageWidth - margin, 15 + (index * 4), { align: 'right' });
-          });
-        };
-        
-        // Ajouter l'en-tête sur la première page
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({
+    unit: 'mm',
+    format: 'a4',
+    orientation: 'portrait'
+  });
+  
+  doc.setFont('helvetica');
+  
+  let yPosition = 20;
+  const pageHeight = doc.internal.pageSize.height;
+  const pageWidth = doc.internal.pageSize.width;
+  const margin = 20;
+  const lineHeight = 7;
+  const maxWidth = pageWidth - 2 * margin;
+  
+  // Charger le logo
+  const logoBase64 = await loadImageAsBase64(config.url_logo);
+  
+  // Fonction pour ajouter l'en-tête sur chaque page
+  const addHeader = () => {
+    // Header avec logo
+    doc.setFillColor(255, 255, 255);
+    doc.rect(0, 0, pageWidth, 30, 'F');
+    
+    if (logoBase64) {
+      doc.addImage(logoBase64, 'PNG', margin, 10, 30, 10);
+    }
+    
+    // Tagline
+    doc.setFontSize(8);
+    doc.setTextColor(124, 58, 237);
+    const taglineLines = doc.splitTextToSize(config.presentation_text, maxWidth - 40);
+    taglineLines.forEach((line, index) => {
+      doc.text(line, pageWidth - margin, 15 + (index * 4), { align: 'right' });
+    });
+  };
+  
+  // Ajouter l'en-tête sur la première page
+  addHeader();
+  
+  // Bannière héros sur la première page uniquement
+  doc.setFillColor(124, 58, 237);
+  doc.rect(0, 30, pageWidth, 40, 'F');
+  
+  // Titre
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(18);
+  const titleLines = doc.splitTextToSize(config.marketTitle, maxWidth);
+  titleLines.forEach((line, index) => {
+    doc.text(line, margin, 45 + (index * 8));
+  });
+  
+  // Date
+  doc.setFontSize(10);
+  const date = new Date();
+  const dateStr = date.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US') + 
+                 ' ' + t.report.at + ' ' + 
+                 date.toLocaleTimeString(lang === 'fr' ? 'fr-FR' : 'en-US');
+  doc.text(dateStr, margin, 62);
+  
+  yPosition = 85;
+  
+  // Contenu principal
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(11);
+  
+  // Parser le HTML et éviter les doublons
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = config.content;
+  
+  // Créer un Set pour stocker le contenu déjà traité et éviter les doublons
+  const processedContent = new Set();
+  
+  // Fonction pour nettoyer et remplacer les emojis
+  const cleanTextForPDF = (text) => {
+    return text
+      .replace(/🔷/g, '>')
+      .replace(/🔹/g, '•')
+      .replace(/✓/g, '[OK]')
+      .replace(/✔/g, '[OK]')
+      .replace(/✅/g, '[OK]')
+      .replace(/❌/g, '[X]')
+      .replace(/⚠️/g, '[!]')
+      .replace(/📌/g, '[*]')
+      .replace(/🎯/g, '[o]')
+      .replace(/💡/g, '[i]')
+      .replace(/📥/g, '[v]')
+      .replace(/📋/g, '[=]')
+      .replace(/🌐/g, '[W]')
+      .replace(/📄/g, '[D]')
+      .replace(/📝/g, '[T]')
+      .replace(/📃/g, '[P]')
+      .replace(/⏳/g, '...')
+      .replace(/•/g, '•')
+      .replace(/–/g, '-')
+      .replace(/—/g, '--')
+      .replace(/'/g, "'")
+      .replace(/'/g, "'")
+      .replace(/"/g, '"')
+      .replace(/"/g, '"')
+      .replace(/…/g, '...');
+  };
+  
+  const processNode = async (node, isInsideBox = false) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const text = node.textContent.trim();
+      if (text && !processedContent.has(text)) {
+        processedContent.add(text);
+        return cleanTextForPDF(text);
+      }
+      return '';
+    }
+    
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const tagName = node.tagName.toLowerCase();
+      
+      // Gestion spéciale pour les <hr> - saut de page
+      if (tagName === 'hr') {
+        doc.addPage();
         addHeader();
-        
-        // Bannière héros sur la première page uniquement
-        doc.setFillColor(124, 58, 237);
-        doc.rect(0, 30, pageWidth, 40, 'F');
-        
-        // Titre
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(18);
-        const titleLines = doc.splitTextToSize(config.marketTitle, maxWidth);
-        titleLines.forEach((line, index) => {
-          doc.text(line, margin, 45 + (index * 8));
-        });
-        
-        // Date
-        doc.setFontSize(10);
-        const date = new Date();
-        const dateStr = date.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US') + 
-                       ' ' + t.report.at + ' ' + 
-                       date.toLocaleTimeString(lang === 'fr' ? 'fr-FR' : 'en-US');
-        doc.text(dateStr, margin, 62);
-        
-        yPosition = 85;
-        
-        // Contenu principal
-        doc.setTextColor(0, 0, 0);
-        doc.setFontSize(11);
-        
-        // Parser le HTML et éviter les doublons
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = config.content;
-        
-        // Créer un Set pour stocker le contenu déjà traité et éviter les doublons
-        const processedContent = new Set();
-        
-        // Fonction pour nettoyer et remplacer les emojis
-        const cleanTextForPDF = (text) => {
-          return text
-            .replace(/🔷/g, '>')
-            .replace(/🔹/g, '•')
-            .replace(/✓/g, '[OK]')
-            .replace(/✔/g, '[OK]')
-            .replace(/✅/g, '[OK]')
-            .replace(/❌/g, '[X]')
-            .replace(/⚠️/g, '[!]')
-            .replace(/📌/g, '[*]')
-            .replace(/🎯/g, '[o]')
-            .replace(/💡/g, '[i]')
-            .replace(/📥/g, '[v]')
-            .replace(/📋/g, '[=]')
-            .replace(/🌐/g, '[W]')
-            .replace(/📄/g, '[D]')
-            .replace(/📝/g, '[T]')
-            .replace(/📃/g, '[P]')
-            .replace(/⏳/g, '...')
-            .replace(/•/g, '•')
-            .replace(/–/g, '-')
-            .replace(/—/g, '--')
-            .replace(/'/g, "'")
-            .replace(/'/g, "'")
-            .replace(/"/g, '"')
-            .replace(/"/g, '"')
-            .replace(/…/g, '...');
-        };
-        
-        const processNode = async (node) => {
-          if (node.nodeType === Node.TEXT_NODE) {
-            const text = node.textContent.trim();
-            if (text && !processedContent.has(text)) {
-              processedContent.add(text);
-              return cleanTextForPDF(text);
-            }
-            return '';
+        yPosition = 40; // Position après l'en-tête
+        return;
+      }
+      
+      // Extraire le texte en gérant les spans avec emojis
+      let textContent = '';
+      
+      // Si c'est un h2 ou h3 avec span.no-gradient, extraire correctement
+      if ((tagName === 'h2' || tagName === 'h3') && node.querySelector('span.no-gradient')) {
+        const span = node.querySelector('span.no-gradient');
+        const emoji = span ? span.textContent : '';
+        const remainingText = node.textContent.replace(emoji, '').trim();
+        textContent = cleanTextForPDF(emoji) + ' ' + remainingText;
+      } else {
+        textContent = node.textContent.trim();
+      }
+      
+      // Vérifier si ce contenu a déjà été traité (sauf si on est dans une box)
+      if (!isInsideBox && processedContent.has(textContent)) {
+        return '';
+      }
+      
+      if (!isInsideBox) {
+        processedContent.add(textContent);
+      }
+      
+      // Nettoyer le texte pour le PDF
+      const cleanText = cleanTextForPDF(textContent);
+      
+      switch (tagName) {
+        case 'h2':
+          if (yPosition > pageHeight - margin - 20) {
+            doc.addPage();
+            addHeader();
+            yPosition = 40;
           }
+          doc.setFontSize(14);
+          doc.setFont(undefined, 'bold');
+          doc.setTextColor(26, 26, 26);
           
-          if (node.nodeType === Node.ELEMENT_NODE) {
-            const tagName = node.tagName.toLowerCase();
-            
-            // Gestion spéciale pour les <hr> - saut de page
-            if (tagName === 'hr') {
+          const h2Lines = doc.splitTextToSize(cleanText, maxWidth);
+          h2Lines.forEach(line => {
+            doc.text(line, margin, yPosition);
+            yPosition += lineHeight + 2;
+          });
+          
+          doc.setDrawColor(124, 58, 237);
+          doc.setLineWidth(0.5);
+          doc.line(margin, yPosition - 2, margin + 40, yPosition - 2);
+          yPosition += 5;
+          doc.setFont(undefined, 'normal');
+          doc.setTextColor(0, 0, 0);
+          doc.setFontSize(11);
+          break;
+          
+        case 'h3':
+          if (yPosition > pageHeight - margin - 15) {
+            doc.addPage();
+            addHeader();
+            yPosition = 40;
+          }
+          doc.setFontSize(12);
+          doc.setFont(undefined, 'bold');
+          doc.setTextColor(51, 51, 51);
+          
+          const h3Lines = doc.splitTextToSize(cleanText, maxWidth - (isInsideBox ? 10 : 0));
+          h3Lines.forEach(line => {
+            doc.text(line, margin + (isInsideBox ? 5 : 0), yPosition);
+            yPosition += lineHeight + 1;
+          });
+          
+          yPosition += 3;
+          doc.setFont(undefined, 'normal');
+          doc.setTextColor(0, 0, 0);
+          doc.setFontSize(11);
+          break;
+          
+        case 'h4':
+          if (yPosition > pageHeight - margin - 12) {
+            doc.addPage();
+            addHeader();
+            yPosition = 40;
+          }
+          doc.setFontSize(11);
+          doc.setFont(undefined, 'bold');
+          doc.setTextColor(85, 85, 85);
+          
+          const h4Lines = doc.splitTextToSize(cleanText, maxWidth);
+          h4Lines.forEach(line => {
+            doc.text(line, margin, yPosition);
+            yPosition += lineHeight;
+          });
+          
+          yPosition += 2;
+          doc.setFont(undefined, 'normal');
+          doc.setTextColor(0, 0, 0);
+          break;
+          
+        case 'p':
+          if (yPosition > pageHeight - margin - 10) {
+            doc.addPage();
+            addHeader();
+            yPosition = 40;
+          }
+          const pLines = doc.splitTextToSize(cleanText, maxWidth - (isInsideBox ? 10 : 0));
+          pLines.forEach(line => {
+            doc.text(line, margin + (isInsideBox ? 5 : 0), yPosition);
+            yPosition += lineHeight;
+          });
+          yPosition += 3;
+          break;
+          
+        case 'ul':
+        case 'ol':
+          const listItems = node.querySelectorAll('li');
+          listItems.forEach((li, index) => {
+            const liText = cleanTextForPDF(li.textContent.trim());
+            if (yPosition > pageHeight - margin - 10) {
               doc.addPage();
               addHeader();
-              yPosition = 40; // Position après l'en-tête
-              return;
+              yPosition = 40;
             }
+            const bullet = tagName === 'ul' ? '• ' : `${index + 1}. `;
+            const liLines = doc.splitTextToSize(bullet + liText, maxWidth - 10 - (isInsideBox ? 10 : 0));
+            liLines.forEach((line, lineIndex) => {
+              doc.text(line, margin + (lineIndex === 0 ? 0 : 10) + (isInsideBox ? 5 : 0), yPosition);
+              yPosition += lineHeight;
+            });
+          });
+          yPosition += 3;
+          break;
+          
+        case 'table':
+          // Traitement des tableaux
+          if (yPosition > pageHeight - margin - 30) {
+            doc.addPage();
+            addHeader();
+            yPosition = 40;
+          }
+          
+          const caption = node.querySelector('caption');
+          if (caption) {
+            doc.setFont(undefined, 'bold');
+            doc.setFontSize(10);
+            const captionText = cleanTextForPDF(caption.textContent.trim());
+            const captionLines = doc.splitTextToSize(captionText, maxWidth);
+            captionLines.forEach(line => {
+              doc.text(line, margin, yPosition);
+              yPosition += 6;
+            });
+            doc.setFont(undefined, 'normal');
+            doc.setFontSize(11);
+            yPosition += 2;
+          }
+          
+          const headers = Array.from(node.querySelectorAll('thead th, tbody tr:first-child th'));
+          const rows = Array.from(node.querySelectorAll('tbody tr'));
+          
+          if (headers.length > 0) {
+            const colCount = headers.length;
+            const colWidth = maxWidth / colCount;
             
-            // Extraire le texte en gérant les spans avec emojis
-            let textContent = '';
+            // Headers
+            doc.setFillColor(124, 58, 237);
+            doc.rect(margin, yPosition - 5, maxWidth, 8, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFont(undefined, 'bold');
+            doc.setFontSize(9);
             
-            // Si c'est un h2 ou h3 avec span.no-gradient, extraire correctement
-            if ((tagName === 'h2' || tagName === 'h3') && node.querySelector('span.no-gradient')) {
-              const span = node.querySelector('span.no-gradient');
-              const emoji = span ? span.textContent : '';
-              const remainingText = node.textContent.replace(emoji, '').trim();
-              textContent = cleanTextForPDF(emoji) + ' ' + remainingText;
-            } else {
-              textContent = node.textContent.trim();
-            }
+            headers.forEach((header, index) => {
+              const headerText = cleanTextForPDF(header.textContent.trim()).substring(0, Math.floor(colWidth / 2));
+              doc.text(headerText, margin + (index * colWidth) + 2, yPosition);
+            });
             
-            // Vérifier si ce contenu a déjà été traité
-            if (processedContent.has(textContent)) {
-              return '';
-            }
+            yPosition += 10;
+            doc.setTextColor(0, 0, 0);
+            doc.setFont(undefined, 'normal');
             
-            processedContent.add(textContent);
-            
-            // Nettoyer le texte pour le PDF
-            const cleanText = cleanTextForPDF(textContent);
-            
-            switch (tagName) {
-              case 'h2':
-                if (yPosition > pageHeight - margin - 20) {
-                  doc.addPage();
-                  addHeader();
-                  yPosition = 40;
+            // Rows
+            rows.forEach((row, rowIndex) => {
+              if (yPosition > pageHeight - margin - 10) {
+                doc.addPage();
+                addHeader();
+                yPosition = 40;
+              }
+              
+              const cells = row.querySelectorAll('td');
+              if (cells.length > 0) {
+                if (rowIndex % 2 === 0) {
+                  doc.setFillColor(248, 249, 250);
+                  doc.rect(margin, yPosition - 4, maxWidth, 6, 'F');
                 }
-                doc.setFontSize(14);
-                doc.setFont(undefined, 'bold');
-                doc.setTextColor(26, 26, 26);
                 
-                const h2Lines = doc.splitTextToSize(cleanText, maxWidth);
-                h2Lines.forEach(line => {
-                  doc.text(line, margin, yPosition);
-                  yPosition += lineHeight + 2;
+                cells.forEach((cell, cellIndex) => {
+                  const cellText = cleanTextForPDF(cell.textContent.trim()).substring(0, Math.floor(colWidth / 2));
+                  doc.text(cellText, margin + (cellIndex * colWidth) + 2, yPosition);
                 });
                 
-                doc.setDrawColor(124, 58, 237);
-                doc.setLineWidth(0.5);
-                doc.line(margin, yPosition - 2, margin + 40, yPosition - 2);
-                yPosition += 5;
-                doc.setFont(undefined, 'normal');
-                doc.setTextColor(0, 0, 0);
-                doc.setFontSize(11);
-                break;
-                
-              case 'h3':
-                if (yPosition > pageHeight - margin - 15) {
-                  doc.addPage();
-                  addHeader();
-                  yPosition = 40;
-                }
-                doc.setFontSize(12);
-                doc.setFont(undefined, 'bold');
-                doc.setTextColor(51, 51, 51);
-                
-                const h3Lines = doc.splitTextToSize(cleanText, maxWidth);
-                h3Lines.forEach(line => {
-                  doc.text(line, margin, yPosition);
-                  yPosition += lineHeight + 1;
-                });
-                
-                yPosition += 3;
-                doc.setFont(undefined, 'normal');
-                doc.setTextColor(0, 0, 0);
-                doc.setFontSize(11);
-                break;
-                
-              case 'h4':
-                if (yPosition > pageHeight - margin - 12) {
-                  doc.addPage();
-                  addHeader();
-                  yPosition = 40;
-                }
-                doc.setFontSize(11);
-                doc.setFont(undefined, 'bold');
-                doc.setTextColor(85, 85, 85);
-                
-                const h4Lines = doc.splitTextToSize(cleanText, maxWidth);
-                h4Lines.forEach(line => {
-                  doc.text(line, margin, yPosition);
-                  yPosition += lineHeight;
-                });
-                
-                yPosition += 2;
-                doc.setFont(undefined, 'normal');
-                doc.setTextColor(0, 0, 0);
-                break;
-                
-              case 'p':
-                if (yPosition > pageHeight - margin - 10) {
-                  doc.addPage();
-                  addHeader();
-                  yPosition = 40;
-                }
-                const pLines = doc.splitTextToSize(cleanText, maxWidth);
-                pLines.forEach(line => {
-                  doc.text(line, margin, yPosition);
-                  yPosition += lineHeight;
-                });
-                yPosition += 3;
-                break;
-                
-              case 'ul':
-              case 'ol':
-                const listItems = node.querySelectorAll('li');
-                listItems.forEach((li, index) => {
-                  const liText = cleanTextForPDF(li.textContent.trim());
-                  if (!processedContent.has(liText)) {
-                    processedContent.add(liText);
-                    if (yPosition > pageHeight - margin - 10) {
-                      doc.addPage();
-                      addHeader();
-                      yPosition = 40;
-                    }
-                    const bullet = tagName === 'ul' ? '• ' : `${index + 1}. `;
-                    const liLines = doc.splitTextToSize(bullet + liText, maxWidth - 10);
-                    liLines.forEach((line, lineIndex) => {
-                      doc.text(line, margin + (lineIndex === 0 ? 0 : 10), yPosition);
-                      yPosition += lineHeight;
-                    });
-                  }
-                });
-                yPosition += 3;
-                break;
-                
-              case 'table':
-                // Traitement des tableaux
-                if (yPosition > pageHeight - margin - 30) {
+                yPosition += 6;
+              }
+            });
+          }
+          
+          yPosition += 5;
+          break;
+          
+        case 'img':
+          // Traitement des images
+          const imgSrc = node.src;
+          const imgAlt = node.alt || 'Image';
+          
+          if (imgSrc && !processedContent.has(imgSrc)) {
+            processedContent.add(imgSrc);
+            try {
+              const imgBase64 = await loadImageAsBase64(imgSrc);
+              if (imgBase64) {
+                if (yPosition > pageHeight - margin - 60) {
                   doc.addPage();
                   addHeader();
                   yPosition = 40;
                 }
                 
-                const caption = node.querySelector('caption');
-                if (caption) {
-                  doc.setFont(undefined, 'bold');
-                  doc.setFontSize(10);
-                  const captionText = cleanTextForPDF(caption.textContent.trim());
-                  const captionLines = doc.splitTextToSize(captionText, maxWidth);
-                  captionLines.forEach(line => {
-                    doc.text(line, margin, yPosition);
-                    yPosition += 6;
-                  });
-                  doc.setFont(undefined, 'normal');
-                  doc.setFontSize(11);
-                  yPosition += 2;
-                }
+                const imgWidth = 80;
+                const imgHeight = 60;
+                const centerX = (pageWidth - imgWidth) / 2;
                 
-                const headers = Array.from(node.querySelectorAll('thead th, tbody tr:first-child th'));
-                const rows = Array.from(node.querySelectorAll('tbody tr'));
+                doc.addImage(imgBase64, 'JPEG', centerX, yPosition, imgWidth, imgHeight);
+                yPosition += imgHeight + 5;
                 
-                if (headers.length > 0) {
-                  const colCount = headers.length;
-                  const colWidth = maxWidth / colCount;
-                  
-                  // Headers
-                  doc.setFillColor(124, 58, 237);
-                  doc.rect(margin, yPosition - 5, maxWidth, 8, 'F');
-                  doc.setTextColor(255, 255, 255);
-                  doc.setFont(undefined, 'bold');
+                // Légende de l'image
+                if (imgAlt) {
                   doc.setFontSize(9);
-                  
-                  headers.forEach((header, index) => {
-                    const headerText = cleanTextForPDF(header.textContent.trim()).substring(0, Math.floor(colWidth / 2));
-                    doc.text(headerText, margin + (index * colWidth) + 2, yPosition);
-                  });
-                  
-                  yPosition += 10;
-                  doc.setTextColor(0, 0, 0);
+                  doc.setTextColor(100);
+                  doc.setFont(undefined, 'italic');
+                  doc.text(imgAlt, pageWidth / 2, yPosition, { align: 'center' });
+                  yPosition += 8;
                   doc.setFont(undefined, 'normal');
-                  
-                  // Rows
-                  rows.forEach((row, rowIndex) => {
-                    if (yPosition > pageHeight - margin - 10) {
-                      doc.addPage();
-                      addHeader();
-                      yPosition = 40;
-                    }
-                    
-                    const cells = row.querySelectorAll('td');
-                    if (cells.length > 0) {
-                      if (rowIndex % 2 === 0) {
-                        doc.setFillColor(248, 249, 250);
-                        doc.rect(margin, yPosition - 4, maxWidth, 6, 'F');
-                      }
-                      
-                      cells.forEach((cell, cellIndex) => {
-                        const cellText = cleanTextForPDF(cell.textContent.trim()).substring(0, Math.floor(colWidth / 2));
-                        doc.text(cellText, margin + (cellIndex * colWidth) + 2, yPosition);
-                      });
-                      
-                      yPosition += 6;
-                    }
-                  });
+                  doc.setTextColor(0);
+                  doc.setFontSize(11);
                 }
-                
-                yPosition += 5;
-                break;
-                
-              case 'img':
-                // Traitement des images
-                const imgSrc = node.src;
-                const imgAlt = node.alt || 'Image';
-                
-                if (imgSrc && !processedContent.has(imgSrc)) {
-                  processedContent.add(imgSrc);
-                  try {
-                    const imgBase64 = await loadImageAsBase64(imgSrc);
-                    if (imgBase64) {
-                      if (yPosition > pageHeight - margin - 60) {
-                        doc.addPage();
-                        addHeader();
-                        yPosition = 40;
-                      }
-                      
-                      const imgWidth = 80;
-                      const imgHeight = 60;
-                      const centerX = (pageWidth - imgWidth) / 2;
-                      
-                      doc.addImage(imgBase64, 'JPEG', centerX, yPosition, imgWidth, imgHeight);
-                      yPosition += imgHeight + 5;
-                      
-                      // Légende de l'image
-                      if (imgAlt) {
-                        doc.setFontSize(9);
-                        doc.setTextColor(100);
-                        doc.setFont(undefined, 'italic');
-                        doc.text(imgAlt, pageWidth / 2, yPosition, { align: 'center' });
-                        yPosition += 8;
-                        doc.setFont(undefined, 'normal');
-                        doc.setTextColor(0);
-                        doc.setFontSize(11);
-                      }
-                    }
-                  } catch (error) {
-                    console.error('Erreur lors du chargement de l\'image:', error);
-                  }
-                }
-                break;
-                
-              case 'div':
-                // Traiter les divs avec bordures spéciales
-                if (node.style.border && node.style.border.includes('solid')) {
-                  if (yPosition > pageHeight - margin - 20) {
-                    doc.addPage();
-                    addHeader();
-                    yPosition = 40;
-                  }
-                  
-                  // Dessiner un cadre
-                  doc.setDrawColor(25, 118, 210);
-                  doc.setFillColor(227, 242, 253);
-                  doc.roundedRect(margin, yPosition - 5, maxWidth, 0, 3, 3, 'FD');
-                  
-                  yPosition += 5;
-                  
-                  // Traiter le contenu du div
-                  for (const child of node.children) {
-                    await processNode(child);
-                  }
-                  
-                  // Finaliser le cadre
-                  const endY = yPosition + 5;
-                  const boxHeight = endY - (yPosition - 5);
-                  doc.roundedRect(margin, yPosition - boxHeight - 5, maxWidth, boxHeight, 3, 3, 'D');
-                  
-                  yPosition = endY;
-                } else {
-                  // Traiter les enfants normalement
-                  for (const child of node.children) {
-                    await processNode(child);
-                  }
-                }
-                break;
-                
-              default:
-                // Pour les autres éléments, traiter les enfants
-                if (node.children.length > 0) {
-                  for (const child of node.children) {
-                    await processNode(child);
-                  }
-                } else if (textContent) {
-                  // Si pas d'enfants mais du texte, l'afficher
-                  if (yPosition > pageHeight - margin - 10) {
-                    doc.addPage();
-                    addHeader();
-                    yPosition = 40;
-                  }
-                  const lines = doc.splitTextToSize(cleanText, maxWidth);
-                  lines.forEach(line => {
-                    doc.text(line, margin, yPosition);
-                    yPosition += lineHeight;
-                  });
-                }
+              }
+            } catch (error) {
+              console.error('Erreur lors du chargement de l\'image:', error);
             }
           }
-        };
-        
-        // Traiter tous les noeuds enfants
-        for (const child of tempDiv.children) {
-          await processNode(child);
-        }
-        
-        // Footer
-        const totalPages = doc.internal.getNumberOfPages();
-        for (let i = 1; i <= totalPages; i++) {
-          doc.setPage(i);
-          doc.setFontSize(9);
-          doc.setTextColor(150);
-          doc.text(t.report.generatedBy, pageWidth / 2, pageHeight - 10, { align: 'center' });
-          doc.text(`${i} / ${totalPages}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
-        }
-        
-        return doc;
-      };
+          break;
+          
+        case 'div':
+          // Traiter les divs avec bordures spéciales (les encadrés)
+          if (node.style && node.style.border && node.style.border.includes('solid')) {
+            if (yPosition > pageHeight - margin - 20) {
+              doc.addPage();
+              addHeader();
+              yPosition = 40;
+            }
+            
+            // Sauvegarder la position de départ
+            const boxStartY = yPosition;
+            
+            // Ajouter un peu d'espace avant l'encadré
+            yPosition += 5;
+            
+            // Traiter le contenu du div
+            for (const child of node.children) {
+              await processNode(child, true); // Passer isInsideBox = true
+            }
+            
+            // Ajouter un peu d'espace après le contenu
+            yPosition += 5;
+            
+            // Calculer la hauteur de l'encadré
+            const boxHeight = yPosition - boxStartY;
+            
+            // Dessiner l'encadré avec le fond et la bordure
+            doc.setFillColor(227, 242, 253); // Fond bleu clair
+            doc.setDrawColor(25, 118, 210); // Bordure bleue
+            doc.setLineWidth(0.5);
+            doc.roundedRect(margin, boxStartY, maxWidth, boxHeight, 3, 3, 'FD');
+            
+            // Ajouter un peu d'espace après l'encadré
+            yPosition += 5;
+          } else {
+            // Traiter les enfants normalement
+            for (const child of node.children) {
+              await processNode(child, isInsideBox);
+            }
+          }
+          break;
+          
+        default:
+          // Pour les autres éléments, traiter les enfants
+          if (node.children.length > 0) {
+            for (const child of node.children) {
+              await processNode(child, isInsideBox);
+            }
+          } else if (textContent && tagName !== 'br') {
+            // Si pas d'enfants mais du texte, l'afficher
+            if (yPosition > pageHeight - margin - 10) {
+              doc.addPage();
+              addHeader();
+              yPosition = 40;
+            }
+            const lines = doc.splitTextToSize(cleanText, maxWidth - (isInsideBox ? 10 : 0));
+            lines.forEach(line => {
+              doc.text(line, margin + (isInsideBox ? 5 : 0), yPosition);
+              yPosition += lineHeight;
+            });
+          }
+      }
+    }
+  };
+  
+  // Traiter tous les noeuds enfants
+  for (const child of tempDiv.children) {
+    await processNode(child);
+  }
+  
+  // Footer
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(9);
+    doc.setTextColor(150);
+    doc.text(t.report.generatedBy, pageWidth / 2, pageHeight - 10, { align: 'center' });
+    doc.text(`${i} / ${totalPages}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
+  }
+  
+  return doc;
+};
 
+      
       // Fonction pour générer le DOCX (version simplifiée - HTML avec extension .doc)
       const generateDOCX = async () => {
         const html = generateHTML();

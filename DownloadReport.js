@@ -1090,9 +1090,6 @@ const generatePDF = async () => {
   // Créer un Set pour stocker le contenu déjà traité et éviter les doublons
   const processedContent = new Set();
   
-  // Stocker les éléments d'encadrés pour les dessiner plus tard
-  const boxedContent = [];
-  
   // Fonction pour nettoyer et remplacer les emojis
   const cleanTextForPDF = (text) => {
     return text
@@ -1400,66 +1397,92 @@ const generatePDF = async () => {
               yPosition = 40;
             }
             
-            // Sauvegarder la position de départ et l'état actuel
+            // Sauvegarder la position de départ
             const boxStartY = yPosition;
-            const currentPageNumber = doc.internal.getNumberOfPages();
+            const originalYPosition = yPosition;
             
             // Ajouter un peu d'espace avant l'encadré
             yPosition += 5;
             
-            // Collecter tout le contenu de l'encadré d'abord
-            const boxElements = [];
-            const tempYPosition = yPosition;
-            
-            // Premier passage : mesurer la hauteur nécessaire
-            for (const child of node.children) {
-              await processNode(child, true);
-            }
-            
-            // Calculer la hauteur totale nécessaire
-            const boxHeight = yPosition - boxStartY + 5;
-            
-            // Si on a changé de page pendant le traitement, revenir à la position initiale
-            if (doc.internal.getNumberOfPages() > currentPageNumber) {
-              // Supprimer les pages ajoutées
-              while (doc.internal.getNumberOfPages() > currentPageNumber) {
-                doc.deletePage(doc.internal.getNumberOfPages());
+            // Premier passage : calculer la hauteur nécessaire sans vraiment dessiner
+            let tempYPosition = yPosition;
+            const calculateHeight = async (node) => {
+              for (const child of node.children) {
+                if (child.nodeType === Node.ELEMENT_NODE) {
+                  const tagName = child.tagName.toLowerCase();
+                  const textContent = child.textContent.trim();
+                  const cleanText = cleanTextForPDF(textContent);
+                  
+                  switch (tagName) {
+                    case 'h3':
+                      const h3Lines = doc.splitTextToSize(cleanText, maxWidth - 10);
+                      tempYPosition += h3Lines.length * (lineHeight + 1) + 3;
+                      break;
+                    case 'ul':
+                    case 'ol':
+                      const listItems = child.querySelectorAll('li');
+                      listItems.forEach(li => {
+                        const liText = cleanTextForPDF(li.textContent.trim());
+                        const bullet = tagName === 'ul' ? '• ' : '1. ';
+                        const liLines = doc.splitTextToSize(bullet + liText, maxWidth - 20);
+                        tempYPosition += liLines.length * lineHeight;
+                      });
+                      tempYPosition += 3;
+                      break;
+                    case 'p':
+                      const pLines = doc.splitTextToSize(cleanText, maxWidth - 10);
+                      tempYPosition += pLines.length * lineHeight + 3;
+                      break;
+                    default:
+                      if (child.children.length > 0) {
+                        await calculateHeight(child);
+                      } else if (textContent) {
+                        const lines = doc.splitTextToSize(cleanText, maxWidth - 10);
+                        tempYPosition += lines.length * lineHeight;
+                      }
+                  }
+                }
               }
-              doc.setPage(currentPageNumber);
-              yPosition = boxStartY;
-            } else {
-              // Revenir à la position de départ
-              yPosition = boxStartY;
-            }
+            };
+            
+            await calculateHeight(node);
+            
+            // Calculer la hauteur totale de l'encadré
+            const boxHeight = tempYPosition - yPosition + 10; // +10 pour l'espace en bas
             
             // Vérifier si l'encadré entier tient sur la page actuelle
-            if (yPosition + boxHeight > pageHeight - margin) {
+            if (boxStartY + boxHeight > pageHeight - margin) {
               doc.addPage();
               addHeader();
               yPosition = 40;
+              boxStartY = 40;
+            } else {
+              // Restaurer la position originale
+              yPosition = originalYPosition;
             }
             
-            // Dessiner l'encadré AVANT le contenu
+            // Dessiner l'encadré avec la hauteur calculée
             doc.setFillColor(227, 242, 253); // Fond bleu clair
             doc.setDrawColor(25, 118, 210); // Bordure bleue
             doc.setLineWidth(0.5);
             doc.roundedRect(margin, yPosition, maxWidth, boxHeight, 3, 3, 'FD');
             
-            // Maintenant, redessiner le contenu par-dessus l'encadré
+            // Maintenant, dessiner le contenu par-dessus l'encadré
             yPosition += 5;
             
-            // S'assurer que la couleur du texte est noire avant de dessiner le contenu
+            // S'assurer que la couleur du texte est noire
             doc.setTextColor(0, 0, 0);
             doc.setFontSize(11);
             doc.setFont(undefined, 'normal');
             
-            // Deuxième passage : dessiner réellement le contenu
+            // Dessiner réellement le contenu
             for (const child of node.children) {
               await processNode(child, true);
             }
             
-            // Ajouter un peu d'espace après l'encadré
-            yPosition += 5;
+            // S'assurer qu'on se positionne après l'encadré
+            yPosition = boxStartY + boxHeight + 5;
+            
           } else {
             // Traiter les enfants normalement
             for (const child of node.children) {
@@ -1535,6 +1558,10 @@ const generatePDF = async () => {
   return doc;
 };
 
+
+
+
+      
       
       // Fonction pour générer le DOCX (version simplifiée - HTML avec extension .doc)
       const generateDOCX = async () => {

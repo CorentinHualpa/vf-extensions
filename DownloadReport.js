@@ -1261,42 +1261,51 @@ const generatePDF = async () => {
               yPosition = 40;
             }
             
-            // S'assurer que la couleur du texte est noire
-            doc.setTextColor(0, 0, 0);
             const bullet = tagName === 'ul' ? '• ' : `${index + 1}. `;
             
-            // Traiter les liens dans les éléments de liste
+            // Vérifier s'il y a des liens dans l'élément de liste
             const links = li.querySelectorAll('a');
             if (links.length > 0) {
-              let liContent = li.innerHTML;
-              links.forEach(link => {
-                const linkText = link.textContent;
-                const linkHref = link.href;
-                liContent = liContent.replace(link.outerHTML, linkText);
-              });
+              // Extraire le texte avant le lien
+              let currentX = margin + (isInsideBox ? 5 : 0);
+              let textBeforeLink = '';
+              let linkProcessed = false;
               
-              const tempLi = document.createElement('li');
-              tempLi.innerHTML = liContent;
-              const liText = cleanTextForPDF(tempLi.textContent.trim());
-              
-              const liLines = doc.splitTextToSize(bullet + liText, maxWidth - 10 - (isInsideBox ? 10 : 0));
-              liLines.forEach((line, lineIndex) => {
-                doc.text(line, margin + (lineIndex === 0 ? 0 : 10) + (isInsideBox ? 5 : 0), yPosition);
-                yPosition += lineHeight;
-              });
-              
-              // Ajouter les liens
-              links.forEach(link => {
-                const linkText = link.textContent;
-                const linkHref = link.href;
-                if (linkHref) {
-                  // Trouver la position du texte du lien dans le PDF
-                  doc.setTextColor(124, 58, 237); // Couleur violette pour les liens
-                  doc.textWithLink(linkText, margin + 10 + (isInsideBox ? 5 : 0), yPosition - lineHeight, { url: linkHref });
-                  doc.setTextColor(0, 0, 0); // Retour au noir
+              // Parcourir les noeuds enfants
+              li.childNodes.forEach(childNode => {
+                if (childNode.nodeType === Node.TEXT_NODE) {
+                  textBeforeLink += childNode.textContent;
+                } else if (childNode.nodeType === Node.ELEMENT_NODE && childNode.tagName.toLowerCase() === 'a') {
+                  // D'abord, écrire le texte avant le lien avec le bullet
+                  if (!linkProcessed) {
+                    const beforeText = bullet + cleanTextForPDF(textBeforeLink.trim());
+                    if (beforeText.length > bullet.length) {
+                      doc.setTextColor(0, 0, 0);
+                      doc.text(beforeText, currentX, yPosition);
+                      currentX += doc.getTextWidth(beforeText) + 2;
+                    } else {
+                      doc.text(bullet, currentX, yPosition);
+                      currentX += doc.getTextWidth(bullet);
+                    }
+                    linkProcessed = true;
+                  }
+                  
+                  // Ensuite, ajouter le lien
+                  const linkText = childNode.textContent;
+                  const linkHref = childNode.href;
+                  doc.setTextColor(124, 58, 237);
+                  doc.textWithLink(linkText, currentX, yPosition, { url: linkHref });
+                  currentX += doc.getTextWidth(linkText);
+                  doc.setTextColor(0, 0, 0);
+                  
+                  textBeforeLink = '';
                 }
               });
+              
+              yPosition += lineHeight;
             } else {
+              // Pas de lien, traiter normalement
+              doc.setTextColor(0, 0, 0);
               const liText = cleanTextForPDF(li.textContent.trim());
               const liLines = doc.splitTextToSize(bullet + liText, maxWidth - 10 - (isInsideBox ? 10 : 0));
               liLines.forEach((line, lineIndex) => {
@@ -1309,14 +1318,19 @@ const generatePDF = async () => {
           break;
           
         case 'a':
-          // Traitement des liens
+          // Ne pas traiter les liens ici s'ils sont dans une liste
+          if (node.parentElement && ['li', 'ul', 'ol'].includes(node.parentElement.tagName.toLowerCase())) {
+            return;
+          }
+          
+          // Traitement des liens autonomes
           const href = node.href;
           const linkText = cleanTextForPDF(node.textContent);
           
           if (href && linkText) {
-            doc.setTextColor(124, 58, 237); // Couleur violette pour les liens
+            doc.setTextColor(124, 58, 237);
             doc.textWithLink(linkText, margin + (isInsideBox ? 5 : 0), yPosition, { url: href });
-            doc.setTextColor(0, 0, 0); // Retour au noir
+            doc.setTextColor(0, 0, 0);
             
             const linkLines = doc.splitTextToSize(linkText, maxWidth - (isInsideBox ? 10 : 0));
             yPosition += linkLines.length * lineHeight;
@@ -1324,14 +1338,34 @@ const generatePDF = async () => {
           break;
           
         case 'table':
-          // Traitement des tableaux
-          if (yPosition > pageHeight - margin - 30) {
+          // Calculer d'abord la hauteur totale du tableau
+          const caption = node.querySelector('caption');
+          const headers = Array.from(node.querySelectorAll('thead th, tbody tr:first-child th'));
+          const rows = Array.from(node.querySelectorAll('tbody tr'));
+          const footer = node.querySelector('tfoot');
+          
+          let tableHeight = 0;
+          if (caption) {
+            const captionLines = doc.splitTextToSize(cleanTextForPDF(caption.textContent.trim()), maxWidth);
+            tableHeight += captionLines.length * 6 + 2;
+          }
+          if (headers.length > 0) {
+            tableHeight += 13; // Header height
+            tableHeight += rows.length * 6; // Rows height
+          }
+          if (footer) {
+            tableHeight += 10;
+          }
+          tableHeight += 10; // Marges
+          
+          // Vérifier si le tableau tient sur la page actuelle
+          if (yPosition + tableHeight > pageHeight - margin) {
             doc.addPage();
             addHeader();
             yPosition = 40;
           }
           
-          const caption = node.querySelector('caption');
+          // Maintenant dessiner le tableau
           if (caption) {
             doc.setFont(undefined, 'bold');
             doc.setFontSize(10);
@@ -1345,9 +1379,6 @@ const generatePDF = async () => {
             doc.setFontSize(11);
             yPosition += 2;
           }
-          
-          const headers = Array.from(node.querySelectorAll('thead th, tbody tr:first-child th'));
-          const rows = Array.from(node.querySelectorAll('tbody tr'));
           
           if (headers.length > 0) {
             const colCount = headers.length;
@@ -1371,12 +1402,6 @@ const generatePDF = async () => {
             
             // Rows
             rows.forEach((row, rowIndex) => {
-              if (yPosition > pageHeight - margin - 10) {
-                doc.addPage();
-                addHeader();
-                yPosition = 40;
-              }
-              
               const cells = row.querySelectorAll('td');
               if (cells.length > 0) {
                 if (rowIndex % 2 === 0) {
@@ -1392,6 +1417,21 @@ const generatePDF = async () => {
                 yPosition += 6;
               }
             });
+            
+            // Footer
+            if (footer) {
+              doc.setFillColor(248, 249, 250);
+              doc.rect(margin, yPosition - 4, maxWidth, 8, 'F');
+              doc.setFont(undefined, 'italic');
+              doc.setFontSize(9);
+              doc.setTextColor(100);
+              const footerText = cleanTextForPDF(footer.textContent.trim());
+              doc.text(footerText, margin + 2, yPosition + 2);
+              yPosition += 10;
+              doc.setFont(undefined, 'normal');
+              doc.setFontSize(11);
+              doc.setTextColor(0);
+            }
           }
           
           yPosition += 5;

@@ -2,14 +2,15 @@
  *  ╔═══════════════════════════════════════════════════════════╗
  *  ║  Carousel – Voiceflow Response Extension                  ║
  *  ║                                                           ║
- *  ║  • Navigation: Flèches + Dots                            ║
+ *  ║  • Navigation: Flèches + Dots + Wheel/Trackpad          ║
  *  ║  • Responsive: 3 desktop / 1 mobile                      ║
  *  ║  • Layout adaptatif pour 1-2-3+ cartes                  ║
  *  ║  • Auto-play configurable                                ║
  *  ║  • Images 16:9 centrées sans déformation                ║
  *  ║  • Style ultra moderne avec glassmorphism               ║
  *  ║  • Image de fond avec dégradé stylée                    ║
- *  ║  • Support touch/swipe                                   ║
+ *  ║  • Support touch/swipe + wheel/trackpad                 ║
+ *  ║  • Texte optimisé avec fond sombre                      ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 export const CarouselExtension = {
@@ -231,7 +232,7 @@ export const CarouselExtension = {
   opacity: 1;
 }
 
-/* ═══ IMAGES 16:9 CORRIGÉES ═══ */
+/* ═══ IMAGES 16:9 CORRIGÉES (ZOOM SANS DÉCALAGE) ═══ */
 .vf-carousel-image-container {
   position: relative;
   width: 100%;
@@ -243,18 +244,19 @@ export const CarouselExtension = {
 
 .vf-carousel-image {
   position: absolute;
-  top: 50%;
-  left: 50%;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
   object-position: center;
-  transform: translate(-50%, -50%);
   transition: transform 0.4s ease;
+  transform-origin: center center;
 }
 
+/* ✅ ZOOM SANS DÉCALAGE - Séparation des transformations */
 .vf-carousel-card:hover .vf-carousel-image {
-  transform: translate(-50%, -50%) scale(1.05);
+  transform: scale(1.05);
 }
 
 .vf-carousel-image-placeholder {
@@ -267,7 +269,7 @@ export const CarouselExtension = {
   opacity: 0.5;
 }
 
-/* ═══ CONTENU CARTE CORRIGÉ ═══ */
+/* ═══ CONTENU CARTE AVEC FOND SOMBRE POUR LE TEXTE ═══ */
 .vf-carousel-content {
   padding: 20px;
   display: flex;
@@ -276,6 +278,16 @@ export const CarouselExtension = {
   min-height: 160px;
   position: relative;
   z-index: 2;
+  
+  /* ✅ FOND SOMBRE POUR FAIRE RESSORTIR LE TEXTE BLANC */
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.1) 0%,
+    rgba(0, 0, 0, 0.4) 50%,
+    rgba(0, 0, 0, 0.7) 100%
+  );
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
 }
 
 .vf-carousel-title {
@@ -284,7 +296,7 @@ export const CarouselExtension = {
   color: #fff;
   line-height: 1.3;
   margin: 0;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -292,7 +304,7 @@ export const CarouselExtension = {
   text-overflow: ellipsis;
 }
 
-/* ✅ DESCRIPTION CORRIGÉE - MAINTENANT VISIBLE */
+/* ✅ DESCRIPTION AVEC MEILLEUR CONTRASTE */
 .vf-carousel-description {
   font-size: 14px;
   color: #ffffff !important;
@@ -303,13 +315,13 @@ export const CarouselExtension = {
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
   opacity: 0.95;
   margin: 0;
   padding: 0;
 }
 
-/* ✅ BOUTON CORRIGÉ - CENTRAGE PARFAIT */
+/* ✅ BOUTON CORRIGÉ */
 .vf-carousel-button {
   background: linear-gradient(135deg, var(--brand-color), var(--brand-light));
   color: white !important;
@@ -326,15 +338,12 @@ export const CarouselExtension = {
   overflow: hidden;
   box-shadow: 0 4px 12px rgba(var(--brand-rgb), 0.3);
   
-  /* ✅ CENTRAGE PARFAIT DU TEXTE */
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
   line-height: 1;
   min-height: 48px;
-  
-  /* ✅ EMPÊCHER LE WRAP DU TEXTE */
   white-space: nowrap;
 }
 
@@ -378,15 +387,16 @@ export const CarouselExtension = {
   display: none;
 }
 
+/* ✅ FLÈCHES DE NAVIGATION OPTIMISÉES */
 .vf-carousel-nav-button {
   width: 48px;
   height: 48px;
   border-radius: 50%;
   border: none;
-  background: var(--glass-bg);
+  background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   color: #fff;
   cursor: pointer;
   transition: var(--transition);
@@ -394,22 +404,31 @@ export const CarouselExtension = {
   align-items: center;
   justify-content: center;
   font-size: 20px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   z-index: 3;
   position: relative;
+  font-weight: bold;
 }
 
 .vf-carousel-nav-button:hover {
-  background: rgba(var(--brand-rgb), 0.2);
+  background: rgba(var(--brand-rgb), 0.8);
   border-color: var(--brand-color);
   transform: scale(1.1);
-  box-shadow: 0 6px 16px rgba(var(--brand-rgb), 0.2);
+  box-shadow: 0 6px 16px rgba(var(--brand-rgb), 0.4);
 }
 
 .vf-carousel-nav-button:disabled {
   opacity: 0.3;
   cursor: not-allowed;
   transform: none;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.vf-carousel-nav-button:disabled:hover {
+  background: rgba(0, 0, 0, 0.3);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 /* ═══ DOTS PAGINATION ═══ */
@@ -660,7 +679,6 @@ export const CarouselExtension = {
           content.appendChild(title);
         }
 
-        // ✅ DESCRIPTION CORRIGÉE
         if (item.description) {
           const description = document.createElement('p');
           description.className = 'vf-carousel-description';
@@ -728,6 +746,27 @@ export const CarouselExtension = {
         controls.appendChild(nextBtn);
         container.appendChild(controls);
       }
+
+      // ✅ SUPPORT WHEEL/TRACKPAD (NOUVEAU)
+      let wheelTimeout;
+      container.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        stopAutoplay();
+        
+        clearTimeout(wheelTimeout);
+        
+        // Détection direction
+        if (e.deltaX > 10 || e.deltaY > 10) {
+          nextSlide();
+        } else if (e.deltaX < -10 || e.deltaY < -10) {
+          prevSlide();
+        }
+        
+        // Redémarrer autoplay après inactivité
+        if (autoplay) {
+          wheelTimeout = setTimeout(startAutoplay, 2000);
+        }
+      }, { passive: false });
 
       // Support tactile
       let isDragging = false;
@@ -797,7 +836,7 @@ export const CarouselExtension = {
 
       element.appendChild(container);
 
-      console.log(`✅ Carousel prêt (ID: ${uniqueId}) - ${items.length} items, autoplay: ${autoplay}${backgroundImage ? ', avec image de fond' : ''}`);
+      console.log(`✅ Carousel prêt (ID: ${uniqueId}) - ${items.length} items, autoplay: ${autoplay}${backgroundImage ? ', avec image de fond' : ''}, wheel/trackpad: activé`);
 
       // Cleanup
       return () => {

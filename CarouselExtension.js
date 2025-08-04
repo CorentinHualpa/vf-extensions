@@ -13,6 +13,7 @@
  *  ║  • Texte optimisé avec fond sombre                      ║
  *  ║  • Largeur parfaitement adaptée au chat                 ║
  *  ║  • Simulation de message utilisateur au clic            ║
+ *  ║  • Alignement parfait des cartes (Grid)                 ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 export const CarouselExtension = {
@@ -29,7 +30,7 @@ export const CarouselExtension = {
         autoplayDelay = 3000,
         maxDescriptionLength = 120,
         instanceId = null,
-        userMessageText = null // ✅ Nouveau: texte personnalisé pour le message utilisateur
+        userMessageText = null
       } = trace.payload;
 
       // Validation
@@ -70,7 +71,6 @@ export const CarouselExtension = {
       // Fix URL Imgur si nécessaire
       const fixImgurUrl = (url) => {
         if (!url) return url;
-        // Convertir imgur.com/ID.ext vers i.imgur.com/ID.ext
         return url.replace(/^https?:\/\/imgur\.com\/([a-zA-Z0-9]+\.[a-zA-Z]+)$/, 'https://i.imgur.com/$1');
       };
 
@@ -85,7 +85,7 @@ export const CarouselExtension = {
       container.id = uniqueId;
       container.setAttribute('data-items-count', items.length);
 
-      // CSS ultra stylé avec corrections pour débordement
+      // CSS ultra stylé avec corrections pour débordement et alignement
       const styleEl = document.createElement('style');
       styleEl.textContent = `
 /* ✅ STYLES POUR CONTENEUR PARENT VOICEFLOW */
@@ -222,7 +222,7 @@ export const CarouselExtension = {
 /* ✅ 3+ cartes : layout optimisé pour éviter débordement */
 .vf-carousel-card {
   flex: 0 0 calc((100% - (var(--carousel-gap) * 2)) / 3);
-  min-width: 0; /* ✅ Important pour flex shrink */
+  min-width: 0;
   background: var(--glass-bg);
   border-radius: var(--border-radius);
   border: 1px solid var(--glass-border);
@@ -295,11 +295,11 @@ export const CarouselExtension = {
   opacity: 0.5;
 }
 
-/* ═══ CONTENU CARTE AVEC FOND SOMBRE POUR LE TEXTE ═══ */
+/* ✅ CONTENU CARTE AVEC ALIGNEMENT PARFAIT (GRID) */
 .vf-carousel-content {
   padding: 16px;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: auto 1fr auto; /* Titre / Description flexible / Bouton */
   gap: 8px;
   min-height: 140px;
   position: relative;
@@ -327,13 +327,16 @@ export const CarouselExtension = {
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
+  
+  /* ✅ Hauteur minimale pour alignement parfait */
+  min-height: 41.6px; /* Équivalent à 2 lignes : 16px * 1.3 * 2 */
+  align-self: start;
 }
 
 .vf-carousel-description {
   font-size: 12px;
   color: #ffffff !important;
   line-height: 1.4;
-  flex: 1;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
@@ -343,6 +346,7 @@ export const CarouselExtension = {
   opacity: 0.95;
   margin: 0;
   padding: 0;
+  align-self: start; /* Aligné en haut de la zone flexible */
 }
 
 .vf-carousel-button {
@@ -368,6 +372,7 @@ export const CarouselExtension = {
   line-height: 1;
   min-height: 40px;
   white-space: nowrap;
+  align-self: end; /* ✅ Aligné en bas, maintient l'alignement */
 }
 
 .vf-carousel-button::before {
@@ -496,7 +501,6 @@ export const CarouselExtension = {
     max-width: none !important;
   }
   
-  /* Réafficher les contrôles sur mobile pour 2+ cartes */
   .vf-carousel-container[data-items-count="2"] .vf-carousel-controls {
     display: flex;
   }
@@ -508,6 +512,7 @@ export const CarouselExtension = {
   
   .vf-carousel-title {
     font-size: 14px;
+    min-height: 36.4px; /* 14px * 1.3 * 2 */
   }
   
   .vf-carousel-description {
@@ -563,10 +568,10 @@ export const CarouselExtension = {
 
       // Calcul des slides visibles selon l'écran ET le nombre d'items
       const getSlidesPerView = () => {
-        if (window.innerWidth <= 768) return 1; // Mobile : toujours 1
+        if (window.innerWidth <= 768) return 1;
         if (items.length === 1) return 1;
         if (items.length === 2) return 2;
-        return 3; // Desktop 3+ items
+        return 3;
       };
 
       const getMaxIndex = () => {
@@ -580,7 +585,6 @@ export const CarouselExtension = {
         const slidesPerView = getSlidesPerView();
         
         if (items.length <= 2 && window.innerWidth > 768) {
-          // Pour 1-2 cartes sur desktop, pas de translation
           track.style.transform = 'translateX(0)';
         } else {
           const slideWidth = 100 / slidesPerView;
@@ -610,7 +614,7 @@ export const CarouselExtension = {
         if (currentIndex < getMaxIndex()) {
           goToSlide(currentIndex + 1);
         } else if (autoplay) {
-          goToSlide(0); // Loop pour autoplay
+          goToSlide(0);
         }
       };
 
@@ -632,29 +636,22 @@ export const CarouselExtension = {
         }
       };
 
-      // ✅ NOUVELLE FONCTION : Gestion du clic avec simulation de message utilisateur
+      // Gestion du clic avec simulation de message utilisateur
       const handleCardAction = (item, index) => {
         stopAutoplay();
         
-        // ✅ Simuler un message utilisateur dans le chat
+        // Simuler un message utilisateur dans le chat
         if (window.voiceflow?.chat?.interact) {
-          // Déterminer le texte à afficher dans le chat
           let messageText = '';
           
-          // Priorité 1: userMessageText personnalisé dans l'item
           if (item.userMessageText) {
             messageText = item.userMessageText;
-          }
-          // Priorité 2: userMessageText global du carrousel
-          else if (userMessageText) {
+          } else if (userMessageText) {
             messageText = userMessageText.replace('{title}', item.title || 'Item').replace('{index}', index + 1);
-          }
-          // Priorité 3: Titre de l'item (par défaut)
-          else {
+          } else {
             messageText = item.title || item.buttonText || `Item ${index + 1}`;
           }
 
-          // Envoyer le message comme si l'utilisateur l'avait écrit
           window.voiceflow.chat.interact({
             type: 'text',
             payload: messageText
@@ -663,11 +660,11 @@ export const CarouselExtension = {
           console.log(`✅ Message utilisateur simulé: "${messageText}"`);
         }
 
-        // Ouverture URL externe (optionnel, en plus du message)
+        // Ouverture URL externe
         if (item.url) {
           setTimeout(() => {
             window.open(item.url, '_blank', 'noopener,noreferrer');
-          }, 500); // Délai pour laisser le message s'afficher d'abord
+          }, 500);
         }
       };
 
@@ -745,7 +742,7 @@ export const CarouselExtension = {
       viewport.appendChild(track);
       container.appendChild(viewport);
 
-      // Contrôles de navigation (seulement si nécessaire)
+      // Contrôles de navigation
       const needsControls = () => {
         if (window.innerWidth <= 768) return items.length > 1;
         return items.length > 3;
@@ -785,24 +782,21 @@ export const CarouselExtension = {
         container.appendChild(controls);
       }
 
-      // Support trackpad horizontal uniquement
+      // Support trackpad horizontal
       let wheelTimeout;
       container.addEventListener('wheel', (e) => {
-        // Ne traiter QUE le défilement horizontal (deltaX)
         if (Math.abs(e.deltaX) > Math.abs(e.deltaY) && Math.abs(e.deltaX) > 10) {
-          e.preventDefault(); // Seulement si c'est horizontal
+          e.preventDefault();
           stopAutoplay();
           
           clearTimeout(wheelTimeout);
           
-          // Détection direction horizontale uniquement
           if (e.deltaX > 10) {
             nextSlide();
           } else if (e.deltaX < -10) {
             prevSlide();
           }
           
-          // Redémarrer autoplay après inactivité
           if (autoplay) {
             wheelTimeout = setTimeout(startAutoplay, 2000);
           }
@@ -877,7 +871,7 @@ export const CarouselExtension = {
 
       element.appendChild(container);
 
-      console.log(`✅ Carousel avec simulation de messages utilisateur (ID: ${uniqueId}) - ${items.length} items`);
+      console.log(`✅ Carousel parfait avec alignement Grid (ID: ${uniqueId}) - ${items.length} items`);
 
       // Cleanup
       return () => {

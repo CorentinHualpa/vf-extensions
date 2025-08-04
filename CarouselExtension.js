@@ -2,15 +2,16 @@
  *  ╔═══════════════════════════════════════════════════════════╗
  *  ║  Carousel – Voiceflow Response Extension                  ║
  *  ║                                                           ║
- *  ║  • Navigation: Flèches + Dots + Wheel/Trackpad          ║
+ *  ║  • Navigation: Flèches + Dots + Trackpad horizontal      ║
  *  ║  • Responsive: 3 desktop / 1 mobile                      ║
  *  ║  • Layout adaptatif pour 1-2-3+ cartes                  ║
  *  ║  • Auto-play configurable                                ║
  *  ║  • Images 16:9 centrées sans déformation                ║
  *  ║  • Style ultra moderne avec glassmorphism               ║
  *  ║  • Image de fond avec dégradé stylée                    ║
- *  ║  • Support touch/swipe + wheel/trackpad                 ║
+ *  ║  • Support touch/swipe + trackpad horizontal            ║
  *  ║  • Texte optimisé avec fond sombre                      ║
+ *  ║  • Largeur adaptée au chat                              ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 export const CarouselExtension = {
@@ -91,7 +92,7 @@ export const CarouselExtension = {
   --brand-rgb: ${brandR}, ${brandG}, ${brandB};
   --brand-light: ${lightColor};
   --brand-dark: ${darkColor};
-  --carousel-gap: 20px;
+  --carousel-gap: 16px;
   --border-radius: 16px;
   --transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   --shadow-base: 0 10px 25px rgba(0, 0, 0, 0.15);
@@ -100,13 +101,13 @@ export const CarouselExtension = {
   --glass-border: rgba(255, 255, 255, 0.2);
 }
 
-/* ═══ CONTAINER PRINCIPAL ═══ */
+/* ═══ CONTAINER PRINCIPAL ADAPTÉ AU CHAT ═══ */
 .vf-carousel-container {
   position: relative;
   width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 24px;
+  max-width: 100%; /* ✅ S'adapter à la largeur du chat */
+  margin: 0;
+  padding: 16px; /* ✅ Padding réduit pour éviter le débordement */
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
   border-radius: var(--border-radius);
   backdrop-filter: blur(10px);
@@ -114,6 +115,7 @@ export const CarouselExtension = {
   border: 1px solid var(--glass-border);
   box-shadow: var(--shadow-base);
   overflow: hidden;
+  box-sizing: border-box; /* ✅ Important pour le sizing */
 }
 
 /* ═══ IMAGE DE FOND AVEC DÉGRADÉ ═══ */
@@ -162,7 +164,8 @@ export const CarouselExtension = {
   position: relative;
   overflow: hidden;
   border-radius: 12px;
-  margin-bottom: 20px;
+  margin-bottom: 16px; /* ✅ Marge réduite */
+  width: 100%;
 }
 
 .vf-carousel-track {
@@ -171,6 +174,7 @@ export const CarouselExtension = {
   transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   will-change: transform;
   justify-content: flex-start;
+  width: 100%;
 }
 
 /* ═══ LAYOUT ADAPTATIF SELON NOMBRE DE CARTES ═══ */
@@ -180,8 +184,8 @@ export const CarouselExtension = {
 }
 
 .vf-carousel-container[data-items-count="1"] .vf-carousel-card {
-  flex: 0 0 min(400px, 90%);
-  max-width: 400px;
+  flex: 0 0 min(380px, 90%); /* ✅ Largeur réduite */
+  max-width: 380px;
 }
 
 /* 2 cartes : centrées */
@@ -190,8 +194,8 @@ export const CarouselExtension = {
 }
 
 .vf-carousel-container[data-items-count="2"] .vf-carousel-card {
-  flex: 0 0 min(350px, 45%);
-  max-width: 350px;
+  flex: 0 0 min(320px, 45%); /* ✅ Largeur réduite */
+  max-width: 320px;
 }
 
 /* 3+ cartes : layout normal */
@@ -207,6 +211,7 @@ export const CarouselExtension = {
   cursor: pointer;
   position: relative;
   box-shadow: var(--shadow-base);
+  box-sizing: border-box; /* ✅ Important */
 }
 
 .vf-carousel-card:hover {
@@ -271,11 +276,11 @@ export const CarouselExtension = {
 
 /* ═══ CONTENU CARTE AVEC FOND SOMBRE POUR LE TEXTE ═══ */
 .vf-carousel-content {
-  padding: 20px;
+  padding: 18px; /* ✅ Padding réduit */
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  min-height: 160px;
+  gap: 10px; /* ✅ Gap réduit */
+  min-height: 150px; /* ✅ Hauteur réduite */
   position: relative;
   z-index: 2;
   
@@ -291,7 +296,7 @@ export const CarouselExtension = {
 }
 
 .vf-carousel-title {
-  font-size: 18px;
+  font-size: 17px; /* ✅ Taille réduite */
   font-weight: 700;
   color: #fff;
   line-height: 1.3;
@@ -306,9 +311,9 @@ export const CarouselExtension = {
 
 /* ✅ DESCRIPTION AVEC MEILLEUR CONTRASTE */
 .vf-carousel-description {
-  font-size: 14px;
+  font-size: 13px; /* ✅ Taille réduite */
   color: #ffffff !important;
-  line-height: 1.5;
+  line-height: 1.4; /* ✅ Line-height réduit */
   flex: 1;
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -326,10 +331,10 @@ export const CarouselExtension = {
   background: linear-gradient(135deg, var(--brand-color), var(--brand-light));
   color: white !important;
   border: none;
-  padding: 14px 24px;
+  padding: 12px 20px; /* ✅ Padding réduit */
   border-radius: 8px;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px; /* ✅ Taille réduite */
   cursor: pointer;
   transition: var(--transition);
   text-transform: uppercase;
@@ -343,7 +348,7 @@ export const CarouselExtension = {
   justify-content: center;
   text-align: center;
   line-height: 1;
-  min-height: 48px;
+  min-height: 44px; /* ✅ Hauteur réduite */
   white-space: nowrap;
 }
 
@@ -376,7 +381,7 @@ export const CarouselExtension = {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 16px;
+  margin-top: 12px; /* ✅ Marge réduite */
   position: relative;
   z-index: 3;
 }
@@ -389,8 +394,8 @@ export const CarouselExtension = {
 
 /* ✅ FLÈCHES DE NAVIGATION OPTIMISÉES */
 .vf-carousel-nav-button {
-  width: 48px;
-  height: 48px;
+  width: 44px; /* ✅ Taille réduite */
+  height: 44px;
   border-radius: 50%;
   border: none;
   background: rgba(0, 0, 0, 0.6);
@@ -403,7 +408,7 @@ export const CarouselExtension = {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: 18px; /* ✅ Taille réduite */
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   z-index: 3;
   position: relative;
@@ -434,14 +439,14 @@ export const CarouselExtension = {
 /* ═══ DOTS PAGINATION ═══ */
 .vf-carousel-dots {
   display: flex;
-  gap: 8px;
+  gap: 6px; /* ✅ Gap réduit */
   justify-content: center;
   align-items: center;
 }
 
 .vf-carousel-dot {
-  width: 10px;
-  height: 10px;
+  width: 8px; /* ✅ Taille réduite */
+  height: 8px;
   border-radius: 50%;
   border: none;
   background: rgba(255, 255, 255, 0.3);
@@ -464,7 +469,7 @@ export const CarouselExtension = {
 /* ═══ RESPONSIVE MOBILE ═══ */
 @media (max-width: 768px) {
   .vf-carousel-container {
-    padding: 16px;
+    padding: 12px; /* ✅ Padding encore plus réduit sur mobile */
     --carousel-gap: 0px;
   }
   
@@ -480,29 +485,29 @@ export const CarouselExtension = {
   }
   
   .vf-carousel-content {
-    padding: 16px;
-    min-height: 140px;
+    padding: 14px;
+    min-height: 130px;
   }
   
   .vf-carousel-title {
-    font-size: 16px;
+    font-size: 15px;
   }
   
   .vf-carousel-description {
-    font-size: 13px !important;
+    font-size: 12px !important;
     -webkit-line-clamp: 2;
   }
   
   .vf-carousel-nav-button {
-    width: 40px;
-    height: 40px;
-    font-size: 16px;
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
   }
   
   .vf-carousel-button {
-    padding: 12px 20px;
-    font-size: 13px;
-    min-height: 44px;
+    padding: 10px 18px;
+    font-size: 12px;
+    min-height: 40px;
   }
 }
 
@@ -747,25 +752,29 @@ export const CarouselExtension = {
         container.appendChild(controls);
       }
 
-      // ✅ SUPPORT WHEEL/TRACKPAD (NOUVEAU)
+      // ✅ SUPPORT TRACKPAD HORIZONTAL UNIQUEMENT
       let wheelTimeout;
       container.addEventListener('wheel', (e) => {
-        e.preventDefault();
-        stopAutoplay();
-        
-        clearTimeout(wheelTimeout);
-        
-        // Détection direction
-        if (e.deltaX > 10 || e.deltaY > 10) {
-          nextSlide();
-        } else if (e.deltaX < -10 || e.deltaY < -10) {
-          prevSlide();
+        // ✅ Ne traiter QUE le défilement horizontal (deltaX)
+        if (Math.abs(e.deltaX) > Math.abs(e.deltaY) && Math.abs(e.deltaX) > 10) {
+          e.preventDefault(); // Seulement si c'est horizontal
+          stopAutoplay();
+          
+          clearTimeout(wheelTimeout);
+          
+          // Détection direction horizontale uniquement
+          if (e.deltaX > 10) {
+            nextSlide();
+          } else if (e.deltaX < -10) {
+            prevSlide();
+          }
+          
+          // Redémarrer autoplay après inactivité
+          if (autoplay) {
+            wheelTimeout = setTimeout(startAutoplay, 2000);
+          }
         }
-        
-        // Redémarrer autoplay après inactivité
-        if (autoplay) {
-          wheelTimeout = setTimeout(startAutoplay, 2000);
-        }
+        // ✅ Si c'est vertical (deltaY), ne rien faire et laisser le scroll du chat
       }, { passive: false });
 
       // Support tactile
@@ -836,7 +845,7 @@ export const CarouselExtension = {
 
       element.appendChild(container);
 
-      console.log(`✅ Carousel prêt (ID: ${uniqueId}) - ${items.length} items, autoplay: ${autoplay}${backgroundImage ? ', avec image de fond' : ''}, wheel/trackpad: activé`);
+      console.log(`✅ Carousel prêt (ID: ${uniqueId}) - ${items.length} items, autoplay: ${autoplay}${backgroundImage ? ', avec image de fond' : ''}, trackpad horizontal: activé`);
 
       // Cleanup
       return () => {

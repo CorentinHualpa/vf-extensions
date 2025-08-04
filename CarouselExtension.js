@@ -11,7 +11,7 @@
  *  ║  • Image de fond avec dégradé stylée                    ║
  *  ║  • Support touch/swipe + trackpad horizontal            ║
  *  ║  • Texte optimisé avec fond sombre                      ║
- *  ║  • Largeur adaptée au chat                              ║
+ *  ║  • Largeur parfaitement adaptée au chat                 ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 export const CarouselExtension = {
@@ -83,16 +83,33 @@ export const CarouselExtension = {
       container.id = uniqueId;
       container.setAttribute('data-items-count', items.length);
 
-      // CSS ultra stylé avec corrections
+      // CSS ultra stylé avec corrections pour débordement
       const styleEl = document.createElement('style');
       styleEl.textContent = `
+/* ✅ STYLES POUR CONTENEUR PARENT VOICEFLOW */
+.vfrc-message--extension-Carousel {
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.vfrc-message--extension-Carousel > span {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
 /* ═══ VARIABLES CSS ADAPTATIVES ═══ */
 .vf-carousel-container {
   --brand-color: ${brandColor};
   --brand-rgb: ${brandR}, ${brandG}, ${brandB};
   --brand-light: ${lightColor};
   --brand-dark: ${darkColor};
-  --carousel-gap: 16px;
+  --carousel-gap: 12px;
   --border-radius: 16px;
   --transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   --shadow-base: 0 10px 25px rgba(0, 0, 0, 0.15);
@@ -101,21 +118,21 @@ export const CarouselExtension = {
   --glass-border: rgba(255, 255, 255, 0.2);
 }
 
-/* ═══ CONTAINER PRINCIPAL ADAPTÉ AU CHAT ═══ */
+/* ═══ CONTAINER PRINCIPAL PARFAITEMENT ADAPTÉ ═══ */
 .vf-carousel-container {
   position: relative;
-  width: 100%;
-  max-width: 100%; /* ✅ S'adapter à la largeur du chat */
-  margin: 0;
-  padding: 16px; /* ✅ Padding réduit pour éviter le débordement */
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 12px !important;
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
   border-radius: var(--border-radius);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--glass-border);
   box-shadow: var(--shadow-base);
-  overflow: hidden;
-  box-sizing: border-box; /* ✅ Important pour le sizing */
+  overflow: hidden !important;
+  box-sizing: border-box !important;
 }
 
 /* ═══ IMAGE DE FOND AVEC DÉGRADÉ ═══ */
@@ -159,13 +176,14 @@ export const CarouselExtension = {
   z-index: -1;
 }
 
-/* ═══ VIEWPORT ET TRACK ADAPTATIFS ═══ */
+/* ═══ VIEWPORT ET TRACK PARFAITEMENT CONTENUS ═══ */
 .vf-carousel-viewport {
   position: relative;
   overflow: hidden;
   border-radius: 12px;
-  margin-bottom: 16px; /* ✅ Marge réduite */
+  margin-bottom: 12px;
   width: 100%;
+  box-sizing: border-box;
 }
 
 .vf-carousel-track {
@@ -175,6 +193,7 @@ export const CarouselExtension = {
   will-change: transform;
   justify-content: flex-start;
   width: 100%;
+  box-sizing: border-box;
 }
 
 /* ═══ LAYOUT ADAPTATIF SELON NOMBRE DE CARTES ═══ */
@@ -184,8 +203,8 @@ export const CarouselExtension = {
 }
 
 .vf-carousel-container[data-items-count="1"] .vf-carousel-card {
-  flex: 0 0 min(380px, 90%); /* ✅ Largeur réduite */
-  max-width: 380px;
+  flex: 0 0 min(360px, 85%);
+  max-width: 360px;
 }
 
 /* 2 cartes : centrées */
@@ -194,13 +213,14 @@ export const CarouselExtension = {
 }
 
 .vf-carousel-container[data-items-count="2"] .vf-carousel-card {
-  flex: 0 0 min(320px, 45%); /* ✅ Largeur réduite */
-  max-width: 320px;
+  flex: 0 0 min(300px, 42%);
+  max-width: 300px;
 }
 
-/* 3+ cartes : layout normal */
+/* ✅ 3+ cartes : layout optimisé pour éviter débordement */
 .vf-carousel-card {
   flex: 0 0 calc((100% - (var(--carousel-gap) * 2)) / 3);
+  min-width: 0; /* ✅ Important pour flex shrink */
   background: var(--glass-bg);
   border-radius: var(--border-radius);
   border: 1px solid var(--glass-border);
@@ -211,11 +231,11 @@ export const CarouselExtension = {
   cursor: pointer;
   position: relative;
   box-shadow: var(--shadow-base);
-  box-sizing: border-box; /* ✅ Important */
+  box-sizing: border-box;
 }
 
 .vf-carousel-card:hover {
-  transform: translateY(-8px) scale(1.02);
+  transform: translateY(-6px) scale(1.01);
   box-shadow: var(--shadow-hover);
   border-color: rgba(var(--brand-rgb), 0.4);
 }
@@ -259,7 +279,6 @@ export const CarouselExtension = {
   transform-origin: center center;
 }
 
-/* ✅ ZOOM SANS DÉCALAGE - Séparation des transformations */
 .vf-carousel-card:hover .vf-carousel-image {
   transform: scale(1.05);
 }
@@ -270,21 +289,20 @@ export const CarouselExtension = {
   left: 50%;
   transform: translate(-50%, -50%);
   color: #999;
-  font-size: 48px;
+  font-size: 40px;
   opacity: 0.5;
 }
 
 /* ═══ CONTENU CARTE AVEC FOND SOMBRE POUR LE TEXTE ═══ */
 .vf-carousel-content {
-  padding: 18px; /* ✅ Padding réduit */
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px; /* ✅ Gap réduit */
-  min-height: 150px; /* ✅ Hauteur réduite */
+  gap: 8px;
+  min-height: 140px;
   position: relative;
   z-index: 2;
   
-  /* ✅ FOND SOMBRE POUR FAIRE RESSORTIR LE TEXTE BLANC */
   background: linear-gradient(
     180deg,
     rgba(0, 0, 0, 0.1) 0%,
@@ -296,7 +314,7 @@ export const CarouselExtension = {
 }
 
 .vf-carousel-title {
-  font-size: 17px; /* ✅ Taille réduite */
+  font-size: 16px;
   font-weight: 700;
   color: #fff;
   line-height: 1.3;
@@ -309,11 +327,10 @@ export const CarouselExtension = {
   text-overflow: ellipsis;
 }
 
-/* ✅ DESCRIPTION AVEC MEILLEUR CONTRASTE */
 .vf-carousel-description {
-  font-size: 13px; /* ✅ Taille réduite */
+  font-size: 12px;
   color: #ffffff !important;
-  line-height: 1.4; /* ✅ Line-height réduit */
+  line-height: 1.4;
   flex: 1;
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -326,15 +343,14 @@ export const CarouselExtension = {
   padding: 0;
 }
 
-/* ✅ BOUTON CORRIGÉ */
 .vf-carousel-button {
   background: linear-gradient(135deg, var(--brand-color), var(--brand-light));
   color: white !important;
   border: none;
-  padding: 12px 20px; /* ✅ Padding réduit */
+  padding: 10px 16px;
   border-radius: 8px;
   font-weight: 600;
-  font-size: 13px; /* ✅ Taille réduite */
+  font-size: 12px;
   cursor: pointer;
   transition: var(--transition);
   text-transform: uppercase;
@@ -348,7 +364,7 @@ export const CarouselExtension = {
   justify-content: center;
   text-align: center;
   line-height: 1;
-  min-height: 44px; /* ✅ Hauteur réduite */
+  min-height: 40px;
   white-space: nowrap;
 }
 
@@ -381,7 +397,7 @@ export const CarouselExtension = {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 12px; /* ✅ Marge réduite */
+  margin-top: 10px;
   position: relative;
   z-index: 3;
 }
@@ -392,10 +408,9 @@ export const CarouselExtension = {
   display: none;
 }
 
-/* ✅ FLÈCHES DE NAVIGATION OPTIMISÉES */
 .vf-carousel-nav-button {
-  width: 44px; /* ✅ Taille réduite */
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   border: none;
   background: rgba(0, 0, 0, 0.6);
@@ -408,7 +423,7 @@ export const CarouselExtension = {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px; /* ✅ Taille réduite */
+  font-size: 16px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   z-index: 3;
   position: relative;
@@ -439,14 +454,14 @@ export const CarouselExtension = {
 /* ═══ DOTS PAGINATION ═══ */
 .vf-carousel-dots {
   display: flex;
-  gap: 6px; /* ✅ Gap réduit */
+  gap: 5px;
   justify-content: center;
   align-items: center;
 }
 
 .vf-carousel-dot {
-  width: 8px; /* ✅ Taille réduite */
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   border: none;
   background: rgba(255, 255, 255, 0.3);
@@ -469,7 +484,7 @@ export const CarouselExtension = {
 /* ═══ RESPONSIVE MOBILE ═══ */
 @media (max-width: 768px) {
   .vf-carousel-container {
-    padding: 12px; /* ✅ Padding encore plus réduit sur mobile */
+    padding: 8px !important;
     --carousel-gap: 0px;
   }
   
@@ -485,29 +500,29 @@ export const CarouselExtension = {
   }
   
   .vf-carousel-content {
-    padding: 14px;
-    min-height: 130px;
+    padding: 12px;
+    min-height: 120px;
   }
   
   .vf-carousel-title {
-    font-size: 15px;
+    font-size: 14px;
   }
   
   .vf-carousel-description {
-    font-size: 12px !important;
+    font-size: 11px !important;
     -webkit-line-clamp: 2;
   }
   
   .vf-carousel-nav-button {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     font-size: 14px;
   }
   
   .vf-carousel-button {
-    padding: 10px 18px;
-    font-size: 12px;
-    min-height: 40px;
+    padding: 8px 14px;
+    font-size: 11px;
+    min-height: 36px;
   }
 }
 
@@ -752,10 +767,10 @@ export const CarouselExtension = {
         container.appendChild(controls);
       }
 
-      // ✅ SUPPORT TRACKPAD HORIZONTAL UNIQUEMENT
+      // Support trackpad horizontal uniquement
       let wheelTimeout;
       container.addEventListener('wheel', (e) => {
-        // ✅ Ne traiter QUE le défilement horizontal (deltaX)
+        // Ne traiter QUE le défilement horizontal (deltaX)
         if (Math.abs(e.deltaX) > Math.abs(e.deltaY) && Math.abs(e.deltaX) > 10) {
           e.preventDefault(); // Seulement si c'est horizontal
           stopAutoplay();
@@ -774,7 +789,6 @@ export const CarouselExtension = {
             wheelTimeout = setTimeout(startAutoplay, 2000);
           }
         }
-        // ✅ Si c'est vertical (deltaY), ne rien faire et laisser le scroll du chat
       }, { passive: false });
 
       // Support tactile
@@ -845,7 +859,7 @@ export const CarouselExtension = {
 
       element.appendChild(container);
 
-      console.log(`✅ Carousel prêt (ID: ${uniqueId}) - ${items.length} items, autoplay: ${autoplay}${backgroundImage ? ', avec image de fond' : ''}, trackpad horizontal: activé`);
+      console.log(`✅ Carousel parfaitement adapté (ID: ${uniqueId}) - ${items.length} items, trackpad horizontal: activé`);
 
       // Cleanup
       return () => {

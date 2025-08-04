@@ -12,6 +12,7 @@
  *  ║  • Support touch/swipe + trackpad horizontal            ║
  *  ║  • Texte optimisé avec fond sombre                      ║
  *  ║  • Largeur parfaitement adaptée au chat                 ║
+ *  ║  • Simulation de message utilisateur au clic            ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 export const CarouselExtension = {
@@ -27,7 +28,8 @@ export const CarouselExtension = {
         autoplay = false,
         autoplayDelay = 3000,
         maxDescriptionLength = 120,
-        instanceId = null
+        instanceId = null,
+        userMessageText = null // ✅ Nouveau: texte personnalisé pour le message utilisateur
       } = trace.payload;
 
       // Validation
@@ -630,26 +632,42 @@ export const CarouselExtension = {
         }
       };
 
-      // Gestion du clic sur carte/bouton
+      // ✅ NOUVELLE FONCTION : Gestion du clic avec simulation de message utilisateur
       const handleCardAction = (item, index) => {
         stopAutoplay();
         
-        // Interaction Voiceflow
+        // ✅ Simuler un message utilisateur dans le chat
         if (window.voiceflow?.chat?.interact) {
+          // Déterminer le texte à afficher dans le chat
+          let messageText = '';
+          
+          // Priorité 1: userMessageText personnalisé dans l'item
+          if (item.userMessageText) {
+            messageText = item.userMessageText;
+          }
+          // Priorité 2: userMessageText global du carrousel
+          else if (userMessageText) {
+            messageText = userMessageText.replace('{title}', item.title || 'Item').replace('{index}', index + 1);
+          }
+          // Priorité 3: Titre de l'item (par défaut)
+          else {
+            messageText = item.title || item.buttonText || `Item ${index + 1}`;
+          }
+
+          // Envoyer le message comme si l'utilisateur l'avait écrit
           window.voiceflow.chat.interact({
-            type: 'complete',
-            payload: {
-              carouselAction: 'discover',
-              itemIndex: index,
-              itemData: item,
-              instanceId: uniqueId
-            }
+            type: 'text',
+            payload: messageText
           });
+
+          console.log(`✅ Message utilisateur simulé: "${messageText}"`);
         }
 
-        // Ouverture URL externe
+        // Ouverture URL externe (optionnel, en plus du message)
         if (item.url) {
-          window.open(item.url, '_blank', 'noopener,noreferrer');
+          setTimeout(() => {
+            window.open(item.url, '_blank', 'noopener,noreferrer');
+          }, 500); // Délai pour laisser le message s'afficher d'abord
         }
       };
 
@@ -859,7 +877,7 @@ export const CarouselExtension = {
 
       element.appendChild(container);
 
-      console.log(`✅ Carousel parfaitement adapté (ID: ${uniqueId}) - ${items.length} items, trackpad horizontal: activé`);
+      console.log(`✅ Carousel avec simulation de messages utilisateur (ID: ${uniqueId}) - ${items.length} items`);
 
       // Cleanup
       return () => {

@@ -7,16 +7,13 @@
  *  ║  • Layout adaptatif pour 1-2-3+ cartes                  ║
  *  ║  • Titre personnalisable visible                         ║
  *  ║  • Zoom spectaculaire bidirectionnel CORRIGÉ            ║
- *  ║  • Description complète en preview                       ║
+ *  ║  • Position absolue au survol pour expansion libre       ║
  *  ║  • Auto-play configurable                                ║
  *  ║  • Images 16:9 centrées sans déformation                ║
  *  ║  • Style ultra moderne avec glassmorphism               ║
  *  ║  • Image de fond avec dégradé stylée                    ║
  *  ║  • Support touch/swipe + trackpad horizontal            ║
- *  ║  • Texte optimisé avec fond sombre                      ║
- *  ║  • Largeur parfaitement adaptée au chat                 ║
  *  ║  • Simulation de message utilisateur au clic            ║
- *  ║  • Alignement parfait des cartes (Grid)                 ║
  *  ║  • Ouverture liens en nouvel onglet                     ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
@@ -28,7 +25,7 @@ export const CarouselExtension = {
     try {
       const {
         items = [],
-        title = null, // ✅ Titre personnalisable
+        title = null,
         brandColor = '#6366F1',
         backgroundImage = null,
         autoplay = false,
@@ -90,7 +87,7 @@ export const CarouselExtension = {
       container.id = uniqueId;
       container.setAttribute('data-items-count', items.length);
 
-      // CSS ultra stylé avec zoom spectaculaire bidirectionnel CORRIGÉ
+      // CSS avec expansion bidirectionnelle CORRIGÉE
       const styleEl = document.createElement('style');
       styleEl.textContent = `
 /* ✅ STYLES POUR CONTENEUR PARENT VOICEFLOW */
@@ -138,7 +135,7 @@ export const CarouselExtension = {
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--glass-border);
   box-shadow: var(--shadow-base);
-  overflow: visible !important; /* ✅ CHANGÉ pour permettre le zoom */
+  overflow: visible !important; /* ✅ PERMETTRE LE DÉBORDEMENT */
   box-sizing: border-box !important;
 }
 
@@ -183,7 +180,7 @@ export const CarouselExtension = {
   z-index: -1;
 }
 
-/* ✅ TITRE PERSONNALISABLE BEAUCOUP PLUS VISIBLE */
+/* ✅ TITRE PERSONNALISABLE */
 .vf-carousel-title {
   position: relative;
   z-index: 2;
@@ -197,7 +194,6 @@ export const CarouselExtension = {
   letter-spacing: -0.5px;
   line-height: 1.2;
   
-  /* ✅ FOND SOMBRE POUR CONTRASTE */
   background: linear-gradient(135deg, 
     rgba(0, 0, 0, 0.7) 0%, 
     rgba(0, 0, 0, 0.5) 50%, 
@@ -235,7 +231,6 @@ export const CarouselExtension = {
   box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
 }
 
-/* Animation d'apparition du titre améliorée */
 @keyframes titleFadeIn {
   from { 
     opacity: 0; 
@@ -251,15 +246,15 @@ export const CarouselExtension = {
   animation: titleFadeIn 0.8s ease-out;
 }
 
-/* ✅ GESTION DES DÉBORDEMENTS POUR LE ZOOM CORRIGÉE */
+/* ✅ VIEWPORT AVEC ESPACE POUR L'EXPANSION */
 .vf-carousel-viewport {
   position: relative;
-  overflow: visible; /* ✅ Permettre le débordement */
+  overflow: visible; /* ✅ PERMETTRE LE DÉBORDEMENT */
   border-radius: 12px;
   margin-bottom: 12px;
   width: 100%;
   box-sizing: border-box;
-  padding: 30px 40px; /* ✅ PLUS d'espace pour le zoom bidirectionnel */
+  padding: 40px 60px; /* ✅ PLUS D'ESPACE pour l'expansion */
 }
 
 .vf-carousel-track {
@@ -273,7 +268,6 @@ export const CarouselExtension = {
 }
 
 /* ═══ LAYOUT ADAPTATIF SELON NOMBRE DE CARTES ═══ */
-/* 1 carte : centrée */
 .vf-carousel-container[data-items-count="1"] .vf-carousel-track {
   justify-content: center;
 }
@@ -283,7 +277,6 @@ export const CarouselExtension = {
   max-width: 360px;
 }
 
-/* 2 cartes : centrées */
 .vf-carousel-container[data-items-count="2"] .vf-carousel-track {
   justify-content: center;
 }
@@ -293,7 +286,7 @@ export const CarouselExtension = {
   max-width: 300px;
 }
 
-/* ✅ CARTES AVEC ZOOM SPECTACULAIRE BIDIRECTIONNEL CORRIGÉ */
+/* ✅ CARTES AVEC EXPANSION BIDIRECTIONNELLE CORRIGÉE */
 .vf-carousel-card {
   flex: 0 0 calc((100% - (var(--carousel-gap) * 2)) / 3);
   min-width: 0;
@@ -309,18 +302,31 @@ export const CarouselExtension = {
   box-shadow: var(--shadow-base);
   box-sizing: border-box;
   z-index: 1;
-  transform-origin: center center; /* ✅ CRUCIAL pour le zoom bidirectionnel */
 }
 
-/* ✅ ZOOM SPECTACULAIRE BIDIRECTIONNEL CORRIGÉ */
+/* ✅ NOUVEAU SYSTÈME D'EXPANSION AU SURVOL */
 .vf-carousel-card:hover {
-  /* ✅ SOLUTION : Utiliser scale() au lieu de width pour l'expansion bidirectionnelle */
-  transform: translateY(-20px) scale(1.25, 1.4); /* ✅ scaleX: 1.25, scaleY: 1.4 */
-  box-shadow: 0 35px 70px rgba(0, 0, 0, 0.5), 
-              0 25px 35px rgba(var(--brand-rgb), 0.4),
-              0 0 0 1px rgba(var(--brand-rgb), 0.3);
-  border-color: rgba(var(--brand-rgb), 0.8);
-  z-index: 999; /* ✅ Au-dessus de tout */
+  /* ✅ POSITION ABSOLUE pour expansion libre */
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  
+  /* ✅ ZOOM SPECTACULAIRE BIDIRECTIONNEL */
+  transform: translate(-50%, -50%) scale(1.4) !important; /* ✅ Plus grand zoom */
+  
+  /* ✅ DIMENSIONS FIXES pour contrôle total */
+  width: 400px !important; /* ✅ Largeur fixe au survol */
+  height: auto !important;
+  
+  /* ✅ Z-INDEX MAXIMUM */
+  z-index: 9999 !important;
+  
+  /* ✅ OMBRES DRAMATIQUES */
+  box-shadow: 0 50px 100px rgba(0, 0, 0, 0.6), 
+              0 30px 50px rgba(var(--brand-rgb), 0.5),
+              0 0 0 2px rgba(var(--brand-rgb), 0.4) !important;
+  
+  border-color: rgba(var(--brand-rgb), 0.9) !important;
 }
 
 .vf-carousel-card::before {
@@ -340,12 +346,12 @@ export const CarouselExtension = {
   opacity: 1;
 }
 
-/* ═══ IMAGES 16:9 AVEC ZOOM AMÉLIORÉ ═══ */
+/* ═══ IMAGES 16:9 ═══ */
 .vf-carousel-image-container {
   position: relative;
   width: 100%;
   height: 0;
-  padding-bottom: 56.25%; /* 16:9 aspect ratio */
+  padding-bottom: 56.25%;
   overflow: hidden;
   background: linear-gradient(135deg, #f0f0f0, #e0e0e0);
 }
@@ -362,9 +368,8 @@ export const CarouselExtension = {
   transform-origin: center center;
 }
 
-/* ✅ IMAGE AVEC ZOOM PLUS SUBTIL POUR ÉQUILIBRER */
 .vf-carousel-card:hover .vf-carousel-image {
-  transform: scale(1.08); /* ✅ Zoom image plus modéré pour équilibrer */
+  transform: scale(1.05);
 }
 
 .vf-carousel-image-placeholder {
@@ -377,13 +382,13 @@ export const CarouselExtension = {
   opacity: 0.5;
 }
 
-/* ✅ CONTENU CARTE AVEC EXPANSION AU SURVOL */
+/* ✅ CONTENU CARTE AVEC EXPANSION MAXIMALE */
 .vf-carousel-content {
   padding: 16px;
   display: grid;
   grid-template-rows: auto 1fr auto;
   gap: 8px;
-  min-height: 140px; /* ✅ Hauteur de base */
+  min-height: 140px;
   position: relative;
   z-index: 2;
   transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
@@ -398,10 +403,11 @@ export const CarouselExtension = {
   -webkit-backdrop-filter: blur(5px);
 }
 
-/* ✅ EXPANSION DU CONTENU AU SURVOL (moins agressive car le scale fait déjà l'effet) */
+/* ✅ EXPANSION MASSIVE DU CONTENU AU SURVOL */
 .vf-carousel-card:hover .vf-carousel-content {
-  gap: 12px;
-  padding: 20px; /* ✅ Padding légèrement plus grand */
+  min-height: 350px !important; /* ✅ BEAUCOUP plus d'espace */
+  gap: 16px !important;
+  padding: 24px !important;
 }
 
 .vf-carousel-card-title {
@@ -421,14 +427,13 @@ export const CarouselExtension = {
   transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
-/* ✅ TITRE PLUS GRAND AU SURVOL */
 .vf-carousel-card:hover .vf-carousel-card-title {
-  font-size: 18px; /* ✅ Moins grand qu'avant car le scale fait déjà l'effet */
-  -webkit-line-clamp: 3; /* ✅ Plus de lignes pour le titre */
-  margin-bottom: 6px;
+  font-size: 20px !important;
+  -webkit-line-clamp: 4 !important;
+  margin-bottom: 8px !important;
 }
 
-/* ✅ DESCRIPTION AVEC EXPANSION MAXIMALE AU SURVOL */
+/* ✅ DESCRIPTION AVEC EXPANSION TOTALE AU SURVOL */
 .vf-carousel-description {
   font-size: 12px;
   color: #ffffff !important;
@@ -440,7 +445,6 @@ export const CarouselExtension = {
   align-self: start;
   transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   
-  /* ✅ État normal : tronqué */
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
@@ -448,11 +452,11 @@ export const CarouselExtension = {
   text-overflow: ellipsis;
 }
 
-/* ✅ DESCRIPTION COMPLÈTE AVEC BEAUCOUP PLUS DE LIGNES */
 .vf-carousel-card:hover .vf-carousel-description {
-  font-size: 13px; /* ✅ Légèrement plus grand */
-  -webkit-line-clamp: 12; /* ✅ Plus de lignes mais modéré */
-  line-height: 1.5; /* ✅ Meilleure lisibilité */
+  font-size: 14px !important;
+  -webkit-line-clamp: 20 !important; /* ✅ ÉNORMÉMENT de lignes */
+  line-height: 1.6 !important;
+  max-height: none !important;
 }
 
 .vf-carousel-button {
@@ -481,14 +485,13 @@ export const CarouselExtension = {
   align-self: end;
 }
 
-/* ✅ BOUTON PLUS VISIBLE AU SURVOL */
 .vf-carousel-card:hover .vf-carousel-button {
-  font-size: 13px; /* ✅ Modéré car le scale fait déjà l'effet */
-  padding: 12px 20px;
-  min-height: 44px;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(var(--brand-rgb), 0.5);
-  font-weight: 700;
+  font-size: 14px !important;
+  padding: 14px 24px !important;
+  min-height: 48px !important;
+  transform: translateY(-4px) !important;
+  box-shadow: 0 12px 24px rgba(var(--brand-rgb), 0.5) !important;
+  font-weight: 700 !important;
 }
 
 .vf-carousel-button::before {
@@ -510,7 +513,7 @@ export const CarouselExtension = {
   transform: translateY(0);
 }
 
-/* ═══ CONTRÔLES NAVIGATION ADAPTATIFS ═══ */
+/* ═══ CONTRÔLES NAVIGATION ═══ */
 .vf-carousel-controls {
   display: flex;
   justify-content: space-between;
@@ -520,7 +523,6 @@ export const CarouselExtension = {
   z-index: 3;
 }
 
-/* Masquer les contrôles pour 1-2 cartes sur desktop */
 .vf-carousel-container[data-items-count="1"] .vf-carousel-controls,
 .vf-carousel-container[data-items-count="2"] .vf-carousel-controls {
   display: none;
@@ -569,7 +571,6 @@ export const CarouselExtension = {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-/* ═══ DOTS PAGINATION ═══ */
 .vf-carousel-dots {
   display: flex;
   gap: 5px;
@@ -606,7 +607,6 @@ export const CarouselExtension = {
     --carousel-gap: 0px;
   }
   
-  /* ═══ RESPONSIVE MOBILE POUR TITRE ═══ */
   .vf-carousel-title {
     font-size: 20px;
     padding: 14px 20px;
@@ -624,12 +624,6 @@ export const CarouselExtension = {
     bottom: -9px;
   }
   
-  /* ✅ VIEWPORT MOBILE AJUSTÉ */
-  .vf-carousel-viewport {
-    padding: 20px 25px; /* ✅ Moins d'espace sur mobile */
-  }
-  
-  /* Sur mobile, toujours 1 carte en pleine largeur */
   .vf-carousel-card {
     flex: 0 0 100% !important;
     max-width: none !important;
@@ -637,7 +631,24 @@ export const CarouselExtension = {
   
   /* ✅ ZOOM MOBILE ADAPTÉ */
   .vf-carousel-card:hover {
-    transform: translateY(-12px) scale(1.15, 1.25); /* ✅ Zoom plus modéré sur mobile */
+    transform: translate(-50%, -50%) scale(1.2) !important; /* ✅ Zoom plus modéré sur mobile */
+    width: 350px !important; /* ✅ Plus petit sur mobile */
+  }
+  
+  .vf-carousel-card:hover .vf-carousel-content {
+    min-height: 280px !important;
+  }
+  
+  .vf-carousel-card:hover .vf-carousel-description {
+    -webkit-line-clamp: 15 !important;
+  }
+  
+  .vf-carousel-card:hover .vf-carousel-card-title {
+    font-size: 18px !important;
+  }
+  
+  .vf-carousel-viewport {
+    padding: 30px 40px; /* ✅ Moins d'espace sur mobile */
   }
   
   .vf-carousel-container[data-items-count="2"] .vf-carousel-controls {
@@ -657,15 +668,6 @@ export const CarouselExtension = {
   .vf-carousel-description {
     font-size: 11px !important;
     -webkit-line-clamp: 2;
-  }
-  
-  .vf-carousel-card:hover .vf-carousel-description {
-    font-size: 12px !important;
-    -webkit-line-clamp: 10; /* ✅ Moins de lignes sur mobile */
-  }
-  
-  .vf-carousel-card:hover .vf-carousel-card-title {
-    font-size: 16px; /* ✅ Mobile : titre moins grand au survol */
   }
   
   .vf-carousel-nav-button {
@@ -707,12 +709,6 @@ export const CarouselExtension = {
       let autoplayInterval = null;
       let touchStartX = 0;
       let touchEndX = 0;
-
-      // Utilitaire: Troncature du texte (plus utilisé mais gardé pour compatibilité)
-      const truncateText = (text, maxLength) => {
-        if (!text) return '';
-        return text.length > maxLength ? text.substring(0, maxLength - 3) + '...' : text;
-      };
 
       // Calcul des slides visibles selon l'écran ET le nombre d'items
       const getSlidesPerView = () => {
@@ -784,7 +780,7 @@ export const CarouselExtension = {
         }
       };
 
-      // ✅ GESTION DU CLIC AVEC SIMULATION DE MESSAGE UTILISATEUR + NOUVEL ONGLET
+      // Gestion du clic avec simulation de message utilisateur + nouvel onglet
       const handleCardAction = (item, index) => {
         stopAutoplay();
         
@@ -808,7 +804,7 @@ export const CarouselExtension = {
           console.log(`✅ Message utilisateur simulé: "${messageText}"`);
         }
 
-        // ✅ OUVERTURE EN NOUVEL ONGLET
+        // Ouverture en nouvel onglet
         if (item.url) {
           setTimeout(() => {
             window.open(item.url, '_blank', 'noopener,noreferrer');
@@ -816,7 +812,7 @@ export const CarouselExtension = {
         }
       };
 
-      // ✅ AJOUT DU TITRE SI PRÉSENT
+      // Ajout du titre si présent
       if (title) {
         const titleElement = document.createElement('h1');
         titleElement.className = 'vf-carousel-title';
@@ -870,11 +866,10 @@ export const CarouselExtension = {
           content.appendChild(cardTitle);
         }
 
-        // ✅ DESCRIPTION COMPLÈTE (plus de troncature, gérée par CSS)
+        // Description complète
         if (item.description) {
           const description = document.createElement('p');
           description.className = 'vf-carousel-description';
-          // ✅ NOUVEAU : Texte complet, la troncature se fait via CSS au survol
           description.textContent = item.description;
           content.appendChild(description);
         }
@@ -951,7 +946,7 @@ export const CarouselExtension = {
           
           if (e.deltaX > 10) {
             nextSlide();
-          } else if (e.deltaX < -10) {  // ✅ CORRIGÉ
+          } else if (e.deltaX < -10) {
             prevSlide();
           }
           
@@ -1029,7 +1024,7 @@ export const CarouselExtension = {
 
       element.appendChild(container);
 
-      console.log(`✅ Carousel avec zoom spectaculaire bidirectionnel CORRIGÉ (ID: ${uniqueId}) - ${items.length} items${title ? `, titre: "${title}"` : ''}`);
+      console.log(`✅ Carousel avec expansion bidirectionnelle CORRIGÉE (ID: ${uniqueId}) - ${items.length} items${title ? `, titre: "${title}"` : ''}`);
 
       // Cleanup
       return () => {

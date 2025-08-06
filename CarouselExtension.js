@@ -187,58 +187,86 @@ export const CarouselExtension = {
   z-index: 2;
   text-align: center;
   margin: 0 0 20px 0;
-  padding: 0 0 16px 0;
-  font-size: 22px;
-  font-weight: 800;
+  padding: 16px 24px;
+  font-size: 24px;
+  font-weight: 900;
   color: #ffffff;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 3px 6px rgba(0, 0, 0, 0.8), 0 1px 3px rgba(0, 0, 0, 0.9);
   letter-spacing: -0.5px;
   line-height: 1.2;
-  background: linear-gradient(135deg, #ffffff 0%, rgba(255,255,255,0.8) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  
+  /* ✅ FOND SOMBRE POUR CONTRASTE */
+  background: linear-gradient(135deg, 
+    rgba(0, 0, 0, 0.7) 0%, 
+    rgba(0, 0, 0, 0.5) 50%, 
+    rgba(0, 0, 0, 0.7) 100%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
 .vf-carousel-title::before {
   content: '';
   position: absolute;
-  bottom: 0;
+  bottom: -8px;
   left: 50%;
   transform: translateX(-50%);
-  width: 60px;
-  height: 2px;
+  width: 80px;
+  height: 3px;
   background: linear-gradient(90deg, var(--brand-color), var(--brand-light));
   border-radius: 2px;
-  box-shadow: 0 0 10px rgba(var(--brand-rgb), 0.5);
+  box-shadow: 0 0 15px rgba(var(--brand-rgb), 0.8);
 }
 
 .vf-carousel-title::after {
   content: '';
   position: absolute;
-  bottom: -6px;
+  bottom: -12px;
   left: 50%;
   transform: translateX(-50%);
-  width: 30px;
+  width: 40px;
   height: 1px;
-  background: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.8);
   border-radius: 1px;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
 }
 
-/* Animation d'apparition du titre */
+/* Animation d'apparition du titre améliorée */
 @keyframes titleFadeIn {
   from { 
     opacity: 0; 
-    transform: translateY(-15px); 
+    transform: translateY(-20px) scale(0.95); 
   }
   to { 
     opacity: 1; 
-    transform: translateY(0); 
+    transform: translateY(0) scale(1); 
   }
 }
 
 .vf-carousel-title {
   animation: titleFadeIn 0.8s ease-out;
+}
+
+/* ═══ RESPONSIVE MOBILE POUR TITRE ═══ */
+@media (max-width: 768px) {
+  .vf-carousel-title {
+    font-size: 20px;
+    padding: 14px 20px;
+    margin-bottom: 16px;
+  }
+  
+  .vf-carousel-title::before {
+    width: 60px;
+    height: 2px;
+    bottom: -6px;
+  }
+  
+  .vf-carousel-title::after {
+    width: 30px;
+    bottom: -9px;
+  }
 }
 
 /* ═══ VIEWPORT ET TRACK PARFAITEMENT CONTENUS ═══ */
@@ -726,19 +754,19 @@ export const CarouselExtension = {
           } else {
             messageText = item.title || item.buttonText || `Item ${index + 1}`;
           }
-
+      
           window.voiceflow.chat.interact({
             type: 'text',
             payload: messageText
           });
-
+      
           console.log(`✅ Message utilisateur simulé: "${messageText}"`);
         }
-
-        // ✅ NAVIGATION DANS LA MÊME FENÊTRE (au lieu de nouvel onglet)
+      
+        // ✅ RETOUR AU NOUVEL ONGLET (correction)
         if (item.url) {
           setTimeout(() => {
-            window.location.href = item.url; // ✅ MODIFICATION : même fenêtre au lieu de window.open
+            window.open(item.url, '_blank', 'noopener,noreferrer'); // ✅ RETOUR au nouvel onglet
           }, 500);
         }
       };

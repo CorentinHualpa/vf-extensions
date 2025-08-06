@@ -6,12 +6,11 @@
  *  ║  • Responsive: 3 desktop / 1 mobile                      ║
  *  ║  • Layout adaptatif pour 1-2-3+ cartes                  ║
  *  ║  • Titre personnalisable visible                         ║
- *  ║  • Zoom OPTIMISÉ qui sort du cadre                       ║
- *  ║  • Dimensions et z-index CORRIGÉS                        ║
+ *  ║  • Zoom équilibré format 4:3 dans le widget             ║
+ *  ║  • Fini les glitchs et vibrations                        ║
  *  ║  • Auto-play configurable                                ║
  *  ║  • Images 16:9 centrées sans déformation                ║
  *  ║  • Style ultra moderne avec glassmorphism               ║
- *  ║  • Image de fond avec dégradé stylée                    ║
  *  ║  • Support touch/swipe + trackpad horizontal            ║
  *  ║  • Simulation de message utilisateur au clic            ║
  *  ║  • Ouverture liens en nouvel onglet                     ║
@@ -87,19 +86,9 @@ export const CarouselExtension = {
       container.id = uniqueId;
       container.setAttribute('data-items-count', items.length);
 
-      // CSS avec dimensions optimisées et z-index corrigé
+      // CSS avec zoom équilibré format 4:3
       const styleEl = document.createElement('style');
       styleEl.textContent = `
-/* ✅ LIBÉRATION DES CONTENEURS VOICEFLOW */
-.vfrc-system-response,
-.vfrc-message,
-.vfrc-message--extension-Carousel,
-.vfrc-message--extension-Carousel > span {
-  overflow: visible !important;
-  position: relative !important;
-  z-index: auto !important;
-}
-
 /* ✅ STYLES POUR CONTENEUR PARENT VOICEFLOW */
 .vfrc-message--extension-Carousel {
   padding: 0 !important;
@@ -126,7 +115,7 @@ export const CarouselExtension = {
   --brand-dark: ${darkColor};
   --carousel-gap: 12px;
   --border-radius: 16px;
-  --transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   --shadow-base: 0 10px 25px rgba(0, 0, 0, 0.15);
   --shadow-hover: 0 20px 40px rgba(0, 0, 0, 0.25);
   --glass-bg: rgba(255, 255, 255, 0.1);
@@ -191,10 +180,10 @@ export const CarouselExtension = {
   z-index: -1;
 }
 
-/* ✅ TITRE AVEC Z-INDEX RÉDUIT */
+/* ✅ TITRE AVEC Z-INDEX ÉLEVÉ POUR RESTER AU-DESSUS */
 .vf-carousel-title {
   position: relative;
-  z-index: 100; /* ✅ RÉDUIT pour que la carte passe au-dessus */
+  z-index: 1000; /* ✅ Au-dessus des cartes zoomées */
   text-align: center;
   margin: 0 0 20px 0;
   padding: 16px 24px;
@@ -257,15 +246,15 @@ export const CarouselExtension = {
   animation: titleFadeIn 0.8s ease-out;
 }
 
-/* ✅ VIEWPORT LIBÉRÉ */
+/* ✅ VIEWPORT AVEC ESPACE POUR LE ZOOM */
 .vf-carousel-viewport {
   position: relative;
-  overflow: visible !important;
+  overflow: visible;
   border-radius: 12px;
   margin-bottom: 12px;
   width: 100%;
   box-sizing: border-box;
-  padding: 20px 0;
+  padding: 30px 10px; /* ✅ Espace modéré pour le zoom */
 }
 
 .vf-carousel-track {
@@ -276,7 +265,7 @@ export const CarouselExtension = {
   justify-content: flex-start;
   width: 100%;
   box-sizing: border-box;
-  overflow: visible !important;
+  position: relative;
 }
 
 /* ═══ LAYOUT ADAPTATIF SELON NOMBRE DE CARTES ═══ */
@@ -298,7 +287,7 @@ export const CarouselExtension = {
   max-width: 300px;
 }
 
-/* ✅ CARTES AVEC ZOOM OPTIMISÉ */
+/* ✅ CARTES AVEC ZOOM ÉQUILIBRÉ FORMAT 4:3 */
 .vf-carousel-card {
   flex: 0 0 calc((100% - (var(--carousel-gap) * 2)) / 3);
   min-width: 0;
@@ -308,7 +297,7 @@ export const CarouselExtension = {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   overflow: hidden;
-  transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition: var(--transition);
   cursor: pointer;
   position: relative;
   box-shadow: var(--shadow-base);
@@ -316,44 +305,42 @@ export const CarouselExtension = {
   z-index: 1;
 }
 
-/* ✅ ZOOM OPTIMISÉ AVEC BACKDROP */
+/* ✅ ZOOM ÉQUILIBRÉ DANS LE WIDGET FORMAT 4:3 */
 .vf-carousel-card:hover {
-  /* ✅ POSITION FIXED avec backdrop */
-  position: fixed !important;
+  /* ✅ Position absolue DANS le track */
+  position: absolute !important;
   top: 50% !important;
   left: 50% !important;
   
-  /* ✅ ZOOM PLUS RAISONNABLE */
-  transform: translate(-50%, -50%) scale(1.15) !important; /* ✅ Réduit de 1.4 à 1.15 */
+  /* ✅ ZOOM MODÉRÉ */
+  transform: translate(-50%, -50%) scale(1.15) !important; /* ✅ Zoom plus raisonnable */
   
-  /* ✅ DIMENSIONS PLUS PETITES */
-  width: 380px !important; /* ✅ Réduit de 450px à 380px */
-  height: auto !important;
+  /* ✅ FORMAT 4:3 */
+  width: 320px !important; /* ✅ Largeur raisonnable */
+  aspect-ratio: 4/3 !important; /* ✅ Ratio 4:3 */
+  height: 240px !important; /* ✅ Hauteur calculée pour 4:3 */
   
-  /* ✅ Z-INDEX ULTRA ÉLEVÉ */
-  z-index: 9999999 !important; /* ✅ Encore plus élevé */
+  /* ✅ Z-INDEX MODÉRÉ */
+  z-index: 100 !important; /* ✅ Au-dessus des autres cartes mais sous le titre */
   
-  /* ✅ OMBRES DRAMATIQUES */
-  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.8), 
-              0 25px 40px rgba(var(--brand-rgb), 0.6),
-              0 0 0 3px rgba(var(--brand-rgb), 0.5),
-              0 0 100px rgba(0, 0, 0, 0.5) !important; /* ✅ Ombre supplémentaire */
+  /* ✅ OMBRES ÉLÉGANTES */
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4), 
+              0 15px 25px rgba(var(--brand-rgb), 0.3),
+              0 0 0 2px rgba(var(--brand-rgb), 0.4) !important;
   
-  border-color: rgba(var(--brand-rgb), 0.9) !important;
+  border-color: rgba(var(--brand-rgb), 0.8) !important;
 }
 
-/* ✅ BACKDROP SOMBRE DERRIÈRE LA CARTE */
-.vf-carousel-card:hover::after {
+/* ✅ ZONE DE SURVOL ÉLARGIE POUR ÉVITER LES GLITCHS */
+.vf-carousel-card::after {
   content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.3); /* ✅ Backdrop semi-transparent */
-  z-index: -1;
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  right: -10px;
+  bottom: -10px;
+  pointer-events: auto;
+  z-index: 1;
 }
 
 .vf-carousel-card::before {
@@ -366,21 +353,27 @@ export const CarouselExtension = {
   background: linear-gradient(90deg, var(--brand-color), var(--brand-light));
   opacity: 0;
   transition: opacity 0.3s ease;
-  z-index: 1;
+  z-index: 2;
 }
 
 .vf-carousel-card:hover::before {
   opacity: 1;
 }
 
-/* ═══ IMAGES 16:9 ═══ */
+/* ═══ IMAGES AVEC ADAPTATION AU FORMAT 4:3 ═══ */
 .vf-carousel-image-container {
   position: relative;
   width: 100%;
   height: 0;
-  padding-bottom: 56.25%;
+  padding-bottom: 56.25%; /* 16:9 par défaut */
   overflow: hidden;
   background: linear-gradient(135deg, #f0f0f0, #e0e0e0);
+  transition: var(--transition);
+}
+
+/* ✅ ADAPTATION POUR LE FORMAT 4:3 AU SURVOL */
+.vf-carousel-card:hover .vf-carousel-image-container {
+  padding-bottom: 50% !important; /* ✅ Ratio pour s'adapter au format 4:3 */
 }
 
 .vf-carousel-image {
@@ -391,12 +384,12 @@ export const CarouselExtension = {
   height: 100%;
   object-fit: cover;
   object-position: center;
-  transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition: var(--transition);
   transform-origin: center center;
 }
 
 .vf-carousel-card:hover .vf-carousel-image {
-  transform: scale(1.03); /* ✅ Zoom image réduit */
+  transform: scale(1.02); /* ✅ Zoom très subtil */
 }
 
 .vf-carousel-image-placeholder {
@@ -409,7 +402,7 @@ export const CarouselExtension = {
   opacity: 0.5;
 }
 
-/* ✅ CONTENU CARTE AVEC EXPANSION OPTIMISÉE */
+/* ✅ CONTENU ADAPTÉ AU FORMAT 4:3 */
 .vf-carousel-content {
   padding: 16px;
   display: grid;
@@ -418,7 +411,7 @@ export const CarouselExtension = {
   min-height: 140px;
   position: relative;
   z-index: 2;
-  transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition: var(--transition);
   
   background: linear-gradient(
     180deg,
@@ -431,9 +424,9 @@ export const CarouselExtension = {
 }
 
 .vf-carousel-card:hover .vf-carousel-content {
-  min-height: 320px !important; /* ✅ Réduit de 380px à 320px */
-  gap: 16px !important;
-  padding: 22px !important; /* ✅ Réduit de 26px à 22px */
+  min-height: 120px !important; /* ✅ Adapté au format 4:3 */
+  gap: 10px !important;
+  padding: 18px !important;
 }
 
 .vf-carousel-card-title {
@@ -450,17 +443,15 @@ export const CarouselExtension = {
   text-overflow: ellipsis;
   min-height: 41.6px;
   align-self: start;
-  transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition: var(--transition);
 }
 
 .vf-carousel-card:hover .vf-carousel-card-title {
-  font-size: 20px !important; /* ✅ Réduit de 22px à 20px */
-  -webkit-line-clamp: 4 !important;
-  margin-bottom: 8px !important;
-  text-shadow: 0 3px 6px rgba(0, 0, 0, 0.9) !important;
+  font-size: 17px !important;
+  -webkit-line-clamp: 3 !important; /* ✅ Limité pour le format 4:3 */
 }
 
-/* ✅ DESCRIPTION AVEC EXPANSION CONTRÔLÉE */
+/* ✅ DESCRIPTION ADAPTÉE AU FORMAT 4:3 */
 .vf-carousel-description {
   font-size: 12px;
   color: #ffffff !important;
@@ -470,7 +461,7 @@ export const CarouselExtension = {
   margin: 0;
   padding: 0;
   align-self: start;
-  transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition: var(--transition);
   
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -480,11 +471,9 @@ export const CarouselExtension = {
 }
 
 .vf-carousel-card:hover .vf-carousel-description {
-  font-size: 14px !important;
-  -webkit-line-clamp: 18 !important; /* ✅ Réduit de 25 à 18 lignes */
-  line-height: 1.6 !important;
-  max-height: none !important;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9) !important;
+  font-size: 13px !important;
+  -webkit-line-clamp: 4 !important; /* ✅ Limité mais lisible pour le format 4:3 */
+  line-height: 1.5 !important;
 }
 
 .vf-carousel-button {
@@ -496,7 +485,7 @@ export const CarouselExtension = {
   font-weight: 600;
   font-size: 12px;
   cursor: pointer;
-  transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition: var(--transition);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   position: relative;
@@ -514,12 +503,10 @@ export const CarouselExtension = {
 }
 
 .vf-carousel-card:hover .vf-carousel-button {
-  font-size: 14px !important;
-  padding: 14px 24px !important; /* ✅ Réduit de 16px 28px */
-  min-height: 46px !important; /* ✅ Réduit de 52px à 46px */
-  transform: translateY(-4px) !important;
-  box-shadow: 0 12px 24px rgba(var(--brand-rgb), 0.6) !important;
-  font-weight: 700 !important;
+  font-size: 13px !important;
+  padding: 12px 20px !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 16px rgba(var(--brand-rgb), 0.4) !important;
 }
 
 .vf-carousel-button::before {
@@ -658,21 +645,17 @@ export const CarouselExtension = {
   }
   
   .vf-carousel-card:hover {
-    transform: translate(-50%, -50%) scale(1.1) !important; /* ✅ Encore plus petit sur mobile */
-    width: 340px !important; /* ✅ Réduit pour mobile */
+    transform: translate(-50%, -50%) scale(1.1) !important;
+    width: 280px !important; /* ✅ Plus petit sur mobile */
+    height: 210px !important; /* ✅ 4:3 ratio */
   }
   
   .vf-carousel-card:hover .vf-carousel-content {
-    min-height: 280px !important; /* ✅ Plus petit sur mobile */
+    min-height: 100px !important;
   }
   
   .vf-carousel-card:hover .vf-carousel-description {
-    font-size: 13px !important;
-    -webkit-line-clamp: 15 !important; /* ✅ Moins de lignes sur mobile */
-  }
-  
-  .vf-carousel-card:hover .vf-carousel-card-title {
-    font-size: 18px !important;
+    -webkit-line-clamp: 3 !important;
   }
   
   .vf-carousel-container[data-items-count="2"] .vf-carousel-controls {
@@ -1048,7 +1031,7 @@ export const CarouselExtension = {
 
       element.appendChild(container);
 
-      console.log(`✅ Carousel avec zoom OPTIMISÉ (ID: ${uniqueId}) - ${items.length} items${title ? `, titre: "${title}"` : ''}`);
+      console.log(`✅ Carousel équilibré format 4:3 (ID: ${uniqueId}) - ${items.length} items${title ? `, titre: "${title}"` : ''}`);
 
       // Cleanup
       return () => {

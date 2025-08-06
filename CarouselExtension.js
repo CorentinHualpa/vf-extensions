@@ -6,7 +6,7 @@
  *  ║  • Responsive: 3 desktop / 1 mobile                      ║
  *  ║  • Layout adaptatif pour 1-2-3+ cartes                  ║
  *  ║  • Titre personnalisable visible                         ║
- *  ║  • Zoom spectaculaire bidirectionnel au survol          ║
+ *  ║  • Zoom spectaculaire bidirectionnel CORRIGÉ            ║
  *  ║  • Description complète en preview                       ║
  *  ║  • Auto-play configurable                                ║
  *  ║  • Images 16:9 centrées sans déformation                ║
@@ -90,7 +90,7 @@ export const CarouselExtension = {
       container.id = uniqueId;
       container.setAttribute('data-items-count', items.length);
 
-      // CSS ultra stylé avec zoom spectaculaire bidirectionnel
+      // CSS ultra stylé avec zoom spectaculaire bidirectionnel CORRIGÉ
       const styleEl = document.createElement('style');
       styleEl.textContent = `
 /* ✅ STYLES POUR CONTENEUR PARENT VOICEFLOW */
@@ -251,7 +251,7 @@ export const CarouselExtension = {
   animation: titleFadeIn 0.8s ease-out;
 }
 
-/* ✅ GESTION DES DÉBORDEMENTS POUR LE ZOOM */
+/* ✅ GESTION DES DÉBORDEMENTS POUR LE ZOOM CORRIGÉE */
 .vf-carousel-viewport {
   position: relative;
   overflow: visible; /* ✅ Permettre le débordement */
@@ -259,7 +259,7 @@ export const CarouselExtension = {
   margin-bottom: 12px;
   width: 100%;
   box-sizing: border-box;
-  padding: 20px 0; /* ✅ Espace pour le zoom vertical */
+  padding: 30px 40px; /* ✅ PLUS d'espace pour le zoom bidirectionnel */
 }
 
 .vf-carousel-track {
@@ -270,7 +270,6 @@ export const CarouselExtension = {
   justify-content: flex-start;
   width: 100%;
   box-sizing: border-box;
-  padding: 0 20px; /* ✅ Espace pour l'expansion horizontale */
 }
 
 /* ═══ LAYOUT ADAPTATIF SELON NOMBRE DE CARTES ═══ */
@@ -294,7 +293,7 @@ export const CarouselExtension = {
   max-width: 300px;
 }
 
-/* ✅ CARTES AVEC ZOOM SPECTACULAIRE BIDIRECTIONNEL */
+/* ✅ CARTES AVEC ZOOM SPECTACULAIRE BIDIRECTIONNEL CORRIGÉ */
 .vf-carousel-card {
   flex: 0 0 calc((100% - (var(--carousel-gap) * 2)) / 3);
   min-width: 0;
@@ -304,27 +303,24 @@ export const CarouselExtension = {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   overflow: hidden;
-  transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94); /* ✅ Transition plus lente */
+  transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   cursor: pointer;
   position: relative;
   box-shadow: var(--shadow-base);
   box-sizing: border-box;
   z-index: 1;
+  transform-origin: center center; /* ✅ CRUCIAL pour le zoom bidirectionnel */
 }
 
-/* ✅ ZOOM SPECTACULAIRE BIDIRECTIONNEL AU SURVOL */
+/* ✅ ZOOM SPECTACULAIRE BIDIRECTIONNEL CORRIGÉ */
 .vf-carousel-card:hover {
-  transform: translateY(-20px) scale(1.25); /* ✅ ZOOM BEAUCOUP PLUS IMPORTANT */
+  /* ✅ SOLUTION : Utiliser scale() au lieu de width pour l'expansion bidirectionnelle */
+  transform: translateY(-20px) scale(1.25, 1.4); /* ✅ scaleX: 1.25, scaleY: 1.4 */
   box-shadow: 0 35px 70px rgba(0, 0, 0, 0.5), 
               0 25px 35px rgba(var(--brand-rgb), 0.4),
-              0 0 0 1px rgba(var(--brand-rgb), 0.3); /* ✅ Ombres dramatiques */
+              0 0 0 1px rgba(var(--brand-rgb), 0.3);
   border-color: rgba(var(--brand-rgb), 0.8);
   z-index: 999; /* ✅ Au-dessus de tout */
-  
-  /* ✅ EXPANSION HORIZONTALE AUSSI */
-  width: calc(100% + 40px); /* ✅ Plus large au survol */
-  margin-left: -20px; /* ✅ Centrage de l'expansion */
-  margin-right: -20px;
 }
 
 .vf-carousel-card::before {
@@ -402,11 +398,10 @@ export const CarouselExtension = {
   -webkit-backdrop-filter: blur(5px);
 }
 
-/* ✅ EXPANSION MASSIVE DU CONTENU AU SURVOL */
+/* ✅ EXPANSION DU CONTENU AU SURVOL (moins agressive car le scale fait déjà l'effet) */
 .vf-carousel-card:hover .vf-carousel-content {
-  min-height: 280px; /* ✅ BEAUCOUP plus d'espace vertical */
-  gap: 16px;
-  padding: 24px; /* ✅ Plus de padding */
+  gap: 12px;
+  padding: 20px; /* ✅ Padding légèrement plus grand */
 }
 
 .vf-carousel-card-title {
@@ -426,11 +421,11 @@ export const CarouselExtension = {
   transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
-/* ✅ TITRE ENCORE PLUS GRAND AU SURVOL */
+/* ✅ TITRE PLUS GRAND AU SURVOL */
 .vf-carousel-card:hover .vf-carousel-card-title {
-  font-size: 20px; /* ✅ Plus grand */
-  -webkit-line-clamp: 4; /* ✅ Plus de lignes pour le titre */
-  margin-bottom: 8px;
+  font-size: 18px; /* ✅ Moins grand qu'avant car le scale fait déjà l'effet */
+  -webkit-line-clamp: 3; /* ✅ Plus de lignes pour le titre */
+  margin-bottom: 6px;
 }
 
 /* ✅ DESCRIPTION AVEC EXPANSION MAXIMALE AU SURVOL */
@@ -455,10 +450,9 @@ export const CarouselExtension = {
 
 /* ✅ DESCRIPTION COMPLÈTE AVEC BEAUCOUP PLUS DE LIGNES */
 .vf-carousel-card:hover .vf-carousel-description {
-  font-size: 14px; /* ✅ Plus grand au survol */
-  -webkit-line-clamp: 15; /* ✅ BEAUCOUP plus de lignes */
-  line-height: 1.6; /* ✅ Meilleure lisibilité */
-  max-height: none; /* ✅ Pas de limite de hauteur */
+  font-size: 13px; /* ✅ Légèrement plus grand */
+  -webkit-line-clamp: 12; /* ✅ Plus de lignes mais modéré */
+  line-height: 1.5; /* ✅ Meilleure lisibilité */
 }
 
 .vf-carousel-button {
@@ -487,13 +481,13 @@ export const CarouselExtension = {
   align-self: end;
 }
 
-/* ✅ BOUTON ENCORE PLUS VISIBLE AU SURVOL */
+/* ✅ BOUTON PLUS VISIBLE AU SURVOL */
 .vf-carousel-card:hover .vf-carousel-button {
-  font-size: 14px;
-  padding: 14px 24px;
-  min-height: 48px;
-  transform: translateY(-4px);
-  box-shadow: 0 12px 24px rgba(var(--brand-rgb), 0.5);
+  font-size: 13px; /* ✅ Modéré car le scale fait déjà l'effet */
+  padding: 12px 20px;
+  min-height: 44px;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(var(--brand-rgb), 0.5);
   font-weight: 700;
 }
 
@@ -630,6 +624,11 @@ export const CarouselExtension = {
     bottom: -9px;
   }
   
+  /* ✅ VIEWPORT MOBILE AJUSTÉ */
+  .vf-carousel-viewport {
+    padding: 20px 25px; /* ✅ Moins d'espace sur mobile */
+  }
+  
   /* Sur mobile, toujours 1 carte en pleine largeur */
   .vf-carousel-card {
     flex: 0 0 100% !important;
@@ -638,14 +637,7 @@ export const CarouselExtension = {
   
   /* ✅ ZOOM MOBILE ADAPTÉ */
   .vf-carousel-card:hover {
-    transform: translateY(-12px) scale(1.15); /* ✅ Zoom plus modéré sur mobile */
-    width: calc(100% + 20px); /* ✅ Expansion plus modérée */
-    margin-left: -10px;
-    margin-right: -10px;
-  }
-  
-  .vf-carousel-card:hover .vf-carousel-content {
-    min-height: 220px; /* ✅ Expansion plus modérée sur mobile */
+    transform: translateY(-12px) scale(1.15, 1.25); /* ✅ Zoom plus modéré sur mobile */
   }
   
   .vf-carousel-container[data-items-count="2"] .vf-carousel-controls {
@@ -668,12 +660,12 @@ export const CarouselExtension = {
   }
   
   .vf-carousel-card:hover .vf-carousel-description {
-    font-size: 13px !important;
-    -webkit-line-clamp: 12; /* ✅ Moins de lignes sur mobile mais toujours beaucoup */
+    font-size: 12px !important;
+    -webkit-line-clamp: 10; /* ✅ Moins de lignes sur mobile */
   }
   
   .vf-carousel-card:hover .vf-carousel-card-title {
-    font-size: 18px; /* ✅ Mobile : titre moins grand au survol */
+    font-size: 16px; /* ✅ Mobile : titre moins grand au survol */
   }
   
   .vf-carousel-nav-button {
@@ -1037,7 +1029,7 @@ export const CarouselExtension = {
 
       element.appendChild(container);
 
-      console.log(`✅ Carousel avec zoom spectaculaire bidirectionnel (ID: ${uniqueId}) - ${items.length} items${title ? `, titre: "${title}"` : ''}`);
+      console.log(`✅ Carousel avec zoom spectaculaire bidirectionnel CORRIGÉ (ID: ${uniqueId}) - ${items.length} items${title ? `, titre: "${title}"` : ''}`);
 
       // Cleanup
       return () => {

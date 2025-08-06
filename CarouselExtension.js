@@ -6,8 +6,8 @@
  *  ║  • Responsive: 3 desktop / 1 mobile                      ║
  *  ║  • Layout adaptatif pour 1-2-3+ cartes                  ║
  *  ║  • Titre personnalisable visible                         ║
- *  ║  • Zoom spectaculaire bidirectionnel CORRIGÉ            ║
- *  ║  • Position absolue au survol pour expansion libre       ║
+ *  ║  • Zoom qui SORT du cadre de l'extension                 ║
+ *  ║  • Position fixed pour liberté totale                    ║
  *  ║  • Auto-play configurable                                ║
  *  ║  • Images 16:9 centrées sans déformation                ║
  *  ║  • Style ultra moderne avec glassmorphism               ║
@@ -87,16 +87,26 @@ export const CarouselExtension = {
       container.id = uniqueId;
       container.setAttribute('data-items-count', items.length);
 
-      // CSS avec expansion bidirectionnelle CORRIGÉE
+      // CSS avec liberté totale de positionnement
       const styleEl = document.createElement('style');
       styleEl.textContent = `
+/* ✅ LIBÉRATION DES CONTENEURS VOICEFLOW */
+.vfrc-system-response,
+.vfrc-message,
+.vfrc-message--extension-Carousel,
+.vfrc-message--extension-Carousel > span {
+  overflow: visible !important;
+  position: relative !important;
+  z-index: auto !important;
+}
+
 /* ✅ STYLES POUR CONTENEUR PARENT VOICEFLOW */
 .vfrc-message--extension-Carousel {
   padding: 0 !important;
   margin: 0 !important;
   width: 100% !important;
   max-width: 100% !important;
-  overflow: hidden !important;
+  overflow: visible !important;
   box-sizing: border-box !important;
 }
 
@@ -105,6 +115,7 @@ export const CarouselExtension = {
   width: 100% !important;
   max-width: 100% !important;
   box-sizing: border-box !important;
+  overflow: visible !important;
 }
 
 /* ═══ VARIABLES CSS ADAPTATIVES ═══ */
@@ -122,7 +133,7 @@ export const CarouselExtension = {
   --glass-border: rgba(255, 255, 255, 0.2);
 }
 
-/* ═══ CONTAINER PRINCIPAL PARFAITEMENT ADAPTÉ ═══ */
+/* ═══ CONTAINER PRINCIPAL ═══ */
 .vf-carousel-container {
   position: relative;
   width: 100% !important;
@@ -135,7 +146,7 @@ export const CarouselExtension = {
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--glass-border);
   box-shadow: var(--shadow-base);
-  overflow: visible !important; /* ✅ PERMETTRE LE DÉBORDEMENT */
+  overflow: visible !important;
   box-sizing: border-box !important;
 }
 
@@ -246,15 +257,15 @@ export const CarouselExtension = {
   animation: titleFadeIn 0.8s ease-out;
 }
 
-/* ✅ VIEWPORT AVEC ESPACE POUR L'EXPANSION */
+/* ✅ VIEWPORT LIBÉRÉ */
 .vf-carousel-viewport {
   position: relative;
-  overflow: visible; /* ✅ PERMETTRE LE DÉBORDEMENT */
+  overflow: visible !important;
   border-radius: 12px;
   margin-bottom: 12px;
   width: 100%;
   box-sizing: border-box;
-  padding: 40px 60px; /* ✅ PLUS D'ESPACE pour l'expansion */
+  padding: 20px 0;
 }
 
 .vf-carousel-track {
@@ -265,6 +276,7 @@ export const CarouselExtension = {
   justify-content: flex-start;
   width: 100%;
   box-sizing: border-box;
+  overflow: visible !important;
 }
 
 /* ═══ LAYOUT ADAPTATIF SELON NOMBRE DE CARTES ═══ */
@@ -286,7 +298,7 @@ export const CarouselExtension = {
   max-width: 300px;
 }
 
-/* ✅ CARTES AVEC EXPANSION BIDIRECTIONNELLE CORRIGÉE */
+/* ✅ CARTES AVEC LIBERTÉ TOTALE AU SURVOL */
 .vf-carousel-card {
   flex: 0 0 calc((100% - (var(--carousel-gap) * 2)) / 3);
   min-width: 0;
@@ -304,27 +316,27 @@ export const CarouselExtension = {
   z-index: 1;
 }
 
-/* ✅ NOUVEAU SYSTÈME D'EXPANSION AU SURVOL */
+/* ✅ ZOOM AVEC POSITION FIXED POUR SORTIR DU FLUX */
 .vf-carousel-card:hover {
-  /* ✅ POSITION ABSOLUE pour expansion libre */
-  position: absolute !important;
+  /* ✅ POSITION FIXED pour sortir de TOUS les conteneurs */
+  position: fixed !important;
   top: 50% !important;
   left: 50% !important;
   
-  /* ✅ ZOOM SPECTACULAIRE BIDIRECTIONNEL */
-  transform: translate(-50%, -50%) scale(1.4) !important; /* ✅ Plus grand zoom */
+  /* ✅ ZOOM SPECTACULAIRE */
+  transform: translate(-50%, -50%) scale(1.4) !important;
   
-  /* ✅ DIMENSIONS FIXES pour contrôle total */
-  width: 400px !important; /* ✅ Largeur fixe au survol */
+  /* ✅ DIMENSIONS CONTRÔLÉES */
+  width: 450px !important;
   height: auto !important;
   
-  /* ✅ Z-INDEX MAXIMUM */
-  z-index: 9999 !important;
+  /* ✅ Z-INDEX MAXIMUM ABSOLU */
+  z-index: 999999 !important;
   
   /* ✅ OMBRES DRAMATIQUES */
-  box-shadow: 0 50px 100px rgba(0, 0, 0, 0.6), 
-              0 30px 50px rgba(var(--brand-rgb), 0.5),
-              0 0 0 2px rgba(var(--brand-rgb), 0.4) !important;
+  box-shadow: 0 50px 100px rgba(0, 0, 0, 0.7), 
+              0 30px 50px rgba(var(--brand-rgb), 0.6),
+              0 0 0 3px rgba(var(--brand-rgb), 0.5) !important;
   
   border-color: rgba(var(--brand-rgb), 0.9) !important;
 }
@@ -403,11 +415,10 @@ export const CarouselExtension = {
   -webkit-backdrop-filter: blur(5px);
 }
 
-/* ✅ EXPANSION MASSIVE DU CONTENU AU SURVOL */
 .vf-carousel-card:hover .vf-carousel-content {
-  min-height: 350px !important; /* ✅ BEAUCOUP plus d'espace */
-  gap: 16px !important;
-  padding: 24px !important;
+  min-height: 380px !important; /* ✅ ÉNORME expansion */
+  gap: 18px !important;
+  padding: 26px !important;
 }
 
 .vf-carousel-card-title {
@@ -428,12 +439,13 @@ export const CarouselExtension = {
 }
 
 .vf-carousel-card:hover .vf-carousel-card-title {
-  font-size: 20px !important;
-  -webkit-line-clamp: 4 !important;
-  margin-bottom: 8px !important;
+  font-size: 22px !important;
+  -webkit-line-clamp: 5 !important;
+  margin-bottom: 10px !important;
+  text-shadow: 0 3px 6px rgba(0, 0, 0, 0.9) !important;
 }
 
-/* ✅ DESCRIPTION AVEC EXPANSION TOTALE AU SURVOL */
+/* ✅ DESCRIPTION AVEC EXPANSION TOTALE */
 .vf-carousel-description {
   font-size: 12px;
   color: #ffffff !important;
@@ -453,10 +465,11 @@ export const CarouselExtension = {
 }
 
 .vf-carousel-card:hover .vf-carousel-description {
-  font-size: 14px !important;
-  -webkit-line-clamp: 20 !important; /* ✅ ÉNORMÉMENT de lignes */
-  line-height: 1.6 !important;
+  font-size: 15px !important;
+  -webkit-line-clamp: 25 !important; /* ✅ DESCRIPTION QUASI-COMPLÈTE */
+  line-height: 1.7 !important;
   max-height: none !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9) !important;
 }
 
 .vf-carousel-button {
@@ -486,12 +499,12 @@ export const CarouselExtension = {
 }
 
 .vf-carousel-card:hover .vf-carousel-button {
-  font-size: 14px !important;
-  padding: 14px 24px !important;
-  min-height: 48px !important;
-  transform: translateY(-4px) !important;
-  box-shadow: 0 12px 24px rgba(var(--brand-rgb), 0.5) !important;
-  font-weight: 700 !important;
+  font-size: 15px !important;
+  padding: 16px 28px !important;
+  min-height: 52px !important;
+  transform: translateY(-6px) !important;
+  box-shadow: 0 15px 30px rgba(var(--brand-rgb), 0.6) !important;
+  font-weight: 800 !important;
 }
 
 .vf-carousel-button::before {
@@ -629,26 +642,22 @@ export const CarouselExtension = {
     max-width: none !important;
   }
   
-  /* ✅ ZOOM MOBILE ADAPTÉ */
   .vf-carousel-card:hover {
-    transform: translate(-50%, -50%) scale(1.2) !important; /* ✅ Zoom plus modéré sur mobile */
-    width: 350px !important; /* ✅ Plus petit sur mobile */
+    transform: translate(-50%, -50%) scale(1.25) !important;
+    width: 380px !important; /* ✅ Plus petit sur mobile */
   }
   
   .vf-carousel-card:hover .vf-carousel-content {
-    min-height: 280px !important;
+    min-height: 320px !important;
   }
   
   .vf-carousel-card:hover .vf-carousel-description {
-    -webkit-line-clamp: 15 !important;
+    font-size: 14px !important;
+    -webkit-line-clamp: 18 !important;
   }
   
   .vf-carousel-card:hover .vf-carousel-card-title {
-    font-size: 18px !important;
-  }
-  
-  .vf-carousel-viewport {
-    padding: 30px 40px; /* ✅ Moins d'espace sur mobile */
+    font-size: 19px !important;
   }
   
   .vf-carousel-container[data-items-count="2"] .vf-carousel-controls {
@@ -1024,7 +1033,7 @@ export const CarouselExtension = {
 
       element.appendChild(container);
 
-      console.log(`✅ Carousel avec expansion bidirectionnelle CORRIGÉE (ID: ${uniqueId}) - ${items.length} items${title ? `, titre: "${title}"` : ''}`);
+      console.log(`✅ Carousel avec liberté totale de positionnement (ID: ${uniqueId}) - ${items.length} items${title ? `, titre: "${title}"` : ''}`);
 
       // Cleanup
       return () => {

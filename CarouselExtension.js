@@ -6,8 +6,8 @@
  *  ║  • Responsive: 3 desktop / 1 mobile                      ║
  *  ║  • Layout adaptatif pour 1-2-3+ cartes                  ║
  *  ║  • Titre personnalisable visible                         ║
- *  ║  • Zoom qui SORT du cadre de l'extension                 ║
- *  ║  • Position fixed pour liberté totale                    ║
+ *  ║  • Zoom OPTIMISÉ qui sort du cadre                       ║
+ *  ║  • Dimensions et z-index CORRIGÉS                        ║
  *  ║  • Auto-play configurable                                ║
  *  ║  • Images 16:9 centrées sans déformation                ║
  *  ║  • Style ultra moderne avec glassmorphism               ║
@@ -87,7 +87,7 @@ export const CarouselExtension = {
       container.id = uniqueId;
       container.setAttribute('data-items-count', items.length);
 
-      // CSS avec liberté totale de positionnement
+      // CSS avec dimensions optimisées et z-index corrigé
       const styleEl = document.createElement('style');
       styleEl.textContent = `
 /* ✅ LIBÉRATION DES CONTENEURS VOICEFLOW */
@@ -191,10 +191,10 @@ export const CarouselExtension = {
   z-index: -1;
 }
 
-/* ✅ TITRE PERSONNALISABLE */
+/* ✅ TITRE AVEC Z-INDEX RÉDUIT */
 .vf-carousel-title {
   position: relative;
-  z-index: 2;
+  z-index: 100; /* ✅ RÉDUIT pour que la carte passe au-dessus */
   text-align: center;
   margin: 0 0 20px 0;
   padding: 16px 24px;
@@ -298,7 +298,7 @@ export const CarouselExtension = {
   max-width: 300px;
 }
 
-/* ✅ CARTES AVEC LIBERTÉ TOTALE AU SURVOL */
+/* ✅ CARTES AVEC ZOOM OPTIMISÉ */
 .vf-carousel-card {
   flex: 0 0 calc((100% - (var(--carousel-gap) * 2)) / 3);
   min-width: 0;
@@ -316,29 +316,44 @@ export const CarouselExtension = {
   z-index: 1;
 }
 
-/* ✅ ZOOM AVEC POSITION FIXED POUR SORTIR DU FLUX */
+/* ✅ ZOOM OPTIMISÉ AVEC BACKDROP */
 .vf-carousel-card:hover {
-  /* ✅ POSITION FIXED pour sortir de TOUS les conteneurs */
+  /* ✅ POSITION FIXED avec backdrop */
   position: fixed !important;
   top: 50% !important;
   left: 50% !important;
   
-  /* ✅ ZOOM SPECTACULAIRE */
-  transform: translate(-50%, -50%) scale(1.4) !important;
+  /* ✅ ZOOM PLUS RAISONNABLE */
+  transform: translate(-50%, -50%) scale(1.15) !important; /* ✅ Réduit de 1.4 à 1.15 */
   
-  /* ✅ DIMENSIONS CONTRÔLÉES */
-  width: 450px !important;
+  /* ✅ DIMENSIONS PLUS PETITES */
+  width: 380px !important; /* ✅ Réduit de 450px à 380px */
   height: auto !important;
   
-  /* ✅ Z-INDEX MAXIMUM ABSOLU */
-  z-index: 999999 !important;
+  /* ✅ Z-INDEX ULTRA ÉLEVÉ */
+  z-index: 9999999 !important; /* ✅ Encore plus élevé */
   
   /* ✅ OMBRES DRAMATIQUES */
-  box-shadow: 0 50px 100px rgba(0, 0, 0, 0.7), 
-              0 30px 50px rgba(var(--brand-rgb), 0.6),
-              0 0 0 3px rgba(var(--brand-rgb), 0.5) !important;
+  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.8), 
+              0 25px 40px rgba(var(--brand-rgb), 0.6),
+              0 0 0 3px rgba(var(--brand-rgb), 0.5),
+              0 0 100px rgba(0, 0, 0, 0.5) !important; /* ✅ Ombre supplémentaire */
   
   border-color: rgba(var(--brand-rgb), 0.9) !important;
+}
+
+/* ✅ BACKDROP SOMBRE DERRIÈRE LA CARTE */
+.vf-carousel-card:hover::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3); /* ✅ Backdrop semi-transparent */
+  z-index: -1;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
 }
 
 .vf-carousel-card::before {
@@ -381,7 +396,7 @@ export const CarouselExtension = {
 }
 
 .vf-carousel-card:hover .vf-carousel-image {
-  transform: scale(1.05);
+  transform: scale(1.03); /* ✅ Zoom image réduit */
 }
 
 .vf-carousel-image-placeholder {
@@ -394,7 +409,7 @@ export const CarouselExtension = {
   opacity: 0.5;
 }
 
-/* ✅ CONTENU CARTE AVEC EXPANSION MAXIMALE */
+/* ✅ CONTENU CARTE AVEC EXPANSION OPTIMISÉE */
 .vf-carousel-content {
   padding: 16px;
   display: grid;
@@ -416,9 +431,9 @@ export const CarouselExtension = {
 }
 
 .vf-carousel-card:hover .vf-carousel-content {
-  min-height: 380px !important; /* ✅ ÉNORME expansion */
-  gap: 18px !important;
-  padding: 26px !important;
+  min-height: 320px !important; /* ✅ Réduit de 380px à 320px */
+  gap: 16px !important;
+  padding: 22px !important; /* ✅ Réduit de 26px à 22px */
 }
 
 .vf-carousel-card-title {
@@ -439,13 +454,13 @@ export const CarouselExtension = {
 }
 
 .vf-carousel-card:hover .vf-carousel-card-title {
-  font-size: 22px !important;
-  -webkit-line-clamp: 5 !important;
-  margin-bottom: 10px !important;
+  font-size: 20px !important; /* ✅ Réduit de 22px à 20px */
+  -webkit-line-clamp: 4 !important;
+  margin-bottom: 8px !important;
   text-shadow: 0 3px 6px rgba(0, 0, 0, 0.9) !important;
 }
 
-/* ✅ DESCRIPTION AVEC EXPANSION TOTALE */
+/* ✅ DESCRIPTION AVEC EXPANSION CONTRÔLÉE */
 .vf-carousel-description {
   font-size: 12px;
   color: #ffffff !important;
@@ -465,9 +480,9 @@ export const CarouselExtension = {
 }
 
 .vf-carousel-card:hover .vf-carousel-description {
-  font-size: 15px !important;
-  -webkit-line-clamp: 25 !important; /* ✅ DESCRIPTION QUASI-COMPLÈTE */
-  line-height: 1.7 !important;
+  font-size: 14px !important;
+  -webkit-line-clamp: 18 !important; /* ✅ Réduit de 25 à 18 lignes */
+  line-height: 1.6 !important;
   max-height: none !important;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9) !important;
 }
@@ -499,12 +514,12 @@ export const CarouselExtension = {
 }
 
 .vf-carousel-card:hover .vf-carousel-button {
-  font-size: 15px !important;
-  padding: 16px 28px !important;
-  min-height: 52px !important;
-  transform: translateY(-6px) !important;
-  box-shadow: 0 15px 30px rgba(var(--brand-rgb), 0.6) !important;
-  font-weight: 800 !important;
+  font-size: 14px !important;
+  padding: 14px 24px !important; /* ✅ Réduit de 16px 28px */
+  min-height: 46px !important; /* ✅ Réduit de 52px à 46px */
+  transform: translateY(-4px) !important;
+  box-shadow: 0 12px 24px rgba(var(--brand-rgb), 0.6) !important;
+  font-weight: 700 !important;
 }
 
 .vf-carousel-button::before {
@@ -643,21 +658,21 @@ export const CarouselExtension = {
   }
   
   .vf-carousel-card:hover {
-    transform: translate(-50%, -50%) scale(1.25) !important;
-    width: 380px !important; /* ✅ Plus petit sur mobile */
+    transform: translate(-50%, -50%) scale(1.1) !important; /* ✅ Encore plus petit sur mobile */
+    width: 340px !important; /* ✅ Réduit pour mobile */
   }
   
   .vf-carousel-card:hover .vf-carousel-content {
-    min-height: 320px !important;
+    min-height: 280px !important; /* ✅ Plus petit sur mobile */
   }
   
   .vf-carousel-card:hover .vf-carousel-description {
-    font-size: 14px !important;
-    -webkit-line-clamp: 18 !important;
+    font-size: 13px !important;
+    -webkit-line-clamp: 15 !important; /* ✅ Moins de lignes sur mobile */
   }
   
   .vf-carousel-card:hover .vf-carousel-card-title {
-    font-size: 19px !important;
+    font-size: 18px !important;
   }
   
   .vf-carousel-container[data-items-count="2"] .vf-carousel-controls {
@@ -1033,7 +1048,7 @@ export const CarouselExtension = {
 
       element.appendChild(container);
 
-      console.log(`✅ Carousel avec liberté totale de positionnement (ID: ${uniqueId}) - ${items.length} items${title ? `, titre: "${title}"` : ''}`);
+      console.log(`✅ Carousel avec zoom OPTIMISÉ (ID: ${uniqueId}) - ${items.length} items${title ? `, titre: "${title}"` : ''}`);
 
       // Cleanup
       return () => {

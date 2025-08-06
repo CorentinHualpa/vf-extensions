@@ -6,10 +6,10 @@
  *  ║  • Responsive: 3 desktop / 1 mobile                      ║
  *  ║  • Layout adaptatif pour 1-2-3+ cartes                  ║
  *  ║  • Titre personnalisable visible                         ║
- *  ║  • Zoom équilibré format 4:3 dans le widget             ║
- *  ║  • Fini les glitchs et vibrations                        ║
+ *  ║  • Popup description UNIQUEMENT sur desktop             ║
+ *  ║  • Mobile : pas de zoom, stable                          ║
  *  ║  • Auto-play configurable                                ║
- *  ║  • Images 16:9 centrées sans déformation                ║
+ *  ║  • Images contenues dans le cadre                       ║
  *  ║  • Style ultra moderne avec glassmorphism               ║
  *  ║  • Support touch/swipe + trackpad horizontal            ║
  *  ║  • Simulation de message utilisateur au clic            ║
@@ -86,7 +86,7 @@ export const CarouselExtension = {
       container.id = uniqueId;
       container.setAttribute('data-items-count', items.length);
 
-      // CSS avec zoom équilibré format 4:3
+      // CSS avec popup simple pour description
       const styleEl = document.createElement('style');
       styleEl.textContent = `
 /* ✅ STYLES POUR CONTENEUR PARENT VOICEFLOW */
@@ -180,10 +180,10 @@ export const CarouselExtension = {
   z-index: -1;
 }
 
-/* ✅ TITRE AVEC Z-INDEX ÉLEVÉ POUR RESTER AU-DESSUS */
+/* ✅ TITRE STABLE */
 .vf-carousel-title {
   position: relative;
-  z-index: 1000; /* ✅ Au-dessus des cartes zoomées */
+  z-index: 2;
   text-align: center;
   margin: 0 0 20px 0;
   padding: 16px 24px;
@@ -246,15 +246,15 @@ export const CarouselExtension = {
   animation: titleFadeIn 0.8s ease-out;
 }
 
-/* ✅ VIEWPORT AVEC ESPACE POUR LE ZOOM */
+/* ✅ VIEWPORT STABLE SANS DÉBORDEMENT */
 .vf-carousel-viewport {
   position: relative;
-  overflow: visible;
+  overflow: hidden; /* ✅ Empêche le débordement des images */
   border-radius: 12px;
   margin-bottom: 12px;
   width: 100%;
   box-sizing: border-box;
-  padding: 30px 10px; /* ✅ Espace modéré pour le zoom */
+  padding: 0; /* ✅ Pas de padding pour éviter les débordements */
 }
 
 .vf-carousel-track {
@@ -265,7 +265,6 @@ export const CarouselExtension = {
   justify-content: flex-start;
   width: 100%;
   box-sizing: border-box;
-  position: relative;
 }
 
 /* ═══ LAYOUT ADAPTATIF SELON NOMBRE DE CARTES ═══ */
@@ -287,7 +286,7 @@ export const CarouselExtension = {
   max-width: 300px;
 }
 
-/* ✅ CARTES AVEC ZOOM ÉQUILIBRÉ FORMAT 4:3 */
+/* ✅ CARTES STABLES AVEC HOVER SUBTIL UNIQUEMENT SUR DESKTOP */
 .vf-carousel-card {
   flex: 0 0 calc((100% - (var(--carousel-gap) * 2)) / 3);
   min-width: 0;
@@ -305,42 +304,14 @@ export const CarouselExtension = {
   z-index: 1;
 }
 
-/* ✅ ZOOM ÉQUILIBRÉ DANS LE WIDGET FORMAT 4:3 */
-.vf-carousel-card:hover {
-  /* ✅ Position absolue DANS le track */
-  position: absolute !important;
-  top: 50% !important;
-  left: 50% !important;
-  
-  /* ✅ ZOOM MODÉRÉ */
-  transform: translate(-50%, -50%) scale(1.15) !important; /* ✅ Zoom plus raisonnable */
-  
-  /* ✅ FORMAT 4:3 */
-  width: 320px !important; /* ✅ Largeur raisonnable */
-  aspect-ratio: 4/3 !important; /* ✅ Ratio 4:3 */
-  height: 240px !important; /* ✅ Hauteur calculée pour 4:3 */
-  
-  /* ✅ Z-INDEX MODÉRÉ */
-  z-index: 100 !important; /* ✅ Au-dessus des autres cartes mais sous le titre */
-  
-  /* ✅ OMBRES ÉLÉGANTES */
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4), 
-              0 15px 25px rgba(var(--brand-rgb), 0.3),
-              0 0 0 2px rgba(var(--brand-rgb), 0.4) !important;
-  
-  border-color: rgba(var(--brand-rgb), 0.8) !important;
-}
-
-/* ✅ ZONE DE SURVOL ÉLARGIE POUR ÉVITER LES GLITCHS */
-.vf-carousel-card::after {
-  content: '';
-  position: absolute;
-  top: -10px;
-  left: -10px;
-  right: -10px;
-  bottom: -10px;
-  pointer-events: auto;
-  z-index: 1;
+/* ✅ HOVER SUBTIL UNIQUEMENT SUR DESKTOP */
+@media (min-width: 769px) {
+  .vf-carousel-card:hover {
+    transform: translateY(-8px); /* ✅ Juste une petite élévation */
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), 
+                0 10px 20px rgba(var(--brand-rgb), 0.2);
+    border-color: rgba(var(--brand-rgb), 0.6);
+  }
 }
 
 .vf-carousel-card::before {
@@ -353,27 +324,23 @@ export const CarouselExtension = {
   background: linear-gradient(90deg, var(--brand-color), var(--brand-light));
   opacity: 0;
   transition: opacity 0.3s ease;
-  z-index: 2;
+  z-index: 1;
 }
 
-.vf-carousel-card:hover::before {
-  opacity: 1;
+@media (min-width: 769px) {
+  .vf-carousel-card:hover::before {
+    opacity: 1;
+  }
 }
 
-/* ═══ IMAGES AVEC ADAPTATION AU FORMAT 4:3 ═══ */
+/* ═══ IMAGES CONTENUES DANS LE CADRE ═══ */
 .vf-carousel-image-container {
   position: relative;
   width: 100%;
   height: 0;
-  padding-bottom: 56.25%; /* 16:9 par défaut */
+  padding-bottom: 56.25%;
   overflow: hidden;
   background: linear-gradient(135deg, #f0f0f0, #e0e0e0);
-  transition: var(--transition);
-}
-
-/* ✅ ADAPTATION POUR LE FORMAT 4:3 AU SURVOL */
-.vf-carousel-card:hover .vf-carousel-image-container {
-  padding-bottom: 50% !important; /* ✅ Ratio pour s'adapter au format 4:3 */
 }
 
 .vf-carousel-image {
@@ -388,8 +355,11 @@ export const CarouselExtension = {
   transform-origin: center center;
 }
 
-.vf-carousel-card:hover .vf-carousel-image {
-  transform: scale(1.02); /* ✅ Zoom très subtil */
+/* ✅ ZOOM IMAGE TRÈS SUBTIL UNIQUEMENT SUR DESKTOP */
+@media (min-width: 769px) {
+  .vf-carousel-card:hover .vf-carousel-image {
+    transform: scale(1.03);
+  }
 }
 
 .vf-carousel-image-placeholder {
@@ -402,7 +372,7 @@ export const CarouselExtension = {
   opacity: 0.5;
 }
 
-/* ✅ CONTENU ADAPTÉ AU FORMAT 4:3 */
+/* ✅ CONTENU CARTE STABLE */
 .vf-carousel-content {
   padding: 16px;
   display: grid;
@@ -411,7 +381,6 @@ export const CarouselExtension = {
   min-height: 140px;
   position: relative;
   z-index: 2;
-  transition: var(--transition);
   
   background: linear-gradient(
     180deg,
@@ -421,12 +390,6 @@ export const CarouselExtension = {
   );
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
-}
-
-.vf-carousel-card:hover .vf-carousel-content {
-  min-height: 120px !important; /* ✅ Adapté au format 4:3 */
-  gap: 10px !important;
-  padding: 18px !important;
 }
 
 .vf-carousel-card-title {
@@ -443,15 +406,9 @@ export const CarouselExtension = {
   text-overflow: ellipsis;
   min-height: 41.6px;
   align-self: start;
-  transition: var(--transition);
 }
 
-.vf-carousel-card:hover .vf-carousel-card-title {
-  font-size: 17px !important;
-  -webkit-line-clamp: 3 !important; /* ✅ Limité pour le format 4:3 */
-}
-
-/* ✅ DESCRIPTION ADAPTÉE AU FORMAT 4:3 */
+/* ✅ DESCRIPTION AVEC POPUP UNIQUEMENT SUR DESKTOP */
 .vf-carousel-description {
   font-size: 12px;
   color: #ffffff !important;
@@ -461,7 +418,8 @@ export const CarouselExtension = {
   margin: 0;
   padding: 0;
   align-self: start;
-  transition: var(--transition);
+  position: relative;
+  cursor: help;
   
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -470,10 +428,95 @@ export const CarouselExtension = {
   text-overflow: ellipsis;
 }
 
-.vf-carousel-card:hover .vf-carousel-description {
-  font-size: 13px !important;
-  -webkit-line-clamp: 4 !important; /* ✅ Limité mais lisible pour le format 4:3 */
-  line-height: 1.5 !important;
+/* ✅ POPUP DESCRIPTION UNIQUEMENT SUR DESKTOP */
+@media (min-width: 769px) {
+  .vf-carousel-description::before {
+    content: attr(data-full-text);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.95);
+    color: #ffffff;
+    padding: 16px 20px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.6;
+    white-space: normal;
+    max-width: 350px;
+    min-width: 280px;
+    text-align: left;
+    z-index: 9999;
+    
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6), 
+                0 8px 20px rgba(var(--brand-rgb), 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(var(--brand-rgb), 0.4);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transform: translateX(-50%) translateY(-10px) scale(0.9);
+    
+    word-wrap: break-word;
+    hyphens: auto;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  }
+
+  .vf-carousel-description::after {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 12px solid transparent;
+    border-right: 12px solid transparent;
+    border-top: 12px solid rgba(0, 0, 0, 0.95);
+    z-index: 10000;
+    
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transform: translateX(-50%) translateY(-6px);
+  }
+
+  .vf-carousel-description:hover::before,
+  .vf-carousel-description:hover::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+
+  .vf-carousel-description:hover::after {
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* ✅ Ajustement position si proche des bords */
+  .vf-carousel-card:first-child .vf-carousel-description::before {
+    left: 0;
+    transform: translateX(0);
+  }
+
+  .vf-carousel-card:first-child .vf-carousel-description::after {
+    left: 30px;
+    transform: translateX(0);
+  }
+
+  .vf-carousel-card:last-child .vf-carousel-description::before {
+    left: auto;
+    right: 0;
+    transform: translateX(0);
+  }
+
+  .vf-carousel-card:last-child .vf-carousel-description::after {
+    left: auto;
+    right: 30px;
+    transform: translateX(0);
+  }
 }
 
 .vf-carousel-button {
@@ -502,11 +545,11 @@ export const CarouselExtension = {
   align-self: end;
 }
 
-.vf-carousel-card:hover .vf-carousel-button {
-  font-size: 13px !important;
-  padding: 12px 20px !important;
-  transform: translateY(-2px) !important;
-  box-shadow: 0 8px 16px rgba(var(--brand-rgb), 0.4) !important;
+@media (min-width: 769px) {
+  .vf-carousel-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(var(--brand-rgb), 0.4);
+  }
 }
 
 .vf-carousel-button::before {
@@ -615,7 +658,7 @@ export const CarouselExtension = {
   transform: scale(1.1);
 }
 
-/* ═══ RESPONSIVE MOBILE ═══ */
+/* ═══ RESPONSIVE MOBILE - TOUT FIGÉ ═══ */
 @media (max-width: 768px) {
   .vf-carousel-container {
     padding: 8px !important;
@@ -639,23 +682,15 @@ export const CarouselExtension = {
     bottom: -9px;
   }
   
+  /* ✅ MOBILE : TOUT FIGÉ, PAS D'EFFET HOVER */
   .vf-carousel-card {
     flex: 0 0 100% !important;
     max-width: none !important;
   }
   
-  .vf-carousel-card:hover {
-    transform: translate(-50%, -50%) scale(1.1) !important;
-    width: 280px !important; /* ✅ Plus petit sur mobile */
-    height: 210px !important; /* ✅ 4:3 ratio */
-  }
-  
-  .vf-carousel-card:hover .vf-carousel-content {
-    min-height: 100px !important;
-  }
-  
-  .vf-carousel-card:hover .vf-carousel-description {
-    -webkit-line-clamp: 3 !important;
+  /* ✅ DESCRIPTION SIMPLE SUR MOBILE - PAS DE POPUP */
+  .vf-carousel-description {
+    cursor: default;
   }
   
   .vf-carousel-container[data-items-count="2"] .vf-carousel-controls {
@@ -716,6 +751,12 @@ export const CarouselExtension = {
       let autoplayInterval = null;
       let touchStartX = 0;
       let touchEndX = 0;
+
+      // Utilitaire: Troncature du texte
+      const truncateText = (text, maxLength) => {
+        if (!text) return '';
+        return text.length > maxLength ? text.substring(0, maxLength - 3) + '...' : text;
+      };
 
       // Calcul des slides visibles selon l'écran ET le nombre d'items
       const getSlidesPerView = () => {
@@ -873,11 +914,12 @@ export const CarouselExtension = {
           content.appendChild(cardTitle);
         }
 
-        // Description complète
+        // ✅ Description avec popup sur desktop
         if (item.description) {
           const description = document.createElement('p');
           description.className = 'vf-carousel-description';
-          description.textContent = item.description;
+          description.setAttribute('data-full-text', item.description); // ✅ Texte complet pour popup
+          description.textContent = truncateText(item.description, maxDescriptionLength); // ✅ Texte tronqué affiché
           content.appendChild(description);
         }
 
@@ -1031,7 +1073,7 @@ export const CarouselExtension = {
 
       element.appendChild(container);
 
-      console.log(`✅ Carousel équilibré format 4:3 (ID: ${uniqueId}) - ${items.length} items${title ? `, titre: "${title}"` : ''}`);
+      console.log(`✅ Carousel stable avec popup description (ID: ${uniqueId}) - ${items.length} items${title ? `, titre: "${title}"` : ''}`);
 
       // Cleanup
       return () => {

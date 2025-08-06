@@ -2,18 +2,17 @@
  *  ╔═══════════════════════════════════════════════════════════╗
  *  ║  Carousel – Voiceflow Response Extension                  ║
  *  ║                                                           ║
- *  ║  • Navigation: Flèches + Dots + Trackpad horizontal      ║
+ *  ║  • Navigation: Flèches + Dots                            ║
  *  ║  • Responsive: 3 desktop / 1 mobile                      ║
  *  ║  • Layout adaptatif pour 1-2-3+ cartes                  ║
+ *  ║  • Titre personnalisable                                 ║
  *  ║  • Auto-play configurable                                ║
  *  ║  • Images 16:9 centrées sans déformation                ║
  *  ║  • Style ultra moderne avec glassmorphism               ║
  *  ║  • Image de fond avec dégradé stylée                    ║
- *  ║  • Support touch/swipe + trackpad horizontal            ║
- *  ║  • Texte optimisé avec fond sombre                      ║
- *  ║  • Largeur parfaitement adaptée au chat                 ║
- *  ║  • Simulation de message utilisateur au clic            ║
- *  ║  • Alignement parfait des cartes (Grid)                 ║
+ *  ║  • Capture automatique de sélection                     ║
+ *  ║  • Navigation dans la même fenêtre                      ║
+ *  ║  • Support touch/swipe                                   ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 export const CarouselExtension = {
@@ -24,13 +23,13 @@ export const CarouselExtension = {
     try {
       const {
         items = [],
+        title = null, // ✅ NOUVEAU : Titre personnalisable
         brandColor = '#6366F1',
         backgroundImage = null,
         autoplay = false,
         autoplayDelay = 3000,
         maxDescriptionLength = 120,
-        instanceId = null,
-        userMessageText = null
+        instanceId = null
       } = trace.payload;
 
       // Validation
@@ -71,6 +70,7 @@ export const CarouselExtension = {
       // Fix URL Imgur si nécessaire
       const fixImgurUrl = (url) => {
         if (!url) return url;
+        // Convertir imgur.com/ID.ext vers i.imgur.com/ID.ext
         return url.replace(/^https?:\/\/imgur\.com\/([a-zA-Z0-9]+\.[a-zA-Z]+)$/, 'https://i.imgur.com/$1');
       };
 
@@ -85,33 +85,16 @@ export const CarouselExtension = {
       container.id = uniqueId;
       container.setAttribute('data-items-count', items.length);
 
-      // CSS ultra stylé avec corrections pour débordement et alignement
+      // CSS ultra stylé avec le titre
       const styleEl = document.createElement('style');
       styleEl.textContent = `
-/* ✅ STYLES POUR CONTENEUR PARENT VOICEFLOW */
-.vfrc-message--extension-Carousel {
-  padding: 0 !important;
-  margin: 0 !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  overflow: hidden !important;
-  box-sizing: border-box !important;
-}
-
-.vfrc-message--extension-Carousel > span {
-  display: block !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  box-sizing: border-box !important;
-}
-
 /* ═══ VARIABLES CSS ADAPTATIVES ═══ */
 .vf-carousel-container {
   --brand-color: ${brandColor};
   --brand-rgb: ${brandR}, ${brandG}, ${brandB};
   --brand-light: ${lightColor};
   --brand-dark: ${darkColor};
-  --carousel-gap: 12px;
+  --carousel-gap: 20px;
   --border-radius: 16px;
   --transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   --shadow-base: 0 10px 25px rgba(0, 0, 0, 0.15);
@@ -120,21 +103,20 @@ export const CarouselExtension = {
   --glass-border: rgba(255, 255, 255, 0.2);
 }
 
-/* ═══ CONTAINER PRINCIPAL PARFAITEMENT ADAPTÉ ═══ */
+/* ═══ CONTAINER PRINCIPAL ═══ */
 .vf-carousel-container {
   position: relative;
-  width: 100% !important;
-  max-width: 100% !important;
-  margin: 0 !important;
-  padding: 12px !important;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
   border-radius: var(--border-radius);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--glass-border);
   box-shadow: var(--shadow-base);
-  overflow: hidden !important;
-  box-sizing: border-box !important;
+  overflow: hidden;
 }
 
 /* ═══ IMAGE DE FOND AVEC DÉGRADÉ ═══ */
@@ -178,14 +160,72 @@ export const CarouselExtension = {
   z-index: -1;
 }
 
-/* ═══ VIEWPORT ET TRACK PARFAITEMENT CONTENUS ═══ */
+/* ═══ TITRE PERSONNALISABLE ═══ */
+.vf-carousel-title {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  margin: 0 0 32px 0;
+  padding: 0 0 20px 0;
+  font-size: 28px;
+  font-weight: 800;
+  color: #ffffff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+  background: linear-gradient(135deg, #ffffff 0%, rgba(255,255,255,0.8) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.vf-carousel-title::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--brand-color), var(--brand-light));
+  border-radius: 2px;
+  box-shadow: 0 0 10px rgba(var(--brand-rgb), 0.5);
+}
+
+.vf-carousel-title::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 1px;
+}
+
+/* Animation d'apparition du titre */
+@keyframes titleFadeIn {
+  from { 
+    opacity: 0; 
+    transform: translateY(-20px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+.vf-carousel-title {
+  animation: titleFadeIn 0.8s ease-out;
+}
+
+/* ═══ VIEWPORT ET TRACK ADAPTATIFS ═══ */
 .vf-carousel-viewport {
   position: relative;
   overflow: hidden;
   border-radius: 12px;
-  margin-bottom: 12px;
-  width: 100%;
-  box-sizing: border-box;
+  margin-bottom: 20px;
 }
 
 .vf-carousel-track {
@@ -194,8 +234,6 @@ export const CarouselExtension = {
   transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   will-change: transform;
   justify-content: flex-start;
-  width: 100%;
-  box-sizing: border-box;
 }
 
 /* ═══ LAYOUT ADAPTATIF SELON NOMBRE DE CARTES ═══ */
@@ -205,8 +243,8 @@ export const CarouselExtension = {
 }
 
 .vf-carousel-container[data-items-count="1"] .vf-carousel-card {
-  flex: 0 0 min(360px, 85%);
-  max-width: 360px;
+  flex: 0 0 min(400px, 90%);
+  max-width: 400px;
 }
 
 /* 2 cartes : centrées */
@@ -215,14 +253,13 @@ export const CarouselExtension = {
 }
 
 .vf-carousel-container[data-items-count="2"] .vf-carousel-card {
-  flex: 0 0 min(300px, 42%);
-  max-width: 300px;
+  flex: 0 0 min(350px, 45%);
+  max-width: 350px;
 }
 
-/* ✅ 3+ cartes : layout optimisé pour éviter débordement */
+/* 3+ cartes : layout normal */
 .vf-carousel-card {
   flex: 0 0 calc((100% - (var(--carousel-gap) * 2)) / 3);
-  min-width: 0;
   background: var(--glass-bg);
   border-radius: var(--border-radius);
   border: 1px solid var(--glass-border);
@@ -233,11 +270,10 @@ export const CarouselExtension = {
   cursor: pointer;
   position: relative;
   box-shadow: var(--shadow-base);
-  box-sizing: border-box;
 }
 
 .vf-carousel-card:hover {
-  transform: translateY(-6px) scale(1.01);
+  transform: translateY(-8px) scale(1.02);
   box-shadow: var(--shadow-hover);
   border-color: rgba(var(--brand-rgb), 0.4);
 }
@@ -259,7 +295,7 @@ export const CarouselExtension = {
   opacity: 1;
 }
 
-/* ═══ IMAGES 16:9 CORRIGÉES (ZOOM SANS DÉCALAGE) ═══ */
+/* ═══ IMAGES 16:9 CORRIGÉES ═══ */
 .vf-carousel-image-container {
   position: relative;
   width: 100%;
@@ -271,18 +307,18 @@ export const CarouselExtension = {
 
 .vf-carousel-image {
   position: absolute;
-  top: 0;
-  left: 0;
+  top: 50%;
+  left: 50%;
   width: 100%;
   height: 100%;
   object-fit: cover;
   object-position: center;
+  transform: translate(-50%, -50%);
   transition: transform 0.4s ease;
-  transform-origin: center center;
 }
 
 .vf-carousel-card:hover .vf-carousel-image {
-  transform: scale(1.05);
+  transform: translate(-50%, -50%) scale(1.05);
 }
 
 .vf-carousel-image-placeholder {
@@ -291,72 +327,61 @@ export const CarouselExtension = {
   left: 50%;
   transform: translate(-50%, -50%);
   color: #999;
-  font-size: 40px;
+  font-size: 48px;
   opacity: 0.5;
 }
 
-/* ✅ CONTENU CARTE AVEC ALIGNEMENT PARFAIT (GRID) */
+/* ═══ CONTENU CARTE CORRIGÉ ═══ */
 .vf-carousel-content {
-  padding: 16px;
-  display: grid;
-  grid-template-rows: auto 1fr auto; /* Titre / Description flexible / Bouton */
-  gap: 8px;
-  min-height: 140px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 160px;
   position: relative;
   z-index: 2;
-  
-  background: linear-gradient(
-    180deg,
-    rgba(0, 0, 0, 0.1) 0%,
-    rgba(0, 0, 0, 0.4) 50%,
-    rgba(0, 0, 0, 0.7) 100%
-  );
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
 }
 
-.vf-carousel-title {
-  font-size: 16px;
+.vf-carousel-card-title {
+  font-size: 18px;
   font-weight: 700;
   color: #fff;
   line-height: 1.3;
   margin: 0;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
-  
-  /* ✅ Hauteur minimale pour alignement parfait */
-  min-height: 41.6px; /* Équivalent à 2 lignes : 16px * 1.3 * 2 */
-  align-self: start;
 }
 
+/* ✅ DESCRIPTION CORRIGÉE - MAINTENANT VISIBLE */
 .vf-carousel-description {
-  font-size: 12px;
+  font-size: 14px;
   color: #ffffff !important;
-  line-height: 1.4;
+  line-height: 1.5;
+  flex: 1;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
   opacity: 0.95;
   margin: 0;
   padding: 0;
-  align-self: start; /* Aligné en haut de la zone flexible */
 }
 
+/* ✅ BOUTON CORRIGÉ - CENTRAGE PARFAIT */
 .vf-carousel-button {
   background: linear-gradient(135deg, var(--brand-color), var(--brand-light));
   color: white !important;
   border: none;
-  padding: 10px 16px;
+  padding: 14px 24px;
   border-radius: 8px;
   font-weight: 600;
-  font-size: 12px;
+  font-size: 14px;
   cursor: pointer;
   transition: var(--transition);
   text-transform: uppercase;
@@ -365,14 +390,16 @@ export const CarouselExtension = {
   overflow: hidden;
   box-shadow: 0 4px 12px rgba(var(--brand-rgb), 0.3);
   
+  /* ✅ CENTRAGE PARFAIT DU TEXTE */
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
   line-height: 1;
-  min-height: 40px;
+  min-height: 48px;
+  
+  /* ✅ EMPÊCHER LE WRAP DU TEXTE */
   white-space: nowrap;
-  align-self: end; /* ✅ Aligné en bas, maintient l'alignement */
 }
 
 .vf-carousel-button::before {
@@ -404,7 +431,7 @@ export const CarouselExtension = {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 10px;
+  margin-top: 16px;
   position: relative;
   z-index: 3;
 }
@@ -416,59 +443,50 @@ export const CarouselExtension = {
 }
 
 .vf-carousel-nav-button {
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   border: none;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--glass-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid var(--glass-border);
   color: #fff;
   cursor: pointer;
   transition: var(--transition);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  font-size: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   z-index: 3;
   position: relative;
-  font-weight: bold;
 }
 
 .vf-carousel-nav-button:hover {
-  background: rgba(var(--brand-rgb), 0.8);
+  background: rgba(var(--brand-rgb), 0.2);
   border-color: var(--brand-color);
   transform: scale(1.1);
-  box-shadow: 0 6px 16px rgba(var(--brand-rgb), 0.4);
+  box-shadow: 0 6px 16px rgba(var(--brand-rgb), 0.2);
 }
 
 .vf-carousel-nav-button:disabled {
   opacity: 0.3;
   cursor: not-allowed;
   transform: none;
-  background: rgba(0, 0, 0, 0.3);
-}
-
-.vf-carousel-nav-button:disabled:hover {
-  background: rgba(0, 0, 0, 0.3);
-  border-color: rgba(255, 255, 255, 0.2);
-  transform: none;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 /* ═══ DOTS PAGINATION ═══ */
 .vf-carousel-dots {
   display: flex;
-  gap: 5px;
+  gap: 8px;
   justify-content: center;
   align-items: center;
 }
 
 .vf-carousel-dot {
-  width: 7px;
-  height: 7px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   border: none;
   background: rgba(255, 255, 255, 0.3);
@@ -491,8 +509,20 @@ export const CarouselExtension = {
 /* ═══ RESPONSIVE MOBILE ═══ */
 @media (max-width: 768px) {
   .vf-carousel-container {
-    padding: 8px !important;
+    padding: 16px;
     --carousel-gap: 0px;
+  }
+  
+  /* Titre plus petit sur mobile */
+  .vf-carousel-title {
+    font-size: 22px;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+  }
+  
+  .vf-carousel-title::before {
+    width: 60px;
+    height: 2px;
   }
   
   /* Sur mobile, toujours 1 carte en pleine largeur */
@@ -501,35 +531,35 @@ export const CarouselExtension = {
     max-width: none !important;
   }
   
+  /* Réafficher les contrôles sur mobile pour 2+ cartes */
   .vf-carousel-container[data-items-count="2"] .vf-carousel-controls {
     display: flex;
   }
   
   .vf-carousel-content {
-    padding: 12px;
-    min-height: 120px;
+    padding: 16px;
+    min-height: 140px;
   }
   
-  .vf-carousel-title {
-    font-size: 14px;
-    min-height: 36.4px; /* 14px * 1.3 * 2 */
+  .vf-carousel-card-title {
+    font-size: 16px;
   }
   
   .vf-carousel-description {
-    font-size: 11px !important;
+    font-size: 13px !important;
     -webkit-line-clamp: 2;
   }
   
   .vf-carousel-nav-button {
-    width: 32px;
-    height: 32px;
-    font-size: 14px;
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
   }
   
   .vf-carousel-button {
-    padding: 8px 14px;
-    font-size: 11px;
-    min-height: 36px;
+    padding: 12px 20px;
+    font-size: 13px;
+    min-height: 44px;
   }
 }
 
@@ -568,10 +598,10 @@ export const CarouselExtension = {
 
       // Calcul des slides visibles selon l'écran ET le nombre d'items
       const getSlidesPerView = () => {
-        if (window.innerWidth <= 768) return 1;
+        if (window.innerWidth <= 768) return 1; // Mobile : toujours 1
         if (items.length === 1) return 1;
         if (items.length === 2) return 2;
-        return 3;
+        return 3; // Desktop 3+ items
       };
 
       const getMaxIndex = () => {
@@ -585,6 +615,7 @@ export const CarouselExtension = {
         const slidesPerView = getSlidesPerView();
         
         if (items.length <= 2 && window.innerWidth > 768) {
+          // Pour 1-2 cartes sur desktop, pas de translation
           track.style.transform = 'translateX(0)';
         } else {
           const slideWidth = 100 / slidesPerView;
@@ -614,7 +645,7 @@ export const CarouselExtension = {
         if (currentIndex < getMaxIndex()) {
           goToSlide(currentIndex + 1);
         } else if (autoplay) {
-          goToSlide(0);
+          goToSlide(0); // Loop pour autoplay
         }
       };
 
@@ -636,37 +667,55 @@ export const CarouselExtension = {
         }
       };
 
-      // Gestion du clic avec simulation de message utilisateur
+      // ✅ GESTION DU CLIC AVEC CAPTURE AUTOMATIQUE ET NAVIGATION SAME WINDOW
       const handleCardAction = (item, index) => {
         stopAutoplay();
         
-        // Simuler un message utilisateur dans le chat
-        if (window.voiceflow?.chat?.interact) {
-          let messageText = '';
+        // ✅ CAPTURE AUTOMATIQUE de la sélection
+        const selection = `${item.title || ''} : ${item.description || ''}`;
+        
+        // Stocker dans window pour accès global
+        if (typeof window !== 'undefined') {
+          window.voiceflow_carousel_selection = selection;
           
-          if (item.userMessageText) {
-            messageText = item.userMessageText;
-          } else if (userMessageText) {
-            messageText = userMessageText.replace('{title}', item.title || 'Item').replace('{index}', index + 1);
-          } else {
-            messageText = item.title || item.buttonText || `Item ${index + 1}`;
+          // Aussi dans localStorage pour persistance
+          try {
+            localStorage.setItem('voiceflow_carousel_selection', selection);
+          } catch (e) {
+            console.warn('Cannot access localStorage:', e);
           }
-
+        }
+        
+        console.log('✅ Carousel selection captured:', selection);
+        
+        // Interaction Voiceflow
+        if (window.voiceflow?.chat?.interact) {
           window.voiceflow.chat.interact({
-            type: 'text',
-            payload: messageText
+            type: 'complete',
+            payload: {
+              carouselAction: 'discover',
+              itemIndex: index,
+              itemData: item,
+              instanceId: uniqueId,
+              // ✅ AJOUT DIRECT de la sélection formatée dans le payload
+              carrousel_selection: selection
+            }
           });
-
-          console.log(`✅ Message utilisateur simulé: "${messageText}"`);
         }
 
-        // Ouverture URL externe
+        // ✅ NAVIGATION DANS LA MÊME FENÊTRE (au lieu de nouvel onglet)
         if (item.url) {
-          setTimeout(() => {
-            window.open(item.url, '_blank', 'noopener,noreferrer');
-          }, 500);
+          window.location.href = item.url;
         }
       };
+
+      // ✅ AJOUT DU TITRE SI PRÉSENT
+      if (title) {
+        const titleElement = document.createElement('h1');
+        titleElement.className = 'vf-carousel-title';
+        titleElement.textContent = title;
+        container.appendChild(titleElement);
+      }
 
       // Construction du HTML
       const viewport = document.createElement('div');
@@ -708,12 +757,13 @@ export const CarouselExtension = {
         content.className = 'vf-carousel-content';
 
         if (item.title) {
-          const title = document.createElement('h3');
-          title.className = 'vf-carousel-title';
-          title.textContent = item.title;
-          content.appendChild(title);
+          const cardTitle = document.createElement('h3');
+          cardTitle.className = 'vf-carousel-card-title';
+          cardTitle.textContent = item.title;
+          content.appendChild(cardTitle);
         }
 
+        // ✅ DESCRIPTION CORRIGÉE
         if (item.description) {
           const description = document.createElement('p');
           description.className = 'vf-carousel-description';
@@ -742,7 +792,7 @@ export const CarouselExtension = {
       viewport.appendChild(track);
       container.appendChild(viewport);
 
-      // Contrôles de navigation
+      // Contrôles de navigation (seulement si nécessaire)
       const needsControls = () => {
         if (window.innerWidth <= 768) return items.length > 1;
         return items.length > 3;
@@ -781,27 +831,6 @@ export const CarouselExtension = {
         controls.appendChild(nextBtn);
         container.appendChild(controls);
       }
-
-      // Support trackpad horizontal
-      let wheelTimeout;
-      container.addEventListener('wheel', (e) => {
-        if (Math.abs(e.deltaX) > Math.abs(e.deltaY) && Math.abs(e.deltaX) > 10) {
-          e.preventDefault();
-          stopAutoplay();
-          
-          clearTimeout(wheelTimeout);
-          
-          if (e.deltaX > 10) {
-            nextSlide();
-          } else if (e.deltaX < -10) {
-            prevSlide();
-          }
-          
-          if (autoplay) {
-            wheelTimeout = setTimeout(startAutoplay, 2000);
-          }
-        }
-      }, { passive: false });
 
       // Support tactile
       let isDragging = false;
@@ -871,7 +900,7 @@ export const CarouselExtension = {
 
       element.appendChild(container);
 
-      console.log(`✅ Carousel parfait avec alignement Grid (ID: ${uniqueId}) - ${items.length} items`);
+      console.log(`✅ Carousel prêt (ID: ${uniqueId}) - ${items.length} items${title ? `, titre: "${title}"` : ''}, autoplay: ${autoplay}${backgroundImage ? ', avec image de fond' : ''}`);
 
       // Cleanup
       return () => {

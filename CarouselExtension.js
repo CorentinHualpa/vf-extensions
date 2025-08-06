@@ -940,7 +940,7 @@ export const CarouselExtension = {
           
           if (e.deltaX > 10) {
             nextSlide();
-          } else if e.deltaX < -10) {
+          } else if (e.deltaX < -10) {
             prevSlide();
           }
           

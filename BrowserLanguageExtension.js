@@ -1,301 +1,137 @@
 /**
- * ╔══════════════════════════════════════════════════════════════╗
- * ║  BrowserLanguageExtension – Voiceflow Extension             ║
- * ║                                                              ║
- * ║  • Détection de la langue du navigateur                     ║
- * ║  • Détection de la plateforme (iOS, Android, Web)           ║
- * ║  • Informations sur l'appareil et l'environnement           ║
- * ║  • Compatible webview iOS/Android                           ║
- * ║  • Détection automatique ou sur déclenchement               ║
- * ╚══════════════════════════════════════════════════════════════╝
+ * BrowserLanguageExtension (safe / one-shot)
+ * - Détecte langue + plateforme
+ * - Optionnel: location / screen / network via payload
+ * - Ne déclenche qu'une seule fois et attend que le chat soit prêt
  */
 
 export const BrowserLanguageExtension = {
-  name: 'BrowserLanguageExtension',
+  // IMPORTANT: même nom que le node Voiceflow
+  name: 'ext_browserLanguage',
   type: 'effect',
-  
-  // S'active sur trace ext_browserLanguage ou browser_info
-  match: ({ trace }) => 
-    trace.type === 'ext_browserLanguage' || 
-    trace.type === 'browser_info' ||
-    trace.payload?.name === 'ext_browserLanguage' ||
-    trace.payload?.name === 'browser_info',
-  
-  effect: ({ trace }) => {
+
+  // Ne réagit QUE sur ce trace d'extension
+  match: ({ trace }) =>
+    trace?.type === 'ext_browserLanguage' ||
+    trace?.payload?.name === 'ext_browserLanguage',
+
+  effect: async ({ trace }) => {
     try {
-      // Configuration depuis le payload (optionnel)
-      const config = trace.payload || {};
-      const includeLocation = config.includeLocation || false;
-      const includeScreen = config.includeScreen !== false; // true par défaut
-      const includeNetwork = config.includeNetwork || false;
-      
-      console.log('🌐 BrowserLanguageExtension: Collecte des informations...');
-      
-      // ========================================
-      // 1. DÉTECTION DE LA LANGUE
-      // ========================================
-      const getBrowserLanguages = () => {
-        const languages = [];
-        
-        // Langue principale
-        if (navigator.language) {
-          languages.push(navigator.language);
+      // Anti-doublon (hot reload, re-render webview, replays)
+      if (window.__vf_lang_done) return;
+      window.__vf_lang_done = true;
+
+      // Options passées depuis le node (toutes facultatives)
+      const cfg = trace?.payload || {};
+      const includeLocation = !!cfg.includeLocation;
+      const includeScreen   = !!cfg.includeScreen;   // par défaut: false
+      const includeNetwork  = !!cfg.includeNetwork;  // par défaut: false
+
+      // Laisse le widget respirer un tick pour éviter le cut du premier message
+      await Promise.resolve();
+      await new Promise(r => setTimeout(r, 0));
+
+      // --- 1) Langues ---
+      const langs = (() => {
+        const arr = [];
+        if (navigator.language) arr.push(navigator.language);
+        if (Array.isArray(navigator.languages)) {
+          for (const l of navigator.languages) if (!arr.includes(l)) arr.push(l);
         }
-        
-        // Langues préférées (si supporté)
-        if (navigator.languages && Array.isArray(navigator.languages)) {
-          navigator.languages.forEach(lang => {
-            if (!languages.includes(lang)) {
-              languages.push(lang);
-            }
-          });
-        }
-        
-        // Fallback pour anciens navigateurs
-        if (navigator.userLanguage && !languages.includes(navigator.userLanguage)) {
-          languages.push(navigator.userLanguage);
-        }
-        
-        if (navigator.browserLanguage && !languages.includes(navigator.browserLanguage)) {
-          languages.push(navigator.browserLanguage);
-        }
-        
-        return languages.length > 0 ? languages : ['fr']; // Fallback français
+        if (navigator.userLanguage && !arr.includes(navigator.userLanguage)) arr.push(navigator.userLanguage);
+        if (navigator.browserLanguage && !arr.includes(navigator.browserLanguage)) arr.push(navigator.browserLanguage);
+        return arr.length ? arr : ['fr'];
+      })();
+      const primary = (langs[0] || 'fr').split('-')[0] || 'fr';
+
+      // --- 2) Plateforme / device léger ---
+      const ua = navigator.userAgent || '';
+      const pf = navigator.platform || '';
+      const isIOS = /iPad|iPhone|iPod/.test(ua) || (pf === 'MacIntel' && navigator.maxTouchPoints > 1);
+      const isAndroid = /Android/.test(ua);
+      const isMobile  = /Mobi|Android/i.test(ua) || isIOS;
+      const isTablet  = /Tablet|iPad/.test(ua) || (isAndroid && !/Mobile/.test(ua)) || (isIOS && !/Mobi/.test(ua));
+      const isDesktop = !isMobile && !isTablet;
+
+      let platform = 'Unknown';
+      if (isIOS) platform = 'iOS';
+      else if (isAndroid) platform = 'Android';
+      else if (/Win/.test(pf) || /Windows/.test(ua)) platform = 'Windows';
+      else if (/Mac/.test(pf) && !isIOS) platform = 'macOS';
+      else if (/Linux/.test(pf) && !isAndroid) platform = 'Linux';
+
+      const timeInfo = {
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+        locale: Intl.DateTimeFormat().resolvedOptions().locale || langs[0] || 'fr',
+        currentTime: new Date().toISOString()
       };
-      
-      const languages = getBrowserLanguages();
-      const primaryLanguage = languages[0] ? languages[0].split('-')[0] : 'fr';
-      
-      // ========================================
-      // 2. DÉTECTION DE LA PLATEFORME
-      // ========================================
-      const getPlatformInfo = () => {
-        const userAgent = navigator.userAgent || '';
-        const platform = navigator.platform || '';
-        
-        // Détection iOS
-        const isIOS = /iPad|iPhone|iPod/.test(userAgent) || 
-                      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-        
-        // Détection Android
-        const isAndroid = /Android/.test(userAgent);
-        
-        // Détection Windows
-        const isWindows = /Win/.test(platform) || /Windows/.test(userAgent);
-        
-        // Détection macOS
-        const isMacOS = /Mac/.test(platform) && !isIOS;
-        
-        // Détection Linux
-        const isLinux = /Linux/.test(platform) && !isAndroid;
-        
-        // Type d'appareil
-        const isMobile = /Mobi|Android/i.test(userAgent) || isIOS;
-        const isTablet = /Tablet|iPad/.test(userAgent) || 
-                        (isIOS && !isMobile) ||
-                        (isAndroid && !/Mobile/.test(userAgent));
-        const isDesktop = !isMobile && !isTablet;
-        
-        // Détection WebView
-        const isWebView = /wv|WebView/.test(userAgent) ||
-                         (isAndroid && /Version\/\d+\.\d+/.test(userAgent) && !/Chrome\/\d+/.test(userAgent)) ||
-                         (isIOS && !(/Safari/.test(userAgent) && /Version/.test(userAgent)));
-        
-        let platformName = 'Unknown';
-        if (isIOS) platformName = 'iOS';
-        else if (isAndroid) platformName = 'Android';
-        else if (isWindows) platformName = 'Windows';
-        else if (isMacOS) platformName = 'macOS';
-        else if (isLinux) platformName = 'Linux';
-        
-        let deviceType = 'Unknown';
-        if (isMobile) deviceType = 'Mobile';
-        else if (isTablet) deviceType = 'Tablet';
-        else if (isDesktop) deviceType = 'Desktop';
-        
-        return {
-          platform: platformName,
-          deviceType: deviceType,
-          isMobile,
-          isTablet,
-          isDesktop,
-          isWebView,
-          userAgent: userAgent.substring(0, 200) // Limiter la taille
+
+      // --- 3) Écran / réseau si demandé ---
+      const screenInfo = includeScreen ? {
+        w: screen?.width ?? null,
+        h: screen?.height ?? null,
+        dpr: window?.devicePixelRatio ?? 1
+      } : undefined;
+
+      const connection = (navigator.connection || navigator.mozConnection || navigator.webkitConnection);
+      const networkInfo = includeNetwork && connection ? {
+        effectiveType: connection.effectiveType ?? null,
+        downlink: connection.downlink ?? null,
+        rtt: connection.rtt ?? null,
+        saveData: !!connection.saveData
+      } : undefined;
+
+      // Fonction d’envoi unique
+      const send = (extra = {}) => {
+        const payload = {
+          browserLanguage: langs[0],
+          primaryLanguage: primary,
+          supportedLanguages: langs,
+          detectedLocale: timeInfo.locale,
+          platform,
+          deviceType: isMobile ? (isTablet ? 'Tablet' : 'Mobile') : 'Desktop',
+          timezone: timeInfo.timezone,
+          currentTime: timeInfo.currentTime,
+          onlineStatus: !!navigator.onLine,
+          ... (screenInfo ? { screen: screenInfo } : {}),
+          ... (networkInfo ? { network: networkInfo } : {}),
+          ...extra,
+          ts: Date.now(),
+          extVersion: '1.1.0'
         };
-      };
-      
-      // ========================================
-      // 3. INFORMATIONS TEMPORELLES
-      // ========================================
-      const getTimeInfo = () => {
-        const now = new Date();
-        return {
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-          timezoneOffset: now.getTimezoneOffset(),
-          currentTime: now.toISOString(),
-          locale: Intl.DateTimeFormat().resolvedOptions().locale || languages[0] || 'fr'
-        };
-      };
-      
-      // ========================================
-      // 4. INFORMATIONS D'ÉCRAN (optionnel)
-      // ========================================
-      const getScreenInfo = () => {
-        if (!includeScreen) return null;
-        
-        return {
-          screenWidth: screen.width || null,
-          screenHeight: screen.height || null,
-          availableWidth: screen.availWidth || null,
-          availableHeight: screen.availHeight || null,
-          colorDepth: screen.colorDepth || null,
-          pixelDepth: screen.pixelDepth || null,
-          orientation: screen.orientation ? {
-            angle: screen.orientation.angle,
-            type: screen.orientation.type
-          } : null,
-          windowWidth: window.innerWidth || null,
-          windowHeight: window.innerHeight || null,
-          devicePixelRatio: window.devicePixelRatio || 1
-        };
-      };
-      
-      // ========================================
-      // 5. INFORMATIONS RÉSEAU (optionnel)
-      // ========================================
-      const getNetworkInfo = () => {
-        if (!includeNetwork || !navigator.connection) return null;
-        
-        const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-        return connection ? {
-          effectiveType: connection.effectiveType || null,
-          downlink: connection.downlink || null,
-          rtt: connection.rtt || null,
-          saveData: connection.saveData || false
-        } : null;
-      };
-      
-      // ========================================
-      // 6. ASSEMBLAGE DES DONNÉES
-      // ========================================
-      const platformInfo = getPlatformInfo();
-      const timeInfo = getTimeInfo();
-      const screenInfo = getScreenInfo();
-      const networkInfo = getNetworkInfo();
-      
-      const browserInfo = {
-        // Informations de langue
-        browserLanguage: languages[0],
-        primaryLanguage: primaryLanguage,
-        supportedLanguages: languages,
-        detectedLocale: timeInfo.locale,
-        
-        // Informations de plateforme
-        platform: platformInfo.platform,
-        deviceType: platformInfo.deviceType,
-        isMobile: platformInfo.isMobile,
-        isTablet: platformInfo.isTablet,
-        isDesktop: platformInfo.isDesktop,
-        isWebView: platformInfo.isWebView,
-        userAgent: platformInfo.userAgent,
-        
-        // Informations temporelles
-        timezone: timeInfo.timezone,
-        timezoneOffset: timeInfo.timezoneOffset,
-        currentTime: timeInfo.currentTime,
-        
-        // Informations techniques
-        cookieEnabled: navigator.cookieEnabled || false,
-        onlineStatus: navigator.onLine || false,
-        
-        // Capacités du navigateur
-        capabilities: {
-          geolocation: 'geolocation' in navigator,
-          camera: 'mediaDevices' in navigator,
-          notifications: 'Notification' in window,
-          localStorage: typeof(Storage) !== 'undefined',
-          webWorkers: typeof(Worker) !== 'undefined',
-          webGL: (() => {
-            try {
-              const canvas = document.createElement('canvas');
-              return !!(canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
-            } catch (e) {
-              return false;
-            }
-          })()
+
+        // Sécurité: ne tente d'interagir que si l'API est prête
+        if (window.voiceflow?.chat?.interact) {
+          window.voiceflow.chat.interact({ type: 'complete', payload });
+        } else {
+          // Si l’API n’est pas prête (rare), retente très vite une seule fois
+          setTimeout(() => {
+            window.voiceflow?.chat?.interact?.({ type: 'complete', payload });
+          }, 50);
         }
       };
-      
-      // Ajouter les informations d'écran si demandées
-      if (screenInfo) {
-        browserInfo.screen = screenInfo;
-      }
-      
-      // Ajouter les informations réseau si demandées
-      if (networkInfo) {
-        browserInfo.network = networkInfo;
-      }
-      
-      // ========================================
-      // 7. GÉOLOCALISATION (si demandée et autorisée)
-      // ========================================
-      const sendResponse = (additionalData = {}) => {
-        const finalPayload = {
-          ...browserInfo,
-          ...additionalData,
-          timestamp: Date.now(),
-          extensionVersion: '1.0.0'
-        };
-        
-        console.log('🌐 Informations collectées:', finalPayload);
-        
-        window.voiceflow.chat.interact({
-          type: 'complete',
-          payload: finalPayload
-        });
-      };
-      
-      // Si géolocalisation demandée
+
+      // --- 4) Géoloc si demandée ---
       if (includeLocation && navigator.geolocation) {
-        const geoOptions = {
-          timeout: 5000,
-          maximumAge: 300000, // 5 minutes
-          enableHighAccuracy: false
-        };
-        
+        const opts = { timeout: 5000, maximumAge: 300000, enableHighAccuracy: false };
         navigator.geolocation.getCurrentPosition(
-          (position) => {
-            const locationInfo = {
-              location: {
-                latitude: position.coords.latitude,
-                longitude: position.coords.longitude,
-                accuracy: position.coords.accuracy,
-                timestamp: position.timestamp
-              }
-            };
-            sendResponse(locationInfo);
-          },
-          (error) => {
-            console.warn('🌐 Géolocalisation non disponible:', error.message);
-            sendResponse({
-              location: {
-                error: error.message,
-                errorCode: error.code
-              }
-            });
-          },
-          geoOptions
+          pos => send({
+            location: {
+              latitude:  pos.coords.latitude,
+              longitude: pos.coords.longitude,
+              accuracy:  pos.coords.accuracy,
+              at: pos.timestamp
+            }
+          }),
+          err => send({ location: { error: true, message: err?.message ?? String(err), code: err?.code ?? null } }),
+          opts
         );
       } else {
-        // Envoyer la réponse sans géolocalisation
-        sendResponse();
+        send();
       }
-      
-    } catch (error) {
-      console.error('❌ BrowserLanguageExtension Error:', error);
-      
-      // En cas d'erreur, envoyer des données minimales
-      window.voiceflow.chat.interact({
+    } catch (e) {
+      // Fallback minimal et… une seule fois quand même
+      window.voiceflow?.chat?.interact?.({
         type: 'complete',
         payload: {
           browserLanguage: 'fr',
@@ -303,8 +139,8 @@ export const BrowserLanguageExtension = {
           platform: 'Unknown',
           deviceType: 'Unknown',
           error: true,
-          errorMessage: error.message,
-          timestamp: Date.now()
+          errorMessage: e?.message ?? String(e),
+          ts: Date.now()
         }
       });
     }

@@ -1,42 +1,38 @@
 /**
- * BrowserLanguageExtension v1.3 — restart-safe + stopOnAction-safe
- * - Traite CHAQUE trace ext_browserLanguage (dédup par trace)
- * - COMPLETE de façon synchrone (compatible stopOnAction)
- * - Retry ultra-court si interact() pas encore prêt
- * - Payload léger (+ screen / network optionnels)
+ * BrowserLanguageExtension (safe / one-shot)
+ * - Détecte langue + plateforme
+ * - Optionnel: location / screen / network via payload
+ * - Ne déclenche qu'une seule fois et attend que le chat soit prêt
  */
 
 export const BrowserLanguageExtension = {
+  // IMPORTANT: même nom que le node Voiceflow
   name: 'ext_browserLanguage',
   type: 'effect',
 
+  // Ne réagit QUE sur ce trace d'extension
   match: ({ trace }) =>
     trace?.type === 'ext_browserLanguage' ||
     trace?.payload?.name === 'ext_browserLanguage',
 
-  effect: ({ trace }) => {
+  effect: async ({ trace }) => {
     try {
-      // --- Dédup par trace (et cap mémoire) ---
-      const store =
-        window.__vf_blang_store ||
-        (window.__vf_blang_store = { seen: new Set() });
+      // Anti-doublon (hot reload, re-render webview, replays)
+      if (window.__vf_lang_done) return;
+      window.__vf_lang_done = true;
 
-      const traceKey =
-        trace?.id ||
-        trace?.payload?.traceId ||
-        (trace?.payload ? JSON.stringify(trace.payload).slice(0, 64) : `t-${Date.now()}`);
-
-      if (store.seen.has(traceKey)) return;
-      store.seen.add(traceKey);
-      if (store.seen.size > 500) store.seen = new Set(); // reset si trop d'entrées
-
-      // --- Options depuis le node (toutes facultatives) ---
+      // Options passées depuis le node (toutes facultatives)
       const cfg = trace?.payload || {};
-      const includeScreen  = !!cfg.includeScreen;   // false par défaut
-      const includeNetwork = !!cfg.includeNetwork;  // false par défaut
+      const includeLocation = !!cfg.includeLocation;
+      const includeScreen   = !!cfg.includeScreen;   // par défaut: false
+      const includeNetwork  = !!cfg.includeNetwork;  // par défaut: false
 
-      // --- Langues ---
-      const languages = (() => {
+      // Laisse le widget respirer un tick pour éviter le cut du premier message
+      await Promise.resolve();
+      await new Promise(r => setTimeout(r, 0));
+
+      // --- 1) Langues ---
+      const langs = (() => {
         const arr = [];
         if (navigator.language) arr.push(navigator.language);
         if (Array.isArray(navigator.languages)) {
@@ -46,79 +42,105 @@ export const BrowserLanguageExtension = {
         if (navigator.browserLanguage && !arr.includes(navigator.browserLanguage)) arr.push(navigator.browserLanguage);
         return arr.length ? arr : ['fr'];
       })();
+      const primary = (langs[0] || 'fr').split('-')[0] || 'fr';
 
-      const browserLanguage = languages[0];
-      const primaryLanguage = (browserLanguage || 'fr').split('-')[0] || 'fr';
-
-      // --- Device très léger (synchrone) ---
-      const pf = navigator.platform || '';
+      // --- 2) Plateforme / device léger ---
       const ua = navigator.userAgent || '';
+      const pf = navigator.platform || '';
       const isIOS = /iPad|iPhone|iPod/.test(ua) || (pf === 'MacIntel' && navigator.maxTouchPoints > 1);
       const isAndroid = /Android/.test(ua);
       const isMobile  = /Mobi|Android/i.test(ua) || isIOS;
       const isTablet  = /Tablet|iPad/.test(ua) || (isAndroid && !/Mobile/.test(ua)) || (isIOS && !/Mobi/.test(ua));
-      const deviceType = isMobile ? (isTablet ? 'Tablet' : 'Mobile') : 'Desktop';
+      const isDesktop = !isMobile && !isTablet;
 
-      const payload = {
-        // Langue
-        browserLanguage,
-        primaryLanguage,
-        supportedLanguages: languages,
-        // Contexte
+      let platform = 'Unknown';
+      if (isIOS) platform = 'iOS';
+      else if (isAndroid) platform = 'Android';
+      else if (/Win/.test(pf) || /Windows/.test(ua)) platform = 'Windows';
+      else if (/Mac/.test(pf) && !isIOS) platform = 'macOS';
+      else if (/Linux/.test(pf) && !isAndroid) platform = 'Linux';
+
+      const timeInfo = {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-        deviceType,
-        onlineStatus: !!navigator.onLine,
-        ts: Date.now(),
-        extVersion: '1.3.0'
+        locale: Intl.DateTimeFormat().resolvedOptions().locale || langs[0] || 'fr',
+        currentTime: new Date().toISOString()
       };
 
-      if (includeScreen) {
-        payload.screen = {
-          w:  screen?.width ?? null,
-          h:  screen?.height ?? null,
-          dpr: window?.devicePixelRatio ?? 1
+      // --- 3) Écran / réseau si demandé ---
+      const screenInfo = includeScreen ? {
+        w: screen?.width ?? null,
+        h: screen?.height ?? null,
+        dpr: window?.devicePixelRatio ?? 1
+      } : undefined;
+
+      const connection = (navigator.connection || navigator.mozConnection || navigator.webkitConnection);
+      const networkInfo = includeNetwork && connection ? {
+        effectiveType: connection.effectiveType ?? null,
+        downlink: connection.downlink ?? null,
+        rtt: connection.rtt ?? null,
+        saveData: !!connection.saveData
+      } : undefined;
+
+      // Fonction d’envoi unique
+      const send = (extra = {}) => {
+        const payload = {
+          browserLanguage: langs[0],
+          primaryLanguage: primary,
+          supportedLanguages: langs,
+          detectedLocale: timeInfo.locale,
+          platform,
+          deviceType: isMobile ? (isTablet ? 'Tablet' : 'Mobile') : 'Desktop',
+          timezone: timeInfo.timezone,
+          currentTime: timeInfo.currentTime,
+          onlineStatus: !!navigator.onLine,
+          ... (screenInfo ? { screen: screenInfo } : {}),
+          ... (networkInfo ? { network: networkInfo } : {}),
+          ...extra,
+          ts: Date.now(),
+          extVersion: '1.1.0'
         };
-      }
 
-      if (includeNetwork) {
-        const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-        if (c) {
-          payload.network = {
-            effectiveType: c.effectiveType ?? null,
-            downlink: c.downlink ?? null,
-            rtt: c.rtt ?? null,
-            saveData: !!c.saveData
-          };
+        // Sécurité: ne tente d'interagir que si l'API est prête
+        if (window.voiceflow?.chat?.interact) {
+          window.voiceflow.chat.interact({ type: 'complete', payload });
+        } else {
+          // Si l’API n’est pas prête (rare), retente très vite une seule fois
+          setTimeout(() => {
+            window.voiceflow?.chat?.interact?.({ type: 'complete', payload });
+          }, 50);
         }
-      }
+      };
 
-      // --- COMPLETE (synchrone si possible, sinon retry ultra-court) ---
-      const send = () =>
-        window.voiceflow?.chat?.interact?.({ type: 'complete', payload });
-
-      if (window.voiceflow?.chat?.interact) {
-        // StopOnAction-friendly
-        send();
+      // --- 4) Géoloc si demandée ---
+      if (includeLocation && navigator.geolocation) {
+        const opts = { timeout: 5000, maximumAge: 300000, enableHighAccuracy: false };
+        navigator.geolocation.getCurrentPosition(
+          pos => send({
+            location: {
+              latitude:  pos.coords.latitude,
+              longitude: pos.coords.longitude,
+              accuracy:  pos.coords.accuracy,
+              at: pos.timestamp
+            }
+          }),
+          err => send({ location: { error: true, message: err?.message ?? String(err), code: err?.code ?? null } }),
+          opts
+        );
       } else {
-        // Rare: si l'API n'est pas prête, retry 20x toutes les 25ms
-        let tries = 0;
-        const id = setInterval(() => {
-          tries++;
-          if (window.voiceflow?.chat?.interact) { clearInterval(id); send(); }
-          else if (tries > 20) { clearInterval(id); /* abandon silencieux */ }
-        }, 25);
+        send();
       }
     } catch (e) {
-      // Fallback minimal qui libère quand même le flow
+      // Fallback minimal et… une seule fois quand même
       window.voiceflow?.chat?.interact?.({
         type: 'complete',
         payload: {
           browserLanguage: 'fr',
           primaryLanguage: 'fr',
+          platform: 'Unknown',
+          deviceType: 'Unknown',
           error: true,
-          message: e?.message || String(e),
-          ts: Date.now(),
-          extVersion: '1.3.0'
+          errorMessage: e?.message ?? String(e),
+          ts: Date.now()
         }
       });
     }

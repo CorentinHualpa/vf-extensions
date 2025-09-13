@@ -1,7 +1,5 @@
 /**
- * BrowserLanguageExtension v1.2.0 - Version corrigée
- * - Gestion améliorée du flag anti-doublon par session
- * - Meilleur timing pour éviter les blocages
+ * BrowserLanguageExtension v1.3.0 - Avec délai pour éviter le texte tronqué
  */
 export const BrowserLanguageExtension = {
   name: 'ext_browserLanguage',
@@ -13,39 +11,23 @@ export const BrowserLanguageExtension = {
     
   effect: async ({ trace }) => {
     try {
-      // Génère un ID unique pour cette trace/session
-      const traceId = `${trace?.id || Date.now()}_${Math.random()}`;
+      // Anti-doublon par session
+      const sessionId = trace?.timestamp || Date.now();
+      const flagKey = `__vf_lang_session_${sessionId}`;
       
-      // Utilise un flag spécifique à cette session de chat
-      const flagKey = `__vf_lang_${traceId}`;
-      
-      // Vérifie si déjà traité pour CETTE trace spécifique
       if (window[flagKey]) return;
       window[flagKey] = true;
       
-      // Nettoie les anciens flags (garde seulement les 5 derniers)
-      const flags = Object.keys(window).filter(k => k.startsWith('__vf_lang_'));
-      if (flags.length > 5) {
-        flags.slice(0, -5).forEach(k => delete window[k]);
-      }
-      
-      // Configuration
       const cfg = trace?.payload || {};
       const includeLocation = !!cfg.includeLocation;
       const includeScreen = !!cfg.includeScreen;
       const includeNetwork = !!cfg.includeNetwork;
       
-      // Attendre que le widget soit vraiment prêt
-      let attempts = 0;
-      const waitForReady = async () => {
-        while (!window.voiceflow?.chat?.interact && attempts < 20) {
-          await new Promise(r => setTimeout(r, 50));
-          attempts++;
-        }
-      };
-      await waitForReady();
+      // IMPORTANT: Délai pour laisser le widget respirer
+      // Cela évite le texte tronqué
+      await new Promise(resolve => setTimeout(resolve, 250));
       
-      // --- Collecte des données ---
+      // Collecte des données
       const langs = (() => {
         const arr = [];
         if (navigator.language) arr.push(navigator.language);
@@ -91,29 +73,7 @@ export const BrowserLanguageExtension = {
         saveData: !!connection.saveData
       } : undefined;
       
-      // Fonction d'envoi avec retry
-      const sendWithRetry = async (payload, retries = 3) => {
-        for (let i = 0; i < retries; i++) {
-          try {
-            if (window.voiceflow?.chat?.interact) {
-              window.voiceflow.chat.interact({ type: 'complete', payload });
-              
-              // Marque comme envoyé avec succès
-              window[`${flagKey}_sent`] = true;
-              return true;
-            }
-          } catch (e) {
-            console.warn(`BrowserLanguageExtension: Tentative ${i + 1} échouée`, e);
-          }
-          
-          if (i < retries - 1) {
-            await new Promise(r => setTimeout(r, 100 * (i + 1)));
-          }
-        }
-        return false;
-      };
-      
-      // Prépare le payload de base
+      // Payload de base
       const basePayload = {
         browserLanguage: langs[0],
         primaryLanguage: primary,
@@ -127,16 +87,33 @@ export const BrowserLanguageExtension = {
         ...(screenInfo ? { screen: screenInfo } : {}),
         ...(networkInfo ? { network: networkInfo } : {}),
         ts: Date.now(),
-        extVersion: '1.2.0'
+        extVersion: '1.3.0'
+      };
+      
+      // Fonction d'envoi avec délai supplémentaire
+      const sendComplete = async (payload) => {
+        // Petit délai supplémentaire avant l'envoi pour éviter le cut
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        if (window.voiceflow?.chat?.interact) {
+          window.voiceflow.chat.interact({ 
+            type: 'complete', 
+            payload 
+          });
+        }
       };
       
       // Géolocalisation si demandée
       if (includeLocation && navigator.geolocation) {
-        const opts = { timeout: 5000, maximumAge: 300000, enableHighAccuracy: false };
+        const opts = { 
+          timeout: 5000, 
+          maximumAge: 300000, 
+          enableHighAccuracy: false 
+        };
         
         navigator.geolocation.getCurrentPosition(
           async (pos) => {
-            await sendWithRetry({
+            await sendComplete({
               ...basePayload,
               location: {
                 latitude: pos.coords.latitude,
@@ -147,11 +124,11 @@ export const BrowserLanguageExtension = {
             });
           },
           async (err) => {
-            await sendWithRetry({
+            await sendComplete({
               ...basePayload,
               location: { 
                 error: true, 
-                message: err?.message ?? 'Location error',
+                message: err?.message ?? 'Location denied',
                 code: err?.code ?? null 
               }
             });
@@ -160,32 +137,29 @@ export const BrowserLanguageExtension = {
         );
       } else {
         // Envoi direct sans géoloc
-        await sendWithRetry(basePayload);
+        await sendComplete(basePayload);
       }
       
     } catch (e) {
       console.error('BrowserLanguageExtension error:', e);
       
-      // Fallback minimal avec retry
-      const fallbackPayload = {
-        browserLanguage: navigator.language || 'fr',
-        primaryLanguage: (navigator.language || 'fr').split('-')[0] || 'fr',
-        platform: 'Unknown',
-        deviceType: 'Unknown',
-        error: true,
-        errorMessage: e?.message ?? String(e),
-        ts: Date.now()
-      };
+      // Fallback avec délai aussi
+      await new Promise(resolve => setTimeout(resolve, 200));
       
-      // Tente d'envoyer le fallback
-      for (let i = 0; i < 3; i++) {
-        if (window.voiceflow?.chat?.interact) {
-          try {
-            window.voiceflow.chat.interact({ type: 'complete', payload: fallbackPayload });
-            break;
-          } catch {}
-        }
-        await new Promise(r => setTimeout(r, 100));
+      if (window.voiceflow?.chat?.interact) {
+        window.voiceflow.chat.interact({ 
+          type: 'complete',
+          payload: {
+            browserLanguage: navigator.language || 'fr',
+            primaryLanguage: (navigator.language || 'fr').split('-')[0] || 'fr',
+            platform: 'Unknown',
+            deviceType: 'Unknown',
+            error: true,
+            errorMessage: e?.message ?? String(e),
+            ts: Date.now(),
+            extVersion: '1.3.0'
+          }
+        });
       }
     }
   }

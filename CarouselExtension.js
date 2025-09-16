@@ -1,19 +1,13 @@
 /**
  *  ╔═══════════════════════════════════════════════════════════╗
  *  ║  Carousel – Voiceflow Response Extension                  ║
+ *  ║  VERSION 2.0 - COMPATIBLE OVERLAY                         ║
  *  ║                                                           ║
- *  ║  • Navigation: Flèches + Dots + Trackpad horizontal      ║
- *  ║  • Responsive: 3 desktop / 1 mobile                      ║
- *  ║  • Layout adaptatif pour 1-2-3+ cartes                  ║
- *  ║  • Titre personnalisable visible                         ║
- *  ║  • Popup description UNIQUEMENT sur desktop             ║
- *  ║  • Mobile : pas de zoom, stable                          ║
- *  ║  • Auto-play configurable                                ║
- *  ║  • Images contenues dans le cadre                       ║
- *  ║  • Style ultra moderne avec glassmorphism               ║
- *  ║  • Support touch/swipe + trackpad horizontal            ║
- *  ║  • Simulation de message utilisateur au clic            ║
- *  ║  • Ouverture liens en nouvel onglet                     ║
+ *  ║  • Auto-détection mode Overlay vs Fullscreen            ║
+ *  ║  • Layout adaptatif selon largeur conteneur             ║
+ *  ║  • Navigation: Flèches + Dots + Trackpad horizontal     ║
+ *  ║  • Responsive: 3 desktop / 1 mobile / 1 overlay         ║
+ *  ║  • Popup description UNIQUEMENT sur desktop fullscreen  ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 export const CarouselExtension = {
@@ -33,13 +27,13 @@ export const CarouselExtension = {
         instanceId = null,
         userMessageText = null
       } = trace.payload;
-
+      
       // Validation
       if (!items.length || items.length > 10) {
         console.error('❌ Carousel: 1-10 items requis');
         return;
       }
-
+      
       // Identifiant unique
       const uniqueId = instanceId || `carousel_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
       
@@ -52,7 +46,6 @@ export const CarouselExtension = {
           b: num & 255
         };
       };
-
       const lightenColor = (hex, percent) => {
         const { r, g, b } = hexToRgb(hex);
         const newR = Math.min(255, Math.floor(r + (255 - r) * percent));
@@ -60,7 +53,6 @@ export const CarouselExtension = {
         const newB = Math.min(255, Math.floor(b + (255 - b) * percent));
         return `#${newR.toString(16).padStart(2,'0')}${newG.toString(16).padStart(2,'0')}${newB.toString(16).padStart(2,'0')}`;
       };
-
       const darkenColor = (hex, percent) => {
         const { r, g, b } = hexToRgb(hex);
         const newR = Math.floor(r * (1 - percent));
@@ -68,25 +60,25 @@ export const CarouselExtension = {
         const newB = Math.floor(b * (1 - percent));
         return `#${newR.toString(16).padStart(2,'0')}${newG.toString(16).padStart(2,'0')}${newB.toString(16).padStart(2,'0')}`;
       };
-
+      
       // Fix URL Imgur si nécessaire
       const fixImgurUrl = (url) => {
         if (!url) return url;
         return url.replace(/^https?:\/\/imgur\.com\/([a-zA-Z0-9]+\.[a-zA-Z]+)$/, 'https://i.imgur.com/$1');
       };
-
+      
       // Couleurs dérivées
       const { r: brandR, g: brandG, b: brandB } = hexToRgb(brandColor);
       const lightColor = lightenColor(brandColor, 0.3);
       const darkColor = darkenColor(brandColor, 0.2);
-
+      
       // Container principal
       const container = document.createElement('div');
       container.className = 'vf-carousel-container';
       container.id = uniqueId;
       container.setAttribute('data-items-count', items.length);
-
-      // CSS avec popup simple pour description
+      
+      // CSS avec détection overlay
       const styleEl = document.createElement('style');
       styleEl.textContent = `
 /* ✅ STYLES POUR CONTENEUR PARENT VOICEFLOW */
@@ -107,6 +99,13 @@ export const CarouselExtension = {
   overflow: visible !important;
 }
 
+/* ═══ DÉTECTION MODE OVERLAY ═══ */
+/* Mode overlay = largeur < 450px ou dans conteneur .vfrc-chat--overlay */
+.vfrc-chat--overlay .vf-carousel-container,
+.vf-carousel-container.overlay-mode {
+  --is-overlay: 1;
+}
+
 /* ═══ VARIABLES CSS ADAPTATIVES ═══ */
 .vf-carousel-container {
   --brand-color: ${brandColor};
@@ -120,6 +119,15 @@ export const CarouselExtension = {
   --shadow-hover: 0 20px 40px rgba(0, 0, 0, 0.25);
   --glass-bg: rgba(255, 255, 255, 0.1);
   --glass-border: rgba(255, 255, 255, 0.2);
+  --is-overlay: 0;
+}
+
+/* Mode overlay : réduction des espacements */
+.vf-carousel-container[data-overlay="true"],
+.vfrc-chat--overlay .vf-carousel-container {
+  --carousel-gap: 8px;
+  --border-radius: 12px;
+  padding: 8px !important;
 }
 
 /* ═══ CONTAINER PRINCIPAL ═══ */
@@ -180,7 +188,7 @@ export const CarouselExtension = {
   z-index: -1;
 }
 
-/* ✅ TITRE STABLE */
+/* ✅ TITRE ADAPTATIF */
 .vf-carousel-title {
   position: relative;
   z-index: 2;
@@ -205,56 +213,23 @@ export const CarouselExtension = {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
-.vf-carousel-title::before {
-  content: '';
-  position: absolute;
-  bottom: -8px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 80px;
-  height: 3px;
-  background: linear-gradient(90deg, var(--brand-color), var(--brand-light));
-  border-radius: 2px;
-  box-shadow: 0 0 15px rgba(var(--brand-rgb), 0.8);
+/* Titre en mode overlay */
+.vf-carousel-container[data-overlay="true"] .vf-carousel-title,
+.vfrc-chat--overlay .vf-carousel-title {
+  font-size: 18px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
 }
 
-.vf-carousel-title::after {
-  content: '';
-  position: absolute;
-  bottom: -12px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 40px;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.8);
-  border-radius: 1px;
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-}
-
-@keyframes titleFadeIn {
-  from { 
-    opacity: 0; 
-    transform: translateY(-20px) scale(0.95); 
-  }
-  to { 
-    opacity: 1; 
-    transform: translateY(0) scale(1); 
-  }
-}
-
-.vf-carousel-title {
-  animation: titleFadeIn 0.8s ease-out;
-}
-
-/* ✅ VIEWPORT STABLE SANS DÉBORDEMENT */
+/* ✅ VIEWPORT STABLE */
 .vf-carousel-viewport {
   position: relative;
-  overflow: hidden; /* ✅ Empêche le débordement des images */
+  overflow: hidden;
   border-radius: 12px;
   margin-bottom: 12px;
   width: 100%;
   box-sizing: border-box;
-  padding: 0; /* ✅ Pas de padding pour éviter les débordements */
+  padding: 0;
 }
 
 .vf-carousel-track {
@@ -267,7 +242,8 @@ export const CarouselExtension = {
   box-sizing: border-box;
 }
 
-/* ═══ LAYOUT ADAPTATIF SELON NOMBRE DE CARTES ═══ */
+/* ═══ LAYOUT ADAPTATIF ═══ */
+/* Mode normal : 1-3 cartes selon le nombre */
 .vf-carousel-container[data-items-count="1"] .vf-carousel-track {
   justify-content: center;
 }
@@ -286,7 +262,6 @@ export const CarouselExtension = {
   max-width: 300px;
 }
 
-/* ✅ CARTES STABLES AVEC HOVER SUBTIL UNIQUEMENT SUR DESKTOP */
 .vf-carousel-card {
   flex: 0 0 calc((100% - (var(--carousel-gap) * 2)) / 3);
   min-width: 0;
@@ -304,36 +279,30 @@ export const CarouselExtension = {
   z-index: 1;
 }
 
-/* ✅ HOVER SUBTIL UNIQUEMENT SUR DESKTOP */
+/* ✅ MODE OVERLAY : TOUJOURS 1 CARTE */
+.vf-carousel-container[data-overlay="true"] .vf-carousel-card,
+.vfrc-chat--overlay .vf-carousel-card {
+  flex: 0 0 100% !important;
+  max-width: none !important;
+}
+
+.vf-carousel-container[data-overlay="true"] .vf-carousel-track,
+.vfrc-chat--overlay .vf-carousel-track {
+  gap: 0 !important;
+}
+
+/* ✅ HOVER DESKTOP UNIQUEMENT (pas en overlay) */
 @media (min-width: 769px) {
-  .vf-carousel-card:hover {
-    transform: translateY(-8px); /* ✅ Juste une petite élévation */
+  .vf-carousel-container:not([data-overlay="true"]) .vf-carousel-card:hover,
+  body:not(.vfrc-chat--overlay) .vf-carousel-card:hover {
+    transform: translateY(-8px);
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), 
                 0 10px 20px rgba(var(--brand-rgb), 0.2);
     border-color: rgba(var(--brand-rgb), 0.6);
   }
 }
 
-.vf-carousel-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--brand-color), var(--brand-light));
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  z-index: 1;
-}
-
-@media (min-width: 769px) {
-  .vf-carousel-card:hover::before {
-    opacity: 1;
-  }
-}
-
-/* ═══ IMAGES CONTENUES DANS LE CADRE ═══ */
+/* ═══ IMAGES ═══ */
 .vf-carousel-image-container {
   position: relative;
   width: 100%;
@@ -341,6 +310,12 @@ export const CarouselExtension = {
   padding-bottom: 56.25%;
   overflow: hidden;
   background: linear-gradient(135deg, #f0f0f0, #e0e0e0);
+}
+
+/* Image plus grande en mode overlay */
+.vf-carousel-container[data-overlay="true"] .vf-carousel-image-container,
+.vfrc-chat--overlay .vf-carousel-image-container {
+  padding-bottom: 50%;
 }
 
 .vf-carousel-image {
@@ -355,24 +330,7 @@ export const CarouselExtension = {
   transform-origin: center center;
 }
 
-/* ✅ ZOOM IMAGE TRÈS SUBTIL UNIQUEMENT SUR DESKTOP */
-@media (min-width: 769px) {
-  .vf-carousel-card:hover .vf-carousel-image {
-    transform: scale(1.03);
-  }
-}
-
-.vf-carousel-image-placeholder {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: #999;
-  font-size: 40px;
-  opacity: 0.5;
-}
-
-/* ✅ CONTENU CARTE STABLE */
+/* ✅ CONTENU ADAPTATIF */
 .vf-carousel-content {
   padding: 16px;
   display: grid;
@@ -392,6 +350,14 @@ export const CarouselExtension = {
   -webkit-backdrop-filter: blur(5px);
 }
 
+/* Contenu optimisé en mode overlay */
+.vf-carousel-container[data-overlay="true"] .vf-carousel-content,
+.vfrc-chat--overlay .vf-carousel-content {
+  padding: 12px;
+  min-height: 100px;
+  gap: 6px;
+}
+
 .vf-carousel-card-title {
   font-size: 16px;
   font-weight: 700;
@@ -408,7 +374,14 @@ export const CarouselExtension = {
   align-self: start;
 }
 
-/* ✅ DESCRIPTION AVEC POPUP UNIQUEMENT SUR DESKTOP */
+/* Titre plus petit en overlay */
+.vf-carousel-container[data-overlay="true"] .vf-carousel-card-title,
+.vfrc-chat--overlay .vf-carousel-card-title {
+  font-size: 14px;
+  min-height: 36px;
+}
+
+/* ✅ DESCRIPTION */
 .vf-carousel-description {
   font-size: 12px;
   color: #ffffff !important;
@@ -428,9 +401,18 @@ export const CarouselExtension = {
   text-overflow: ellipsis;
 }
 
-/* ✅ POPUP DESCRIPTION UNIQUEMENT SUR DESKTOP */
+/* Description optimisée en overlay */
+.vf-carousel-container[data-overlay="true"] .vf-carousel-description,
+.vfrc-chat--overlay .vf-carousel-description {
+  font-size: 11px;
+  -webkit-line-clamp: 2;
+  cursor: default;
+}
+
+/* ✅ POPUP UNIQUEMENT EN DESKTOP FULLSCREEN */
 @media (min-width: 769px) {
-  .vf-carousel-description::before {
+  .vf-carousel-container:not([data-overlay="true"]) .vf-carousel-description::before,
+  body:not(.vfrc-chat--overlay) .vf-carousel-description::before {
     content: attr(data-full-text);
     position: absolute;
     bottom: 100%;
@@ -448,77 +430,24 @@ export const CarouselExtension = {
     text-align: left;
     z-index: 9999;
     
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6), 
-                0 8px 20px rgba(var(--brand-rgb), 0.3),
-                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
     border: 2px solid rgba(var(--brand-rgb), 0.4);
-    backdrop-filter: blur(15px);
-    -webkit-backdrop-filter: blur(15px);
     
     opacity: 0;
     visibility: hidden;
     transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     transform: translateX(-50%) translateY(-10px) scale(0.9);
-    
-    word-wrap: break-word;
-    hyphens: auto;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
   }
-
-  .vf-carousel-description::after {
-    content: '';
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 0;
-    height: 0;
-    border-left: 12px solid transparent;
-    border-right: 12px solid transparent;
-    border-top: 12px solid rgba(0, 0, 0, 0.95);
-    z-index: 10000;
-    
-    opacity: 0;
-    visibility: hidden;
-    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    transform: translateX(-50%) translateY(-6px);
-  }
-
-  .vf-carousel-description:hover::before,
-  .vf-carousel-description:hover::after {
+  
+  .vf-carousel-container:not([data-overlay="true"]) .vf-carousel-description:hover::before,
+  body:not(.vfrc-chat--overlay) .vf-carousel-description:hover::before {
     opacity: 1;
     visibility: visible;
     transform: translateX(-50%) translateY(0) scale(1);
   }
-
-  .vf-carousel-description:hover::after {
-    transform: translateX(-50%) translateY(0);
-  }
-
-  /* ✅ Ajustement position si proche des bords */
-  .vf-carousel-card:first-child .vf-carousel-description::before {
-    left: 0;
-    transform: translateX(0);
-  }
-
-  .vf-carousel-card:first-child .vf-carousel-description::after {
-    left: 30px;
-    transform: translateX(0);
-  }
-
-  .vf-carousel-card:last-child .vf-carousel-description::before {
-    left: auto;
-    right: 0;
-    transform: translateX(0);
-  }
-
-  .vf-carousel-card:last-child .vf-carousel-description::after {
-    left: auto;
-    right: 30px;
-    transform: translateX(0);
-  }
 }
 
+/* ✅ BOUTON CTA */
 .vf-carousel-button {
   background: linear-gradient(135deg, var(--brand-color), var(--brand-light));
   color: white !important;
@@ -545,30 +474,12 @@ export const CarouselExtension = {
   align-self: end;
 }
 
-@media (min-width: 769px) {
-  .vf-carousel-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 16px rgba(var(--brand-rgb), 0.4);
-  }
-}
-
-.vf-carousel-button::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-  transition: left 0.5s ease;
-}
-
-.vf-carousel-button:hover::before {
-  left: 100%;
-}
-
-.vf-carousel-button:active {
-  transform: translateY(0);
+/* Bouton optimisé en overlay */
+.vf-carousel-container[data-overlay="true"] .vf-carousel-button,
+.vfrc-chat--overlay .vf-carousel-button {
+  padding: 8px 12px;
+  font-size: 11px;
+  min-height: 34px;
 }
 
 /* ═══ CONTRÔLES NAVIGATION ═══ */
@@ -581,8 +492,16 @@ export const CarouselExtension = {
   z-index: 3;
 }
 
-.vf-carousel-container[data-items-count="1"] .vf-carousel-controls,
-.vf-carousel-container[data-items-count="2"] .vf-carousel-controls {
+/* Contrôles visibles en overlay si plus d'1 item */
+.vf-carousel-container[data-overlay="true"][data-items-count="1"] .vf-carousel-controls,
+.vfrc-chat--overlay .vf-carousel-container[data-items-count="1"] .vf-carousel-controls {
+  display: none;
+}
+
+/* Cache contrôles si pas nécessaire */
+.vf-carousel-container[data-items-count="1"]:not([data-overlay="true"]) .vf-carousel-controls,
+.vf-carousel-container[data-items-count="2"]:not([data-overlay="true"]) .vf-carousel-controls,
+.vf-carousel-container[data-items-count="3"]:not([data-overlay="true"]) .vf-carousel-controls {
   display: none;
 }
 
@@ -608,6 +527,14 @@ export const CarouselExtension = {
   font-weight: bold;
 }
 
+/* Boutons plus petits en overlay */
+.vf-carousel-container[data-overlay="true"] .vf-carousel-nav-button,
+.vfrc-chat--overlay .vf-carousel-nav-button {
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+}
+
 .vf-carousel-nav-button:hover {
   background: rgba(var(--brand-rgb), 0.8);
   border-color: var(--brand-color);
@@ -620,13 +547,6 @@ export const CarouselExtension = {
   cursor: not-allowed;
   transform: none;
   background: rgba(0, 0, 0, 0.3);
-}
-
-.vf-carousel-nav-button:disabled:hover {
-  background: rgba(0, 0, 0, 0.3);
-  border-color: rgba(255, 255, 255, 0.2);
-  transform: none;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .vf-carousel-dots {
@@ -653,12 +573,7 @@ export const CarouselExtension = {
   box-shadow: 0 0 10px rgba(var(--brand-rgb), 0.5);
 }
 
-.vf-carousel-dot:hover:not(.active) {
-  background: rgba(var(--brand-rgb), 0.6);
-  transform: scale(1.1);
-}
-
-/* ═══ RESPONSIVE MOBILE - TOUT FIGÉ ═══ */
+/* ═══ RESPONSIVE MOBILE ═══ */
 @media (max-width: 768px) {
   .vf-carousel-container {
     padding: 8px !important;
@@ -666,45 +581,29 @@ export const CarouselExtension = {
   }
   
   .vf-carousel-title {
-    font-size: 20px;
-    padding: 14px 20px;
-    margin-bottom: 16px;
+    font-size: 18px;
+    padding: 12px 16px;
+    margin-bottom: 12px;
   }
   
-  .vf-carousel-title::before {
-    width: 60px;
-    height: 2px;
-    bottom: -6px;
-  }
-  
-  .vf-carousel-title::after {
-    width: 30px;
-    bottom: -9px;
-  }
-  
-  /* ✅ MOBILE : TOUT FIGÉ, PAS D'EFFET HOVER */
   .vf-carousel-card {
     flex: 0 0 100% !important;
     max-width: none !important;
   }
   
-  /* ✅ DESCRIPTION SIMPLE SUR MOBILE - PAS DE POPUP */
-  .vf-carousel-description {
-    cursor: default;
-  }
-  
-  .vf-carousel-container[data-items-count="2"] .vf-carousel-controls {
+  .vf-carousel-container[data-items-count="2"] .vf-carousel-controls,
+  .vf-carousel-container[data-items-count="3"] .vf-carousel-controls {
     display: flex;
   }
   
   .vf-carousel-content {
     padding: 12px;
-    min-height: 120px;
+    min-height: 100px;
   }
   
   .vf-carousel-card-title {
     font-size: 14px;
-    min-height: 36.4px;
+    min-height: 36px;
   }
   
   .vf-carousel-description {
@@ -712,16 +611,16 @@ export const CarouselExtension = {
     -webkit-line-clamp: 2;
   }
   
+  .vf-carousel-button {
+    padding: 8px 12px;
+    font-size: 11px;
+    min-height: 34px;
+  }
+  
   .vf-carousel-nav-button {
     width: 32px;
     height: 32px;
     font-size: 14px;
-  }
-  
-  .vf-carousel-button {
-    padding: 8px 14px;
-    font-size: 11px;
-    min-height: 36px;
   }
 }
 
@@ -745,63 +644,87 @@ export const CarouselExtension = {
 .vf-carousel-card:nth-child(3) { animation-delay: 0.3s; }
       `;
       container.appendChild(styleEl);
-
+      
+      // ✅ DÉTECTION MODE OVERLAY
+      const detectOverlayMode = () => {
+        // Méthode 1: Vérifier si on est dans .vfrc-chat--overlay
+        const isInOverlayClass = container.closest('.vfrc-chat--overlay') !== null;
+        
+        // Méthode 2: Vérifier la largeur du conteneur parent
+        const parentWidth = element.offsetWidth || element.parentElement?.offsetWidth || 0;
+        const isNarrow = parentWidth < 450;
+        
+        // Méthode 3: Vérifier si le chat Voiceflow est en mode widget
+        const chatWidget = document.querySelector('.vfrc-chat-widget');
+        const isWidget = chatWidget && !chatWidget.classList.contains('vfrc-chat--fullscreen');
+        
+        return isInOverlayClass || isNarrow || isWidget;
+      };
+      
+      // Appliquer l'attribut overlay
+      const isOverlay = detectOverlayMode();
+      container.setAttribute('data-overlay', isOverlay.toString());
+      
       // État du carousel
       let currentIndex = 0;
       let autoplayInterval = null;
       let touchStartX = 0;
       let touchEndX = 0;
-
+      
       // Utilitaire: Troncature du texte
       const truncateText = (text, maxLength) => {
         if (!text) return '';
         return text.length > maxLength ? text.substring(0, maxLength - 3) + '...' : text;
       };
-
-      // Calcul des slides visibles selon l'écran ET le nombre d'items
+      
+      // Calcul des slides visibles
       const getSlidesPerView = () => {
+        const overlayMode = container.getAttribute('data-overlay') === 'true';
+        
+        if (overlayMode) return 1; // ✅ Toujours 1 carte en overlay
         if (window.innerWidth <= 768) return 1;
         if (items.length === 1) return 1;
         if (items.length === 2) return 2;
         return 3;
       };
-
+      
       const getMaxIndex = () => {
         const slidesPerView = getSlidesPerView();
         return Math.max(0, items.length - slidesPerView);
       };
-
+      
       // Mise à jour position du carousel
       const updateCarouselPosition = () => {
         const track = container.querySelector('.vf-carousel-track');
         const slidesPerView = getSlidesPerView();
+        const overlayMode = container.getAttribute('data-overlay') === 'true';
         
-        if (items.length <= 2 && window.innerWidth > 768) {
+        if (!overlayMode && items.length <= 3 && window.innerWidth > 768) {
           track.style.transform = 'translateX(0)';
         } else {
           const slideWidth = 100 / slidesPerView;
           const translateX = -(currentIndex * slideWidth);
           track.style.transform = `translateX(${translateX}%)`;
         }
-
+        
         // Mise à jour des dots
         container.querySelectorAll('.vf-carousel-dot').forEach((dot, index) => {
           dot.classList.toggle('active', index === currentIndex);
         });
-
-        // Mise à jour des boutons de navigation
+        
+        // Mise à jour des boutons
         const prevBtn = container.querySelector('.vf-carousel-prev');
         const nextBtn = container.querySelector('.vf-carousel-next');
         if (prevBtn) prevBtn.disabled = currentIndex === 0;
         if (nextBtn) nextBtn.disabled = currentIndex >= getMaxIndex();
       };
-
+      
       // Navigation
       const goToSlide = (index) => {
         currentIndex = Math.max(0, Math.min(index, getMaxIndex()));
         updateCarouselPosition();
       };
-
+      
       const nextSlide = () => {
         if (currentIndex < getMaxIndex()) {
           goToSlide(currentIndex + 1);
@@ -809,30 +732,30 @@ export const CarouselExtension = {
           goToSlide(0);
         }
       };
-
+      
       const prevSlide = () => {
         goToSlide(currentIndex - 1);
       };
-
+      
       // Autoplay
       const startAutoplay = () => {
         if (autoplay && getMaxIndex() > 0) {
           autoplayInterval = setInterval(nextSlide, autoplayDelay);
         }
       };
-
+      
       const stopAutoplay = () => {
         if (autoplayInterval) {
           clearInterval(autoplayInterval);
           autoplayInterval = null;
         }
       };
-
-      // Gestion du clic avec simulation de message utilisateur + nouvel onglet
+      
+      // Gestion du clic
       const handleCardAction = (item, index) => {
         stopAutoplay();
         
-        // Simuler un message utilisateur dans le chat
+        // Simuler un message utilisateur
         if (window.voiceflow?.chat?.interact) {
           let messageText = '';
           
@@ -843,15 +766,14 @@ export const CarouselExtension = {
           } else {
             messageText = item.title || item.buttonText || `Item ${index + 1}`;
           }
-
+          
           window.voiceflow.chat.interact({
             type: 'text',
             payload: messageText
           });
-
           console.log(`✅ Message utilisateur simulé: "${messageText}"`);
         }
-
+        
         // Ouverture en nouvel onglet
         if (item.url) {
           setTimeout(() => {
@@ -859,7 +781,8 @@ export const CarouselExtension = {
           }, 500);
         }
       };
-
+      
+      // Construction du HTML
       // Ajout du titre si présent
       if (title) {
         const titleElement = document.createElement('h1');
@@ -867,24 +790,23 @@ export const CarouselExtension = {
         titleElement.textContent = title;
         container.appendChild(titleElement);
       }
-
-      // Construction du HTML
+      
       const viewport = document.createElement('div');
       viewport.className = 'vf-carousel-viewport';
-
+      
       const track = document.createElement('div');
       track.className = 'vf-carousel-track';
-
+      
       // Création des cartes
       items.forEach((item, index) => {
         const card = document.createElement('div');
         card.className = 'vf-carousel-card';
         card.setAttribute('data-index', index);
-
+        
         // Image container
         const imageContainer = document.createElement('div');
         imageContainer.className = 'vf-carousel-image-container';
-
+        
         if (item.image) {
           const fixedImageUrl = fixImgurUrl(item.image);
           const img = document.createElement('img');
@@ -892,37 +814,34 @@ export const CarouselExtension = {
           img.src = fixedImageUrl;
           img.alt = item.title || 'Carousel item';
           img.loading = 'lazy';
-
           img.onerror = () => {
             console.warn(`❌ Image failed to load: ${fixedImageUrl}`);
             imageContainer.innerHTML = '<div class="vf-carousel-image-placeholder">🖼️</div>';
           };
-
           imageContainer.appendChild(img);
         } else {
           imageContainer.innerHTML = '<div class="vf-carousel-image-placeholder">🖼️</div>';
         }
-
+        
         // Contenu
         const content = document.createElement('div');
         content.className = 'vf-carousel-content';
-
+        
         if (item.title) {
           const cardTitle = document.createElement('h3');
           cardTitle.className = 'vf-carousel-card-title';
           cardTitle.textContent = item.title;
           content.appendChild(cardTitle);
         }
-
-        // ✅ Description avec popup sur desktop
+        
         if (item.description) {
           const description = document.createElement('p');
           description.className = 'vf-carousel-description';
-          description.setAttribute('data-full-text', item.description); // ✅ Texte complet pour popup
-          description.textContent = truncateText(item.description, maxDescriptionLength); // ✅ Texte tronqué affiché
+          description.setAttribute('data-full-text', item.description);
+          description.textContent = truncateText(item.description, maxDescriptionLength);
           content.appendChild(description);
         }
-
+        
         const button = document.createElement('button');
         button.className = 'vf-carousel-button';
         button.textContent = item.buttonText || 'Découvrir';
@@ -931,39 +850,40 @@ export const CarouselExtension = {
           handleCardAction(item, index);
         });
         content.appendChild(button);
-
+        
         card.appendChild(imageContainer);
         card.appendChild(content);
-
-        // Clic sur la carte entière
+        
         card.addEventListener('click', () => handleCardAction(item, index));
-
         track.appendChild(card);
       });
-
+      
       viewport.appendChild(track);
       container.appendChild(viewport);
-
+      
       // Contrôles de navigation
       const needsControls = () => {
+        const overlayMode = container.getAttribute('data-overlay') === 'true';
+        
+        if (overlayMode) return items.length > 1; // ✅ En overlay, contrôles si plus d'1 item
         if (window.innerWidth <= 768) return items.length > 1;
         return items.length > 3;
       };
-
+      
       if (needsControls()) {
         const controls = document.createElement('div');
         controls.className = 'vf-carousel-controls';
-
+        
         // Bouton précédent
         const prevBtn = document.createElement('button');
         prevBtn.className = 'vf-carousel-nav-button vf-carousel-prev';
         prevBtn.innerHTML = '‹';
         prevBtn.addEventListener('click', prevSlide);
-
+        
         // Dots
         const dotsContainer = document.createElement('div');
         dotsContainer.className = 'vf-carousel-dots';
-
+        
         const maxDots = getMaxIndex() + 1;
         for (let i = 0; i < maxDots; i++) {
           const dot = document.createElement('button');
@@ -971,23 +891,24 @@ export const CarouselExtension = {
           dot.addEventListener('click', () => goToSlide(i));
           dotsContainer.appendChild(dot);
         }
-
+        
         // Bouton suivant  
         const nextBtn = document.createElement('button');
         nextBtn.className = 'vf-carousel-nav-button vf-carousel-next';
         nextBtn.innerHTML = '›';
         nextBtn.addEventListener('click', nextSlide);
-
+        
         controls.appendChild(prevBtn);
         controls.appendChild(dotsContainer);
         controls.appendChild(nextBtn);
         container.appendChild(controls);
       }
-
-      // Support trackpad horizontal
+      
+      // Support trackpad horizontal (sauf en overlay)
       let wheelTimeout;
       container.addEventListener('wheel', (e) => {
-        if (Math.abs(e.deltaX) > Math.abs(e.deltaY) && Math.abs(e.deltaX) > 10) {
+        const overlayMode = container.getAttribute('data-overlay') === 'true';
+        if (!overlayMode && Math.abs(e.deltaX) > Math.abs(e.deltaY) && Math.abs(e.deltaX) > 10) {
           e.preventDefault();
           stopAutoplay();
           
@@ -1004,7 +925,7 @@ export const CarouselExtension = {
           }
         }
       }, { passive: false });
-
+      
       // Support tactile
       let isDragging = false;
       
@@ -1012,19 +933,19 @@ export const CarouselExtension = {
         touchStartX = e.touches[0].clientX;
         stopAutoplay();
       }, { passive: true });
-
+      
       track.addEventListener('touchmove', (e) => {
         if (!touchStartX) return;
         touchEndX = e.touches[0].clientX;
         isDragging = true;
       }, { passive: true });
-
+      
       track.addEventListener('touchend', () => {
         if (!isDragging) return;
         
         const touchDiff = touchStartX - touchEndX;
         const threshold = 50;
-
+        
         if (Math.abs(touchDiff) > threshold) {
           if (touchDiff > 0) {
             nextSlide();
@@ -1032,7 +953,7 @@ export const CarouselExtension = {
             prevSlide();
           }
         }
-
+        
         touchStartX = 0;
         touchEndX = 0;
         isDragging = false;
@@ -1041,46 +962,71 @@ export const CarouselExtension = {
           setTimeout(startAutoplay, 2000);
         }
       });
-
+      
       // Support clavier
       container.addEventListener('keydown', (e) => {
         if (e.key === 'ArrowLeft') prevSlide();
         if (e.key === 'ArrowRight') nextSlide();
       });
-
-      // Responsive
+      
+      // ✅ Responsive avec détection overlay
       const handleResize = () => {
+        // Re-détecter le mode overlay
+        const newOverlayMode = detectOverlayMode();
+        container.setAttribute('data-overlay', newOverlayMode.toString());
+        
         const oldMaxIndex = getMaxIndex();
         if (currentIndex > oldMaxIndex) {
           currentIndex = oldMaxIndex;
         }
         updateCarouselPosition();
       };
-
+      
       window.addEventListener('resize', handleResize);
-
-      // Pause autoplay au hover
-      container.addEventListener('mouseenter', stopAutoplay);
-      container.addEventListener('mouseleave', () => {
-        if (autoplay) startAutoplay();
+      
+      // Observer les changements de classe sur le chat
+      const chatObserver = new MutationObserver(() => {
+        handleResize();
       });
-
+      
+      const chatElement = document.querySelector('.vfrc-chat');
+      if (chatElement) {
+        chatObserver.observe(chatElement, {
+          attributes: true,
+          attributeFilter: ['class']
+        });
+      }
+      
+      // Pause autoplay au hover (sauf en overlay)
+      container.addEventListener('mouseenter', () => {
+        const overlayMode = container.getAttribute('data-overlay') === 'true';
+        if (!overlayMode) stopAutoplay();
+      });
+      
+      container.addEventListener('mouseleave', () => {
+        const overlayMode = container.getAttribute('data-overlay') === 'true';
+        if (autoplay && !overlayMode) startAutoplay();
+      });
+      
       // Initialisation
       updateCarouselPosition();
+      
       if (autoplay) {
         setTimeout(startAutoplay, 1000);
       }
-
+      
       element.appendChild(container);
-
-      console.log(`✅ Carousel stable avec popup description (ID: ${uniqueId}) - ${items.length} items${title ? `, titre: "${title}"` : ''}`);
-
+      
+      const modeText = isOverlay ? 'OVERLAY' : 'FULLSCREEN';
+      console.log(`✅ Carousel ${modeText} (ID: ${uniqueId}) - ${items.length} items${title ? `, titre: "${title}"` : ''}`);
+      
       // Cleanup
       return () => {
         window.removeEventListener('resize', handleResize);
+        if (chatObserver) chatObserver.disconnect();
         stopAutoplay();
       };
-
+      
     } catch (error) {
       console.error('❌ Carousel Error:', error);
       element.innerHTML = `<div style="color: #ff4444; padding: 20px; text-align: center;">❌ Erreur Carousel: ${error.message}</div>`;

@@ -1,0 +1,123 @@
+/* ========================================
+   VOICEFLOW CUSTOM STYLES
+   Evolution Agency - Les Secrets du Siam
+   ======================================== */
+
+/* === SCROLLBAR PERSONNALISÉE === */
+#voiceflow-chat-container {
+  scrollbar-width: thin;
+  scrollbar-color: #ff0000 #ffffff;
+}
+
+#voiceflow-chat-container::-webkit-scrollbar { 
+  width: 8px; 
+}
+
+#voiceflow-chat-container::-webkit-scrollbar-track { 
+  background: #ffffff; 
+}
+
+#voiceflow-chat-container::-webkit-scrollbar-thumb { 
+  background-color: #ff0000; 
+  border-radius: 10px; 
+}
+
+/* ========================================
+   TRADUCTIONS SPLASH SCREEN
+   ======================================== */
+
+/* === TITRE "⚠️ Important" === */
+.\*19yxzl22 {
+  font-size: 0 !important;
+}
+
+.\*19yxzl22::before {
+  content: "⚠️ Important";
+  font-size: 16px;
+  font-weight: 600;
+  display: block;
+}
+
+body[data-vf-lang="en"] .\*19yxzl22::before {
+  content: "⚠️ Important";
+}
+
+/* === DESCRIPTION === */
+._19yxzl23 {
+  font-size: 0 !important;
+  line-height: 1.5 !important;
+}
+
+._19yxzl23::before {
+  content: "Ceci est un chatbot de démonstration destiné aux professionnels du voyage pour tester les possibilités des Agents IA développés par notre entreprise. Ce chatbot est la duplication du chatbot que nous avons développés pour notre partenaire : Les Secrets du Siam (agence de voyage pour la Thaïlande)";
+  font-size: 14px;
+  display: block;
+  line-height: 1.6;
+  color: inherit;
+}
+
+body[data-vf-lang="en"] ._19yxzl23::before {
+  content: "This is a demonstration chatbot designed for travel professionals to test the capabilities of AI Agents developed by our company. This chatbot is a duplicate of the chatbot we developed for our partner: Les Secrets du Siam (travel agency for Thailand)";
+}
+
+/* === BOUTON "🚀 Commencez la démo" === */
+.\*19yxzl24 {
+  font-size: 0 !important;
+}
+
+.\*19yxzl24::before {
+  content: "🚀 Commencez la démo";
+  font-size: 16px;
+  font-weight: 500;
+  display: inline-block;
+}
+
+body[data-vf-lang="en"] .\*19yxzl24::before {
+  content: "🚀 Start the demo";
+}
+
+/* === BOUTON "📆 Prendre rendez-vous" === */
+._19yxzl28._19yxzl29 {
+  font-size: 0 !important;
+}
+
+._19yxzl28._19yxzl29::before {
+  content: "📆 Prendre rendez-vous";
+  font-size: 16px;
+  font-weight: 500;
+  display: inline-block;
+}
+
+body[data-vf-lang="en"] ._19yxzl28._19yxzl29::before {
+  content: "📆 Book an appointment";
+}
+
+/* === TEXTES DU HEADER/BANNER (backup) === */
+.fptyqm0.fptyqm1 {
+  font-size: 0 !important;
+}
+
+.fptyqm0.fptyqm1::after {
+  content: "Une question ? Je suis là pour vous aider 😎";
+  font-size: 14px;
+  display: block;
+}
+
+body[data-vf-lang="en"] .fptyqm0.fptyqm1::after {
+  content: "Got a question? I'm here to help 😎";
+}
+
+/* ========================================
+   STYLES RESPONSIFS
+   ======================================== */
+
+@media (max-width: 768px) {
+  ._19yxzl23::before {
+    font-size: 13px;
+  }
+  
+  .\*19yxzl24::before,
+  ._19yxzl28._19yxzl29::before {
+    font-size: 15px;
+  }
+}

@@ -4,7 +4,7 @@
  *  ║                                                           ║
  *  ║  • Support JSON et TEXT                                   ║
  *  ║  • Téléchargement : HTML / PDF / Markdown / DOCX         ║
- *  ║  • Copie : Brut (HTML) / Formaté (texte propre)         ║
+ *  ║  • Copie : Brut (HTML) / Formaté (texte propre)         ║ 
  *  ║  • Support FR/EN                                         ║
  *  ║  • Sauts de page sur <hr> pour tous les formats         ║
  *  ║  • Gestion améliorée des emojis dans PDF                ║

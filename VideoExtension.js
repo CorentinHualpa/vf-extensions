@@ -23,3 +23,4 @@ export const VideoExtension = {
     element.appendChild(videoElement)
   },
 }
+ 

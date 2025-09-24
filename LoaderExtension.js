@@ -4,7 +4,7 @@
  *  ║                                                           ║
  *  ║  • Barre de chargement circulaire ultra-stylée           ║
  *  ║  • Textes défilants selon la progression                 ║
- *  ║  • Glassmorphism et effets visuels avancés               ║
+ *  ║  • Glassmorphism et effets visuels avancés               ║ 
  *  ║  • Animation de scan et particules                       ║
  *  ║  • Message personnalisable et pourcentage                ║
  *  ║  • Totalement configurable                               ║

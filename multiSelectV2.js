@@ -4,7 +4,7 @@
  *  ║                                                           ║
  *  ║  • Support pour 1, 2, 3, 4, 5, 6+ colonnes              ║
  *  ║  • Boutons harmonieux et responsive                       ║
- *  ║  • Taille de texte proportionnelle à buttonFontSize      ║
+ *  ║  • Taille de texte proportionnelle à buttonFontSize      ║ 
  *  ║  • Text-shadow pour visibilité optimale                  ║
  *  ║  • Champs texte adaptatifs améliorés                     ║
  *  ║  • Bouton global-all personnalisable                     ║

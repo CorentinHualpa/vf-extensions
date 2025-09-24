@@ -33,7 +33,7 @@ export const KBUploadExtension = {
       const backgroundOpacity = payload.backgroundOpacity || 0.15; // Opacité de l'image (valeur par défaut: 0.15)
       const buttons = payload.buttons || []; // Tableau de boutons personnalisés
       
-      // Si pas d'API key, on ne peut pas continuer
+      // Si pas d'API key, on ne peut pas continuer 
       if (!apiKey) {
         const errorDiv = document.createElement('div');
         errorDiv.innerHTML = `<p style="color: red">Erreur: Clé API manquante</p>`;

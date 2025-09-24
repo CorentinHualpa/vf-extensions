@@ -1,5 +1,5 @@
 /**
- * BrowserLanguageExtension v1.3.0 - Avec délai pour éviter le texte tronqué
+ * BrowserLanguageExtension v1.3.0 - Avec délai pour éviter le texte tronqué 
  */
 export const BrowserLanguageExtension = {
   name: 'ext_browserLanguage',

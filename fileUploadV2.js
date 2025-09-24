@@ -2,7 +2,7 @@
  *  ╔═══════════════════════════════════════════════════════════╗
  *  ║  FileUpload – Voiceflow Response Extension Améliorée     ║
  *  ║                                                           ║
- *  ║  • Meilleurs contrastes et lisibilité                    ║
+ *  ║  • Meilleurs contrastes et lisibilité                     ║
  *  ║  • Boutons avec couleurs distinctives                    ║
  *  ║  • Container de stats plus visible                       ║
  *  ║  • Upload continu avec accumulation automatique          ║

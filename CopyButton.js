@@ -6,7 +6,7 @@
  *  ║  • Bouton discret avec icône uniquement                  ║
  *  ║  • Options compactes : Brut / Formaté                    ║
  *  ║  • Sans cadre ni fond coloré                             ║
- *  ║  • Sans interaction avec Voiceflow                       ║
+ *  ║  • Sans interaction avec Voiceflow                       ║ 
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 

@@ -6,7 +6,7 @@
  *  ║  • Auto-détection mode Overlay vs Fullscreen            ║
  *  ║  • Layout adaptatif selon largeur conteneur             ║
  *  ║  • Navigation: Flèches + Dots + Trackpad horizontal     ║
- *  ║  • Responsive: 3 desktop / 1 mobile / 1 overlay         ║
+ *  ║  • Responsive: 3 desktop / 1 mobile / 1 overlay         ║ 
  *  ║  • Popup description UNIQUEMENT sur desktop fullscreen  ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */

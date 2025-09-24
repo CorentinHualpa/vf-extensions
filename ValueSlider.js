@@ -4,7 +4,7 @@
  * Cette extension affiche un slider personnalisable permettant de sélectionner une valeur 
  * et de voir une description correspondante.
  * 
- * Paramètres du payload:
+ * Paramètres du payload: 
  * - title: Titre principal (peut contenir du HTML)
  * - subtitle: Texte avant la valeur sélectionnée (peut contenir du HTML)
  * - descriptions: Tableau d'objets {value, text} pour les descriptions selon la valeur (text peut contenir du HTML)

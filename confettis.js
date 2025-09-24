@@ -1,4 +1,4 @@
-// confettis.js
+// confettis.js 
 export const ConfettiExtension = {
   name: 'Confetti',
   type: 'effect',

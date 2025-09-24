@@ -5,7 +5,7 @@ export const FormExtension = {
     trace.type === 'ext_form' || trace.payload?.name === 'ext_form',
 
   render: ({ trace, element }) => {
-    // 1) Supprimer les marges/paddings de la "bulle" et optimiser l'espace
+    // 1) Supprimer les marges/paddings de la "bulle" et optimiser l'espace 
     const globalStyle = document.createElement('style');
     globalStyle.textContent = `
       .vfrc-message--extension-Forms,

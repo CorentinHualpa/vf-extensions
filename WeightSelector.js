@@ -4,7 +4,7 @@
  *  ║                                                           ║
  *  ║  • Design moderne avec sections blanches                  ║
  *  ║  • Sliders indépendants avec états visuels spéciaux      ║
- *  ║  • Section à 0% = apparence désactivée                   ║
+ *  ║  • Section à 0% = apparence désactivée                   ║ 
  *  ║  • Section à 100% = met les autres à 0%                  ║
  *  ║  • Support responsive multi-colonnes                      ║
  *  ╚═══════════════════════════════════════════════════════════╝

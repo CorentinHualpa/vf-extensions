@@ -5,7 +5,7 @@ export const FileUpload = {
     trace.payload?.name === 'file_upload',
   render: ({ trace, element }) => {
     try {
-      // Création du container
+      // Création du container 
       const id = 'fileUpload_' + Date.now();
       const container = document.createElement('div');
       container.innerHTML = `

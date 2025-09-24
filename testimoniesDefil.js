@@ -7,7 +7,7 @@ export const TestimoniesDefilExtension = {
   render: ({ trace, element }) => {
     const { images = [] } = trace.payload;
 
-    // 1. Container principal
+    // 1. Container principal 
     const container = document.createElement('div');
     container.className = 'vf-carousel-container';
 

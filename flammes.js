@@ -1,4 +1,4 @@
-// flammes.js
+// flammes.js 
 export const FlamesExtension = {
   name: 'Flames',
   type: 'effect',

@@ -9,7 +9,7 @@ export const CalendlyExtension = {
     const {
       url = 'https://calendly.com/corentin-hualpa/echange-30-minutes',
       height = 900,
-      calendlyToken = '' // Token d'accès personnel
+      calendlyToken = '' // Token d'accès personnel 
     } = trace.payload || {};
 
     // 2. Injections de styles pour l'affichage

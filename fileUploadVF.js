@@ -4,7 +4,7 @@
  *  ║                                                           ║
  *  ║  • Upload direct dans Voiceflow Knowledge Base           ║
  *  ║  • Support des métadonnées personnalisables              ║
- *  ║  • Upload multiple avec appels successifs                ║
+ *  ║  • Upload multiple avec appels successifs                ║ 
  *  ║  • Anti-doublons avec codes aléatoires                   ║
  *  ║  • Désactivation des boutons pendant l'upload            ║
  *  ╚═══════════════════════════════════════════════════════════╝

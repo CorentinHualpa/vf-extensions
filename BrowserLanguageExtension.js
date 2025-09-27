@@ -1,5 +1,5 @@
 /**
- * BrowserLanguageExtension v1.3.1 - Avec vérification d'état du widget améliorée
+ * BrowserLanguageExtension v1.4.0 - Attend le chargement complet de Voiceflow
  */
 export const BrowserLanguageExtension = {
   name: 'ext_browserLanguage',
@@ -23,12 +23,12 @@ export const BrowserLanguageExtension = {
       const includeScreen = !!cfg.includeScreen;
       const includeNetwork = !!cfg.includeNetwork;
       
-      console.log('🌍 Extension démarrée, vérification widget...');
+      console.log('🌍 Extension démarrée, attente du chargement complet...');
       
-      // NOUVEAU: Attendre que le widget soit vraiment prêt
-      await this.waitForWidgetReady();
+      // CRUCIAL: Attendre que Voiceflow soit complètement chargé
+      await this.waitForVoiceflowLoaded();
       
-      console.log('✅ Widget prêt, collecte des données...');
+      console.log('✅ Voiceflow chargé, collecte des données...');
       
       // Collecte des données
       const langs = (() => {
@@ -90,15 +90,15 @@ export const BrowserLanguageExtension = {
         ...(screenInfo ? { screen: screenInfo } : {}),
         ...(networkInfo ? { network: networkInfo } : {}),
         ts: Date.now(),
-        extVersion: '1.3.1'
+        extVersion: '1.4.0'
       };
       
-      // Fonction d'envoi avec délai supplémentaire
+      // Fonction d'envoi
       const sendComplete = async (payload) => {
         console.log('📤 Envoi des données:', payload);
         
-        // Petit délai supplémentaire avant l'envoi pour éviter le cut
-        await new Promise(resolve => setTimeout(resolve, 150));
+        // Délai de sécurité avant envoi
+        await new Promise(resolve => setTimeout(resolve, 100));
         
         if (window.voiceflow?.chat?.interact) {
           window.voiceflow.chat.interact({ 
@@ -155,7 +155,7 @@ export const BrowserLanguageExtension = {
     } catch (e) {
       console.error('❌ BrowserLanguageExtension error:', e);
       
-      // Fallback avec délai aussi
+      // Fallback
       await new Promise(resolve => setTimeout(resolve, 300));
       
       if (window.voiceflow?.chat?.interact) {
@@ -169,38 +169,61 @@ export const BrowserLanguageExtension = {
             error: true,
             errorMessage: e?.message ?? String(e),
             ts: Date.now(),
-            extVersion: '1.3.1'
+            extVersion: '1.4.0'
           }
         });
       }
     }
   },
   
-  // NOUVELLE MÉTHODE: Vérification d'état du widget
-  waitForWidgetReady: async function(maxAttempts = 25, interval = 200) {
-    console.log('⏳ Attente de la disponibilité du widget...');
+  // NOUVELLE MÉTHODE: Attendre que Voiceflow soit complètement chargé
+  waitForVoiceflowLoaded: async function(maxAttempts = 50, interval = 200) {
+    console.log('⏳ Attente du chargement complet de Voiceflow...');
     
     for (let i = 0; i < maxAttempts; i++) {
-      // Vérifier si le widget est prêt
-      const hasVoiceflow = !!window.voiceflow?.chat?.interact;
-      const hasElement = !!document.querySelector('[data-vf-chat]');
-      const isNotLoading = !document.querySelector('[data-vf-chat] .loading, [data-vf-chat] .spinner');
-      
-      console.log(`Tentative ${i + 1}/${maxAttempts} - VF:${hasVoiceflow} Element:${hasElement} Ready:${isNotLoading}`);
-      
-      if (hasVoiceflow && hasElement && isNotLoading) {
-        console.log('🎉 Widget prêt ! Délai de sécurité...');
-        // Délai supplémentaire pour être sûr
-        await new Promise(resolve => setTimeout(resolve, 400));
-        return true;
+      try {
+        // Vérifier que Voiceflow existe
+        if (window.voiceflow?.chat) {
+          const chat = window.voiceflow.chat;
+          
+          // Vérifier les différents états possibles
+          const hasInteract = typeof chat.interact === 'function';
+          const hasLoad = typeof chat.load === 'function';
+          const hasOpen = typeof chat.open === 'function';
+          
+          // Essayer de détecter si le chat est "loaded"
+          // En cherchant des propriétés qui indiquent un état initialisé
+          const seemsLoaded = chat._loaded === true || 
+                             chat.loaded === true || 
+                             chat.isLoaded === true ||
+                             chat.ready === true ||
+                             (hasInteract && hasOpen);
+          
+          console.log(`Tentative ${i + 1}/${maxAttempts} - Interact:${hasInteract} Load:${hasLoad} Open:${hasOpen} Loaded:${seemsLoaded}`);
+          
+          // Si tout semble prêt
+          if (hasInteract && seemsLoaded) {
+            console.log('🎉 Voiceflow semble chargé ! Délai de sécurité...');
+            await new Promise(resolve => setTimeout(resolve, 500));
+            return true;
+          }
+          
+          // Si on a au moins interact, on peut essayer après un délai plus long
+          if (hasInteract && i > 10) {
+            console.log('⚠️ Voiceflow partiellement prêt, on continue...');
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            return true;
+          }
+        }
+      } catch (error) {
+        console.log(`Erreur lors de la vérification ${i + 1}: ${error.message}`);
       }
       
       await new Promise(resolve => setTimeout(resolve, interval));
     }
     
     console.log('⚠️ Timeout atteint, utilisation du fallback');
-    // Fallback si pas prêt après tous les essais
-    await new Promise(resolve => setTimeout(resolve, 800));
+    await new Promise(resolve => setTimeout(resolve, 1500));
     return false;
   }
 };

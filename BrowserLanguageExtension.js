@@ -1,5 +1,5 @@
 /**
- * BrowserLanguageExtension v1.3.0 - Avec délai pour éviter le texte tronqué 
+ * BrowserLanguageExtension v1.3.1 - Avec vérification d'état du widget améliorée
  */
 export const BrowserLanguageExtension = {
   name: 'ext_browserLanguage',
@@ -23,9 +23,12 @@ export const BrowserLanguageExtension = {
       const includeScreen = !!cfg.includeScreen;
       const includeNetwork = !!cfg.includeNetwork;
       
-      // IMPORTANT: Délai pour laisser le widget respirer
-      // Cela évite le texte tronqué
-      await new Promise(resolve => setTimeout(resolve, 250));
+      console.log('🌍 Extension démarrée, vérification widget...');
+      
+      // NOUVEAU: Attendre que le widget soit vraiment prêt
+      await this.waitForWidgetReady();
+      
+      console.log('✅ Widget prêt, collecte des données...');
       
       // Collecte des données
       const langs = (() => {
@@ -87,24 +90,31 @@ export const BrowserLanguageExtension = {
         ...(screenInfo ? { screen: screenInfo } : {}),
         ...(networkInfo ? { network: networkInfo } : {}),
         ts: Date.now(),
-        extVersion: '1.3.0'
+        extVersion: '1.3.1'
       };
       
       // Fonction d'envoi avec délai supplémentaire
       const sendComplete = async (payload) => {
+        console.log('📤 Envoi des données:', payload);
+        
         // Petit délai supplémentaire avant l'envoi pour éviter le cut
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 150));
         
         if (window.voiceflow?.chat?.interact) {
           window.voiceflow.chat.interact({ 
             type: 'complete', 
             payload 
           });
+          console.log('✅ Données envoyées avec succès');
+        } else {
+          console.error('❌ Widget Voiceflow non disponible pour l\'envoi');
         }
       };
       
       // Géolocalisation si demandée
       if (includeLocation && navigator.geolocation) {
+        console.log('📍 Demande de géolocalisation...');
+        
         const opts = { 
           timeout: 5000, 
           maximumAge: 300000, 
@@ -113,6 +123,7 @@ export const BrowserLanguageExtension = {
         
         navigator.geolocation.getCurrentPosition(
           async (pos) => {
+            console.log('📍 Géolocalisation obtenue');
             await sendComplete({
               ...basePayload,
               location: {
@@ -124,6 +135,7 @@ export const BrowserLanguageExtension = {
             });
           },
           async (err) => {
+            console.log('📍 Géolocalisation refusée:', err?.message);
             await sendComplete({
               ...basePayload,
               location: { 
@@ -141,10 +153,10 @@ export const BrowserLanguageExtension = {
       }
       
     } catch (e) {
-      console.error('BrowserLanguageExtension error:', e);
+      console.error('❌ BrowserLanguageExtension error:', e);
       
       // Fallback avec délai aussi
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 300));
       
       if (window.voiceflow?.chat?.interact) {
         window.voiceflow.chat.interact({ 
@@ -157,11 +169,39 @@ export const BrowserLanguageExtension = {
             error: true,
             errorMessage: e?.message ?? String(e),
             ts: Date.now(),
-            extVersion: '1.3.0'
+            extVersion: '1.3.1'
           }
         });
       }
     }
+  },
+  
+  // NOUVELLE MÉTHODE: Vérification d'état du widget
+  waitForWidgetReady: async function(maxAttempts = 25, interval = 200) {
+    console.log('⏳ Attente de la disponibilité du widget...');
+    
+    for (let i = 0; i < maxAttempts; i++) {
+      // Vérifier si le widget est prêt
+      const hasVoiceflow = !!window.voiceflow?.chat?.interact;
+      const hasElement = !!document.querySelector('[data-vf-chat]');
+      const isNotLoading = !document.querySelector('[data-vf-chat] .loading, [data-vf-chat] .spinner');
+      
+      console.log(`Tentative ${i + 1}/${maxAttempts} - VF:${hasVoiceflow} Element:${hasElement} Ready:${isNotLoading}`);
+      
+      if (hasVoiceflow && hasElement && isNotLoading) {
+        console.log('🎉 Widget prêt ! Délai de sécurité...');
+        // Délai supplémentaire pour être sûr
+        await new Promise(resolve => setTimeout(resolve, 400));
+        return true;
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, interval));
+    }
+    
+    console.log('⚠️ Timeout atteint, utilisation du fallback');
+    // Fallback si pas prêt après tous les essais
+    await new Promise(resolve => setTimeout(resolve, 800));
+    return false;
   }
 };
 

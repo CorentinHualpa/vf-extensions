@@ -1,5 +1,5 @@
 /**
- * BrowserLanguageExtension v2.4.0 - Fix: N'interrompt plus le flux de conversation
+ * BrowserLanguageExtension v2.5.0 - Fix: Ne termine plus le flux
  */
 export const BrowserLanguageExtension = {
   name: 'ext_browserLanguage',
@@ -7,7 +7,6 @@ export const BrowserLanguageExtension = {
   match: ({ trace }) => (trace?.payload?.name === 'ext_browserLanguage'),
   
   effect: ({ trace, context }) => {
-    // Idempotence par conversation
     const conversationId = context?.versionID || 'default';
     const flagKey = `__VF_LANG_${conversationId}__`;
     
@@ -56,7 +55,7 @@ export const BrowserLanguageExtension = {
       currentTime: new Date().toISOString(),
       onlineStatus: !!navigator.onLine,
       ts: Date.now(),
-      extVersion: '2.4.0'
+      extVersion: '2.5.0'
     };
 
     if (includeScreen && typeof screen !== 'undefined') {
@@ -79,49 +78,31 @@ export const BrowserLanguageExtension = {
       }
     }
 
-    // ✅ CHANGEMENT CLÉ : Envoyer IMMÉDIATEMENT sans attendre l'ouverture
-    // Mais utiliser un délai minimal pour laisser le widget se charger
-    setTimeout(() => {
-      if (window.voiceflow?.chat?.interact) {
-        window.voiceflow.chat.interact({
-          type: 'complete',
-          payload: basePayload
-        });
-      }
-    }, 200);
+    // ✅ CORRECTION : Retourner les données directement sans 'complete'
+    // Voiceflow récupérera automatiquement ces données dans les variables
+    return basePayload;
 
-    // Géolocalisation optionnelle
+    // Géolocalisation optionnelle (après un délai)
     if (includeLocation && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          window.voiceflow?.chat?.interact?.({
-            type: 'complete',
-            payload: {
-              name: 'ext_browserLanguage:location',
-              data: {
-                latitude: pos.coords.latitude,
-                longitude: pos.coords.longitude,
-                accuracy: pos.coords.accuracy,
-                at: pos.timestamp
-              }
-            }
-          });
-        },
-        (err) => {
-          window.voiceflow?.chat?.interact?.({
-            type: 'complete',
-            payload: {
-              name: 'ext_browserLanguage:location',
-              data: { 
-                error: true, 
-                message: err?.message ?? 'Location denied', 
-                code: err?.code ?? null 
-              }
-            }
-          });
-        },
-        { timeout: 5000, maximumAge: 300000, enableHighAccuracy: false }
-      );
+      setTimeout(() => {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            // Stocker la géoloc séparément si nécessaire
+            const locationData = {
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+              accuracy: pos.coords.accuracy,
+              at: pos.timestamp
+            };
+            // Vous pouvez logger ou utiliser ces données ailleurs
+            console.log('Location:', locationData);
+          },
+          (err) => {
+            console.warn('Geolocation error:', err.message);
+          },
+          { timeout: 5000, maximumAge: 300000, enableHighAccuracy: false }
+        );
+      }, 1000);
     }
   }
 };

@@ -1,5 +1,5 @@
 /**
- * BrowserLanguageExtension v2.3.0 - Optimisé pour fiabilité
+ * BrowserLanguageExtension v2.4.0 - Fix: N'interrompt plus le flux de conversation
  */
 export const BrowserLanguageExtension = {
   name: 'ext_browserLanguage',
@@ -56,7 +56,7 @@ export const BrowserLanguageExtension = {
       currentTime: new Date().toISOString(),
       onlineStatus: !!navigator.onLine,
       ts: Date.now(),
-      extVersion: '2.3.0'
+      extVersion: '2.4.0'
     };
 
     if (includeScreen && typeof screen !== 'undefined') {
@@ -79,77 +79,23 @@ export const BrowserLanguageExtension = {
       }
     }
 
-    // Attendre l'ouverture du widget pour envoyer
-    const sendWhenReady = () => {
-      let sent = false;
-
-      const sendData = () => {
-        if (sent) return;
-        sent = true;
-
-        setTimeout(() => {
-          if (window.voiceflow?.chat?.interact) {
-            window.voiceflow.chat.interact({
-              type: 'complete',
-              payload: basePayload
-            });
-          }
-        }, 500);
-      };
-
-      // Envoyer dès que le widget s'ouvre
-      if (window.voiceflow?.chat?.on) {
-        window.voiceflow.chat.on('open', sendData);
+    // ✅ CHANGEMENT CLÉ : Envoyer IMMÉDIATEMENT sans attendre l'ouverture
+    // Mais utiliser un délai minimal pour laisser le widget se charger
+    setTimeout(() => {
+      if (window.voiceflow?.chat?.interact) {
+        window.voiceflow.chat.interact({
+          type: 'complete',
+          payload: basePayload
+        });
       }
-
-      // Fallback : envoyer après 6 secondes si jamais ouvert
-      setTimeout(() => {
-        if (!sent && window.voiceflow?.chat?.interact) {
-          sendData();
-        }
-      }, 6000);
-    };
-
-    // Attendre que le système d'événements soit prêt
-    const waitForEventSystem = () => {
-      let attempts = 0;
-      const maxAttempts = 50;
-
-      const check = () => {
-        attempts++;
-        
-        if (window.voiceflow?.chat?.on) {
-          sendWhenReady();
-          return;
-        }
-
-        if (attempts >= maxAttempts) {
-          // Dernier recours : envoyer directement
-          setTimeout(() => {
-            if (window.voiceflow?.chat?.interact) {
-              window.voiceflow.chat.interact({
-                type: 'complete',
-                payload: basePayload
-              });
-            }
-          }, 1000);
-          return;
-        }
-
-        setTimeout(check, 100);
-      };
-
-      check();
-    };
-
-    waitForEventSystem();
+    }, 200);
 
     // Géolocalisation optionnelle
     if (includeLocation && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           window.voiceflow?.chat?.interact?.({
-            type: 'event',
+            type: 'complete',
             payload: {
               name: 'ext_browserLanguage:location',
               data: {
@@ -163,7 +109,7 @@ export const BrowserLanguageExtension = {
         },
         (err) => {
           window.voiceflow?.chat?.interact?.({
-            type: 'event',
+            type: 'complete',
             payload: {
               name: 'ext_browserLanguage:location',
               data: { 

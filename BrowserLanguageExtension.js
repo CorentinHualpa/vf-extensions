@@ -1,34 +1,32 @@
 /**
- * BrowserLanguageExtension v2.2.0 — Optimisé pour chargement rapide
+ * BrowserLanguageExtension v2.3.0 - Optimisé pour fiabilité
  */
 export const BrowserLanguageExtension = {
   name: 'ext_browserLanguage',
   type: 'effect',
-  match: ({ trace }) =>
-    (trace?.payload?.name === 'ext_browserLanguage'),
+  match: ({ trace }) => (trace?.payload?.name === 'ext_browserLanguage'),
   
   effect: ({ trace, context }) => {
-    // Idempotence par CONVERSATION
+    // Idempotence par conversation
     const conversationId = context?.versionID || 'default';
     const flagKey = `__VF_LANG_${conversationId}__`;
     
-    if (window[flagKey]) {
-      console.log('⚠️ Extension déjà exécutée pour cette conversation');
-      return;
-    }
+    if (window[flagKey]) return;
     window[flagKey] = true;
 
     const cfg = trace?.payload || {};
     const includeLocation = !!cfg.includeLocation;
-    const includeScreen   = !!cfg.includeScreen;
-    const includeNetwork  = !!cfg.includeNetwork;
+    const includeScreen = !!cfg.includeScreen;
+    const includeNetwork = !!cfg.includeNetwork;
 
-    // Collecte synchrone
+    // Collecte des données
     const langs = (() => {
       const arr = [];
       if (navigator.language) arr.push(navigator.language);
       if (Array.isArray(navigator.languages)) {
-        for (const l of navigator.languages) if (l && !arr.includes(l)) arr.push(l);
+        for (const l of navigator.languages) {
+          if (l && !arr.includes(l)) arr.push(l);
+        }
       }
       return arr.length ? arr : ['fr'];
     })();
@@ -58,7 +56,7 @@ export const BrowserLanguageExtension = {
       currentTime: new Date().toISOString(),
       onlineStatus: !!navigator.onLine,
       ts: Date.now(),
-      extVersion: '2.2.0'
+      extVersion: '2.3.0'
     };
 
     if (includeScreen && typeof screen !== 'undefined') {
@@ -81,88 +79,104 @@ export const BrowserLanguageExtension = {
       }
     }
 
-    // ✅ Timeout réduit à 3 secondes (au lieu de 8)
-    const waitForVFReady = (timeoutMs = 3000) => new Promise((resolve) => {
+    // Attendre l'ouverture du widget pour envoyer
+    const sendWhenReady = () => {
+      let sent = false;
+
+      const sendData = () => {
+        if (sent) return;
+        sent = true;
+
+        setTimeout(() => {
+          if (window.voiceflow?.chat?.interact) {
+            window.voiceflow.chat.interact({
+              type: 'complete',
+              payload: basePayload
+            });
+          }
+        }, 500);
+      };
+
+      // Envoyer dès que le widget s'ouvre
+      if (window.voiceflow?.chat?.on) {
+        window.voiceflow.chat.on('open', sendData);
+      }
+
+      // Fallback : envoyer après 6 secondes si jamais ouvert
+      setTimeout(() => {
+        if (!sent && window.voiceflow?.chat?.interact) {
+          sendData();
+        }
+      }, 6000);
+    };
+
+    // Attendre que le système d'événements soit prêt
+    const waitForEventSystem = () => {
       let attempts = 0;
-      const maxAttempts = Math.floor(timeoutMs / 50); // 60 tentatives pour 3s
-      
+      const maxAttempts = 50;
+
       const check = () => {
         attempts++;
         
-        const isReady = !!(
-          window.voiceflow?.chat?.interact &&
-          typeof window.voiceflow.chat.interact === 'function' &&
-          (window.voiceflow.chat.isLoaded || window.voiceflow.chat.state?.loaded)
-        );
-        
-        if (isReady) {
-          console.log('✅ Widget prêt après', attempts * 50, 'ms');
-          return resolve();
+        if (window.voiceflow?.chat?.on) {
+          sendWhenReady();
+          return;
         }
-        
+
         if (attempts >= maxAttempts) {
-          console.warn('⏱️ Timeout après', timeoutMs, 'ms - envoi quand même');
-          return resolve();
+          // Dernier recours : envoyer directement
+          setTimeout(() => {
+            if (window.voiceflow?.chat?.interact) {
+              window.voiceflow.chat.interact({
+                type: 'complete',
+                payload: basePayload
+              });
+            }
+          }, 1000);
+          return;
         }
-        
-        setTimeout(check, 50);
+
+        setTimeout(check, 100);
       };
-      
+
       check();
-    });
+    };
 
-    // Fire & forget
-    (async () => {
-      try {
-        await waitForVFReady();
-        
-        // ✅ Délai réduit à 50ms (au lieu de 100ms)
-        await new Promise(r => setTimeout(r, 50));
-        
-        console.log('📤 Envoi données navigateur:', basePayload);
-        
-        window.voiceflow?.chat?.interact?.({ 
-          type: 'complete', 
-          payload: basePayload 
-        });
-        
-        console.log('✅ Extension exécutée avec succès');
+    waitForEventSystem();
 
-        // Géolocalisation optionnelle
-        if (includeLocation && navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            (pos) => {
-              console.log('📍 Géoloc reçue');
-              window.voiceflow?.chat?.interact?.({
-                type: 'event',
-                payload: {
-                  name: 'ext_browserLanguage:location',
-                  data: {
-                    latitude: pos.coords.latitude,
-                    longitude: pos.coords.longitude,
-                    accuracy: pos.coords.accuracy,
-                    at: pos.timestamp
-                  }
-                }
-              });
-            },
-            (err) => {
-              console.warn('⚠️ Géoloc refusée:', err.message);
-              window.voiceflow?.chat?.interact?.({
-                type: 'event',
-                payload: {
-                  name: 'ext_browserLanguage:location',
-                  data: { error: true, message: err?.message ?? 'Location denied', code: err?.code ?? null }
-                }
-              });
-            },
-            { timeout: 5000, maximumAge: 300000, enableHighAccuracy: false }
-          );
-        }
-      } catch (error) {
-        console.error('❌ Erreur extension:', error);
-      }
-    })();
+    // Géolocalisation optionnelle
+    if (includeLocation && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          window.voiceflow?.chat?.interact?.({
+            type: 'event',
+            payload: {
+              name: 'ext_browserLanguage:location',
+              data: {
+                latitude: pos.coords.latitude,
+                longitude: pos.coords.longitude,
+                accuracy: pos.coords.accuracy,
+                at: pos.timestamp
+              }
+            }
+          });
+        },
+        (err) => {
+          window.voiceflow?.chat?.interact?.({
+            type: 'event',
+            payload: {
+              name: 'ext_browserLanguage:location',
+              data: { 
+                error: true, 
+                message: err?.message ?? 'Location denied', 
+                code: err?.code ?? null 
+              }
+            }
+          });
+        },
+        { timeout: 5000, maximumAge: 300000, enableHighAccuracy: false }
+      );
+    }
   }
 };
 

@@ -3,16 +3,49 @@ export const CalendlyExtension = {
   type: 'response',
   match: ({ trace }) =>
     trace.type === 'ext_calendly' || trace.payload?.name === 'ext_calendly',
-
   render: ({ trace, element }) => {
     // 1. Récupérer les paramètres depuis le bloc Voiceflow
     const {
       url = 'https://calendly.com/corentin-hualpa/echange-30-minutes',
       height = 900,
-      calendlyToken = '' // Token d'accès personnel 
+      calendlyToken = '',
+      // NOUVEAUX PARAMÈTRES pour précharger les données
+      prefillName = '',
+      prefillEmail = '',
+      prefillReason = '',
+      prefillPhone = '',
+      customAnswers = {} // Objet pour réponses personnalisées
     } = trace.payload || {};
 
-    // 2. Injections de styles pour l'affichage
+    // 2. Construction de l'URL avec préchargement
+    const buildCalendlyUrl = () => {
+      const urlObj = new URL(url);
+      
+      // Préchargement uniquement si les valeurs existent et ne sont pas vides
+      if (prefillName && prefillName.trim() !== '') {
+        urlObj.searchParams.set('name', prefillName);
+      }
+      if (prefillEmail && prefillEmail.trim() !== '') {
+        urlObj.searchParams.set('email', prefillEmail);
+      }
+      if (prefillPhone && prefillPhone.trim() !== '') {
+        urlObj.searchParams.set('phone_number', prefillPhone);
+      }
+      
+      // Préchargement des questions personnalisées
+      Object.keys(customAnswers).forEach((key) => {
+        if (customAnswers[key] && customAnswers[key].trim() !== '') {
+          urlObj.searchParams.set(key, customAnswers[key]);
+        }
+      });
+      
+      return urlObj.toString();
+    };
+
+    const finalUrl = buildCalendlyUrl();
+    console.log('[CalendlyExtension] URL avec préchargement:', finalUrl);
+
+    // 3. Injections de styles pour l'affichage
     const styleEl = document.createElement('style');
     styleEl.textContent = `
       .vfrc-message--extension-Calendly,
@@ -29,7 +62,7 @@ export const CalendlyExtension = {
     `;
     document.head.appendChild(styleEl);
 
-    // 3. Créer un conteneur pour Calendly
+    // 4. Créer un conteneur pour Calendly
     const container = document.createElement('div');
     container.style.width = '100%';
     container.style.height = `${height}px`;
@@ -37,7 +70,7 @@ export const CalendlyExtension = {
     container.style.boxSizing = 'border-box';
     element.appendChild(container);
 
-    // 4. Ajuster la largeur de la bulle Voiceflow
+    // 5. Ajuster la largeur de la bulle Voiceflow
     setTimeout(() => {
       const messageEl = element.closest('.vfrc-message');
       if (messageEl) {
@@ -46,11 +79,11 @@ export const CalendlyExtension = {
       }
     }, 0);
 
-    // 5. Fonction d'init Calendly
+    // 6. Fonction d'init Calendly
     const initWidget = () => {
       if (window.Calendly && typeof window.Calendly.initInlineWidget === 'function') {
         window.Calendly.initInlineWidget({
-          url,
+          url: finalUrl,
           parentElement: container
         });
       } else {
@@ -58,7 +91,7 @@ export const CalendlyExtension = {
       }
     };
 
-    // 6. Charger le script Calendly si nécessaire
+    // 7. Charger le script Calendly si nécessaire
     if (!document.querySelector('script[src="https://assets.calendly.com/assets/external/widget.js"]')) {
       const script = document.createElement('script');
       script.src = 'https://assets.calendly.com/assets/external/widget.js';
@@ -70,14 +103,14 @@ export const CalendlyExtension = {
       initWidget();
     }
 
-    // 7. Fonction utilitaire pour extraire l'UUID depuis l'URI Calendly
+    // 8. Fonction utilitaire pour extraire l'UUID depuis l'URI Calendly
     function parseEventUuid(eventUri) {
       if (!eventUri) return null;
       const match = eventUri.match(/scheduled_events\/([^\/]+)/);
       return match ? match[1] : null;
     }
 
-    // 8. Stockage global pour les sélections Calendly
+    // 9. Stockage global pour les sélections Calendly
     if (!window.voiceflow) {
       window.voiceflow = {};
     }
@@ -86,7 +119,8 @@ export const CalendlyExtension = {
     function extractImportantInfo(details) {
       const result = {
         reason: "",
-        phone: ""
+        phone: "",
+        website: ""
       };
       
       // Chercher dans les questions_and_answers
@@ -99,7 +133,14 @@ export const CalendlyExtension = {
           const question = qa.question.toLowerCase();
           const answer = qa.answer || "";
           
-          // Recherche du champ de préparation de réunion (comme montré dans la capture d'écran)
+          // Recherche du site internet
+          if (question.includes("site") && 
+              (question.includes("internet") || question.includes("web"))) {
+            console.log("[CalendlyExtension] Site internet trouvé:", answer);
+            result.website = answer;
+          }
+          
+          // Recherche du champ de préparation de réunion
           if (question.includes("partager") && 
               (question.includes("préparation") || question.includes("réunion")) || 
               question.includes("utile")) {
@@ -137,14 +178,14 @@ export const CalendlyExtension = {
       return result;
     }
     
-    // 9. Écoute des événements Calendly
+    // 10. Écoute des événements Calendly
     const calendlyListener = async (e) => {
       if (!e.data || typeof e.data !== 'object' || !e.data.event) return;
       if (!e.data.event.startsWith('calendly')) return;
-
+      
       console.log("[CalendlyExtension] Événement reçu:", e.data.event, e.data);
       const details = e.data.payload || {};
-
+      
       // Stocker la dernière sélection Calendly globalement
       window.voiceflow.lastCalendlySelection = details;
       
@@ -154,10 +195,10 @@ export const CalendlyExtension = {
         const eventUri = details.event?.uri || details.uri; 
         const eventUuid = parseEventUuid(eventUri);
         const inviteeUri = details.invitee?.uri;
-
-        // Extraire les informations importantes (raison et téléphone)
+        
+        // Extraire les informations importantes (raison, téléphone, website)
         const importantInfo = extractImportantInfo(details);
-
+        
         // Construire un payload de base
         const finalPayload = {
           event: 'scheduled',
@@ -172,10 +213,11 @@ export const CalendlyExtension = {
           eventType: details.event_type?.name || '',
           reason: importantInfo.reason || '',
           phone: importantInfo.phone || '',
+          website: importantInfo.website || '',
           location: details.event?.location?.location || 'En ligne'
         };
         
-        // 10. Si on a un token et un eventUuid, on va appeler l'API Calendly
+        // 11. Si on a un token et un eventUuid, on va appeler l'API Calendly
         if (calendlyToken) {
           // Sauvegarder l'accès au token pour le script de capture
           window.voiceflow.calendlyToken = calendlyToken;
@@ -220,6 +262,10 @@ export const CalendlyExtension = {
                     
                     if (apiInfo.phone && !finalPayload.phone) {
                       finalPayload.phone = apiInfo.phone;
+                    }
+                    
+                    if (apiInfo.website && !finalPayload.website) {
+                      finalPayload.website = apiInfo.website;
                     }
                   }
                 }
@@ -267,8 +313,8 @@ export const CalendlyExtension = {
         } else {
           console.log("[CalendlyExtension] Aucun token Calendly disponible.");
         }
-
-        // 11. Stocker les informations pour le bloc de capture
+        
+        // 12. Stocker les informations pour le bloc de capture
         window.voiceflow.calendlyEventData = finalPayload;
         
         // Journalisation détaillée des données capturées
@@ -276,11 +322,12 @@ export const CalendlyExtension = {
         console.log("- Nom:", finalPayload.inviteeName);
         console.log("- Email:", finalPayload.inviteeEmail);
         console.log("- Téléphone:", finalPayload.phone);
+        console.log("- Site web:", finalPayload.website);
         console.log("- Raison:", finalPayload.reason);
         console.log("- Date/heure:", finalPayload.startTime);
         console.log("- Questions/réponses:", finalPayload.inviteeQuestions);
         
-        // 12. Envoyer le payload final à Voiceflow
+        // 13. Envoyer le payload final à Voiceflow
         console.log("[CalendlyExtension] Rendez-vous confirmé. Payload final:", finalPayload);
         window.voiceflow.chat.interact({
           type: 'calendly_event',
@@ -288,7 +335,7 @@ export const CalendlyExtension = {
         });
       }
     };
-
+    
     window.addEventListener('message', calendlyListener);
     
     // Nettoyer l'événement quand le composant est détruit

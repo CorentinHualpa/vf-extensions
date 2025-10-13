@@ -8,7 +8,8 @@ export const FlamesExtension = {
     if (!canvas || !window.tsParticles) return;
 
     canvas.style.backgroundColor = 'transparent';
-    canvas.style.pointerEvents = 'none !important';
+    // CORRECTION CRITIQUE : utiliser 'auto' pour le reste de la page, pas 'transparent'
+    canvas.style.pointerEvents = 'none';
 
     // RÉCUPÉRATION DES PARAMÈTRES DU PAYLOAD
     const {
@@ -35,6 +36,7 @@ export const FlamesExtension = {
     if (avatarImg) {
       const rect = avatarImg.getBoundingClientRect();
       xPct = ((rect.left + rect.width / 2) / window.innerWidth) * 100 + xOffset;
+      // CORRECTION : Appliquer directement yOffset sans limite
       yPct = ((rect.top + rect.height / 2) / window.innerHeight) * 100 + yOffset;
     } else {
       const header = document.querySelector('.vfrc-header');
@@ -52,7 +54,6 @@ export const FlamesExtension = {
     const emitters = [];
     
     if (numEmitters === 1) {
-      // Un seul émetteur central
       emitters.push({
         direction: 'top',
         life: { count: 1, duration: duration, delay: 0 },
@@ -61,7 +62,6 @@ export const FlamesExtension = {
         size: { width: 15, height: 15 }
       });
     } else {
-      // Multiple émetteurs espacés
       for (let i = 0; i < numEmitters; i++) {
         const offset = (i - Math.floor(numEmitters / 2)) * spread;
         const isCenter = i === Math.floor(numEmitters / 2);
@@ -71,7 +71,7 @@ export const FlamesExtension = {
           life: { 
             count: 1, 
             duration: duration,
-            delay: isCenter ? 0 : i * 0.1  // Centre démarre immédiatement
+            delay: isCenter ? 0 : i * 0.1
           },
           rate: { 
             quantity: isCenter ? config.quantity : Math.floor(config.quantity * 0.6),
@@ -180,7 +180,6 @@ export const FlamesExtension = {
       }
     });
 
-    // Nettoyage après la durée + 0.5s de marge
     const cleanupTime = (duration + 0.5) * 1000;
     setTimeout(() => {
       const inst = tsParticles.domItem(0);
@@ -191,7 +190,8 @@ export const FlamesExtension = {
       if (ctx) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
       }
-      canvas.style.pointerEvents = 'none !important';
+      // CORRECTION : Réaffirmer que le canvas ne bloque pas les clics
+      canvas.style.pointerEvents = 'none';
     }, cleanupTime);
   }
 };

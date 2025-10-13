@@ -1,156 +1,107 @@
-// flames.js
+// flammes-v2.js (version avancée)
 export const FlamesExtension = {
   name: 'Flames',
   type: 'effect',
   match: ({ trace }) => trace.type === 'ext_flames',
-  effect: async () => {
-    // 1. Charger le preset fire si ce n'est pas déjà fait
-    if (!window.loadFirePreset) {
-      // Charger dynamiquement le bundle fire preset
-      const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/@tsparticles/preset-fire@3/tsparticles.preset.fire.bundle.min.js';
-      document.head.appendChild(script);
-      
-      // Attendre que le script soit chargé
-      await new Promise((resolve) => {
-        script.onload = resolve;
-      });
-    }
+  effect: () => {
+    const canvas = document.getElementById('confetti-canvas');
+    if (!canvas || !window.tsParticles) return;
 
-    // 2. Initialiser le preset
-    await loadFirePreset(tsParticles);
-
-    // 3. Trouver la position de l'avatar du dragon
-    const avatar = document.querySelector('.vfrc-avatar');
-    let xPct = 50; // Valeur par défaut au centre
-    let yPct = 10; // Valeur par défaut en haut
-
-    if (avatar) {
-      const rect = avatar.getBoundingClientRect();
+    const avatarImg = document.querySelector('.vfrc-avatar[alt="system agent avatar"]');
+    
+    let xPct, yPct;
+    if (avatarImg) {
+      const rect = avatarImg.getBoundingClientRect();
       xPct = ((rect.left + rect.width / 2) / window.innerWidth) * 100;
       yPct = ((rect.top + rect.height / 2) / window.innerHeight) * 100;
+    } else {
+      xPct = 50;
+      yPct = 10;
     }
 
-    // 4. Vérifier/créer le canvas
-    let canvas = document.getElementById('confetti-canvas');
-    if (!canvas) {
-      canvas = document.createElement('canvas');
-      canvas.id = 'confetti-canvas';
-      canvas.style.position = 'fixed';
-      canvas.style.top = '0';
-      canvas.style.left = '0';
-      canvas.style.width = '100%';
-      canvas.style.height = '100%';
-      canvas.style.pointerEvents = 'none';
-      canvas.style.zIndex = '9999';
-      document.body.appendChild(canvas);
-    }
-
-    // 5. Configuration avancée des flammes
-    await tsParticles.load({
+    tsParticles.load({
       id: 'confetti-canvas',
       options: {
-        preset: 'fire',
         fullScreen: { enable: false },
-        background: {
-          color: 'transparent'
-        },
+        background: { color: 'transparent' },
+        detectRetina: true,
         
-        // Personnalisation pour faire partir les flammes de l'avatar
         emitters: {
-          position: { 
-            x: xPct, 
-            y: yPct 
-          },
-          rate: {
-            quantity: 15,
-            delay: 0.05
-          },
-          size: {
-            width: 5,
-            height: 5
-          },
           direction: 'top',
-          life: {
-            count: 1,
-            duration: 1.5
-          }
+          life: { count: 1, duration: 1.5 },
+          rate: { quantity: 20, delay: 0.03 },
+          position: { x: xPct, y: yPct }
         },
-        
-        // Personnalisation des particules de feu
+
         particles: {
-          number: {
-            value: 0
-          },
-          color: {
-            value: ['#ff0000', '#ff4500', '#ff6a00', '#ff8c00', '#ffa500', '#ffd700']
-          },
-          opacity: {
-            value: { min: 0.3, max: 1 },
-            animation: {
-              enable: true,
-              speed: 3,
-              minimumValue: 0,
-              sync: false,
-              startValue: 'max',
-              destroy: 'min'
-            }
-          },
+          number: { value: 0 },
+          shape: { type: 'circle' },
+          
           size: {
-            value: { min: 3, max: 10 },
-            animation: {
-              enable: true,
-              speed: 20,
-              minimumValue: 1,
-              sync: false,
-              startValue: 'max',
-              destroy: 'min'
-            }
-          },
-          move: {
-            enable: true,
-            speed: { min: 10, max: 25 },
-            direction: 'top',
-            outModes: {
-              default: 'destroy',
-              top: 'destroy'
-            },
-            gravity: {
-              enable: true,
-              acceleration: -15
-            },
-            trail: {
-              enable: true,
-              length: 3,
-              fillColor: {
-                value: '#000000'
-              }
-            }
-          },
-          life: {
-            duration: {
-              value: { min: 0.5, max: 1.5 }
-            }
-          },
-          rotate: {
-            value: { min: 0, max: 360 },
-            direction: 'random',
+            value: { min: 2, max: 15 },
             animation: {
               enable: true,
               speed: 30,
-              sync: false
+              minimumValue: 0.1,
+              startValue: 'max',
+              destroy: 'min'
             }
+          },
+          
+          move: {
+            enable: true,
+            direction: 'top',
+            outModes: { default: 'destroy' },
+            speed: { min: 20, max: 45 },
+            gravity: { enable: true, acceleration: -15 },
+            trail: {
+              enable: true,
+              length: 8,
+              fillColor: '#000000'
+            }
+          },
+          
+          // Dégradé de couleurs encore plus réaliste
+          color: {
+            value: ['#8B0000', '#FF0000', '#FF4500', '#FF6347', '#FF8C00', '#FFA500', '#FFD700']
+          },
+          
+          opacity: {
+            value: { min: 0, max: 0.9 },
+            animation: {
+              enable: true,
+              speed: 4,
+              minimumValue: 0,
+              startValue: 'max',
+              destroy: 'min'
+            }
+          },
+          
+          // Effet de lueur
+          shadow: {
+            enable: true,
+            color: '#FF6347',
+            blur: 15,
+            offset: { x: 0, y: 0 }
+          },
+          
+          rotate: {
+            value: { min: 0, max: 360 },
+            animation: { enable: true, speed: 40 }
+          },
+          
+          wobble: {
+            enable: true,
+            distance: 20,
+            speed: { min: 8, max: 20 }
           }
         }
       }
     });
 
-    // 6. Arrêter l'effet après 2 secondes
     setTimeout(() => {
-      const instance = tsParticles.domItem(0);
-      if (instance) {
-        instance.destroy();
-      }
-    }, 2000);
+      const inst = tsParticles.domItem(0);
+      inst?.destroy();
+    }, 1800);
   }
 };

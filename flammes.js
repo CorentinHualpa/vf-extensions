@@ -1,4 +1,4 @@
-// flammes-v2.js (version avancée)
+// flammes-spirale.js
 export const FlamesExtension = {
   name: 'Flames',
   type: 'effect',
@@ -6,6 +6,9 @@ export const FlamesExtension = {
   effect: () => {
     const canvas = document.getElementById('confetti-canvas');
     if (!canvas || !window.tsParticles) return;
+
+    canvas.style.backgroundColor = 'transparent';
+    canvas.style.pointerEvents = 'none';
 
     const avatarImg = document.querySelector('.vfrc-avatar[alt="system agent avatar"]');
     
@@ -23,13 +26,13 @@ export const FlamesExtension = {
       id: 'confetti-canvas',
       options: {
         fullScreen: { enable: false },
-        background: { color: 'transparent' },
+        background: { color: 'transparent', opacity: 0 },
         detectRetina: true,
         
         emitters: {
-          direction: 'top',
-          life: { count: 1, duration: 1.5 },
-          rate: { quantity: 20, delay: 0.03 },
+          direction: 'none',  // Pas de direction fixe
+          life: { count: 1, duration: 1.3 },
+          rate: { quantity: 4, delay: 0.06 },
           position: { x: xPct, y: yPct }
         },
 
@@ -38,11 +41,11 @@ export const FlamesExtension = {
           shape: { type: 'circle' },
           
           size: {
-            value: { min: 2, max: 15 },
+            value: { min: 3, max: 14 },
             animation: {
               enable: true,
-              speed: 30,
-              minimumValue: 0.1,
+              speed: 18,
+              minimumValue: 1,
               startValue: 'max',
               destroy: 'min'
             }
@@ -50,50 +53,59 @@ export const FlamesExtension = {
           
           move: {
             enable: true,
+            speed: { min: 5, max: 12 },
             direction: 'top',
+            random: false,
+            straight: false,
             outModes: { default: 'destroy' },
-            speed: { min: 20, max: 45 },
-            gravity: { enable: true, acceleration: -15 },
-            trail: {
+            
+            gravity: { enable: true, acceleration: -4 },
+            
+            // Tourbillon prononcé
+            spin: {
               enable: true,
-              length: 8,
-              fillColor: '#000000'
+              position: { x: xPct, y: yPct },
+              acceleration: 3,
+              radius: 25
+            },
+            
+            attract: {
+              enable: true,
+              distance: 150,
+              rotate: { x: 1000, y: 1000 }
             }
           },
           
-          // Dégradé de couleurs encore plus réaliste
           color: {
-            value: ['#8B0000', '#FF0000', '#FF4500', '#FF6347', '#FF8C00', '#FFA500', '#FFD700']
+            value: ['#8B0000', '#FF0000', '#FF4500', '#FF8C00', '#FFA500', '#FFD700']
           },
           
           opacity: {
             value: { min: 0, max: 0.9 },
             animation: {
               enable: true,
-              speed: 4,
+              speed: 2.5,
               minimumValue: 0,
               startValue: 'max',
               destroy: 'min'
             }
           },
           
-          // Effet de lueur
-          shadow: {
-            enable: true,
-            color: '#FF6347',
-            blur: 15,
-            offset: { x: 0, y: 0 }
-          },
-          
           rotate: {
             value: { min: 0, max: 360 },
-            animation: { enable: true, speed: 40 }
+            animation: { enable: true, speed: 60 }
           },
           
           wobble: {
             enable: true,
-            distance: 20,
-            speed: { min: 8, max: 20 }
+            distance: 25,
+            speed: { min: 15, max: 30 }
+          },
+          
+          shadow: {
+            enable: true,
+            color: '#FF4500',
+            blur: 12
           }
         }
       }
@@ -102,6 +114,8 @@ export const FlamesExtension = {
     setTimeout(() => {
       const inst = tsParticles.domItem(0);
       inst?.destroy();
-    }, 1800);
+      const ctx = canvas.getContext('2d');
+      ctx?.clearRect(0, 0, canvas.width, canvas.height);
+    }, 1500);
   }
 };

@@ -1,3 +1,269 @@
+// flammes.js - Extension Voiceflow pour effet de flammes
+
+/* 
+═══════════════════════════════════════════════════════════════════
+📋 CONFIGURATIONS POSSIBLES POUR LES FLAMMES
+═══════════════════════════════════════════════════════════════════
+
+🔥 CONFIGURATION 1 : FLAMMES SUBTILES (Accueil discret)
+────────────────────────────────────────────────────────────────
+{
+  "yOffset": 2,
+  "xOffset": 0,
+  "duration": 1.5,
+  "intensity": "low",
+  "spread": 2,
+  "numEmitters": 1
+}
+Effet : Petite flamme centrale, courte durée, idéal pour un accueil doux
+
+
+🔥 CONFIGURATION 2 : FLAMMES STANDARD (Équilibrées)
+────────────────────────────────────────────────────────────────
+{
+  "yOffset": 4,
+  "xOffset": 0,
+  "duration": 2.5,
+  "intensity": "medium",
+  "spread": 3,
+  "numEmitters": 3
+}
+Effet : Configuration par défaut, bon compromis entre discrétion et visibilité
+
+
+🔥 CONFIGURATION 3 : FLAMMES INTENSES (Spectaculaire)
+────────────────────────────────────────────────────────────────
+{
+  "yOffset": 5,
+  "xOffset": 0,
+  "duration": 4,
+  "intensity": "high",
+  "spread": 4,
+  "numEmitters": 5
+}
+Effet : Beaucoup de flammes, longue durée, très impressionnant
+
+
+🔥 CONFIGURATION 4 : FLAMMES RAPIDES (Explosion courte)
+────────────────────────────────────────────────────────────────
+{
+  "yOffset": 4,
+  "xOffset": 0,
+  "duration": 1.8,
+  "intensity": "high",
+  "spread": 4,
+  "numEmitters": 5
+}
+Effet : Beaucoup de flammes mais très rapides, comme une explosion
+
+
+🔥 CONFIGURATION 5 : FLAMMES LONGUES (Hypnotiques)
+────────────────────────────────────────────────────────────────
+{
+  "yOffset": 3,
+  "xOffset": 0,
+  "duration": 5,
+  "intensity": "medium",
+  "spread": 3.5,
+  "numEmitters": 4
+}
+Effet : Durée prolongée, mouvement contemplatif et apaisant
+
+
+🔥 CONFIGURATION 6 : COLONNE DE FEU (Étroite et intense)
+────────────────────────────────────────────────────────────────
+{
+  "yOffset": 2,
+  "xOffset": 0,
+  "duration": 3,
+  "intensity": "high",
+  "spread": 1.5,
+  "numEmitters": 2
+}
+Effet : Flamme fine et concentrée, très puissante visuellement
+
+
+🔥 CONFIGURATION 7 : NAPPE DE FEU (Large et dispersée)
+────────────────────────────────────────────────────────────────
+{
+  "yOffset": 4,
+  "xOffset": 0,
+  "duration": 3.5,
+  "intensity": "medium",
+  "spread": 5,
+  "numEmitters": 7
+}
+Effet : Feu qui s'étend largement, effet de nappe
+
+
+🔥 CONFIGURATION 8 : FLAMMES BASSES (Sous le logo)
+────────────────────────────────────────────────────────────────
+{
+  "yOffset": 8,
+  "xOffset": 0,
+  "duration": 3,
+  "intensity": "medium",
+  "spread": 3,
+  "numEmitters": 3
+}
+Effet : Partent du bas du header, juste sous le logo
+
+
+🔥 CONFIGURATION 9 : FLAMMES HAUTES (Au-dessus)
+────────────────────────────────────────────────────────────────
+{
+  "yOffset": -2,
+  "xOffset": 0,
+  "duration": 2.5,
+  "intensity": "medium",
+  "spread": 3,
+  "numEmitters": 3
+}
+Effet : Partent au-dessus du logo, effet de couronne de feu
+
+
+🔥 CONFIGURATION 10 : FLAMMES DÉCALÉES GAUCHE
+────────────────────────────────────────────────────────────────
+{
+  "yOffset": 3,
+  "xOffset": -5,
+  "duration": 2.5,
+  "intensity": "medium",
+  "spread": 3,
+  "numEmitters": 3
+}
+Effet : Décalage horizontal vers la gauche
+
+
+🔥 CONFIGURATION 11 : FLAMMES DÉCALÉES DROITE
+────────────────────────────────────────────────────────────────
+{
+  "yOffset": 3,
+  "xOffset": 5,
+  "duration": 2.5,
+  "intensity": "medium",
+  "spread": 3,
+  "numEmitters": 3
+}
+Effet : Décalage horizontal vers la droite
+
+
+🔥 CONFIGURATION 12 : FEU D'ARTIFICE (Ultra spectaculaire)
+────────────────────────────────────────────────────────────────
+{
+  "yOffset": 4,
+  "xOffset": 0,
+  "duration": 4.5,
+  "intensity": "high",
+  "spread": 6,
+  "numEmitters": 7
+}
+Effet : Maximum de flammes sur une large zone, effet wow garanti
+
+
+🔥 CONFIGURATION 13 : FLAMME UNIQUE (Minimaliste)
+────────────────────────────────────────────────────────────────
+{
+  "yOffset": 2,
+  "xOffset": 0,
+  "duration": 2,
+  "intensity": "medium",
+  "spread": 0,
+  "numEmitters": 1
+}
+Effet : Une seule flamme centrale, très épuré
+
+
+🔥 CONFIGURATION 14 : TORCHE OLYMPIQUE (Flamme constante)
+────────────────────────────────────────────────────────────────
+{
+  "yOffset": 3,
+  "xOffset": 0,
+  "duration": 6,
+  "intensity": "low",
+  "spread": 2,
+  "numEmitters": 2
+}
+Effet : Flamme douce et constante, comme une torche
+
+
+🔥 CONFIGURATION 15 : DRAGON'S BREATH (Souffle de dragon)
+────────────────────────────────────────────────────────────────
+{
+  "yOffset": 5,
+  "xOffset": 0,
+  "duration": 2,
+  "intensity": "high",
+  "spread": 5,
+  "numEmitters": 6
+}
+Effet : Explosion rapide et large, parfait pour "Evo le dragon"
+
+
+═══════════════════════════════════════════════════════════════════
+📊 GUIDE DES PARAMÈTRES
+═══════════════════════════════════════════════════════════════════
+
+yOffset (nombre)
+  -10 à 10 : Décalage vertical en %
+  • Positif = vers le bas
+  • Négatif = vers le haut
+  • Recommandé : 2 à 5
+
+xOffset (nombre)
+  -10 à 10 : Décalage horizontal en %
+  • Positif = vers la droite
+  • Négatif = vers la gauche
+  • Recommandé : 0 (centré)
+
+duration (nombre)
+  1 à 6 : Durée d'émission en secondes
+  • Court (1-2s) = explosion rapide
+  • Moyen (2.5-3.5s) = équilibré
+  • Long (4-6s) = effet contemplatif
+
+intensity (string)
+  'low', 'medium', 'high'
+  • low : 3 particules/émission, taille max 14px
+  • medium : 5 particules/émission, taille max 18px
+  • high : 8 particules/émission, taille max 22px
+
+spread (nombre)
+  1 à 10 : Largeur de la zone d'émission en %
+  • 1-2 = colonne étroite
+  • 3-4 = équilibré
+  • 5+ = nappe large
+
+numEmitters (nombre)
+  1 à 7 : Nombre d'émetteurs de flammes
+  • 1 = flamme unique
+  • 3 = standard (gauche, centre, droite)
+  • 5-7 = effet spectaculaire
+
+═══════════════════════════════════════════════════════════════════
+🎯 CONFIGURATIONS RECOMMANDÉES PAR USAGE
+═══════════════════════════════════════════════════════════════════
+
+📱 Accueil utilisateur (première visite)
+  → Configuration 2 (Standard) ou 3 (Intenses)
+
+🎉 Événement spécial / Promotion
+  → Configuration 12 (Feu d'artifice) ou 15 (Dragon's Breath)
+
+💼 Usage professionnel discret
+  → Configuration 1 (Subtiles) ou 13 (Unique)
+
+🎮 Gamification / Récompense
+  → Configuration 4 (Rapides) ou 6 (Colonne de feu)
+
+🧘 Ambiance zen / Contemplative
+  → Configuration 5 (Longues) ou 14 (Torche)
+
+🐉 Thème dragon / Puissance
+  → Configuration 3 (Intenses) ou 15 (Dragon's Breath)
+
+═══════════════════════════════════════════════════════════════════
+*/
 // flammes.js
 export const FlamesExtension = {
   name: 'Flames',

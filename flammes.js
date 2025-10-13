@@ -1,4 +1,4 @@
-// flammes.js
+// flammes-intense.js
 export const FlamesExtension = {
   name: 'Flames',
   type: 'effect',
@@ -8,67 +8,67 @@ export const FlamesExtension = {
     if (!canvas || !window.tsParticles) return;
 
     canvas.style.backgroundColor = 'transparent';
-    canvas.style.pointerEvents = 'none';
+    canvas.style.pointerEvents = 'none !important';
 
-    // Trouver le logo du dragon
     const avatarImg = document.querySelector('.vfrc-avatar[alt="system agent avatar"]');
     
     let xPct, yPct;
     if (avatarImg) {
       const rect = avatarImg.getBoundingClientRect();
       xPct = ((rect.left + rect.width / 2) / window.innerWidth) * 100;
-      // AJUSTEMENT : Ajoute un offset vers le bas pour baisser le point de départ
-      yPct = ((rect.top + rect.height / 2) / window.innerHeight) * 100 + 2; // +2% vers le bas
+      yPct = ((rect.top + rect.height / 2) / window.innerHeight) * 100 + 2;
     } else {
-      const header = document.querySelector('.vfrc-header');
-      if (header) {
-        const rect = header.getBoundingClientRect();
-        xPct = ((rect.left + rect.width / 2) / window.innerWidth) * 100;
-        yPct = ((rect.bottom - 10) / window.innerHeight) * 100; // Près du bas du header
-      } else {
-        xPct = 50;
-        yPct = 12; // Un peu plus bas que 10
-      }
+      xPct = 50;
+      yPct = 12;
+    }
+
+    // Configuration pour BEAUCOUP plus de flammes
+    const emitters = [];
+    const numEmitters = 5;  // 5 émetteurs pour couvrir large
+    
+    for (let i = 0; i < numEmitters; i++) {
+      const offset = (i - Math.floor(numEmitters / 2)) * 2.5; // Espacés de 2.5%
+      emitters.push({
+        direction: 'top',
+        life: { 
+          count: 1, 
+          duration: 2.5,
+          delay: i * 0.1  // Démarrage progressif
+        },
+        rate: { 
+          quantity: 4,
+          delay: 0.05
+        },
+        position: { 
+          x: xPct + offset,
+          y: yPct 
+        },
+        size: { 
+          width: 12, 
+          height: 12 
+        }
+      });
     }
 
     tsParticles.load({
       id: 'confetti-canvas',
       options: {
         fullScreen: { enable: false },
-        background: { 
-          color: 'transparent',
-          opacity: 0
-        },
+        background: { color: 'transparent', opacity: 0 },
         detectRetina: true,
         fpsLimit: 60,
         
-        emitters: {
-          direction: 'top',
-          life: { 
-            count: 1, 
-            duration: 2.5,    // AUGMENTÉ : 2.5 secondes d'émission (était 1.2)
-            delay: 0
-          },
-          rate: { 
-            quantity: 3,
-            delay: 0.08
-          },
-          position: { x: xPct, y: yPct },
-          size: { 
-            width: 10, 
-            height: 10 
-          }
-        },
+        emitters: emitters,
 
         particles: {
           number: { value: 0 },
           shape: { type: 'circle' },
           
           size: {
-            value: { min: 4, max: 16 },
+            value: { min: 4, max: 20 },
             animation: {
               enable: true,
-              speed: 15,        // RÉDUIT : les particules durent plus longtemps (était 20)
+              speed: 15,
               minimumValue: 2,
               startValue: 'max',
               destroy: 'min',
@@ -78,114 +78,61 @@ export const FlamesExtension = {
           
           move: {
             enable: true,
-            speed: { min: 6, max: 12 },  // RÉDUIT : elles montent moins vite (était 8-15)
+            speed: { min: 6, max: 14 },
             direction: 'top',
             random: true,
             straight: false,
-            outModes: { 
-              default: 'destroy',
-              top: 'destroy'
-            },
-            
-            gravity: {
-              enable: true,
-              acceleration: -4    // RÉDUIT : monte plus lentement (était -5)
-            },
-            
+            outModes: { default: 'destroy' },
+            gravity: { enable: true, acceleration: -4 },
             attract: {
               enable: true,
-              distance: 200,
-              rotate: {
-                x: 600,
-                y: 600
-              }
+              distance: 250,
+              rotate: { x: 800, y: 800 }
             },
-            
-            warp: true,
-            vibrate: false,
-            bounce: false
+            warp: true
           },
           
           color: {
-            value: ['#8B0000', '#FF0000', '#FF4500', '#FF6347', '#FF8C00', '#FFA500', '#FFD700', '#FFFF00'],
-            animation: {
-              enable: true,
-              speed: 50,
-              sync: false
-            }
+            value: ['#8B0000', '#FF0000', '#FF4500', '#FF6347', '#FF8C00', '#FFA500', '#FFD700', '#FFFF00']
           },
           
           opacity: {
             value: { min: 0, max: 0.95 },
             animation: {
               enable: true,
-              speed: 1.5,       // RÉDUIT : l'opacité diminue plus lentement (était 2)
+              speed: 1.5,
               minimumValue: 0,
               startValue: 'max',
-              destroy: 'min',
-              sync: false
+              destroy: 'min'
             }
           },
           
           rotate: {
             value: { min: 0, max: 360 },
-            direction: 'random',
-            animation: {
-              enable: true,
-              speed: 50,
-              sync: false
-            }
+            animation: { enable: true, speed: 50 }
           },
           
           wobble: {
             enable: true,
-            distance: 30,
-            speed: {
-              min: 10,
-              max: 25
-            }
-          },
-          
-          twinkle: {
-            particles: {
-              enable: true,
-              frequency: 0.05,
-              opacity: 1
-            }
+            distance: 40,
+            speed: { min: 12, max: 28 }
           },
           
           shadow: {
             enable: true,
             color: '#FF6347',
-            blur: 10,
-            offset: { x: 0, y: 0 }
-          },
-          
-          stroke: { width: 0 },
-          collisions: { enable: false }
-        },
-        
-        interactivity: {
-          detectsOn: 'canvas',
-          events: {
-            onClick: { enable: false },
-            onHover: { enable: false },
-            resize: false
+            blur: 15
           }
         }
       }
     });
 
-    // AUGMENTÉ : Nettoyer après 3 secondes (était 1.5)
     setTimeout(() => {
       const inst = tsParticles.domItem(0);
-      if (inst) {
-        inst.destroy();
-      }
+      inst?.destroy();
       const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-      }
+      ctx?.clearRect(0, 0, canvas.width, canvas.height);
+      canvas.style.pointerEvents = 'none !important';
     }, 3000);
   }
 };

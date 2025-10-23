@@ -1,51 +1,63 @@
 // UploadToN8nWithLoader.js
 // Upload multiple files -> n8n webhook (+ option base64) + Loader animé pendant l'attente
-// Auteurs: Corentin / Evolution Agency
+// Auteurs: Corentin / Evolution Agency (patch match + guards par ChatGPT)
 
 export const UploadToN8nWithLoader = {
   name: 'UploadToN8nWithLoader',
   type: 'response',
 
-  match: (ctx) => {
-    const t = ctx?.trace;
-    return !!(t && (t.type === 'ext_UploadToN8nWithLoader' || t?.payload?.name === 'ext_UploadToN8nWithLoader'));
+  // ✅ Match robuste (comme ton ancienne ext)
+  match(context) {
+    try {
+      const t = context?.trace || {};
+      const type = t.type || '';
+      const pname = t.payload?.name || '';
+      const isMe = (s) => /(^ext_)?UploadToN8nWithLoader$/i.test(s || '');
+      return isMe(type) || (type === 'extension' && isMe(pname)) || (/^ext_/i.test(type) && isMe(pname));
+    } catch (e) {
+      console.error('[UploadToN8nWithLoader.match] error:', e);
+      return false;
+    }
   },
 
-  render: ({ trace, element }) => {
-    if (!element) return;
+  render({ trace, element }) {
+    if (!element) {
+      console.error('[UploadToN8nWithLoader] Élément parent introuvable');
+      return;
+    }
 
     // ---------- CONFIG ----------
     const p = trace?.payload || {};
 
     // UI upload
-    const title = p.title || 'Téléverser un ou plusieurs documents';
-    const description = p.description || 'Glissez-déposez des fichiers ici ou cliquez pour sélectionner';
-    const allowMultiple = p.allowMultiple !== false; // par défaut: multiple
-    const backgroundImage = p.backgroundImage || null;
-    const backgroundOpacity = typeof p.backgroundOpacity === 'number' ? p.backgroundOpacity : 0.15;
-    const buttons = Array.isArray(p.buttons) ? p.buttons : [];
+    const title            = p.title || 'Téléverser un ou plusieurs documents';
+    const description      = p.description || 'Glissez-déposez des fichiers ici ou cliquez pour sélectionner';
+    const allowMultiple    = p.allowMultiple !== false; // par défaut: multiple
+    const backgroundImage  = p.backgroundImage || null;
+    const backgroundOpacity= typeof p.backgroundOpacity === 'number' ? p.backgroundOpacity : 0.15;
+    const buttons          = Array.isArray(p.buttons) ? p.buttons : [];
 
     // Webhook n8n
-    const webhook = p.webhook || {};
-    const webhookUrl = webhook.url;
-    const webhookMethod = (webhook.method || 'POST').toUpperCase();
-    const webhookHeaders = webhook.headers || {}; // laisse vide si "None"
+    const webhook          = p.webhook || {};
+    const webhookUrl       = webhook.url;
+    const webhookMethod    = (webhook.method || 'POST').toUpperCase();
+    const webhookHeaders   = webhook.headers || {}; // vide si "None"
     const webhookTimeoutMs = Number.isFinite(webhook.timeoutMs) ? webhook.timeoutMs : 60000;
-    const webhookRetries = Number.isFinite(webhook.retries) ? webhook.retries : 1;
-    const sendFile = webhook.sendFile !== false; // true = multipart ; false = JSON base64
-    const extra = webhook.extra || {};
+    const webhookRetries   = Number.isFinite(webhook.retries) ? webhook.retries : 1;
+    const sendFile         = webhook.sendFile !== false; // true = multipart ; false = JSON base64
+    const extra            = webhook.extra || {};
 
     // Attente / fin
-    const awaitResponse = p.awaitResponse !== false; // true = attend la réponse du webhook avant de terminer
-    // Option de polling si ton webhook renvoie { jobId, statusUrl }
-    const polling = p.polling || {};
-    const pollingEnabled = !!polling.enabled;
-    const pollingIntervalMs = Number.isFinite(polling.intervalMs) ? polling.intervalMs : 2000;
-    const pollingMaxAttempts = Number.isFinite(polling.maxAttempts) ? polling.maxAttempts : 60;
-    const pollingHeaders = polling.headers || {};
+    const awaitResponse    = p.awaitResponse !== false; // true = attendre réponse
+    const polling          = p.polling || {};
+    const pollingEnabled   = !!polling.enabled;
+    const pollingIntervalMs= Number.isFinite(polling.intervalMs) ? polling.intervalMs : 2000;
+    const pollingMaxAttempts= Number.isFinite(polling.maxAttempts) ? polling.maxAttempts : 60;
+    const pollingHeaders   = polling.headers || {};
 
-    const pathSuccess = p.pathSuccess || 'UploadN8n_Done';
-    const pathError = p.pathError || 'UploadN8n_Error';
+    // ✅ Routes par défaut compatibles avec ton flow
+    const pathSuccess      = p.pathSuccess || p.returnPathOnSuccess || 'Confirm_Upload';
+    const pathError        = p.pathError   || p.returnPathOnCancel  || 'Fail';
 
     // Contexte utile
     const vfContext = {
@@ -57,24 +69,25 @@ export const UploadToN8nWithLoader = {
     if (!webhookUrl) {
       const div = document.createElement('div');
       div.innerHTML = `<div style="padding:12px;border-radius:10px;background:#fff1f0;border:1px solid #ffa39e;color:#a8071a">
-        Erreur de configuration : webhook.url manquant.
+        Erreur de configuration : <b>webhook.url</b> manquant.
       </div>`;
       element.appendChild(div);
-      window?.voiceflow?.chat?.interact?.({
-        type: 'complete',
-        payload: { webhookSuccess: false, error: 'WEBHOOK_URL_MISSING', path: pathError }
-      });
+      try {
+        window?.voiceflow?.chat?.interact?.({
+          type: 'complete',
+          payload: { webhookSuccess: false, error: 'WEBHOOK_URL_MISSING', path: pathError }
+        });
+      } catch {}
       return;
     }
 
-    // ---------- UI : bloc upload + loader (masqué) ----------
+    // ---------- UI ----------
     const root = document.createElement('div');
     root.style.position = 'relative';
-    root.style.display = 'flex';
-    root.style.flexDirection = 'column';
-    root.style.gap = '12px';
+    root.style.display = 'block';
+    root.style.width = '100%';
+    root.style.maxWidth = '100%';
 
-    // Upload card
     const card = document.createElement('div');
     card.style.border = '1px solid #e5e7eb';
     card.style.borderRadius = '12px';
@@ -110,7 +123,7 @@ export const UploadToN8nWithLoader = {
       <div class="file-list" style="margin-top:10px;font-size:13px;color:#374151"></div>
       <div class="upload-actions" style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
         ${buttons.map(b => `
-          <button class="back-button" data-path="${b.path || 'Cancel'}"
+          <button class="back-button" data-path="${b.path || pathError}"
             style="appearance:none;border:0;cursor:pointer;padding:10px 12px;border-radius:10px;
                    background:${b.color || '#003761'};color:${b.textColor || '#fff'};font-weight:600;font-size:13px;">
             ${b.text || 'Annuler'}
@@ -125,34 +138,34 @@ export const UploadToN8nWithLoader = {
       <div class="upload-status" style="margin-top:8px;font-size:13px;color:#374151"></div>
     `;
     card.appendChild(cardInner);
-    root.appendChild(card);
 
-    // Loader overlay (masqué au début)
+    // Loader (masqué au début)
     const overlay = document.createElement('div');
     overlay.style.display = 'none';
-    overlay.style.position = 'relative';
     overlay.style.border = '1px solid #e5e7eb';
     overlay.style.borderRadius = '12px';
     overlay.style.background = '#0b0c10';
     overlay.style.padding = '16px';
     overlay.style.color = '#fff';
-    root.appendChild(overlay);
+    overlay.style.marginTop = '12px';
 
+    root.appendChild(card);
+    root.appendChild(overlay);
     element.appendChild(root);
 
     // ---------- Sélecteurs ----------
-    const uploadZone = cardInner.querySelector('.upload-zone');
-    const fileInput = cardInner.querySelector('input[type="file"]');
-    const fileList = cardInner.querySelector('.file-list');
-    const sendBtn = cardInner.querySelector('.send-button');
+    const uploadZone  = cardInner.querySelector('.upload-zone');
+    const fileInput   = cardInner.querySelector('input[type="file"]');
+    const fileList    = cardInner.querySelector('.file-list');
+    const sendBtn     = cardInner.querySelector('.send-button');
     const backButtons = cardInner.querySelectorAll('.back-button');
-    const statusDiv = cardInner.querySelector('.upload-status');
+    const statusDiv   = cardInner.querySelector('.upload-status');
 
-    // ---------- Loader minimal inspiré de ton extension (cercle + étapes) ----------
+    // ---------- Loader ----------
     function mountLoaderUI({
       message = p.loader?.message || 'Traitement en cours…',
-      color = p.loader?.color || '#9C27B0',
-      steps = p.loader?.steps || [
+      color   = p.loader?.color   || '#9C27B0',
+      steps   = p.loader?.steps   || [
         { progress: 5,  text: 'Analyse du fichier' },
         { progress: 25, text: 'Prétraitement' },
         { progress: 50, text: 'Envoi au pipeline' },
@@ -160,17 +173,16 @@ export const UploadToN8nWithLoader = {
         { progress: 90, text: 'Consolidation des résultats' },
         { progress: 100,text: 'Finalisation' }
       ],
-      finalText = p.loader?.finalText || 'Terminé ! Cliquez pour continuer',
+      finalText       = p.loader?.finalText || 'Terminé ! Cliquez pour continuer',
       finalButtonIcon = p.loader?.finalButtonIcon || '🎯',
       height = p.loader?.height || 360,
-      size = p.loader?.size || 180,
+      size   = p.loader?.size   || 180,
       strokeWidth = p.loader?.strokeWidth || 10
     } = {}) {
-      overlay.innerHTML = ''; // reset
+      overlay.innerHTML = '';
       overlay.style.display = 'block';
       overlay.style.minHeight = `${height}px`;
 
-      // Styles rapides
       const center = document.createElement('div');
       center.style.display = 'flex';
       center.style.flexDirection = 'column';
@@ -184,12 +196,12 @@ export const UploadToN8nWithLoader = {
       msg.style.letterSpacing = '.3px';
       center.appendChild(msg);
 
-      // Cercle
-      const radius = (size - strokeWidth)/2;
+      const radius = (size - strokeWidth) / 2;
       const circumference = 2 * Math.PI * radius;
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
-      svg.style.width = `${size}px`; svg.style.height = `${size}px`;
+      svg.style.width = `${size}px`;
+      svg.style.height = `${size}px`;
 
       const bg = document.createElementNS('http://www.w3.org/2000/svg','circle');
       bg.setAttribute('cx', size/2); bg.setAttribute('cy', size/2); bg.setAttribute('r', radius);
@@ -210,6 +222,7 @@ export const UploadToN8nWithLoader = {
       pct.style.position = 'relative';
       pct.style.top = '-110px';
       pct.style.fontWeight = '900';
+
       center.appendChild(svg);
       center.appendChild(pct);
 
@@ -223,7 +236,6 @@ export const UploadToN8nWithLoader = {
         const off = circumference - (per/100)*circumference;
         fg.style.strokeDashoffset = `${off}`;
         pct.textContent = `${Math.round(per)}%`;
-        // étape
         let chosen = steps[0];
         for (const s of steps) if (per >= s.progress) chosen = s;
         stepText.textContent = chosen?.text || '';
@@ -275,8 +287,10 @@ export const UploadToN8nWithLoader = {
     });
 
     backButtons.forEach(b => b.addEventListener('click', () => {
-      const path = b.getAttribute('data-path') || 'Cancel';
-      window.voiceflow.chat.interact({ type: 'complete', payload: { webhookSuccess: false, path } });
+      const path = b.getAttribute('data-path') || pathError;
+      try {
+        window?.voiceflow?.chat?.interact?.({ type: 'complete', payload: { webhookSuccess: false, path } });
+      } catch {}
     }));
 
     sendBtn.addEventListener('click', async () => {
@@ -313,10 +327,7 @@ export const UploadToN8nWithLoader = {
 
         let finalData = resp?.data ?? null;
 
-        // Si on attend la réponse "finale"
         if (awaitResponse) {
-          // Cas 1 : n8n répond déjà avec le résultat final
-          // Cas 2 : n8n répond { jobId, statusUrl } => on poll
           const jobId = finalData?.jobId;
           const statusUrl = finalData?.statusUrl || polling?.statusUrl;
           if (pollingEnabled && (statusUrl || jobId)) {
@@ -334,15 +345,17 @@ export const UploadToN8nWithLoader = {
         loader.setProgress(100);
 
         loader.showDone(() => {
-          window.voiceflow.chat.interact({
-            type: 'complete',
-            payload: {
-              webhookSuccess: true,
-              webhookResponse: finalData,
-              filesCount: state.files.length,
-              path: pathSuccess
-            }
-          });
+          try {
+            window?.voiceflow?.chat?.interact?.({
+              type: 'complete',
+              payload: {
+                webhookSuccess: true,
+                webhookResponse: finalData,        // ton JS de capture prendra cvText ici
+                filesCount: state.files.length,
+                path: pathSuccess
+              }
+            });
+          } catch {}
         });
 
       } catch (err) {
@@ -353,17 +366,19 @@ export const UploadToN8nWithLoader = {
         sendBtn.disabled = false;
         backButtons.forEach(b => b.disabled = false);
 
-        window.voiceflow.chat.interact({
-          type: 'complete',
-          payload: { webhookSuccess: false, error: String(err?.message || err), path: pathError }
-        });
+        try {
+          window?.voiceflow?.chat?.interact?.({
+            type: 'complete',
+            payload: { webhookSuccess: false, error: String(err?.message || err), path: pathError }
+          });
+        } catch {}
       }
     });
 
     // ---------- helpers réseau ----------
     async function postWithRetry({ url, method, headers, timeoutMs, retries, sendFile, files, json }) {
       let lastErr;
-      for (let attempt=0; attempt<=retries; attempt++) {
+      for (let attempt = 0; attempt <= retries; attempt++) {
         try {
           const controller = new AbortController();
           const to = setTimeout(() => controller.abort(), timeoutMs);
@@ -389,7 +404,7 @@ export const UploadToN8nWithLoader = {
             throw new Error(`Webhook ${resp.status} ${resp.statusText} – ${t?.slice(0,400) || ''}`);
           }
           return { ok: true, data: await safeJson(resp) };
-        } catch(e) {
+        } catch (e) {
           lastErr = e;
           if (attempt < retries) await new Promise(r => setTimeout(r, 600 * (attempt+1)));
         }
@@ -398,13 +413,12 @@ export const UploadToN8nWithLoader = {
     }
 
     async function pollStatus({ statusUrl, headers, intervalMs, maxAttempts, onTick }) {
-      for (let i=1; i<=maxAttempts; i++) {
+      for (let i = 1; i <= maxAttempts; i++) {
         onTick?.(i, maxAttempts);
         const r = await fetch(statusUrl, { headers });
         if (!r.ok) throw new Error(`Polling ${r.status} ${r.statusText}`);
         const j = await safeJson(r);
-        // convention: { status: 'pending'|'running'|'done'|'error', data?: any, error?: string }
-        if (j?.status === 'done') return j?.data ?? j;
+        if (j?.status === 'done')  return j?.data ?? j;
         if (j?.status === 'error') throw new Error(j?.error || 'Pipeline error');
         await new Promise(res => setTimeout(res, intervalMs));
       }
@@ -427,3 +441,6 @@ export const UploadToN8nWithLoader = {
     async function safeText(r){ try{ return await r.text(); } catch{ return null; } }
   }
 };
+
+// (optionnel) attache au window si import ES module indisponible
+try { window.UploadToN8nWithLoader = UploadToN8nWithLoader; } catch {}

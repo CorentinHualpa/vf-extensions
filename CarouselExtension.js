@@ -1,12 +1,11 @@
 /**
  *  ╔═══════════════════════════════════════════════════════════╗
  *  ║  Carousel – Voiceflow Response Extension                  ║
- *  ║  VERSION 3.0 - MODERNE & 1 CARTE À LA FOIS               ║
+ *  ║  VERSION 3.1 - FIX AFFICHAGE                              ║
  *  ║                                                           ║
+ *  ║  • Fix: N'efface plus le contenu précédent               ║
  *  ║  • Affichage: TOUJOURS 1 carte visible                  ║
- *  ║  • Navigation fluide avec flèches + dots + swipe        ║
  *  ║  • Dégradés personnalisables (2 couleurs)               ║
- *  ║  • Effets modernes: glow, brillance, animations         ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 export const CarouselExtension = {
@@ -19,7 +18,7 @@ export const CarouselExtension = {
         items = [],
         title = null,
         brandColor = '#6366F1',
-        brandColor2 = null, // ✅ NOUVELLE: Deuxième couleur pour dégradé
+        brandColor2 = null,
         backgroundImage = null,
         autoplay = false,
         autoplayDelay = 3000,
@@ -67,7 +66,7 @@ export const CarouselExtension = {
         return url.replace(/^https?:\/\/imgur\.com\/([a-zA-Z0-9]+\.[a-zA-Z]+)$/, 'https://i.imgur.com/$1');
       };
       
-      // ✅ Couleurs avec support 2 couleurs pour dégradé
+      // Couleurs avec support 2 couleurs pour dégradé
       const color1 = brandColor;
       const color2 = brandColor2 || lightenColor(brandColor, 0.25);
       const { r: r1, g: g1, b: b1 } = hexToRgb(color1);
@@ -81,26 +80,30 @@ export const CarouselExtension = {
       container.id = uniqueId;
       container.setAttribute('data-items-count', items.length);
       
-      // ✅ CSS MODERNE avec effets glow et 2 couleurs
+      // CSS avec fix pour ne pas cacher le contenu précédent
       const styleEl = document.createElement('style');
       styleEl.textContent = `
 /* ═══════════════════════════════════════════════════════════ */
-/* ✅ STYLES CONTENEUR PARENT VOICEFLOW                        */
+/* ✅ FIX: STYLES CONTENEUR PARENT VOICEFLOW                   */
 /* ═══════════════════════════════════════════════════════════ */
 .vfrc-message--extension-Carousel {
   padding: 0 !important;
-  margin: 0 !important;
+  margin: 12px 0 !important;
   width: 100% !important;
   max-width: 100% !important;
   overflow: visible !important;
   box-sizing: border-box !important;
+  position: relative !important;
+  display: block !important;
 }
+
 .vfrc-message--extension-Carousel > span {
   display: block !important;
   width: 100% !important;
   max-width: 100% !important;
   box-sizing: border-box !important;
   overflow: visible !important;
+  position: relative !important;
 }
 
 /* ═══════════════════════════════════════════════════════════ */
@@ -123,10 +126,10 @@ export const CarouselExtension = {
 }
 
 /* ═══════════════════════════════════════════════════════════ */
-/* ✅ CONTAINER PRINCIPAL - DESIGN MODERNE                      */
+/* ✅ CONTAINER PRINCIPAL - DESIGN MODERNE + FIX POSITION      */
 /* ═══════════════════════════════════════════════════════════ */
 .vf-carousel-container {
-  position: relative;
+  position: relative !important;
   width: 100% !important;
   max-width: 100% !important;
   margin: 0 !important;
@@ -141,8 +144,9 @@ export const CarouselExtension = {
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
   overflow: visible !important;
   box-sizing: border-box !important;
+  display: block !important;
+  z-index: 1 !important;
   
-  /* ✨ Effet brillance subtil */
   background: linear-gradient(
     135deg,
     rgba(255, 255, 255, 0.1) 0%,
@@ -212,9 +216,9 @@ export const CarouselExtension = {
   position: relative;
   z-index: 2;
   text-align: center;
-  margin: 0 0 24px 0;
-  padding: 18px 28px;
-  font-size: 26px;
+  margin: 0 0 20px 0;
+  padding: 16px 24px;
+  font-size: 24px;
   font-weight: 900;
   color: #ffffff;
   letter-spacing: -0.5px;
@@ -226,10 +230,9 @@ export const CarouselExtension = {
     rgba(0, 0, 0, 0.8) 100%);
   backdrop-filter: blur(15px);
   -webkit-backdrop-filter: blur(15px);
-  border-radius: 14px;
+  border-radius: 12px;
   border: 2px solid rgba(255, 255, 255, 0.25);
   
-  /* ✨ Effet glow */
   box-shadow: 
     0 8px 32px rgba(0, 0, 0, 0.4),
     0 0 20px var(--glow-color),
@@ -259,7 +262,6 @@ export const CarouselExtension = {
   width: 100%;
   box-sizing: border-box;
   
-  /* ✨ Effet brillance sur le viewport */
   box-shadow: 
     inset 0 0 30px rgba(255, 255, 255, 0.1),
     0 0 40px var(--glow-color);
@@ -293,7 +295,6 @@ export const CarouselExtension = {
   position: relative;
   box-sizing: border-box;
   
-  /* ✨ Multi-shadow pour effet 3D */
   box-shadow: 
     0 15px 35px rgba(0, 0, 0, 0.2),
     0 5px 15px rgba(0, 0, 0, 0.1),
@@ -405,7 +406,6 @@ export const CarouselExtension = {
   line-height: 1.3;
   margin: 0;
   
-  /* ✨ Glow sur le titre */
   text-shadow: 
     0 2px 8px rgba(0, 0, 0, 0.9),
     0 0 20px var(--glow-color);
@@ -506,7 +506,6 @@ export const CarouselExtension = {
   position: relative;
   overflow: hidden;
   
-  /* ✨ Effet glow sur le bouton */
   box-shadow: 
     0 6px 20px rgba(var(--rgb-1), 0.4),
     0 0 30px var(--glow-color),
@@ -598,7 +597,6 @@ export const CarouselExtension = {
   font-size: 22px;
   font-weight: bold;
   
-  /* ✨ Glow sur les boutons */
   box-shadow: 
     0 6px 20px rgba(0, 0, 0, 0.4),
     0 0 25px var(--glow-color);
@@ -666,7 +664,6 @@ export const CarouselExtension = {
   border-color: rgba(255, 255, 255, 0.8);
   transform: scale(1.4);
   
-  /* ✨ Glow sur le dot actif */
   box-shadow: 
     0 0 15px var(--glow-color),
     0 0 25px rgba(var(--rgb-1), 0.6);
@@ -709,7 +706,7 @@ export const CarouselExtension = {
         return text.length > maxLength ? text.substring(0, maxLength - 3) + '...' : text;
       };
       
-      // ✅ Toujours 1 slide visible
+      // Toujours 1 slide visible
       const getSlidesPerView = () => 1;
       
       const getMaxIndex = () => items.length - 1;
@@ -874,7 +871,7 @@ export const CarouselExtension = {
       viewport.appendChild(track);
       container.appendChild(viewport);
       
-      // ✅ Contrôles toujours visibles si plus d'1 item
+      // Contrôles toujours visibles si plus d'1 item
       if (items.length > 1) {
         const controls = document.createElement('div');
         controls.className = 'vf-carousel-controls';
@@ -987,7 +984,7 @@ export const CarouselExtension = {
       
       element.appendChild(container);
       
-      console.log(`✅ Carousel Moderne (ID: ${uniqueId}) - ${items.length} items - Couleurs: ${color1} / ${color2}`);
+      console.log(`✅ Carousel Moderne v3.1 (ID: ${uniqueId}) - ${items.length} items - Couleurs: ${color1} / ${color2}`);
       
       // Cleanup
       return () => {

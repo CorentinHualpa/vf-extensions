@@ -1,46 +1,737 @@
-{
-  "name": "ext_UploadToN8nWithLoader",
-  "title": "Téléverser votre document",
-  "subtitle": "PDF, Word, ou image - Maximum 25 MB",
-  "description": "Glissez-déposez votre fichier ici ou cliquez pour sélectionner",
-  "accept": ".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg",
-  "maxFileSizeMB": 25,
-  "primaryColor": "#6366f1",
-  "secondaryColor": "#8b5cf6",
-  "accentColor": "#ec4899",
-  "buttons": [
-    {
-      "text": "← Annuler",
-      "path": "Cancel"
-    }
-  ],
-  "webhook": {
-    "url": "https://hualpa.app.n8n.cloud/webhook/VOTRE-PATH-ICI",
-    "method": "POST",
-    "headers": {},
-    "timeoutMs": 120000,
-    "retries": 1,
-    "fileFieldName": "file",
-    "extra": {
-      "purpose": "ocr"
+// UploadToN8nWithLoader.js - VERSION FINALE CORRIGÉE
+export const UploadToN8nWithLoader = {
+  name: 'UploadToN8nWithLoader',
+  type: 'response',
+  
+  match(context) {
+    try {
+      const t = context?.trace || {};
+      const type = t.type || '';
+      const pname = t.payload?.name || '';
+      const isMe = (s) => /(^ext_)?UploadToN8nWithLoader$/i.test(s || '');
+      return isMe(type) || (type === 'extension' && isMe(pname)) || (/^ext_/i.test(type) && isMe(pname));
+    } catch (e) {
+      console.error('[UploadToN8nWithLoader.match] error:', e);
+      return false;
     }
   },
-  "awaitResponse": true,
-  "polling": {
-    "enabled": false
-  },
-  "loader": {
-    "message": "⏳ Analyse du document en cours...",
-    "finalText": "C'est terminé !",
-    "finalButtonIcon": "🎯",
-    "steps": [
-      { "progress": 10, "text": "📋 Préparation du fichier" },
-      { "progress": 30, "text": "🚀 Envoi au serveur" },
-      { "progress": 60, "text": "🤖 Analyse par IA" },
-      { "progress": 85, "text": "✨ Extraction des données" },
-      { "progress": 100, "text": "✅ Terminé !" }
-    ]
-  },
-  "pathSuccess": "Confirm_Upload",
-  "pathError": "Cancel"
-}
+
+  render({ trace, element }) {
+    if (!element) {
+      console.error('[UploadToN8nWithLoader] Élément parent introuvable');
+      return;
+    }
+
+    // ---------- CONFIG ----------
+    const p = trace?.payload || {};
+    
+    // UI upload
+    const title            = p.title || 'Téléverser votre document';
+    const subtitle         = p.subtitle || 'PDF ou DOCX - Maximum 25 MB';
+    const description      = p.description || 'Glissez-déposez votre fichier ici ou cliquez pour sélectionner';
+    const accept           = p.accept || '.pdf,.docx';
+    const maxFileSizeMB    = p.maxFileSizeMB || 25;
+    
+    // 🎨 Couleurs personnalisables
+    const primaryColor     = p.primaryColor || '#6366f1';
+    const secondaryColor   = p.secondaryColor || '#8b5cf6';
+    const accentColor      = p.accentColor || '#ec4899';
+    
+    const buttons          = Array.isArray(p.buttons) ? p.buttons : [];
+    
+    // Webhook n8n
+    const webhook          = p.webhook || {};
+    const webhookUrl       = webhook.url;
+    const webhookMethod    = (webhook.method || 'POST').toUpperCase();
+    const webhookHeaders   = webhook.headers || {};
+    const webhookTimeoutMs = Number.isFinite(webhook.timeoutMs) ? webhook.timeoutMs : 60000;
+    const webhookRetries   = Number.isFinite(webhook.retries) ? webhook.retries : 1;
+    const fileFieldName    = webhook.fileFieldName || 'file';
+    const extra            = webhook.extra || {};
+    
+    // Attente / fin
+    const awaitResponse    = p.awaitResponse !== false;
+    const polling          = p.polling || {};
+    const pollingEnabled   = !!polling.enabled;
+    const pollingIntervalMs= Number.isFinite(polling.intervalMs) ? polling.intervalMs : 2000;
+    const pollingMaxAttempts= Number.isFinite(polling.maxAttempts) ? polling.maxAttempts : 60;
+    const pollingHeaders   = polling.headers || {};
+    
+    const pathSuccess      = p.pathSuccess || 'Default';
+    const pathError        = p.pathError || 'Fail';
+    
+    const vfContext = {
+      conversation_id: p.conversation_id || null,
+      user_id: p.user_id || null,
+      locale: p.locale || null,
+    };
+
+    if (!webhookUrl) {
+      const div = document.createElement('div');
+      div.innerHTML = `<div style="padding:16px;border-radius:12px;background:linear-gradient(135deg,#fee2e2,#fecaca);border:1px solid #fca5a5;color:#991b1b;font-weight:500">
+        ⚠️ Erreur de configuration : <b>webhook.url</b> manquant.
+      </div>`;
+      element.appendChild(div);
+      try {
+        window?.voiceflow?.chat?.interact?.({
+          type: 'complete',
+          payload: { webhookSuccess: false, error: 'WEBHOOK_URL_MISSING', path: pathError }
+        });
+      } catch {}
+      return;
+    }
+
+    // ---------- STYLES MODERNES ----------
+    const styles = `
+      @keyframes uploadPulse {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.05); opacity: 0.8; }
+      }
+      
+      @keyframes shimmer {
+        0% { background-position: -1000px 0; }
+        100% { background-position: 1000px 0; }
+      }
+
+      @keyframes slideUp {
+        from { transform: translateY(20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+
+      .upload-modern-wrap {
+        width: 100%;
+        max-width: 100%;
+        animation: slideUp 0.4s ease-out;
+      }
+
+      .upload-modern-card {
+        background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+        border-radius: 20px;
+        padding: 24px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
+        border: 1px solid rgba(0,0,0,0.06);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .upload-modern-header {
+        text-align: center;
+        margin-bottom: 24px;
+        position: relative;
+        z-index: 2;
+      }
+
+      .upload-modern-title {
+        font-size: 22px;
+        font-weight: 800;
+        background: linear-gradient(135deg, ${primaryColor}, ${secondaryColor});
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin: 0 0 8px 0;
+        letter-spacing: -0.5px;
+      }
+
+      .upload-modern-subtitle {
+        font-size: 13px;
+        color: #64748b;
+        font-weight: 500;
+      }
+
+      .upload-modern-zone {
+        border: 3px dashed transparent;
+        background: linear-gradient(white, white) padding-box,
+                    linear-gradient(135deg, ${primaryColor}40, ${secondaryColor}40) border-box;
+        border-radius: 16px;
+        padding: 40px 24px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .upload-modern-zone::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(135deg, ${primaryColor}08, ${secondaryColor}08);
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+
+      .upload-modern-zone:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 24px rgba(99, 102, 241, 0.15);
+        border-color: transparent;
+        background: linear-gradient(white, white) padding-box,
+                    linear-gradient(135deg, ${primaryColor}, ${secondaryColor}) border-box;
+      }
+
+      .upload-modern-zone:hover::before {
+        opacity: 1;
+      }
+
+      .upload-modern-zone.dragging {
+        background: linear-gradient(white, white) padding-box,
+                    linear-gradient(135deg, ${primaryColor}, ${accentColor}) border-box;
+        transform: scale(1.02);
+      }
+
+      .upload-modern-zone.dragging::before {
+        opacity: 1;
+      }
+
+      .upload-modern-icon {
+        font-size: 48px;
+        margin-bottom: 12px;
+        display: inline-block;
+        filter: drop-shadow(0 4px 8px rgba(99, 102, 241, 0.2));
+      }
+
+      .upload-modern-zone:hover .upload-modern-icon {
+        animation: uploadPulse 1.5s infinite;
+      }
+
+      .upload-modern-desc {
+        font-size: 15px;
+        color: #475569;
+        font-weight: 600;
+        position: relative;
+        z-index: 1;
+      }
+
+      .upload-modern-file-info {
+        margin-top: 20px;
+        padding: 16px;
+        background: linear-gradient(135deg, ${primaryColor}10, ${secondaryColor}10);
+        border-radius: 12px;
+        border-left: 4px solid ${primaryColor};
+        animation: slideUp 0.3s ease-out;
+      }
+
+      .upload-modern-file-name {
+        font-weight: 700;
+        color: #1e293b;
+        font-size: 14px;
+        margin-bottom: 4px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .upload-modern-file-size {
+        font-size: 13px;
+        color: #64748b;
+        font-weight: 500;
+      }
+
+      .upload-modern-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 20px;
+        flex-wrap: wrap;
+      }
+
+      .upload-modern-btn {
+        flex: 1;
+        min-width: 120px;
+        padding: 14px 24px;
+        border-radius: 12px;
+        border: none;
+        font-weight: 700;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+        letter-spacing: 0.3px;
+      }
+
+      .upload-modern-btn::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent);
+        transform: translateX(-100%);
+        transition: transform 0.6s;
+      }
+
+      .upload-modern-btn:hover::before {
+        transform: translateX(100%);
+      }
+
+      .upload-modern-btn-primary {
+        background: linear-gradient(135deg, ${primaryColor}, ${secondaryColor});
+        color: white;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+      }
+
+      .upload-modern-btn-primary:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
+      }
+
+      .upload-modern-btn-primary:active:not(:disabled) {
+        transform: translateY(0);
+      }
+
+      .upload-modern-btn-primary:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .upload-modern-btn-secondary {
+        background: linear-gradient(145deg, #f1f5f9, #e2e8f0);
+        color: #475569;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      }
+
+      .upload-modern-btn-secondary:hover:not(:disabled) {
+        background: linear-gradient(145deg, #e2e8f0, #cbd5e1);
+        transform: translateY(-1px);
+      }
+
+      .upload-modern-status {
+        margin-top: 16px;
+        padding: 12px;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 600;
+        text-align: center;
+        animation: slideUp 0.3s ease-out;
+      }
+
+      .upload-modern-status.error {
+        background: linear-gradient(135deg, #fee2e2, #fecaca);
+        color: #991b1b;
+        border: 1px solid #fca5a5;
+      }
+
+      .upload-modern-status.success {
+        background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+        color: #065f46;
+        border: 1px solid #6ee7b7;
+      }
+
+      .upload-modern-status.processing {
+        background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+        color: #1e40af;
+        border: 1px solid #93c5fd;
+      }
+
+      /* Loader overlay */
+      .upload-modern-loader {
+        display: none;
+        background: linear-gradient(145deg, #0f172a, #1e293b);
+        border-radius: 20px;
+        padding: 32px;
+        margin-top: 16px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        animation: slideUp 0.4s ease-out;
+      }
+
+      .upload-modern-loader.active {
+        display: block;
+      }
+
+      .upload-modern-loader-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+      }
+
+      .upload-modern-loader-title {
+        color: white;
+        font-weight: 800;
+        font-size: 18px;
+        letter-spacing: 0.5px;
+        text-align: center;
+      }
+
+      .upload-modern-loader-percentage {
+        color: white;
+        font-weight: 900;
+        font-size: 32px;
+        text-align: center;
+        background: linear-gradient(135deg, ${primaryColor}, ${accentColor});
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .upload-modern-loader-step {
+        color: rgba(255,255,255,0.8);
+        font-size: 14px;
+        font-weight: 500;
+        text-align: center;
+        min-height: 20px;
+      }
+
+      .upload-modern-loader-done-btn {
+        margin-top: 12px;
+        padding: 14px 32px;
+        background: linear-gradient(135deg, ${primaryColor}, ${accentColor});
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 16px;
+        cursor: pointer;
+        box-shadow: 0 8px 24px rgba(236, 72, 153, 0.4);
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .upload-modern-loader-done-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 32px rgba(236, 72, 153, 0.5);
+      }
+    `;
+
+    // ---------- UI MODERNE ----------
+    const root = document.createElement('div');
+    root.className = 'upload-modern-wrap';
+    
+    const styleTag = document.createElement('style');
+    styleTag.textContent = styles;
+    root.appendChild(styleTag);
+
+    root.innerHTML += `
+      <div class="upload-modern-card">
+        <div class="upload-modern-header">
+          <div class="upload-modern-title">${title}</div>
+          <div class="upload-modern-subtitle">${subtitle}</div>
+        </div>
+
+        <div class="upload-modern-zone">
+          <div class="upload-modern-icon">📁</div>
+          <div class="upload-modern-desc">${description}</div>
+          <input type="file" accept="${accept}" style="display:none" />
+        </div>
+
+        <div class="upload-modern-file-info" style="display:none">
+          <div class="upload-modern-file-name"></div>
+          <div class="upload-modern-file-size"></div>
+        </div>
+
+        <div class="upload-modern-actions">
+          ${buttons.map(b => `
+            <button class="upload-modern-btn upload-modern-btn-secondary back-button" data-path="${b.path || pathError}">
+              ${b.text || '← Retour'}
+            </button>
+          `).join('')}
+          <button class="upload-modern-btn upload-modern-btn-primary send-button" disabled>
+            Envoyer
+          </button>
+        </div>
+
+        <div class="upload-modern-status" style="display:none"></div>
+      </div>
+
+      <div class="upload-modern-loader">
+        <div class="upload-modern-loader-content">
+          <div class="upload-modern-loader-title"></div>
+          
+          <svg width="160" height="160" viewBox="0 0 160 160">
+            <circle cx="80" cy="80" r="70" stroke="rgba(255,255,255,0.1)" stroke-width="8" fill="none"/>
+            <circle class="loader-circle" cx="80" cy="80" r="70" 
+                    stroke="url(#gradient)" stroke-width="8" fill="none"
+                    stroke-linecap="round"
+                    transform="rotate(-90 80 80)"
+                    stroke-dasharray="440"
+                    stroke-dashoffset="440"/>
+            <defs>
+              <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:${primaryColor};stop-opacity:1" />
+                <stop offset="100%" style="stop-color:${accentColor};stop-opacity:1" />
+              </linearGradient>
+            </defs>
+          </svg>
+
+          <div class="upload-modern-loader-percentage">0%</div>
+          <div class="upload-modern-loader-step"></div>
+        </div>
+      </div>
+    `;
+
+    element.appendChild(root);
+
+    // ---------- SÉLECTEURS ----------
+    const uploadZone  = root.querySelector('.upload-modern-zone');
+    const fileInput   = root.querySelector('input[type="file"]');
+    const fileInfo    = root.querySelector('.upload-modern-file-info');
+    const fileName    = root.querySelector('.upload-modern-file-name');
+    const fileSize    = root.querySelector('.upload-modern-file-size');
+    const sendBtn     = root.querySelector('.send-button');
+    const backButtons = root.querySelectorAll('.back-button');
+    const statusDiv   = root.querySelector('.upload-modern-status');
+    const loader      = root.querySelector('.upload-modern-loader');
+    const loaderTitle = root.querySelector('.upload-modern-loader-title');
+    const loaderPct   = root.querySelector('.upload-modern-loader-percentage');
+    const loaderStep  = root.querySelector('.upload-modern-loader-step');
+    const loaderCircle= root.querySelector('.loader-circle');
+
+    // ---------- STATE ----------
+    let selectedFile = null;
+
+    // ---------- FUNCTIONS ----------
+    function formatSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    function setStatus(message, type = 'processing') {
+      statusDiv.textContent = message;
+      statusDiv.className = `upload-modern-status ${type}`;
+      statusDiv.style.display = 'block';
+    }
+
+    function updateFile(file) {
+      if (!file) {
+        selectedFile = null;
+        fileInfo.style.display = 'none';
+        sendBtn.disabled = true;
+        return;
+      }
+
+      if (maxFileSizeMB && file.size > maxFileSizeMB * 1024 * 1024) {
+        setStatus(`❌ Fichier trop volumineux (${formatSize(file.size)}). Limite : ${maxFileSizeMB} MB`, 'error');
+        return;
+      }
+
+      selectedFile = file;
+      fileName.innerHTML = `📄 <span>${file.name}</span>`;
+      fileSize.textContent = formatSize(file.size);
+      fileInfo.style.display = 'block';
+      sendBtn.disabled = false;
+      statusDiv.style.display = 'none';
+    }
+
+    function showLoader(message, steps) {
+      loaderTitle.textContent = message;
+      loader.classList.add('active');
+      return {
+        setProgress(percent) {
+          const offset = 440 - (percent / 100) * 440;
+          loaderCircle.style.strokeDashoffset = offset;
+          loaderPct.textContent = `${Math.round(percent)}%`;
+          
+          let currentStep = steps[0];
+          for (const s of steps) {
+            if (percent >= s.progress) currentStep = s;
+          }
+          loaderStep.textContent = currentStep?.text || '';
+        },
+        showDone(onClick) {
+          this.setProgress(100);
+          const btn = document.createElement('button');
+          btn.className = 'upload-modern-loader-done-btn';
+          btn.innerHTML = `<span style="font-size:24px">${p.loader?.finalButtonIcon || '✅'}</span> ${p.loader?.finalText || 'Continuer'}`;
+          btn.onclick = onClick;
+          root.querySelector('.upload-modern-loader-content').appendChild(btn);
+        }
+      };
+    }
+
+    // ---------- EVENTS ----------
+    uploadZone.addEventListener('click', () => fileInput.click());
+
+    uploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadZone.classList.add('dragging');
+    });
+
+    uploadZone.addEventListener('dragleave', () => {
+      uploadZone.classList.remove('dragging');
+    });
+
+    uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadZone.classList.remove('dragging');
+      const files = Array.from(e.dataTransfer?.files || []);
+      if (files.length) updateFile(files[0]);
+    });
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files?.length) updateFile(fileInput.files[0]);
+    });
+
+    backButtons.forEach(b => b.addEventListener('click', () => {
+      const path = b.getAttribute('data-path') || pathError;
+      try {
+        window?.voiceflow?.chat?.interact?.({ 
+          type: 'complete', 
+          payload: { webhookSuccess: false, path } 
+        });
+      } catch {}
+    }));
+
+    sendBtn.addEventListener('click', async () => {
+      if (!selectedFile) return;
+
+      sendBtn.disabled = true;
+      backButtons.forEach(b => b.disabled = true);
+      setStatus('📤 Envoi en cours...', 'processing');
+
+      const loaderSteps = p.loader?.steps || [
+        { progress: 10, text: '📋 Préparation du fichier' },
+        { progress: 30, text: '🚀 Envoi au serveur' },
+        { progress: 60, text: '🔄 Traitement en cours' },
+        { progress: 85, text: '✨ Finalisation' },
+        { progress: 100, text: '✅ Terminé !' }
+      ];
+
+      const loaderUI = showLoader(
+        p.loader?.message || '⏳ Traitement en cours...',
+        loaderSteps
+      );
+
+      loaderUI.setProgress(10);
+
+      try {
+        const resp = await postToN8n({
+          url: webhookUrl,
+          method: webhookMethod,
+          headers: webhookHeaders,
+          timeoutMs: webhookTimeoutMs,
+          retries: webhookRetries,
+          file: selectedFile,
+          fileFieldName,
+          extra,
+          vfContext,
+          onProgress: (p) => loaderUI.setProgress(Math.min(85, 10 + p * 0.75))
+        });
+
+        let finalData = resp?.data ?? null;
+
+        if (awaitResponse && pollingEnabled) {
+          const jobId = finalData?.jobId;
+          const statusUrl = finalData?.statusUrl || polling?.statusUrl;
+
+          if (statusUrl || jobId) {
+            finalData = await pollStatus({
+              statusUrl: statusUrl || `${webhookUrl.split('/webhook')[0]}/rest/jobs/${jobId}`,
+              headers: pollingHeaders,
+              intervalMs: pollingIntervalMs,
+              maxAttempts: pollingMaxAttempts,
+              onTick: (i, total) => loaderUI.setProgress(Math.min(95, 85 + (i / total) * 10))
+            });
+          }
+        }
+
+        loaderUI.setProgress(100);
+        loaderUI.showDone(() => {
+          try {
+            window?.voiceflow?.chat?.interact?.({
+              type: 'complete',
+              payload: {
+                webhookSuccess: true,
+                webhookResponse: finalData,
+                file: {
+                  name: selectedFile.name,
+                  size: selectedFile.size,
+                  type: selectedFile.type
+                },
+                path: pathSuccess
+              }
+            });
+          } catch {}
+        });
+
+      } catch (err) {
+        loader.classList.remove('active');
+        setStatus(`❌ ${String(err?.message || err)}`, 'error');
+        sendBtn.disabled = false;
+        backButtons.forEach(b => b.disabled = false);
+
+        try {
+          window?.voiceflow?.chat?.interact?.({
+            type: 'complete',
+            payload: { 
+              webhookSuccess: false, 
+              error: String(err?.message || err), 
+              path: pathError 
+            }
+          });
+        } catch {}
+      }
+    });
+
+    // ---------- NETWORK ----------
+    async function postToN8n({ url, method, headers, timeoutMs, retries, file, fileFieldName, extra, vfContext, onProgress }) {
+      let lastErr;
+
+      for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+          const controller = new AbortController();
+          const to = setTimeout(() => controller.abort(), timeoutMs);
+
+          const fd = new FormData();
+          
+          // ✅ CORRECTION : Un seul fichier, pas d'index
+          fd.append(fileFieldName, file, file.name);
+
+          Object.entries(extra).forEach(([k, v]) => {
+            fd.append(k, typeof v === 'object' ? JSON.stringify(v) : String(v ?? ''));
+          });
+
+          if (vfContext.conversation_id) fd.append('conversation_id', vfContext.conversation_id);
+          if (vfContext.user_id) fd.append('user_id', vfContext.user_id);
+          if (vfContext.locale) fd.append('locale', vfContext.locale);
+
+          const finalHeaders = { ...headers };
+          delete finalHeaders['Content-Type'];
+
+          onProgress?.(30);
+
+          const resp = await fetch(url, {
+            method,
+            headers: finalHeaders,
+            body: fd,
+            signal: controller.signal
+          });
+
+          clearTimeout(to);
+          onProgress?.(60);
+
+          if (!resp.ok) {
+            const text = await safeText(resp);
+            throw new Error(`Erreur ${resp.status} : ${text?.slice(0, 200) || resp.statusText}`);
+          }
+
+          onProgress?.(80);
+          return { ok: true, data: await safeJson(resp) };
+
+        } catch (e) {
+          lastErr = e;
+          if (attempt < retries) await new Promise(r => setTimeout(r, 1000));
+        }
+      }
+
+      throw lastErr || new Error('Échec de l\'envoi');
+    }
+
+    async function pollStatus({ statusUrl, headers, intervalMs, maxAttempts, onTick }) {
+      for (let i = 1; i <= maxAttempts; i++) {
+        onTick?.(i, maxAttempts);
+        const r = await fetch(statusUrl, { headers });
+        if (!r.ok) throw new Error(`Polling ${r.status}`);
+        const j = await safeJson(r);
+        if (j?.status === 'done') return j?.data ?? j;
+        if (j?.status === 'error') throw new Error(j?.error || 'Erreur pipeline');
+        await new Promise(res => setTimeout(res, intervalMs));
+      }
+      throw new Error('Polling timeout');
+    }
+
+    async function safeJson(r) { try { return await r.json(); } catch { return null; } }
+    async function safeText(r) { try { return await r.text(); } catch { return null; } }
+  }
+};
+
+try { window.UploadToN8nWithLoader = UploadToN8nWithLoader; } catch {}

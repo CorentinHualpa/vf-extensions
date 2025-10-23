@@ -1,4 +1,4 @@
-// UploadToN8nWithLoader.js - VERSION FINALE CORRIGÉE
+// UploadToN8nWithLoader.js - VERSION CHARTE INFORTIVE
 export const UploadToN8nWithLoader = {
   name: 'UploadToN8nWithLoader',
   type: 'response',
@@ -33,9 +33,14 @@ export const UploadToN8nWithLoader = {
     const maxFileSizeMB    = p.maxFileSizeMB || 25;
     
     // 🎨 Couleurs personnalisables
-    const primaryColor     = p.primaryColor || '#6366f1';
-    const secondaryColor   = p.secondaryColor || '#8b5cf6';
-    const accentColor      = p.accentColor || '#ec4899';
+    const primaryColor     = p.primaryColor || '#087095';
+    const secondaryColor   = p.secondaryColor || '#003D5C';
+    const accentColor      = p.accentColor || '#F18F01';
+    
+    // 🎨 Couleurs du loader (peuvent être différentes)
+    const loaderBgColor    = p.loaderBgColor || secondaryColor;
+    const loaderBgColor2   = p.loaderBgColor2 || primaryColor;
+    const loaderTextColor  = p.loaderTextColor || '#FFFFFF';
     
     const buttons          = Array.isArray(p.buttons) ? p.buttons : [];
     
@@ -86,11 +91,6 @@ export const UploadToN8nWithLoader = {
       @keyframes uploadPulse {
         0%, 100% { transform: scale(1); opacity: 1; }
         50% { transform: scale(1.05); opacity: 0.8; }
-      }
-      
-      @keyframes shimmer {
-        0% { background-position: -1000px 0; }
-        100% { background-position: 1000px 0; }
       }
 
       @keyframes slideUp {
@@ -162,7 +162,7 @@ export const UploadToN8nWithLoader = {
 
       .upload-modern-zone:hover {
         transform: translateY(-2px);
-        box-shadow: 0 12px 24px rgba(99, 102, 241, 0.15);
+        box-shadow: 0 12px 24px ${primaryColor}30;
         border-color: transparent;
         background: linear-gradient(white, white) padding-box,
                     linear-gradient(135deg, ${primaryColor}, ${secondaryColor}) border-box;
@@ -186,7 +186,7 @@ export const UploadToN8nWithLoader = {
         font-size: 48px;
         margin-bottom: 12px;
         display: inline-block;
-        filter: drop-shadow(0 4px 8px rgba(99, 102, 241, 0.2));
+        filter: drop-shadow(0 4px 8px ${primaryColor}40);
       }
 
       .upload-modern-zone:hover .upload-modern-icon {
@@ -264,12 +264,12 @@ export const UploadToN8nWithLoader = {
       .upload-modern-btn-primary {
         background: linear-gradient(135deg, ${primaryColor}, ${secondaryColor});
         color: white;
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        box-shadow: 0 4px 12px ${primaryColor}40;
       }
 
       .upload-modern-btn-primary:hover:not(:disabled) {
         transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
+        box-shadow: 0 8px 20px ${primaryColor}50;
       }
 
       .upload-modern-btn-primary:active:not(:disabled) {
@@ -315,15 +315,15 @@ export const UploadToN8nWithLoader = {
       }
 
       .upload-modern-status.processing {
-        background: linear-gradient(135deg, #dbeafe, #bfdbfe);
-        color: #1e40af;
-        border: 1px solid #93c5fd;
+        background: linear-gradient(135deg, ${primaryColor}20, ${secondaryColor}20);
+        color: ${secondaryColor};
+        border: 1px solid ${primaryColor}60;
       }
 
-      /* Loader overlay */
+      /* Loader overlay - COULEURS PERSONNALISABLES */
       .upload-modern-loader {
         display: none;
-        background: linear-gradient(145deg, #0f172a, #1e293b);
+        background: linear-gradient(145deg, ${loaderBgColor}, ${loaderBgColor2});
         border-radius: 20px;
         padding: 32px;
         margin-top: 16px;
@@ -343,7 +343,7 @@ export const UploadToN8nWithLoader = {
       }
 
       .upload-modern-loader-title {
-        color: white;
+        color: ${loaderTextColor};
         font-weight: 800;
         font-size: 18px;
         letter-spacing: 0.5px;
@@ -351,18 +351,14 @@ export const UploadToN8nWithLoader = {
       }
 
       .upload-modern-loader-percentage {
-        color: white;
+        color: ${loaderTextColor};
         font-weight: 900;
         font-size: 32px;
         text-align: center;
-        background: linear-gradient(135deg, ${primaryColor}, ${accentColor});
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
       }
 
       .upload-modern-loader-step {
-        color: rgba(255,255,255,0.8);
+        color: ${loaderTextColor}CC;
         font-size: 14px;
         font-weight: 500;
         text-align: center;
@@ -372,14 +368,14 @@ export const UploadToN8nWithLoader = {
       .upload-modern-loader-done-btn {
         margin-top: 12px;
         padding: 14px 32px;
-        background: linear-gradient(135deg, ${primaryColor}, ${accentColor});
+        background: ${accentColor};
         color: white;
         border: none;
         border-radius: 12px;
         font-weight: 700;
         font-size: 16px;
         cursor: pointer;
-        box-shadow: 0 8px 24px rgba(236, 72, 153, 0.4);
+        box-shadow: 0 8px 24px ${accentColor}60;
         transition: all 0.3s;
         display: flex;
         align-items: center;
@@ -388,7 +384,7 @@ export const UploadToN8nWithLoader = {
 
       .upload-modern-loader-done-btn:hover {
         transform: translateY(-2px);
-        box-shadow: 0 12px 32px rgba(236, 72, 153, 0.5);
+        box-shadow: 0 12px 32px ${accentColor}80;
       }
     `;
 
@@ -437,19 +433,13 @@ export const UploadToN8nWithLoader = {
           <div class="upload-modern-loader-title"></div>
           
           <svg width="160" height="160" viewBox="0 0 160 160">
-            <circle cx="80" cy="80" r="70" stroke="rgba(255,255,255,0.1)" stroke-width="8" fill="none"/>
+            <circle cx="80" cy="80" r="70" stroke="rgba(255,255,255,0.2)" stroke-width="8" fill="none"/>
             <circle class="loader-circle" cx="80" cy="80" r="70" 
-                    stroke="url(#gradient)" stroke-width="8" fill="none"
+                    stroke="${accentColor}" stroke-width="8" fill="none"
                     stroke-linecap="round"
                     transform="rotate(-90 80 80)"
                     stroke-dasharray="440"
                     stroke-dashoffset="440"/>
-            <defs>
-              <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" style="stop-color:${primaryColor};stop-opacity:1" />
-                <stop offset="100%" style="stop-color:${accentColor};stop-opacity:1" />
-              </linearGradient>
-            </defs>
           </svg>
 
           <div class="upload-modern-loader-percentage">0%</div>
@@ -672,8 +662,6 @@ export const UploadToN8nWithLoader = {
           const to = setTimeout(() => controller.abort(), timeoutMs);
 
           const fd = new FormData();
-          
-          // ✅ CORRECTION : Un seul fichier, pas d'index
           fd.append(fileFieldName, file, file.name);
 
           Object.entries(extra).forEach(([k, v]) => {

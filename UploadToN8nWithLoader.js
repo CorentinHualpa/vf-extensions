@@ -1,12 +1,8 @@
-// UploadToN8nWithLoader.js
-// Upload multiple files -> n8n webhook (+ option base64) + Loader animé pendant l'attente
-// Auteurs: Corentin / Evolution Agency (patch match + guards par ChatGPT)
-
+// UploadToN8nWithLoader.js - VERSION CORRIGÉE
 export const UploadToN8nWithLoader = {
   name: 'UploadToN8nWithLoader',
   type: 'response',
-
-  // ✅ Match robuste (comme ton ancienne ext)
+  
   match(context) {
     try {
       const t = context?.trace || {};
@@ -28,38 +24,39 @@ export const UploadToN8nWithLoader = {
 
     // ---------- CONFIG ----------
     const p = trace?.payload || {};
-
+    
     // UI upload
     const title            = p.title || 'Téléverser un ou plusieurs documents';
     const description      = p.description || 'Glissez-déposez des fichiers ici ou cliquez pour sélectionner';
-    const allowMultiple    = p.allowMultiple !== false; // par défaut: multiple
+    const allowMultiple    = p.allowMultiple !== false;
     const backgroundImage  = p.backgroundImage || null;
     const backgroundOpacity= typeof p.backgroundOpacity === 'number' ? p.backgroundOpacity : 0.15;
     const buttons          = Array.isArray(p.buttons) ? p.buttons : [];
-
+    
     // Webhook n8n
     const webhook          = p.webhook || {};
     const webhookUrl       = webhook.url;
     const webhookMethod    = (webhook.method || 'POST').toUpperCase();
-    const webhookHeaders   = webhook.headers || {}; // vide si "None"
+    const webhookHeaders   = webhook.headers || {};
     const webhookTimeoutMs = Number.isFinite(webhook.timeoutMs) ? webhook.timeoutMs : 60000;
     const webhookRetries   = Number.isFinite(webhook.retries) ? webhook.retries : 1;
-    const sendFile         = webhook.sendFile !== false; // true = multipart ; false = JSON base64
+    const sendFile         = webhook.sendFile !== false;
+    
+    // ✅ NOUVEAU : Nom du champ fichier configurable
+    const fileFieldName    = webhook.fileFieldName || 'file'; // 'file' par défaut au lieu de 'files[]'
     const extra            = webhook.extra || {};
-
+    
     // Attente / fin
-    const awaitResponse    = p.awaitResponse !== false; // true = attendre réponse
+    const awaitResponse    = p.awaitResponse !== false;
     const polling          = p.polling || {};
     const pollingEnabled   = !!polling.enabled;
     const pollingIntervalMs= Number.isFinite(polling.intervalMs) ? polling.intervalMs : 2000;
     const pollingMaxAttempts= Number.isFinite(polling.maxAttempts) ? polling.maxAttempts : 60;
     const pollingHeaders   = polling.headers || {};
-
-    // ✅ Routes par défaut compatibles avec ton flow
+    
     const pathSuccess      = p.pathSuccess || p.returnPathOnSuccess || 'Confirm_Upload';
-    const pathError        = p.pathError   || p.returnPathOnCancel  || 'Fail';
-
-    // Contexte utile
+    const pathError        = p.pathError   || p.returnPathOnCancel  || 'Cancel';
+    
     const vfContext = {
       conversation_id: p.conversation_id || null,
       user_id: p.user_id || null,
@@ -81,7 +78,7 @@ export const UploadToN8nWithLoader = {
       return;
     }
 
-    // ---------- UI ----------
+    // ---------- UI (identique) ----------
     const root = document.createElement('div');
     root.style.position = 'relative';
     root.style.display = 'block';
@@ -139,7 +136,6 @@ export const UploadToN8nWithLoader = {
     `;
     card.appendChild(cardInner);
 
-    // Loader (masqué au début)
     const overlay = document.createElement('div');
     overlay.style.display = 'none';
     overlay.style.border = '1px solid #e5e7eb';
@@ -161,7 +157,7 @@ export const UploadToN8nWithLoader = {
     const backButtons = cardInner.querySelectorAll('.back-button');
     const statusDiv   = cardInner.querySelector('.upload-status');
 
-    // ---------- Loader ----------
+    // ---------- Loader (identique) ----------
     function mountLoaderUI({
       message = p.loader?.message || 'Traitement en cours…',
       color   = p.loader?.color   || '#9C27B0',
@@ -198,6 +194,7 @@ export const UploadToN8nWithLoader = {
 
       const radius = (size - strokeWidth) / 2;
       const circumference = 2 * Math.PI * radius;
+
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
       svg.style.width = `${size}px`;
@@ -225,7 +222,6 @@ export const UploadToN8nWithLoader = {
 
       center.appendChild(svg);
       center.appendChild(pct);
-
       svg.appendChild(bg); svg.appendChild(fg);
 
       const stepText = document.createElement('div');
@@ -257,7 +253,7 @@ export const UploadToN8nWithLoader = {
       return { setProgress, showDone };
     }
 
-    // ---------- logiques ----------
+    // ---------- Logiques ----------
     const state = { files: [] };
 
     function refreshFileList() {
@@ -280,6 +276,7 @@ export const UploadToN8nWithLoader = {
       state.files = allowMultiple ? files : files.slice(0,1);
       refreshFileList();
     });
+
     fileInput.addEventListener('change', () => {
       const files = Array.from(fileInput.files || []);
       state.files = allowMultiple ? files : files.slice(0,1);
@@ -296,24 +293,17 @@ export const UploadToN8nWithLoader = {
     sendBtn.addEventListener('click', async () => {
       if (!state.files.length) return;
 
-      // lock UI upload
       sendBtn.disabled = true;
       backButtons.forEach(b => b.disabled = true);
       statusDiv.textContent = 'Envoi au webhook…';
 
-      // Monte le loader
       const loader = mountLoaderUI();
       loader.setProgress(8);
 
       try {
-        const payloadJson = {
-          filesMeta: state.files.map(f => ({ name: f.name, type: f.type, size: f.size, lastModified: f.lastModified || null })),
-          extra,
-          context: vfContext
-        };
-
-        // Envoi initial
+        // ✅ CORRECTION MAJEURE : Construction du FormData comme dans KBUpload_n8n
         loader.setProgress(20);
+        
         const resp = await postWithRetry({
           url: webhookUrl,
           method: webhookMethod,
@@ -322,7 +312,9 @@ export const UploadToN8nWithLoader = {
           retries: webhookRetries,
           sendFile,
           files: state.files,
-          json: payloadJson
+          fileFieldName,  // ✅ Passer le nom du champ
+          extra,
+          vfContext
         });
 
         let finalData = resp?.data ?? null;
@@ -330,6 +322,7 @@ export const UploadToN8nWithLoader = {
         if (awaitResponse) {
           const jobId = finalData?.jobId;
           const statusUrl = finalData?.statusUrl || polling?.statusUrl;
+          
           if (pollingEnabled && (statusUrl || jobId)) {
             loader.setProgress(45);
             finalData = await pollStatus({
@@ -343,14 +336,13 @@ export const UploadToN8nWithLoader = {
         }
 
         loader.setProgress(100);
-
         loader.showDone(() => {
           try {
             window?.voiceflow?.chat?.interact?.({
               type: 'complete',
               payload: {
                 webhookSuccess: true,
-                webhookResponse: finalData,        // ton JS de capture prendra cvText ici
+                webhookResponse: finalData,
                 filesCount: state.files.length,
                 path: pathSuccess
               }
@@ -365,7 +357,7 @@ export const UploadToN8nWithLoader = {
         </div>`;
         sendBtn.disabled = false;
         backButtons.forEach(b => b.disabled = false);
-
+        
         try {
           window?.voiceflow?.chat?.interact?.({
             type: 'complete',
@@ -375,9 +367,10 @@ export const UploadToN8nWithLoader = {
       }
     });
 
-    // ---------- helpers réseau ----------
-    async function postWithRetry({ url, method, headers, timeoutMs, retries, sendFile, files, json }) {
+    // ✅ ---------- FONCTION CORRIGÉE postWithRetry ----------
+    async function postWithRetry({ url, method, headers, timeoutMs, retries, sendFile, files, fileFieldName, extra, vfContext }) {
       let lastErr;
+      
       for (let attempt = 0; attempt <= retries; attempt++) {
         try {
           const controller = new AbortController();
@@ -385,33 +378,88 @@ export const UploadToN8nWithLoader = {
           let resp;
 
           if (sendFile) {
+            // ✅ Construction FormData EXACTEMENT comme KBUpload_n8n
             const fd = new FormData();
-            files.forEach((f,i) => fd.append('files[]', f, f.name));
-            fd.append('payload', new Blob([JSON.stringify(json||{})], { type: 'application/json' }));
-            resp = await fetch(url, { method, headers, body: fd, signal: controller.signal });
+            
+            // ✅ Ajouter les fichiers avec le bon nom de champ
+            if (allowMultiple) {
+              files.forEach((f, i) => {
+                // Si multiple, ajouter un index : file_0, file_1, etc.
+                fd.append(`${fileFieldName}_${i}`, f, f.name);
+              });
+            } else {
+              // Si single, juste le nom du champ
+              fd.append(fileFieldName, files[0], files[0].name);
+            }
+            
+            // ✅ Ajouter les champs extra DIRECTEMENT (pas en JSON blob)
+            Object.entries(extra).forEach(([k, v]) => {
+              fd.append(k, typeof v === 'object' ? JSON.stringify(v) : String(v ?? ''));
+            });
+            
+            // ✅ Ajouter le contexte VF
+            if (vfContext.conversation_id) fd.append('conversation_id', vfContext.conversation_id);
+            if (vfContext.user_id) fd.append('user_id', vfContext.user_id);
+            if (vfContext.locale) fd.append('locale', vfContext.locale);
+            
+            // ✅ NE PAS définir Content-Type manuellement (le navigateur le fait avec boundary)
+            const finalHeaders = { ...headers };
+            delete finalHeaders['Content-Type']; // Important pour multipart/form-data
+            
+            resp = await fetch(url, { 
+              method, 
+              headers: finalHeaders, 
+              body: fd, 
+              signal: controller.signal 
+            });
+            
           } else {
+            // Mode base64
             const filesBase64 = await Promise.all(files.map(async (f) => ({
-              name: f.name, type: f.type, size: f.size, base64: await toBase64(f)
+              name: f.name, 
+              type: f.type, 
+              size: f.size, 
+              base64: await toBase64(f)
             })));
-            const body = Object.assign({}, json, { filesBase64 });
-            const merged = Object.assign({}, headers, { 'Content-Type': 'application/json' });
-            resp = await fetch(url, { method, headers: merged, body: JSON.stringify(body), signal: controller.signal });
+            
+            const body = {
+              files: filesBase64,
+              extra,
+              context: vfContext
+            };
+            
+            const merged = { 
+              ...headers, 
+              'Content-Type': 'application/json' 
+            };
+            
+            resp = await fetch(url, { 
+              method, 
+              headers: merged, 
+              body: JSON.stringify(body), 
+              signal: controller.signal 
+            });
           }
 
           clearTimeout(to);
+
           if (!resp.ok) {
             const t = await safeText(resp);
             throw new Error(`Webhook ${resp.status} ${resp.statusText} – ${t?.slice(0,400) || ''}`);
           }
+
           return { ok: true, data: await safeJson(resp) };
+
         } catch (e) {
           lastErr = e;
           if (attempt < retries) await new Promise(r => setTimeout(r, 600 * (attempt+1)));
         }
       }
+      
       throw lastErr || new Error('Webhook failed');
     }
 
+    // ---------- Helpers (identiques) ----------
     async function pollStatus({ statusUrl, headers, intervalMs, maxAttempts, onTick }) {
       for (let i = 1; i <= maxAttempts; i++) {
         onTick?.(i, maxAttempts);
@@ -437,10 +485,10 @@ export const UploadToN8nWithLoader = {
         rd.readAsDataURL(file);
       });
     }
+
     async function safeJson(r){ try{ return await r.json(); } catch{ return null; } }
     async function safeText(r){ try{ return await r.text(); } catch{ return null; } }
   }
 };
 
-// (optionnel) attache au window si import ES module indisponible
 try { window.UploadToN8nWithLoader = UploadToN8nWithLoader; } catch {}

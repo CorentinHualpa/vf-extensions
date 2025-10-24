@@ -1,4 +1,4 @@
-// UploadToN8nWithLoader.js - VERSION CHARTE INFORTIVE
+// UploadToN8nWithLoader.js - VERSION FINALE OPTIMISÉE
 export const UploadToN8nWithLoader = {
   name: 'UploadToN8nWithLoader',
   type: 'response',
@@ -35,9 +35,9 @@ export const UploadToN8nWithLoader = {
     // 🎨 Couleurs personnalisables
     const primaryColor     = p.primaryColor || '#087095';
     const secondaryColor   = p.secondaryColor || '#003D5C';
-    const accentColor      = p.accentColor || '#F18F01';
+    const accentColor      = p.accentColor || '#FF8C00';
     
-    // 🎨 Couleurs du loader (peuvent être différentes)
+    // 🎨 Couleurs du loader
     const loaderBgColor    = p.loaderBgColor || secondaryColor;
     const loaderBgColor2   = p.loaderBgColor2 || primaryColor;
     const loaderTextColor  = p.loaderTextColor || '#FFFFFF';
@@ -102,6 +102,23 @@ export const UploadToN8nWithLoader = {
         width: 100%;
         max-width: 100%;
         animation: slideUp 0.4s ease-out;
+        position: relative;
+      }
+
+      /* ✅ Overlay pour griser l'interface */
+      .upload-modern-disabled-overlay {
+        display: none;
+        position: absolute;
+        inset: 0;
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(3px);
+        z-index: 9999;
+        border-radius: 20px;
+        cursor: not-allowed;
+      }
+
+      .upload-modern-disabled-overlay.active {
+        display: block;
       }
 
       .upload-modern-card {
@@ -320,7 +337,7 @@ export const UploadToN8nWithLoader = {
         border: 1px solid ${primaryColor}60;
       }
 
-      /* Loader overlay - COULEURS PERSONNALISABLES */
+      /* Loader overlay */
       .upload-modern-loader {
         display: none;
         background: linear-gradient(145deg, ${loaderBgColor}, ${loaderBgColor2});
@@ -397,6 +414,8 @@ export const UploadToN8nWithLoader = {
     root.appendChild(styleTag);
 
     root.innerHTML += `
+      <div class="upload-modern-disabled-overlay"></div>
+      
       <div class="upload-modern-card">
         <div class="upload-modern-header">
           <div class="upload-modern-title">${title}</div>
@@ -464,6 +483,7 @@ export const UploadToN8nWithLoader = {
     const loaderPct   = root.querySelector('.upload-modern-loader-percentage');
     const loaderStep  = root.querySelector('.upload-modern-loader-step');
     const loaderCircle= root.querySelector('.loader-circle');
+    const disabledOverlay = root.querySelector('.upload-modern-disabled-overlay');
 
     // ---------- STATE ----------
     let selectedFile = null;
@@ -502,27 +522,92 @@ export const UploadToN8nWithLoader = {
       statusDiv.style.display = 'none';
     }
 
+    // ✅ NOUVELLE FONCTION : Loader avec progression temporelle
     function showLoader(message, steps) {
       loaderTitle.textContent = message;
       loader.classList.add('active');
+      
+      let currentProgress = 0;
+      let intervalId = null;
+      let isComplete = false;
+      
       return {
-        setProgress(percent) {
-          const offset = 440 - (percent / 100) * 440;
-          loaderCircle.style.strokeDashoffset = offset;
-          loaderPct.textContent = `${Math.round(percent)}%`;
+        startAutoProgress() {
+          // ✅ Progression automatique par étapes temporelles
+          const stepsWithTime = steps.map((s, i) => ({
+            ...s,
+            duration: i < steps.length - 1 ? 2000 : 0 // 2 secondes par étape, sauf la dernière
+          }));
           
-          let currentStep = steps[0];
-          for (const s of steps) {
-            if (percent >= s.progress) currentStep = s;
-          }
-          loaderStep.textContent = currentStep?.text || '';
+          let currentStepIndex = 0;
+          
+          const animate = () => {
+            if (isComplete || currentStepIndex >= stepsWithTime.length - 1) return;
+            
+            const currentStep = stepsWithTime[currentStepIndex];
+            const nextStep = stepsWithTime[currentStepIndex + 1];
+            
+            if (!nextStep) return;
+            
+            const startProgress = currentStep.progress;
+            const endProgress = nextStep.progress;
+            const duration = currentStep.duration;
+            const startTime = Date.now();
+            
+            loaderStep.textContent = currentStep.text;
+            
+            const frame = () => {
+              if (isComplete) return;
+              
+              const elapsed = Date.now() - startTime;
+              const progress = Math.min(elapsed / duration, 1);
+              currentProgress = startProgress + (endProgress - startProgress) * progress;
+              
+              const offset = 440 - (currentProgress / 100) * 440;
+              loaderCircle.style.strokeDashoffset = offset;
+              loaderPct.textContent = `${Math.round(currentProgress)}%`;
+              
+              if (progress < 1) {
+                requestAnimationFrame(frame);
+              } else {
+                currentStepIndex++;
+                if (currentStepIndex < stepsWithTime.length - 1) {
+                  animate();
+                } else {
+                  // ✅ Rester sur la dernière étape
+                  loaderStep.textContent = stepsWithTime[stepsWithTime.length - 1].text;
+                }
+              }
+            };
+            
+            requestAnimationFrame(frame);
+          };
+          
+          animate();
         },
+        
+        setProgress(percent) {
+          // ✅ Permet de forcer le passage à 100% quand le webhook répond
+          if (percent >= 100) {
+            isComplete = true;
+            currentProgress = 100;
+            const offset = 440 - (100 / 100) * 440;
+            loaderCircle.style.strokeDashoffset = offset;
+            loaderPct.textContent = '100%';
+            loaderStep.textContent = steps[steps.length - 1].text;
+          }
+        },
+        
         showDone(onClick) {
           this.setProgress(100);
           const btn = document.createElement('button');
           btn.className = 'upload-modern-loader-done-btn';
           btn.innerHTML = `<span style="font-size:24px">${p.loader?.finalButtonIcon || '✅'}</span> ${p.loader?.finalText || 'Continuer'}`;
-          btn.onclick = onClick;
+          btn.onclick = () => {
+            // ✅ Activer l'overlay grisé
+            disabledOverlay.classList.add('active');
+            onClick();
+          };
           root.querySelector('.upload-modern-loader-content').appendChild(btn);
         }
       };
@@ -569,9 +654,9 @@ export const UploadToN8nWithLoader = {
       setStatus('📤 Envoi en cours...', 'processing');
 
       const loaderSteps = p.loader?.steps || [
-        { progress: 10, text: '📋 Préparation du fichier' },
-        { progress: 30, text: '🚀 Envoi au serveur' },
-        { progress: 60, text: '🔄 Traitement en cours' },
+        { progress: 0, text: '📋 Préparation' },
+        { progress: 30, text: '🚀 Envoi' },
+        { progress: 60, text: '🔄 Traitement' },
         { progress: 85, text: '✨ Finalisation' },
         { progress: 100, text: '✅ Terminé !' }
       ];
@@ -581,7 +666,8 @@ export const UploadToN8nWithLoader = {
         loaderSteps
       );
 
-      loaderUI.setProgress(10);
+      // ✅ Démarrer la progression automatique
+      loaderUI.startAutoProgress();
 
       try {
         const resp = await postToN8n({
@@ -593,8 +679,7 @@ export const UploadToN8nWithLoader = {
           file: selectedFile,
           fileFieldName,
           extra,
-          vfContext,
-          onProgress: (p) => loaderUI.setProgress(Math.min(85, 10 + p * 0.75))
+          vfContext
         });
 
         let finalData = resp?.data ?? null;
@@ -608,30 +693,33 @@ export const UploadToN8nWithLoader = {
               statusUrl: statusUrl || `${webhookUrl.split('/webhook')[0]}/rest/jobs/${jobId}`,
               headers: pollingHeaders,
               intervalMs: pollingIntervalMs,
-              maxAttempts: pollingMaxAttempts,
-              onTick: (i, total) => loaderUI.setProgress(Math.min(95, 85 + (i / total) * 10))
+              maxAttempts: pollingMaxAttempts
             });
           }
         }
 
+        // ✅ Forcer à 100% quand la réponse arrive
         loaderUI.setProgress(100);
-        loaderUI.showDone(() => {
-          try {
-            window?.voiceflow?.chat?.interact?.({
-              type: 'complete',
-              payload: {
-                webhookSuccess: true,
-                webhookResponse: finalData,
-                file: {
-                  name: selectedFile.name,
-                  size: selectedFile.size,
-                  type: selectedFile.type
-                },
-                path: pathSuccess
-              }
-            });
-          } catch {}
-        });
+        
+        setTimeout(() => {
+          loaderUI.showDone(() => {
+            try {
+              window?.voiceflow?.chat?.interact?.({
+                type: 'complete',
+                payload: {
+                  webhookSuccess: true,
+                  webhookResponse: finalData,
+                  file: {
+                    name: selectedFile.name,
+                    size: selectedFile.size,
+                    type: selectedFile.type
+                  },
+                  path: pathSuccess
+                }
+              });
+            } catch {}
+          });
+        }, 300);
 
       } catch (err) {
         loader.classList.remove('active');
@@ -653,7 +741,7 @@ export const UploadToN8nWithLoader = {
     });
 
     // ---------- NETWORK ----------
-    async function postToN8n({ url, method, headers, timeoutMs, retries, file, fileFieldName, extra, vfContext, onProgress }) {
+    async function postToN8n({ url, method, headers, timeoutMs, retries, file, fileFieldName, extra, vfContext }) {
       let lastErr;
 
       for (let attempt = 0; attempt <= retries; attempt++) {
@@ -675,8 +763,6 @@ export const UploadToN8nWithLoader = {
           const finalHeaders = { ...headers };
           delete finalHeaders['Content-Type'];
 
-          onProgress?.(30);
-
           const resp = await fetch(url, {
             method,
             headers: finalHeaders,
@@ -685,14 +771,12 @@ export const UploadToN8nWithLoader = {
           });
 
           clearTimeout(to);
-          onProgress?.(60);
 
           if (!resp.ok) {
             const text = await safeText(resp);
             throw new Error(`Erreur ${resp.status} : ${text?.slice(0, 200) || resp.statusText}`);
           }
 
-          onProgress?.(80);
           return { ok: true, data: await safeJson(resp) };
 
         } catch (e) {
@@ -704,9 +788,8 @@ export const UploadToN8nWithLoader = {
       throw lastErr || new Error('Échec de l\'envoi');
     }
 
-    async function pollStatus({ statusUrl, headers, intervalMs, maxAttempts, onTick }) {
+    async function pollStatus({ statusUrl, headers, intervalMs, maxAttempts }) {
       for (let i = 1; i <= maxAttempts; i++) {
-        onTick?.(i, maxAttempts);
         const r = await fetch(statusUrl, { headers });
         if (!r.ok) throw new Error(`Polling ${r.status}`);
         const j = await safeJson(r);

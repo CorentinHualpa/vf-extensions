@@ -1,11 +1,11 @@
 /**
  *  ╔═══════════════════════════════════════════════════════════╗
  *  ║  Carousel – Voiceflow Response Extension                  ║
- *  ║  VERSION 3.2 - OPTIMISÉ POUR VÉHICULES                   ║
+ *  ║  VERSION 4.0 - DUAL MODE (SHOWCASE + GALLERY)            ║
  *  ║                                                           ║
- *  ║  • Fond transparent par défaut                            ║
- *  ║  • Image réduite (35% au lieu de 56%)                    ║
- *  ║  • Plus d'espace pour les infos véhicules               ║
+ *  ║  • Mode "showcase": 1 carte pleine largeur, image 50%    ║
+ *  ║  • Mode "gallery": 2-3 cartes côte à côte, image 40%    ║
+ *  ║  • Optimisé pour véhicules automobiles                   ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 export const CarouselExtension = {
@@ -19,12 +19,14 @@ export const CarouselExtension = {
         title = null,
         brandColor = '#6366F1',
         brandColor2 = null,
-        backgroundImage = null,  // Par défaut null = transparent
+        backgroundImage = null,
         autoplay = false,
         autoplayDelay = 3000,
-        maxDescriptionLength = 120,
+        maxDescriptionLength = 250,
         instanceId = null,
-        userMessageText = null
+        userMessageText = null,
+        displayMode = 'showcase',  // 'showcase' ou 'gallery'
+        cardsPerView = 2            // Pour mode gallery: 2 ou 3
       } = trace.payload;
       
       // Validation
@@ -32,6 +34,13 @@ export const CarouselExtension = {
         console.error('❌ Carousel: 1-10 items requis');
         return;
       }
+      
+      // Validation du mode
+      const validModes = ['showcase', 'gallery'];
+      const mode = validModes.includes(displayMode) ? displayMode : 'showcase';
+      
+      // Pour gallery, limiter cardsPerView entre 2 et 3
+      const slidesPerView = mode === 'gallery' ? Math.min(3, Math.max(2, cardsPerView)) : 1;
       
       // Identifiant unique
       const uniqueId = instanceId || `carousel_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -66,7 +75,7 @@ export const CarouselExtension = {
         return url.replace(/^https?:\/\/imgur\.com\/([a-zA-Z0-9]+\.[a-zA-Z]+)$/, 'https://i.imgur.com/$1');
       };
       
-      // Couleurs avec support 2 couleurs pour dégradé
+      // Couleurs
       const color1 = brandColor;
       const color2 = brandColor2 || lightenColor(brandColor, 0.25);
       const { r: r1, g: g1, b: b1 } = hexToRgb(color1);
@@ -74,18 +83,24 @@ export const CarouselExtension = {
       const lightColor = lightenColor(color1, 0.3);
       const darkColor = darkenColor(color1, 0.2);
       
+      // Calcul de la largeur des cartes selon le mode
+      const cardWidth = mode === 'showcase' ? '100%' : `${100 / slidesPerView - 2}%`;
+      const imageHeight = mode === 'showcase' ? '50%' : '40%';
+      
       // Container principal
       const container = document.createElement('div');
       container.className = 'vf-carousel-container';
       container.id = uniqueId;
       container.setAttribute('data-items-count', items.length);
       container.setAttribute('data-has-background', backgroundImage ? 'true' : 'false');
+      container.setAttribute('data-display-mode', mode);
+      container.setAttribute('data-cards-per-view', slidesPerView);
       
-      // CSS amélioré
+      // CSS
       const styleEl = document.createElement('style');
       styleEl.textContent = `
 /* ═══════════════════════════════════════════════════════════ */
-/* ✅ FIX: STYLES CONTENEUR PARENT VOICEFLOW                   */
+/* ✅ CONTENEUR PARENT VOICEFLOW                                */
 /* ═══════════════════════════════════════════════════════════ */
 .vfrc-message--extension-Carousel {
   padding: 0 !important;
@@ -105,6 +120,7 @@ export const CarouselExtension = {
   overflow: visible !important;
   position: relative !important;
 }
+
 /* ═══════════════════════════════════════════════════════════ */
 /* ✅ VARIABLES CSS                                             */
 /* ═══════════════════════════════════════════════════════════ */
@@ -145,7 +161,6 @@ export const CarouselExtension = {
   display: block !important;
   z-index: 1 !important;
   
-  /* Fond transparent élégant par défaut */
   background: linear-gradient(
     135deg,
     rgba(255, 255, 255, 0.05) 0%,
@@ -154,7 +169,7 @@ export const CarouselExtension = {
   );
 }
 
-/* ✅ Fond dégradé uniquement si pas d'image */
+/* Fond dégradé si pas d'image */
 .vf-carousel-container[data-has-background="false"]::before {
   content: '';
   position: absolute;
@@ -170,7 +185,7 @@ export const CarouselExtension = {
   opacity: 0.1;
 }
 
-/* ✅ Fond avec image (si fournie) */
+/* Fond avec image */
 .vf-carousel-container[data-has-background="true"]::before {
   content: '';
   position: absolute;
@@ -189,7 +204,7 @@ export const CarouselExtension = {
   opacity: 0.9;
 }
 
-/* ✅ Overlay avec dégradé */
+/* Overlay */
 .vf-carousel-container::after {
   content: '';
   position: absolute;
@@ -205,7 +220,6 @@ export const CarouselExtension = {
   z-index: -1;
 }
 
-/* Si image de fond, overlay plus fort */
 .vf-carousel-container[data-has-background="true"]::after {
   background: linear-gradient(135deg, 
     rgba(var(--rgb-1), 0.85) 0%, 
@@ -272,21 +286,57 @@ export const CarouselExtension = {
 
 .vf-carousel-track {
   display: flex;
-  gap: 0;
+  gap: 16px;
   transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   will-change: transform;
   width: 100%;
   box-sizing: border-box;
 }
 
+/* Mode gallery: réduire le gap sur mobile */
+@media (max-width: 768px) {
+  .vf-carousel-container[data-display-mode="gallery"] .vf-carousel-track {
+    gap: 12px;
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════ */
-/* ✅ CARTES - OPTIMISÉES POUR VÉHICULES                       */
+/* ✅ CARTES - MODE SHOWCASE (1 carte pleine largeur)         */
 /* ═══════════════════════════════════════════════════════════ */
-.vf-carousel-card {
+.vf-carousel-container[data-display-mode="showcase"] .vf-carousel-card {
   flex: 0 0 100% !important;
   min-width: 100% !important;
   max-width: 100% !important;
-  
+}
+
+/* ═══════════════════════════════════════════════════════════ */
+/* ✅ CARTES - MODE GALLERY (2-3 cartes côte à côte)          */
+/* ═══════════════════════════════════════════════════════════ */
+.vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="2"] .vf-carousel-card {
+  flex: 0 0 calc(50% - 8px) !important;
+  min-width: calc(50% - 8px) !important;
+  max-width: calc(50% - 8px) !important;
+}
+
+.vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="3"] .vf-carousel-card {
+  flex: 0 0 calc(33.333% - 11px) !important;
+  min-width: calc(33.333% - 11px) !important;
+  max-width: calc(33.333% - 11px) !important;
+}
+
+/* Sur mobile, gallery = 1 carte */
+@media (max-width: 768px) {
+  .vf-carousel-container[data-display-mode="gallery"] .vf-carousel-card {
+    flex: 0 0 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════ */
+/* ✅ STYLES COMMUNS DES CARTES                                */
+/* ═══════════════════════════════════════════════════════════ */
+.vf-carousel-card {
   background: rgba(255, 255, 255, 0.95);
   border-radius: var(--card-radius);
   border: 2px solid rgba(255, 255, 255, 0.3);
@@ -317,15 +367,24 @@ export const CarouselExtension = {
 }
 
 /* ═══════════════════════════════════════════════════════════ */
-/* ✅ IMAGE - RÉDUITE À 35% AU LIEU DE 56%                     */
+/* ✅ IMAGE - HAUTEUR SELON LE MODE                            */
 /* ═══════════════════════════════════════════════════════════ */
 .vf-carousel-image-container {
   position: relative;
   width: 100%;
   height: 0;
-  padding-bottom: 35%;  /* Réduit de 56.25% à 35% */
   overflow: hidden;
   background: linear-gradient(135deg, #f0f0f0, #e0e0e0);
+}
+
+/* Mode showcase: image 50% */
+.vf-carousel-container[data-display-mode="showcase"] .vf-carousel-image-container {
+  padding-bottom: 50%;
+}
+
+/* Mode gallery: image 40% */
+.vf-carousel-container[data-display-mode="gallery"] .vf-carousel-image-container {
+  padding-bottom: 40%;
 }
 
 .vf-carousel-image {
@@ -345,7 +404,7 @@ export const CarouselExtension = {
 }
 
 /* ═══════════════════════════════════════════════════════════ */
-/* ✅ CONTENU - PLUS D'ESPACE POUR LES INFOS                   */
+/* ✅ CONTENU                                                   */
 /* ═══════════════════════════════════════════════════════════ */
 .vf-carousel-content {
   padding: 24px;
@@ -361,6 +420,13 @@ export const CarouselExtension = {
     rgba(255, 255, 255, 0.98) 0%,
     rgba(250, 250, 250, 0.98) 100%
   );
+}
+
+/* Mode gallery: contenu plus compact */
+.vf-carousel-container[data-display-mode="gallery"] .vf-carousel-content {
+  padding: 18px;
+  min-height: 140px;
+  gap: 10px;
 }
 
 @media (max-width: 768px) {
@@ -387,6 +453,11 @@ export const CarouselExtension = {
   text-overflow: ellipsis;
 }
 
+/* Mode gallery: titre plus petit */
+.vf-carousel-container[data-display-mode="gallery"] .vf-carousel-card-title {
+  font-size: 16px;
+}
+
 @media (max-width: 768px) {
   .vf-carousel-card-title {
     font-size: 17px;
@@ -394,7 +465,7 @@ export const CarouselExtension = {
 }
 
 /* ═══════════════════════════════════════════════════════════ */
-/* ✅ DESCRIPTION - PLUS DE LIGNES POUR INFOS VÉHICULE        */
+/* ✅ DESCRIPTION                                               */
 /* ═══════════════════════════════════════════════════════════ */
 .vf-carousel-description {
   font-size: 14px;
@@ -405,10 +476,16 @@ export const CarouselExtension = {
   cursor: help;
   
   display: -webkit-box;
-  -webkit-line-clamp: 5;  /* Augmenté de 3 à 5 lignes */
+  -webkit-line-clamp: 5;
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Mode gallery: moins de lignes */
+.vf-carousel-container[data-display-mode="gallery"] .vf-carousel-description {
+  font-size: 13px;
+  -webkit-line-clamp: 3;
 }
 
 @media (max-width: 768px) {
@@ -486,6 +563,13 @@ export const CarouselExtension = {
   min-height: 48px;
 }
 
+/* Mode gallery: bouton plus compact */
+.vf-carousel-container[data-display-mode="gallery"] .vf-carousel-button {
+  padding: 12px 20px;
+  font-size: 13px;
+  min-height: 42px;
+}
+
 .vf-carousel-button::before {
   content: '';
   position: absolute;
@@ -541,7 +625,11 @@ export const CarouselExtension = {
   gap: 16px;
 }
 
-.vf-carousel-container[data-items-count="1"] .vf-carousel-controls {
+/* Masquer si 1 item en showcase, ou si tous visible en gallery */
+.vf-carousel-container[data-display-mode="showcase"][data-items-count="1"] .vf-carousel-controls,
+.vf-carousel-container[data-display-mode="gallery"][data-items-count="2"][data-cards-per-view="2"] .vf-carousel-controls,
+.vf-carousel-container[data-display-mode="gallery"][data-items-count="2"][data-cards-per-view="3"] .vf-carousel-controls,
+.vf-carousel-container[data-display-mode="gallery"][data-items-count="3"][data-cards-per-view="3"] .vf-carousel-controls {
   display: none;
 }
 
@@ -671,19 +759,31 @@ export const CarouselExtension = {
         return text.length > maxLength ? text.substring(0, maxLength - 3) + '...' : text;
       };
       
-      const getSlidesPerView = () => 1;
-      const getMaxIndex = () => items.length - 1;
+      const getSlidesPerView = () => slidesPerView;
+      const getMaxIndex = () => Math.max(0, items.length - slidesPerView);
       
       // Mise à jour position du carousel
       const updateCarouselPosition = () => {
         const track = container.querySelector('.vf-carousel-track');
-        const translateX = -(currentIndex * 100);
-        track.style.transform = `translateX(${translateX}%)`;
         
+        if (mode === 'showcase') {
+          // Mode showcase: déplacement par carte (100%)
+          const translateX = -(currentIndex * 100);
+          track.style.transform = `translateX(${translateX}%)`;
+        } else {
+          // Mode gallery: déplacement par groupes
+          const cardWidthPercent = 100 / slidesPerView;
+          const translateX = -(currentIndex * cardWidthPercent);
+          track.style.transform = `translateX(${translateX}%)`;
+        }
+        
+        // Mise à jour des dots
+        const totalDots = mode === 'showcase' ? items.length : Math.ceil(items.length / slidesPerView);
         container.querySelectorAll('.vf-carousel-dot').forEach((dot, index) => {
           dot.classList.toggle('active', index === currentIndex);
         });
         
+        // Mise à jour des boutons
         const prevBtn = container.querySelector('.vf-carousel-prev');
         const nextBtn = container.querySelector('.vf-carousel-next');
         if (prevBtn) prevBtn.disabled = currentIndex === 0;
@@ -710,7 +810,7 @@ export const CarouselExtension = {
       
       // Autoplay
       const startAutoplay = () => {
-        if (autoplay && items.length > 1) {
+        if (autoplay && items.length > slidesPerView) {
           autoplayInterval = setInterval(nextSlide, autoplayDelay);
         }
       };
@@ -829,8 +929,10 @@ export const CarouselExtension = {
       viewport.appendChild(track);
       container.appendChild(viewport);
       
-      // Contrôles
-      if (items.length > 1) {
+      // Contrôles (si nécessaire)
+      const needsControls = mode === 'showcase' ? items.length > 1 : items.length > slidesPerView;
+      
+      if (needsControls) {
         const controls = document.createElement('div');
         controls.className = 'vf-carousel-controls';
         
@@ -842,7 +944,8 @@ export const CarouselExtension = {
         const dotsContainer = document.createElement('div');
         dotsContainer.className = 'vf-carousel-dots';
         
-        for (let i = 0; i < items.length; i++) {
+        const totalDots = mode === 'showcase' ? items.length : Math.ceil(items.length / slidesPerView);
+        for (let i = 0; i < totalDots; i++) {
           const dot = document.createElement('button');
           dot.className = 'vf-carousel-dot';
           dot.addEventListener('click', () => goToSlide(i));
@@ -939,7 +1042,7 @@ export const CarouselExtension = {
       
       element.appendChild(container);
       
-      console.log(`✅ Carousel v3.2 Optimisé Véhicules (ID: ${uniqueId}) - ${items.length} items`);
+      console.log(`✅ Carousel v4.0 ${mode.toUpperCase()} (ID: ${uniqueId}) - ${items.length} items - ${slidesPerView} par vue`);
       
       // Cleanup
       return () => {

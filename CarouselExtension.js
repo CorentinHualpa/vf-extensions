@@ -1,11 +1,11 @@
 /**
  *  ╔═══════════════════════════════════════════════════════════╗
  *  ║  Carousel – Voiceflow Response Extension                  ║
- *  ║  VERSION 4.0 - DUAL MODE (SHOWCASE + GALLERY)            ║
+ *  ║  VERSION 4.1 - AUTO MODE + DÉGRADÉ STYLÉ                 ║
  *  ║                                                           ║
- *  ║  • Mode "showcase": 1 carte pleine largeur, image 50%    ║
- *  ║  • Mode "gallery": 2-3 cartes côte à côte, image 40%    ║
- *  ║  • Optimisé pour véhicules automobiles                   ║
+ *  ║  • Choix automatique showcase (1-2 items) / gallery (3+) ║
+ *  ║  • Dégradé de fond stylé par défaut                      ║
+ *  ║  • Design optimisé pour véhicules                        ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 export const CarouselExtension = {
@@ -17,7 +17,7 @@ export const CarouselExtension = {
       const {
         items = [],
         title = null,
-        brandColor = '#6366F1',
+        brandColor = '#C3002F',
         brandColor2 = null,
         backgroundImage = null,
         autoplay = false,
@@ -25,8 +25,8 @@ export const CarouselExtension = {
         maxDescriptionLength = 250,
         instanceId = null,
         userMessageText = null,
-        displayMode = 'showcase',  // 'showcase' ou 'gallery'
-        cardsPerView = 2            // Pour mode gallery: 2 ou 3
+        displayMode = null,  // Si null, choix automatique
+        cardsPerView = null  // Si null, choix automatique
       } = trace.payload;
       
       // Validation
@@ -35,12 +35,27 @@ export const CarouselExtension = {
         return;
       }
       
+      // ✅ CHOIX AUTOMATIQUE DU MODE selon le nombre d'items
+      let mode = displayMode;
+      let slidesPerView = cardsPerView;
+      
+      if (!mode || !slidesPerView) {
+        if (items.length <= 2) {
+          mode = 'showcase';
+          slidesPerView = 1;
+        } else if (items.length <= 4) {
+          mode = 'gallery';
+          slidesPerView = 2;
+        } else {
+          mode = 'gallery';
+          slidesPerView = 3;
+        }
+      }
+      
       // Validation du mode
       const validModes = ['showcase', 'gallery'];
-      const mode = validModes.includes(displayMode) ? displayMode : 'showcase';
-      
-      // Pour gallery, limiter cardsPerView entre 2 et 3
-      const slidesPerView = mode === 'gallery' ? Math.min(3, Math.max(2, cardsPerView)) : 1;
+      mode = validModes.includes(mode) ? mode : 'showcase';
+      slidesPerView = mode === 'gallery' ? Math.min(3, Math.max(2, slidesPerView)) : 1;
       
       // Identifiant unique
       const uniqueId = instanceId || `carousel_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -77,15 +92,11 @@ export const CarouselExtension = {
       
       // Couleurs
       const color1 = brandColor;
-      const color2 = brandColor2 || lightenColor(brandColor, 0.25);
+      const color2 = brandColor2 || darkenColor(brandColor, 0.3);
       const { r: r1, g: g1, b: b1 } = hexToRgb(color1);
       const { r: r2, g: g2, b: b2 } = hexToRgb(color2);
       const lightColor = lightenColor(color1, 0.3);
       const darkColor = darkenColor(color1, 0.2);
-      
-      // Calcul de la largeur des cartes selon le mode
-      const cardWidth = mode === 'showcase' ? '100%' : `${100 / slidesPerView - 2}%`;
-      const imageHeight = mode === 'showcase' ? '50%' : '40%';
       
       // Container principal
       const container = document.createElement('div');
@@ -141,35 +152,27 @@ export const CarouselExtension = {
 }
 
 /* ═══════════════════════════════════════════════════════════ */
-/* ✅ CONTAINER PRINCIPAL - TRANSPARENT PAR DÉFAUT             */
+/* ✅ CONTAINER PRINCIPAL - DÉGRADÉ STYLÉ PAR DÉFAUT           */
 /* ═══════════════════════════════════════════════════════════ */
 .vf-carousel-container {
   position: relative !important;
   width: 100% !important;
   max-width: 100% !important;
   margin: 0 !important;
-  padding: 16px !important;
+  padding: 20px !important;
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
   border-radius: var(--border-radius);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow: 
-    0 8px 32px rgba(0, 0, 0, 0.1),
-    0 0 0 1px rgba(255, 255, 255, 0.1);
   overflow: visible !important;
   box-sizing: border-box !important;
   display: block !important;
   z-index: 1 !important;
   
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.05) 0%,
-    rgba(255, 255, 255, 0.02) 50%,
-    rgba(255, 255, 255, 0.05) 100%
-  );
+  box-shadow: 
+    0 15px 50px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
-/* Fond dégradé si pas d'image */
+/* ✅ Fond avec dégradé stylé (par défaut si pas d'image) */
 .vf-carousel-container[data-has-background="false"]::before {
   content: '';
   position: absolute;
@@ -182,10 +185,10 @@ export const CarouselExtension = {
     var(--color-1) 0%, 
     var(--color-2) 100%);
   z-index: -2;
-  opacity: 0.1;
+  opacity: 1;
 }
 
-/* Fond avec image */
+/* ✅ Fond avec image personnalisée */
 .vf-carousel-container[data-has-background="true"]::before {
   content: '';
   position: absolute;
@@ -204,7 +207,7 @@ export const CarouselExtension = {
   opacity: 0.9;
 }
 
-/* Overlay */
+/* ✅ Overlay subtil pour améliorer la lisibilité */
 .vf-carousel-container::after {
   content: '';
   position: absolute;
@@ -214,21 +217,14 @@ export const CarouselExtension = {
   bottom: 0;
   border-radius: var(--border-radius);
   background: linear-gradient(135deg, 
-    rgba(var(--rgb-1), 0.05) 0%, 
-    rgba(var(--rgb-2), 0.08) 50%, 
-    rgba(var(--rgb-1), 0.05) 100%);
+    rgba(0, 0, 0, 0.1) 0%, 
+    rgba(0, 0, 0, 0.2) 50%, 
+    rgba(0, 0, 0, 0.3) 100%);
   z-index: -1;
 }
 
-.vf-carousel-container[data-has-background="true"]::after {
-  background: linear-gradient(135deg, 
-    rgba(var(--rgb-1), 0.85) 0%, 
-    rgba(var(--rgb-2), 0.75) 50%, 
-    rgba(var(--rgb-1), 0.85) 100%);
-}
-
 /* ═══════════════════════════════════════════════════════════ */
-/* ✅ TITRE                                                     */
+/* ✅ TITRE STYLÉ                                               */
 /* ═══════════════════════════════════════════════════════════ */
 .vf-carousel-title {
   position: relative;
@@ -236,33 +232,28 @@ export const CarouselExtension = {
   text-align: center;
   margin: 0 0 20px 0;
   padding: 16px 24px;
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 900;
   color: #ffffff;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.3px;
   line-height: 1.2;
   
-  background: linear-gradient(135deg, 
-    rgba(0, 0, 0, 0.8) 0%, 
-    rgba(0, 0, 0, 0.6) 50%, 
-    rgba(0, 0, 0, 0.8) 100%);
-  backdrop-filter: blur(15px);
-  -webkit-backdrop-filter: blur(15px);
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border-radius: 12px;
-  border: 2px solid rgba(255, 255, 255, 0.25);
+  border: 2px solid rgba(255, 255, 255, 0.2);
   
   box-shadow: 
-    0 8px 32px rgba(0, 0, 0, 0.4),
-    0 0 20px var(--glow-color);
+    0 8px 30px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
   
-  text-shadow: 
-    0 2px 10px rgba(0, 0, 0, 0.9),
-    0 0 30px var(--glow-color);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
 }
 
 @media (max-width: 768px) {
   .vf-carousel-title {
-    font-size: 20px;
+    font-size: 18px;
     padding: 14px 20px;
     margin-bottom: 16px;
   }
@@ -278,10 +269,6 @@ export const CarouselExtension = {
   margin-bottom: 16px;
   width: 100%;
   box-sizing: border-box;
-  
-  box-shadow: 
-    inset 0 0 30px rgba(255, 255, 255, 0.05),
-    0 0 40px var(--glow-color);
 }
 
 .vf-carousel-track {
@@ -293,9 +280,8 @@ export const CarouselExtension = {
   box-sizing: border-box;
 }
 
-/* Mode gallery: réduire le gap sur mobile */
 @media (max-width: 768px) {
-  .vf-carousel-container[data-display-mode="gallery"] .vf-carousel-track {
+  .vf-carousel-track {
     gap: 12px;
   }
 }
@@ -324,9 +310,9 @@ export const CarouselExtension = {
   max-width: calc(33.333% - 11px) !important;
 }
 
-/* Sur mobile, gallery = 1 carte */
+/* Sur mobile, toujours 1 carte */
 @media (max-width: 768px) {
-  .vf-carousel-container[data-display-mode="gallery"] .vf-carousel-card {
+  .vf-carousel-card {
     flex: 0 0 100% !important;
     min-width: 100% !important;
     max-width: 100% !important;
@@ -337,11 +323,9 @@ export const CarouselExtension = {
 /* ✅ STYLES COMMUNS DES CARTES                                */
 /* ═══════════════════════════════════════════════════════════ */
 .vf-carousel-card {
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.98);
   border-radius: var(--card-radius);
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  backdrop-filter: blur(30px);
-  -webkit-backdrop-filter: blur(30px);
+  border: 2px solid rgba(255, 255, 255, 0.4);
   overflow: hidden;
   transition: var(--transition-bounce);
   cursor: pointer;
@@ -349,20 +333,18 @@ export const CarouselExtension = {
   box-sizing: border-box;
   
   box-shadow: 
-    0 15px 35px rgba(0, 0, 0, 0.2),
-    0 5px 15px rgba(0, 0, 0, 0.1),
-    0 0 30px var(--glow-color);
+    0 10px 30px rgba(0, 0, 0, 0.3),
+    0 5px 15px rgba(0, 0, 0, 0.2);
 }
 
 @media (min-width: 769px) {
   .vf-carousel-card:hover {
-    transform: translateY(-8px) scale(1.02);
-    border-color: var(--color-light);
+    transform: translateY(-6px) scale(1.01);
+    border-color: rgba(255, 255, 255, 0.6);
     
     box-shadow: 
-      0 25px 60px rgba(0, 0, 0, 0.35),
-      0 10px 30px rgba(var(--rgb-1), 0.4),
-      0 0 60px var(--glow-color);
+      0 20px 50px rgba(0, 0, 0, 0.4),
+      0 10px 25px rgba(0, 0, 0, 0.3);
   }
 }
 
@@ -374,7 +356,7 @@ export const CarouselExtension = {
   width: 100%;
   height: 0;
   overflow: hidden;
-  background: linear-gradient(135deg, #f0f0f0, #e0e0e0);
+  background: linear-gradient(135deg, #f5f5f5, #e8e8e8);
 }
 
 /* Mode showcase: image 50% */
@@ -382,9 +364,9 @@ export const CarouselExtension = {
   padding-bottom: 50%;
 }
 
-/* Mode gallery: image 40% */
+/* Mode gallery: image 45% */
 .vf-carousel-container[data-display-mode="gallery"] .vf-carousel-image-container {
-  padding-bottom: 40%;
+  padding-bottom: 45%;
 }
 
 .vf-carousel-image {
@@ -407,44 +389,37 @@ export const CarouselExtension = {
 /* ✅ CONTENU                                                   */
 /* ═══════════════════════════════════════════════════════════ */
 .vf-carousel-content {
-  padding: 24px;
+  padding: 20px;
   display: grid;
   grid-template-rows: auto 1fr auto;
-  gap: 14px;
-  min-height: 180px;
+  gap: 12px;
+  min-height: 160px;
   position: relative;
   z-index: 2;
-  
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.98) 0%,
-    rgba(250, 250, 250, 0.98) 100%
-  );
+  background: rgba(255, 255, 255, 0.98);
 }
 
 /* Mode gallery: contenu plus compact */
 .vf-carousel-container[data-display-mode="gallery"] .vf-carousel-content {
-  padding: 18px;
-  min-height: 140px;
+  padding: 16px;
+  min-height: 130px;
   gap: 10px;
 }
 
 @media (max-width: 768px) {
   .vf-carousel-content {
-    padding: 18px;
-    min-height: 140px;
+    padding: 16px;
+    min-height: 130px;
     gap: 10px;
   }
 }
 
 .vf-carousel-card-title {
-  font-size: 19px;
+  font-size: 18px;
   font-weight: 800;
   color: #1a1a1a;
   line-height: 1.3;
   margin: 0;
-  
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -453,14 +428,13 @@ export const CarouselExtension = {
   text-overflow: ellipsis;
 }
 
-/* Mode gallery: titre plus petit */
 .vf-carousel-container[data-display-mode="gallery"] .vf-carousel-card-title {
-  font-size: 16px;
+  font-size: 15px;
 }
 
 @media (max-width: 768px) {
   .vf-carousel-card-title {
-    font-size: 17px;
+    font-size: 16px;
   }
 }
 
@@ -468,69 +442,33 @@ export const CarouselExtension = {
 /* ✅ DESCRIPTION                                               */
 /* ═══════════════════════════════════════════════════════════ */
 .vf-carousel-description {
-  font-size: 14px;
-  color: #4a4a4a !important;
-  line-height: 1.6;
+  font-size: 13px;
+  color: #555 !important;
+  line-height: 1.5;
   margin: 0;
-  position: relative;
-  cursor: help;
   
   display: -webkit-box;
-  -webkit-line-clamp: 5;
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* Mode gallery: moins de lignes */
+/* Showcase: 5 lignes */
+.vf-carousel-container[data-display-mode="showcase"] .vf-carousel-description {
+  -webkit-line-clamp: 5;
+  font-size: 14px;
+}
+
+/* Gallery: 3 lignes */
 .vf-carousel-container[data-display-mode="gallery"] .vf-carousel-description {
-  font-size: 13px;
   -webkit-line-clamp: 3;
+  font-size: 12px;
 }
 
 @media (max-width: 768px) {
   .vf-carousel-description {
-    font-size: 13px;
-    -webkit-line-clamp: 4;
-    cursor: default;
-  }
-}
-
-/* Popup description (desktop seulement) */
-@media (min-width: 769px) {
-  .vf-carousel-description::before {
-    content: attr(data-full-text);
-    position: absolute;
-    bottom: calc(100% + 12px);
-    left: 50%;
-    transform: translateX(-50%) translateY(-5px) scale(0.95);
-    background: rgba(0, 0, 0, 0.95);
-    color: #ffffff;
-    padding: 16px 20px;
-    border-radius: 12px;
-    font-size: 14px;
-    line-height: 1.6;
-    white-space: normal;
-    max-width: 350px;
-    min-width: 280px;
-    text-align: left;
-    z-index: 9999;
-    
-    border: 2px solid var(--color-1);
-    box-shadow: 
-      0 20px 40px rgba(0, 0, 0, 0.6),
-      0 0 40px var(--glow-color);
-    
-    opacity: 0;
-    visibility: hidden;
-    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    pointer-events: none;
-  }
-  
-  .vf-carousel-description:hover::before {
-    opacity: 1;
-    visibility: visible;
-    transform: translateX(-50%) translateY(0) scale(1);
+    font-size: 12px;
+    -webkit-line-clamp: 3;
   }
 }
 
@@ -540,75 +478,42 @@ export const CarouselExtension = {
 .vf-carousel-button {
   background: linear-gradient(135deg, var(--color-1), var(--color-2));
   color: white !important;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  padding: 14px 24px;
-  border-radius: 10px;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
   font-weight: 700;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
-  transition: var(--transition-bounce);
+  transition: var(--transition-smooth);
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
   position: relative;
   overflow: hidden;
   
   box-shadow: 
-    0 6px 20px rgba(var(--rgb-1), 0.4),
-    0 0 30px var(--glow-color);
+    0 4px 15px rgba(var(--rgb-1), 0.4);
   
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
-  min-height: 48px;
-}
-
-/* Mode gallery: bouton plus compact */
-.vf-carousel-container[data-display-mode="gallery"] .vf-carousel-button {
-  padding: 12px 20px;
-  font-size: 13px;
-  min-height: 42px;
-}
-
-.vf-carousel-button::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: linear-gradient(
-    45deg,
-    transparent 40%,
-    rgba(255, 255, 255, 0.3) 50%,
-    transparent 60%
-  );
-  transform: translateX(-100%) rotate(45deg);
-  transition: transform 0.6s;
-}
-
-.vf-carousel-button:hover::before {
-  transform: translateX(100%) rotate(45deg);
+  min-height: 44px;
 }
 
 .vf-carousel-button:hover {
-  transform: translateY(-2px) scale(1.05);
-  border-color: rgba(255, 255, 255, 0.6);
-  
-  box-shadow: 
-    0 10px 30px rgba(var(--rgb-1), 0.6),
-    0 0 50px var(--glow-color);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(var(--rgb-1), 0.6);
 }
 
 .vf-carousel-button:active {
-  transform: translateY(0) scale(1);
+  transform: translateY(0);
 }
 
 @media (max-width: 768px) {
   .vf-carousel-button {
-    padding: 12px 20px;
-    font-size: 13px;
-    min-height: 42px;
+    padding: 10px 16px;
+    font-size: 12px;
+    min-height: 40px;
   }
 }
 
@@ -619,50 +524,45 @@ export const CarouselExtension = {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 12px;
+  margin-top: 16px;
   position: relative;
   z-index: 3;
   gap: 16px;
 }
 
-/* Masquer si 1 item en showcase, ou si tous visible en gallery */
+/* Masquer si pas nécessaire */
 .vf-carousel-container[data-display-mode="showcase"][data-items-count="1"] .vf-carousel-controls,
 .vf-carousel-container[data-display-mode="gallery"][data-items-count="2"][data-cards-per-view="2"] .vf-carousel-controls,
-.vf-carousel-container[data-display-mode="gallery"][data-items-count="2"][data-cards-per-view="3"] .vf-carousel-controls,
 .vf-carousel-container[data-display-mode="gallery"][data-items-count="3"][data-cards-per-view="3"] .vf-carousel-controls {
   display: none;
 }
 
 .vf-carousel-nav-button {
-  width: 46px;
-  height: 46px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.4);
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   color: #fff;
   cursor: pointer;
-  transition: var(--transition-bounce);
+  transition: var(--transition-smooth);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: bold;
   
-  box-shadow: 
-    0 6px 20px rgba(0, 0, 0, 0.4),
-    0 0 25px var(--glow-color);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 
 .vf-carousel-nav-button:hover:not(:disabled) {
-  background: linear-gradient(135deg, var(--color-1), var(--color-2));
-  border-color: rgba(255, 255, 255, 0.8);
-  transform: scale(1.15);
-  
-  box-shadow: 
-    0 8px 25px rgba(var(--rgb-1), 0.5),
-    0 0 40px var(--glow-color);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--color-1);
+  border-color: rgba(255, 255, 255, 1);
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
 }
 
 .vf-carousel-nav-button:active:not(:disabled) {
@@ -670,11 +570,9 @@ export const CarouselExtension = {
 }
 
 .vf-carousel-nav-button:disabled {
-  opacity: 0.25;
+  opacity: 0.3;
   cursor: not-allowed;
   transform: none;
-  background: rgba(0, 0, 0, 0.4);
-  box-shadow: none;
 }
 
 @media (max-width: 768px) {
@@ -697,29 +595,25 @@ export const CarouselExtension = {
 }
 
 .vf-carousel-dot {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.4);
-  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.3);
   cursor: pointer;
   transition: var(--transition-smooth);
-  position: relative;
 }
 
 .vf-carousel-dot:hover {
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.6);
   transform: scale(1.2);
 }
 
 .vf-carousel-dot.active {
-  background: linear-gradient(135deg, var(--color-1), var(--color-2));
-  border-color: rgba(255, 255, 255, 0.8);
-  transform: scale(1.4);
-  
-  box-shadow: 
-    0 0 15px var(--glow-color),
-    0 0 25px rgba(var(--rgb-1), 0.6);
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(255, 255, 255, 1);
+  transform: scale(1.3);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
 }
 
 /* ═══════════════════════════════════════════════════════════ */
@@ -737,12 +631,7 @@ export const CarouselExtension = {
 }
 
 .vf-carousel-container {
-  animation: fadeInUp 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
-
-.vf-carousel-card {
-  animation: fadeInUp 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  animation-fill-mode: both;
+  animation: fadeInUp 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
       `;
       container.appendChild(styleEl);
@@ -767,23 +656,19 @@ export const CarouselExtension = {
         const track = container.querySelector('.vf-carousel-track');
         
         if (mode === 'showcase') {
-          // Mode showcase: déplacement par carte (100%)
           const translateX = -(currentIndex * 100);
           track.style.transform = `translateX(${translateX}%)`;
         } else {
-          // Mode gallery: déplacement par groupes
           const cardWidthPercent = 100 / slidesPerView;
           const translateX = -(currentIndex * cardWidthPercent);
           track.style.transform = `translateX(${translateX}%)`;
         }
         
-        // Mise à jour des dots
         const totalDots = mode === 'showcase' ? items.length : Math.ceil(items.length / slidesPerView);
         container.querySelectorAll('.vf-carousel-dot').forEach((dot, index) => {
           dot.classList.toggle('active', index === currentIndex);
         });
         
-        // Mise à jour des boutons
         const prevBtn = container.querySelector('.vf-carousel-prev');
         const nextBtn = container.querySelector('.vf-carousel-next');
         if (prevBtn) prevBtn.disabled = currentIndex === 0;
@@ -905,7 +790,6 @@ export const CarouselExtension = {
         if (item.description) {
           const description = document.createElement('p');
           description.className = 'vf-carousel-description';
-          description.setAttribute('data-full-text', item.description);
           description.textContent = truncateText(item.description, maxDescriptionLength);
           content.appendChild(description);
         }
@@ -929,7 +813,7 @@ export const CarouselExtension = {
       viewport.appendChild(track);
       container.appendChild(viewport);
       
-      // Contrôles (si nécessaire)
+      // Contrôles
       const needsControls = mode === 'showcase' ? items.length > 1 : items.length > slidesPerView;
       
       if (needsControls) {
@@ -1042,7 +926,7 @@ export const CarouselExtension = {
       
       element.appendChild(container);
       
-      console.log(`✅ Carousel v4.0 ${mode.toUpperCase()} (ID: ${uniqueId}) - ${items.length} items - ${slidesPerView} par vue`);
+      console.log(`✅ Carousel v4.1 ${mode.toUpperCase()} (ID: ${uniqueId}) - ${items.length} items - ${slidesPerView} par vue`);
       
       // Cleanup
       return () => {

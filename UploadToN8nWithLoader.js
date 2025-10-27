@@ -1,10 +1,8 @@
-// UploadToN8nWithLoader.js – v2.4 (multi-fichiers + timed/external progress)
+// UploadToN8nWithLoader.js – v2.5 (avec temps minimum de chargement)
 // © Corentin-ready – optimisé pour Voiceflow + n8n
-
 export const UploadToN8nWithLoader = {
   name: 'UploadToN8nWithLoader',
   type: 'response',
-
   match(context) {
     try {
       const t = context?.trace || {};
@@ -17,16 +15,13 @@ export const UploadToN8nWithLoader = {
       return false;
     }
   },
-
   render({ trace, element }) {
     if (!element) {
       console.error('[UploadToN8nWithLoader] Élément parent introuvable');
       return;
     }
-
     // ---------- CONFIG ----------
     const p = trace?.payload || {};
-
     // UI upload
     const title         = p.title || 'Téléverser vos documents';
     const subtitle      = p.subtitle || 'PDF ou DOCX - Maximum 25 MB par fichier';
@@ -34,19 +29,15 @@ export const UploadToN8nWithLoader = {
     const accept        = p.accept || '.pdf,.docx';
     const maxFileSizeMB = p.maxFileSizeMB || 25;
     const maxFiles      = p.maxFiles || 10;
-
     // 🎨 Couleurs
     const primaryColor   = p.primaryColor || '#087095';
     const secondaryColor = p.secondaryColor || '#003D5C';
     const accentColor    = p.accentColor || '#FF8C00';
-
     // Loader colors
     const loaderBgColor   = p.loaderBgColor || secondaryColor;
     const loaderBgColor2  = p.loaderBgColor2 || primaryColor;
     const loaderTextColor = p.loaderTextColor || '#FFFFFF';
-
     const buttons = Array.isArray(p.buttons) ? p.buttons : [];
-
     // Webhook n8n
     const webhook          = p.webhook || {};
     const webhookUrl       = webhook.url;
@@ -56,7 +47,6 @@ export const UploadToN8nWithLoader = {
     const webhookRetries   = Number.isFinite(webhook.retries) ? webhook.retries : 1;
     const fileFieldName    = webhook.fileFieldName || 'files';
     const extra            = webhook.extra || {};
-
     // Await / polling
     const awaitResponse      = p.awaitResponse !== false;
     const polling            = p.polling || {};
@@ -64,24 +54,25 @@ export const UploadToN8nWithLoader = {
     const pollingIntervalMs  = Number.isFinite(polling.intervalMs) ? polling.intervalMs : 2000;
     const pollingMaxAttempts = Number.isFinite(polling.maxAttempts) ? polling.maxAttempts : 120;
     const pollingHeaders     = polling.headers || {};
-
     // Paths
     const pathSuccess = p.pathSuccess || 'Default';
     const pathError   = p.pathError || 'Fail';
-
     // VF context (optionnel)
     const vfContext = {
       conversation_id: p.conversation_id || null,
       user_id: p.user_id || null,
       locale: p.locale || null,
     };
-
-    // Loader config (NOUVEAU)
+    // Loader config
     const loaderCfg = p.loader || {};
-    const loaderMode = (loaderCfg.mode || 'auto') // 'auto' | 'timed' | 'external'
-      .toLowerCase();
-
-    // Steps “auto” fallback (valeurs d’avant)
+    const loaderMode = (loaderCfg.mode || 'auto').toLowerCase();
+    
+    // ⭐ NOUVEAU : Temps minimum de chargement (en millisecondes)
+    const minLoadingTimeMs = Number(loaderCfg.minLoadingTimeMs) > 0 
+      ? Number(loaderCfg.minLoadingTimeMs) 
+      : 0; // Par défaut : pas de temps minimum
+    
+    // Steps "auto" fallback
     const defaultAutoSteps = [
       { progress: 0,  text: '📋 Préparation' },
       { progress: 30, text: '🚀 Envoi' },
@@ -89,13 +80,10 @@ export const UploadToN8nWithLoader = {
       { progress: 85, text: '✨ Finalisation' },
       { progress: 100,text: '✅ Terminé !' }
     ];
-
-    // Timed phases (clé + label + seconds|weight)
-    // Si seconds absent, on répartit par weight sur totalSeconds
+    // Timed phases
     const timedPhases = Array.isArray(loaderCfg.phases) ? loaderCfg.phases : [];
     const totalSeconds = Number(loaderCfg.totalSeconds) > 0 ? Number(loaderCfg.totalSeconds) : 120;
-
-    // External mapping (pour traduire les phases n8n → texte + % défaut)
+    // External mapping
     const stepMap = loaderCfg.stepMap || {
       upload:      { text: '📤 Téléversement',            progress: 10 },
       sign_url:    { text: '🔐 Signature URL sécurisée',  progress: 18 },
@@ -108,11 +96,9 @@ export const UploadToN8nWithLoader = {
       gdrive_copy: { text: '☁️ Copie dans Google Drive',  progress: 93 },
       gdoc_update: { text: '📄 Mise à jour du document',  progress: 97 }
     };
-
     const doneText  = loaderCfg.finalText || 'Continuer';
     const doneIcon  = loaderCfg.finalButtonIcon || '✅';
     const loaderMsg = loaderCfg.message || '⏳ Traitement en cours...';
-
     if (!webhookUrl) {
       const div = document.createElement('div');
       div.innerHTML = `<div style="padding:16px;border-radius:12px;background:linear-gradient(135deg,#fee2e2,#fecaca);border:1px solid #fca5a5;color:#991b1b;font-weight:500">
@@ -127,7 +113,6 @@ export const UploadToN8nWithLoader = {
       } catch {}
       return;
     }
-
     // ---------- STYLES ----------
     const styles = `
       @keyframes uploadPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.05);opacity:.8}}
@@ -179,15 +164,12 @@ export const UploadToN8nWithLoader = {
       .upload-modern-loader-done-btn{margin-top:12px;padding:14px 32px;background:${accentColor};color:#fff;border:none;border-radius:12px;font-weight:700;font-size:16px;cursor:pointer;box-shadow:0 8px 24px ${accentColor}60;transition:all .3s;display:flex;align-items:center;gap:10px}
       .upload-modern-loader-done-btn:hover{transform:translateY(-2px);box-shadow:0 12px 32px ${accentColor}80}
     `;
-
     // ---------- UI ----------
     const root = document.createElement('div');
     root.className = 'upload-modern-wrap';
-
     const styleTag = document.createElement('style');
     styleTag.textContent = styles;
     root.appendChild(styleTag);
-
     root.innerHTML += `
       <div class="upload-modern-disabled-overlay"></div>
       <div class="upload-modern-card">
@@ -195,16 +177,13 @@ export const UploadToN8nWithLoader = {
           <div class="upload-modern-title">${title}</div>
           <div class="upload-modern-subtitle">${subtitle}</div>
         </div>
-
         <div class="upload-modern-zone">
           <div class="upload-modern-icon">📁</div>
           <div class="upload-modern-desc">${description}</div>
           <input type="file" accept="${accept}" multiple style="display:none" />
         </div>
-
         <div class="upload-modern-files-list"></div>
         <div class="upload-modern-files-count" style="display:none"></div>
-
         <div class="upload-modern-actions">
           ${buttons.map(b => `
             <button class="upload-modern-btn upload-modern-btn-secondary back-button" data-path="${b.path || pathError}">
@@ -213,10 +192,8 @@ export const UploadToN8nWithLoader = {
           `).join('')}
           <button class="upload-modern-btn upload-modern-btn-primary send-button" disabled>Envoyer</button>
         </div>
-
         <div class="upload-modern-status" style="display:none"></div>
       </div>
-
       <div class="upload-modern-loader">
         <div class="upload-modern-loader-content">
           <div class="upload-modern-loader-title"></div>
@@ -234,7 +211,6 @@ export const UploadToN8nWithLoader = {
       </div>
     `;
     element.appendChild(root);
-
     // ---------- DOM refs ----------
     const uploadZone   = root.querySelector('.upload-modern-zone');
     const fileInput    = root.querySelector('input[type="file"]');
@@ -249,28 +225,22 @@ export const UploadToN8nWithLoader = {
     const loaderStep   = root.querySelector('.upload-modern-loader-step');
     const loaderCircle = root.querySelector('.loader-circle');
     const disabledOverlay = root.querySelector('.upload-modern-disabled-overlay');
-
     // ---------- STATE ----------
     let selectedFiles = [];
     let timedTimer = null;
-    let timedPlan = []; // [{start,end,progressStart,progressEnd,text}]
-    let externalLocked = false;
-
+    let timedPlan = [];
     // ---------- Helpers ----------
     const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-
     function formatSize(bytes) {
       if (bytes < 1024) return bytes + ' B';
       if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
       return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
     }
-
     function setStatus(message, type='processing') {
       statusDiv.textContent = message;
       statusDiv.className = `upload-modern-status ${type}`;
       statusDiv.style.display = 'block';
     }
-
     function updateFilesList() {
       filesList.innerHTML = '';
       if (!selectedFiles.length) {
@@ -281,10 +251,8 @@ export const UploadToN8nWithLoader = {
       }
       filesList.classList.add('active');
       filesCount.style.display = 'block';
-
       const totalSize = selectedFiles.reduce((s,f)=>s+f.size,0);
       filesCount.textContent = `${selectedFiles.length} fichier${selectedFiles.length>1?'s':''} sélectionné${selectedFiles.length>1?'s':''} (${formatSize(totalSize)})`;
-
       selectedFiles.forEach((file, i) => {
         const item = document.createElement('div');
         item.className = 'upload-modern-file-item';
@@ -297,7 +265,6 @@ export const UploadToN8nWithLoader = {
         `;
         filesList.appendChild(item);
       });
-
       root.querySelectorAll('.upload-modern-file-item-remove').forEach(btn=>{
         btn.addEventListener('click',()=>{
           const i = parseInt(btn.getAttribute('data-index'));
@@ -305,11 +272,9 @@ export const UploadToN8nWithLoader = {
           updateFilesList();
         });
       });
-
       sendBtn.disabled = false;
       statusDiv.style.display = 'none';
     }
-
     function addFiles(newFiles) {
       const valid = [], errs=[];
       for (const file of newFiles) {
@@ -321,7 +286,6 @@ export const UploadToN8nWithLoader = {
       if (valid.length) { selectedFiles.push(...valid); updateFilesList(); }
       if (errs.length) setStatus(`⚠️ ${errs.join(' • ')}`,'error');
     }
-
     // ---------- Events ----------
     uploadZone.addEventListener('click', ()=> fileInput.click());
     uploadZone.addEventListener('dragover', e=>{ e.preventDefault(); uploadZone.classList.add('dragging'); });
@@ -336,20 +300,22 @@ export const UploadToN8nWithLoader = {
       if (files.length) addFiles(files);
       fileInput.value = '';
     });
-
     backButtons.forEach(b => b.addEventListener('click', ()=>{
       const path = b.getAttribute('data-path') || pathError;
       try {
         window?.voiceflow?.chat?.interact?.({ type:'complete', payload:{ webhookSuccess:false, path }});
       } catch {}
     }));
-
+    
     sendBtn.addEventListener('click', async ()=>{
       if (!selectedFiles.length) return;
       sendBtn.disabled = true;
       backButtons.forEach(b=>b.disabled=true);
       setStatus(`📤 Envoi de ${selectedFiles.length} fichier${selectedFiles.length>1?'s':''}...`,'processing');
-
+      
+      // ⭐ Démarrer le chronomètre
+      const startTime = Date.now();
+      
       const loaderUI = showLoader(loaderMsg);
       if (loaderMode === 'auto') {
         loaderUI.startAuto(defaultAutoSteps);
@@ -359,16 +325,13 @@ export const UploadToN8nWithLoader = {
         loaderUI.showPhase('⏳ Démarrage...');
         loaderUI.setPercent(5);
       }
-
       try {
         const resp = await postToN8n({
           url: webhookUrl, method: webhookMethod, headers: webhookHeaders,
           timeoutMs: webhookTimeoutMs, retries: webhookRetries,
           files: selectedFiles, fileFieldName, extra, vfContext
         });
-
         let finalData = resp?.data ?? null;
-
         if (awaitResponse && pollingEnabled) {
           const jobId    = finalData?.jobId;
           const statusUrl= finalData?.statusUrl || p?.polling?.statusUrl;
@@ -379,7 +342,6 @@ export const UploadToN8nWithLoader = {
               intervalMs: pollingIntervalMs,
               maxAttempts: pollingMaxAttempts,
               onTick: (st)=> {
-                // st: { percent?, phase?, message? }
                 if (loaderMode === 'external') {
                   const pct  = Number.isFinite(st?.percent) ? clamp(st.percent, 0, 100) : undefined;
                   const key  = st?.phase;
@@ -389,14 +351,24 @@ export const UploadToN8nWithLoader = {
                   if (pct != null) loaderUI.setPercent(pct);
                   else if (map?.progress != null) loaderUI.softPercent(map.progress);
                 } else if (loaderMode === 'timed') {
-                  // facultatif: si la phase change, on peut afficher le texte de phase
                   if (st?.phase && stepMap[st.phase]?.text) loaderUI.showPhase(stepMap[st.phase].text);
                 }
               }
             });
           }
         }
-
+        
+        // ⭐ Attendre le temps minimum restant
+        const elapsedTime = Date.now() - startTime;
+        const remainingTime = minLoadingTimeMs - elapsedTime;
+        
+        if (remainingTime > 0) {
+          // Afficher une phase "presque terminé" pendant l'attente
+          loaderUI.showPhase('✨ Finalisation...');
+          loaderUI.animateTo(98, Math.min(remainingTime, 1500)); // Animer jusqu'à 98%
+          await new Promise(resolve => setTimeout(resolve, remainingTime));
+        }
+        
         loaderUI.finish(()=>{
           try {
             window?.voiceflow?.chat?.interact?.({
@@ -410,7 +382,6 @@ export const UploadToN8nWithLoader = {
             });
           } catch {}
         });
-
       } catch (err) {
         loader.classList.remove('active');
         setStatus(`❌ ${String(err?.message || err)}`,'error');
@@ -424,29 +395,24 @@ export const UploadToN8nWithLoader = {
         } catch {}
       }
     });
-
+    
     // ---------- Loader controller ----------
     function showLoader(message) {
       loaderTitle.textContent = message;
       loader.classList.add('active');
-
       let current = 0;
       let lockedByFinish = false;
-
       function paint() {
         const offset = 440 - (current/100)*440;
         loaderCircle.style.strokeDashoffset = offset;
         loaderPct.textContent = `${Math.round(current)}%`;
       }
       paint();
-
       function clearTimers() {
         if (timedTimer) { clearInterval(timedTimer); timedTimer = null; }
       }
-
       return {
         startAuto(steps) {
-          // steps: [{progress,text}]
           let i = 0;
           const walk = ()=>{
             if (i >= steps.length || lockedByFinish) return;
@@ -458,9 +424,7 @@ export const UploadToN8nWithLoader = {
           };
           walk();
         },
-
         startTimed(plan) {
-          // plan: array built from phases (with time windows and progress windows)
           let idx = 0;
           const startNext = () => {
             if (idx >= plan.length || lockedByFinish) return;
@@ -468,7 +432,6 @@ export const UploadToN8nWithLoader = {
             this.showPhase(ph.text);
             const startTime = Date.now();
             const endTime   = startTime + ph.durationMs;
-
             clearTimers();
             timedTimer = setInterval(()=> {
               const now = Date.now();
@@ -484,25 +447,20 @@ export const UploadToN8nWithLoader = {
           };
           startNext();
         },
-
         showPhase(text) {
           if (text) loaderStep.textContent = text;
         },
-
         setPercent(p) {
           if (lockedByFinish) return;
           current = clamp(p, 0, 100);
           paint();
         },
-
         softPercent(p) {
           if (lockedByFinish) return;
-          // nudge towards p
           const target = clamp(p, 0, 100);
           current = current + (target - current) * 0.5;
           paint();
         },
-
         animateTo(target, ms=1200, cb) {
           const start = current;
           const end   = clamp(target, 0, 100);
@@ -516,7 +474,6 @@ export const UploadToN8nWithLoader = {
           };
           requestAnimationFrame(step);
         },
-
         finish(onClick) {
           lockedByFinish = true;
           clearTimers();
@@ -534,25 +491,18 @@ export const UploadToN8nWithLoader = {
         }
       };
     }
-
     function buildTimedPlan() {
-      // Si phases ont 'seconds' → on les prend.
-      // Sinon on utilise weight sur totalSeconds.
       const haveSeconds = timedPhases.every(ph => Number(ph.seconds) > 0);
       let total = haveSeconds
         ? timedPhases.reduce((s,ph)=>s+Number(ph.seconds),0)
         : totalSeconds;
-
       const weightsSum = timedPhases.reduce((s,ph)=> s + (Number(ph.weight)||0), 0) || timedPhases.length;
-
       const alloc = timedPhases.map((ph,i)=>{
         const sec = haveSeconds
           ? Number(ph.seconds)
           : (Number(ph.weight)||1) / weightsSum * total;
         return { key: ph.key, text: ph.label || stepMap[ph.key]?.text || `Étape ${i+1}`, seconds: sec };
       });
-
-      // Répartir progress uniformément 5% → 98%
       const startP = 5, endP = 98;
       const totalMs = alloc.reduce((s,a)=> s + a.seconds*1000, 0);
       let acc = 0, last = startP;
@@ -568,7 +518,6 @@ export const UploadToN8nWithLoader = {
         };
       });
       if (!plan.length) {
-        // fallback au mode auto si non configuré
         return defaultAutoSteps.map((s, i, arr) => ({
           text: s.text,
           durationMs: i===0 ? 1000 : 1500,
@@ -578,7 +527,6 @@ export const UploadToN8nWithLoader = {
       }
       return plan;
     }
-
     // ---------- Network ----------
     async function postToN8n({ url, method, headers, timeoutMs, retries, files, fileFieldName, extra, vfContext }) {
       let lastErr;
@@ -586,7 +534,6 @@ export const UploadToN8nWithLoader = {
         try {
           const controller = new AbortController();
           const to = setTimeout(()=>controller.abort(), timeoutMs);
-
           const fd = new FormData();
           files.forEach(f=> fd.append(fileFieldName, f, f.name));
           Object.entries(extra).forEach(([k,v])=>{
@@ -595,10 +542,8 @@ export const UploadToN8nWithLoader = {
           if (vfContext.conversation_id) fd.append('conversation_id', vfContext.conversation_id);
           if (vfContext.user_id)        fd.append('user_id', vfContext.user_id);
           if (vfContext.locale)         fd.append('locale', vfContext.locale);
-
           const finalHeaders = { ...headers };
           delete finalHeaders['Content-Type'];
-
           const resp = await fetch(url, { method, headers: finalHeaders, body: fd, signal: controller.signal });
           clearTimeout(to);
           if (!resp.ok) {
@@ -611,34 +556,24 @@ export const UploadToN8nWithLoader = {
           if (attempt < retries) await new Promise(r=>setTimeout(r, 900));
         }
       }
-      throw lastErr || new Error('Échec de l’envoi');
+      throw lastErr || new Error('Échec de l'envoi');
     }
-
     async function pollStatus({ statusUrl, headers, intervalMs, maxAttempts, onTick }) {
       for (let i=1;i<=maxAttempts;i++) {
         const r = await fetch(statusUrl, { headers });
         if (!r.ok) throw new Error(`Polling ${r.status}`);
         const j = await safeJson(r);
-
-        // attendu côté n8n (exemples):
-        // { status:"running", phase:"ai_agent", percent:62, message:"Analyse des compétences..." }
-        // { status:"error", error:"raison" }
-        // { status:"done",  data:{...} }
         if (j?.status === 'error') throw new Error(j?.error || 'Erreur pipeline');
-
         if (typeof onTick === 'function') {
           try { onTick({ percent: j?.percent, phase: j?.phase, message: j?.message }); } catch {}
         }
-
         if (j?.status === 'done') return j?.data ?? j;
         await new Promise(res=>setTimeout(res, intervalMs));
       }
       throw new Error('Polling timeout');
     }
-
     async function safeJson(r){ try { return await r.json(); } catch { return null; } }
     async function safeText(r){ try { return await r.text(); } catch { return null; } }
   }
 };
-
 try { window.UploadToN8nWithLoader = UploadToN8nWithLoader; } catch {}

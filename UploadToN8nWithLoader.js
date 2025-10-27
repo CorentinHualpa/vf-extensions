@@ -1,4 +1,4 @@
-// UploadToN8nWithLoader.js – v2.5 (avec temps minimum de chargement)
+// UploadToN8nWithLoader.js – v2.5 (avec temps minimum de chargement - CORRIGÉ)
 // © Corentin-ready – optimisé pour Voiceflow + n8n
 export const UploadToN8nWithLoader = {
   name: 'UploadToN8nWithLoader',
@@ -325,13 +325,16 @@ export const UploadToN8nWithLoader = {
         loaderUI.showPhase('⏳ Démarrage...');
         loaderUI.setPercent(5);
       }
+      
       try {
         const resp = await postToN8n({
           url: webhookUrl, method: webhookMethod, headers: webhookHeaders,
           timeoutMs: webhookTimeoutMs, retries: webhookRetries,
           files: selectedFiles, fileFieldName, extra, vfContext
         });
+        
         let finalData = resp?.data ?? null;
+        
         if (awaitResponse && pollingEnabled) {
           const jobId    = finalData?.jobId;
           const statusUrl= finalData?.statusUrl || p?.polling?.statusUrl;
@@ -358,14 +361,13 @@ export const UploadToN8nWithLoader = {
           }
         }
         
-        // ⭐ Attendre le temps minimum restant
+        // ⭐ Attendre le temps minimum restant si nécessaire
         const elapsedTime = Date.now() - startTime;
         const remainingTime = minLoadingTimeMs - elapsedTime;
         
         if (remainingTime > 0) {
-          // Afficher une phase "presque terminé" pendant l'attente
           loaderUI.showPhase('✨ Finalisation...');
-          loaderUI.animateTo(98, Math.min(remainingTime, 1500)); // Animer jusqu'à 98%
+          loaderUI.animateTo(98, Math.min(remainingTime, 1500));
           await new Promise(resolve => setTimeout(resolve, remainingTime));
         }
         
@@ -470,7 +472,7 @@ export const UploadToN8nWithLoader = {
             current = start + (end - start) * k;
             paint();
             if (k < 1) requestAnimationFrame(step);
-            else cb && cb();
+            else if (cb) cb();
           };
           requestAnimationFrame(step);
         },
@@ -483,7 +485,7 @@ export const UploadToN8nWithLoader = {
             btn.innerHTML = `<span style="font-size:24px">${doneIcon}</span> ${doneText}`;
             btn.onclick = ()=>{
               disabledOverlay.classList.add('active');
-              onClick && onClick();
+              if (onClick) onClick();
             };
             root.querySelector('.upload-modern-loader-content').appendChild(btn);
             this.showPhase('✅ Terminé !');
@@ -556,7 +558,7 @@ export const UploadToN8nWithLoader = {
           if (attempt < retries) await new Promise(r=>setTimeout(r, 900));
         }
       }
-      throw lastErr || new Error('Échec de l'envoi');
+      throw lastErr || new Error('Échec de l\'envoi');
     }
     async function pollStatus({ statusUrl, headers, intervalMs, maxAttempts, onTick }) {
       for (let i=1;i<=maxAttempts;i++) {

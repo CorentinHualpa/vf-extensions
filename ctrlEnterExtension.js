@@ -2,8 +2,8 @@
  *  ╔═══════════════════════════════════════════════════════════╗
  *  ║  CtrlEnterOnly – Voiceflow Effect Extension              ║
  *  ║                                                           ║
- *  ║  • Force l'utilisation de Ctrl+Entrée pour envoyer       ║
- *  ║  • Bloque la touche Entrée seule                         ║
+ *  ║  • Entrée seule = Retour à la ligne                      ║
+ *  ║  • Ctrl+Entrée = Envoi du message                        ║
  *  ║  • Compatible Shadow DOM                                 ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
@@ -11,22 +11,18 @@ export const CtrlEnterOnlyExtension = {
   name: 'CtrlEnterOnly',
   type: 'effect',
   match: () => true,
-  effect: () => {  // ✅ PAS de paramètre element pour les extensions "effect"
+  effect: () => {
     console.log('🚀 Extension Ctrl+Enter chargée');
     
-    // ✅ Accès direct au Shadow DOM du widget Voiceflow
     const getHost = () => {
-      // Le widget Voiceflow crée un shadow-root, on doit le trouver
       const vfContainer = document.querySelector('#voiceflow-chat-container');
       if (vfContainer) {
-        // Chercher le shadow-root dans le container
         const shadowHost = vfContainer.querySelector('[data-vf-chat]') || 
                           vfContainer.querySelector('div > div');
         if (shadowHost && shadowHost.shadowRoot) {
           return shadowHost.shadowRoot;
         }
       }
-      // Fallback : chercher dans tous les shadow roots
       const allElements = document.querySelectorAll('*');
       for (let el of allElements) {
         if (el.shadowRoot) {
@@ -34,7 +30,7 @@ export const CtrlEnterOnlyExtension = {
           if (textarea) return el.shadowRoot;
         }
       }
-      return document; // Fallback au document normal
+      return document;
     };
     
     let isSetup = false;
@@ -53,32 +49,44 @@ export const CtrlEnterOnlyExtension = {
         
         const keyHandler = (e) => {
           if (e.key === 'Enter' || e.keyCode === 13) {
-            console.log('🔑 Enter détecté - Ctrl:', e.ctrlKey, 'Meta:', e.metaKey);
             
             if (e.ctrlKey || e.metaKey) {
-              console.log('✅ Ctrl+Enter → Envoi');
+              // ✅ Ctrl+Enter → Envoyer le message
+              console.log('✅ Ctrl+Enter → Envoi du message');
               e.preventDefault();
               e.stopPropagation();
               e.stopImmediatePropagation();
               setTimeout(() => sendButton.click(), 0);
               return false;
             } else {
-              console.log('❌ Enter seul → Bloqué');
-              e.preventDefault();
-              e.stopPropagation();
+              // ✅ Enter seul → Retour à la ligne
+              console.log('↩️ Enter seul → Retour à la ligne');
+              e.stopPropagation(); // Empêche Voiceflow d'envoyer
               e.stopImmediatePropagation();
+              
+              // Insérer manuellement un retour à la ligne
+              const start = textarea.selectionStart;
+              const end = textarea.selectionEnd;
+              const value = textarea.value;
+              
+              textarea.value = value.substring(0, start) + '\n' + value.substring(end);
+              textarea.selectionStart = textarea.selectionEnd = start + 1;
+              
+              // Déclencher l'événement input pour que le textarea s'ajuste
+              const inputEvent = new Event('input', { bubbles: true });
+              textarea.dispatchEvent(inputEvent);
+              
+              e.preventDefault(); // Empêche le comportement par défaut
               return false;
             }
           }
         };
         
-        // Ajouter les listeners avec capture
+        // Ajouter les listeners - seulement sur keydown pour éviter les doublons
         textarea.addEventListener('keydown', keyHandler, true);
-        textarea.addEventListener('keypress', keyHandler, true);
-        textarea.addEventListener('keyup', keyHandler, true);
         
         console.log('🎉 Ctrl+Enter configuré avec succès !');
-        console.log('📝 Utilisez Ctrl+Entrée (ou Cmd+Entrée sur Mac) pour envoyer vos messages');
+        console.log('📝 Enter = Retour à la ligne | Ctrl+Enter = Envoyer');
         
       } else if (!isSetup) {
         attempts++;
@@ -87,12 +95,10 @@ export const CtrlEnterOnlyExtension = {
           setTimeout(setupKeyboardHandler, 250);
         } else {
           console.error('❌ Impossible de trouver les éléments après', maxAttempts, 'tentatives');
-          console.log('🔍 Debug - Host:', getHost());
         }
       }
     };
     
-    // Démarrer avec un délai pour laisser le widget se charger
     setTimeout(setupKeyboardHandler, 500);
     
     return () => {

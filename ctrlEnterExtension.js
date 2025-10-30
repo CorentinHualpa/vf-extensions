@@ -2,7 +2,7 @@
  *  ╔═══════════════════════════════════════════════════════════╗
  *  ║  CtrlEnterOnly – Voiceflow Effect Extension              ║
  *  ║                                                           ║
- *  ║  • Entrée seule = Retour à la ligne                      ║
+ *  ║  • Entrée seule = Retour à la ligne (visible)            ║
  *  ║  • Ctrl+Entrée = Envoi du message                        ║
  *  ║  • Compatible Shadow DOM                                 ║
  *  ╚═══════════════════════════════════════════════════════════╝
@@ -59,9 +59,10 @@ export const CtrlEnterOnlyExtension = {
               setTimeout(() => sendButton.click(), 0);
               return false;
             } else {
-              // ✅ Enter seul → Retour à la ligne
+              // ✅ Enter seul → Retour à la ligne VISIBLE
               console.log('↩️ Enter seul → Retour à la ligne');
-              e.stopPropagation(); // Empêche Voiceflow d'envoyer
+              e.preventDefault(); // Empêche le comportement par défaut
+              e.stopPropagation();
               e.stopImmediatePropagation();
               
               // Insérer manuellement un retour à la ligne
@@ -69,20 +70,41 @@ export const CtrlEnterOnlyExtension = {
               const end = textarea.selectionEnd;
               const value = textarea.value;
               
-              textarea.value = value.substring(0, start) + '\n' + value.substring(end);
-              textarea.selectionStart = textarea.selectionEnd = start + 1;
+              // Insérer le \n
+              const newValue = value.substring(0, start) + '\n' + value.substring(end);
+              textarea.value = newValue;
               
-              // Déclencher l'événement input pour que le textarea s'ajuste
-              const inputEvent = new Event('input', { bubbles: true });
+              // Repositionner le curseur APRÈS le \n
+              const newCursorPos = start + 1;
+              textarea.selectionStart = newCursorPos;
+              textarea.selectionEnd = newCursorPos;
+              
+              // ✅ FORCER LA MISE À JOUR VISUELLE
+              // 1. Déclencher l'événement input
+              const inputEvent = new Event('input', { bubbles: true, cancelable: true });
               textarea.dispatchEvent(inputEvent);
               
-              e.preventDefault(); // Empêche le comportement par défaut
+              // 2. Déclencher l'événement change
+              const changeEvent = new Event('change', { bubbles: true, cancelable: true });
+              textarea.dispatchEvent(changeEvent);
+              
+              // 3. Forcer le redimensionnement du textarea
+              textarea.style.height = 'auto';
+              textarea.style.height = textarea.scrollHeight + 'px';
+              
+              // 4. Forcer le focus pour rendre le curseur visible
+              textarea.blur();
+              textarea.focus();
+              
+              // 5. Scroll vers la position du curseur
+              textarea.scrollTop = textarea.scrollHeight;
+              
               return false;
             }
           }
         };
         
-        // Ajouter les listeners - seulement sur keydown pour éviter les doublons
+        // Ajouter le listener uniquement sur keydown
         textarea.addEventListener('keydown', keyHandler, true);
         
         console.log('🎉 Ctrl+Enter configuré avec succès !');

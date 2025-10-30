@@ -1,11 +1,11 @@
 /**
  *  ╔═══════════════════════════════════════════════════════════╗
  *  ║  Carousel – Voiceflow Response Extension                  ║
- *  ║  VERSION 4.2 - AUTO MODE + THÈME CLAIR/SOMBRE            ║
+ *  ║  VERSION 4.3 - SANS AUTOPLAY PAR DÉFAUT                  ║
  *  ║                                                           ║
  *  ║  • Choix automatique showcase (1-2 items) / gallery (3+) ║
  *  ║  • Thème clair ou sombre configurable                    ║
- *  ║  • Design optimisé pour véhicules                        ║
+ *  ║  • PAS de défilement automatique                         ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 export const CarouselExtension = {
@@ -27,7 +27,7 @@ export const CarouselExtension = {
         userMessageText = null,
         displayMode = null,
         cardsPerView = null,
-        theme = 'dark'  // ✅ NOUVEAU : 'dark' ou 'light'
+        theme = 'light'
       } = trace.payload;
       
       // Validation
@@ -705,8 +705,10 @@ export const CarouselExtension = {
       
       // Autoplay
       const startAutoplay = () => {
-        if (autoplay && items.length > slidesPerView) {
+        // ✅ Ne démarre QUE si autoplay est explicitement true
+        if (autoplay === true && items.length > slidesPerView) {
           autoplayInterval = setInterval(nextSlide, autoplayDelay);
+          console.log('✅ Autoplay activé');
         }
       };
       
@@ -714,6 +716,7 @@ export const CarouselExtension = {
         if (autoplayInterval) {
           clearInterval(autoplayInterval);
           autoplayInterval = null;
+          console.log('⏸️ Autoplay arrêté');
         }
       };
       
@@ -872,7 +875,8 @@ export const CarouselExtension = {
             prevSlide();
           }
           
-          if (autoplay) {
+          // ✅ Ne redémarre l'autoplay que si initialement activé
+          if (autoplay === true) {
             wheelTimeout = setTimeout(startAutoplay, 2000);
           }
         }
@@ -910,7 +914,8 @@ export const CarouselExtension = {
         touchEndX = 0;
         isDragging = false;
         
-        if (autoplay) {
+        // ✅ Ne redémarre l'autoplay que si initialement activé
+        if (autoplay === true) {
           setTimeout(startAutoplay, 2000);
         }
       });
@@ -921,22 +926,26 @@ export const CarouselExtension = {
         if (e.key === 'ArrowRight') nextSlide();
       });
       
-      // Pause autoplay au hover
-      container.addEventListener('mouseenter', stopAutoplay);
-      container.addEventListener('mouseleave', () => {
-        if (autoplay) startAutoplay();
-      });
+      // ✅ Pause autoplay au hover (seulement si activé)
+      if (autoplay === true) {
+        container.addEventListener('mouseenter', stopAutoplay);
+        container.addEventListener('mouseleave', startAutoplay);
+      }
       
       // Initialisation
       updateCarouselPosition();
       
-      if (autoplay) {
+      // ✅ NE démarre l'autoplay QUE si explicitement demandé
+      if (autoplay === true) {
         setTimeout(startAutoplay, 1000);
+        console.log('✅ Carousel avec autoplay activé');
+      } else {
+        console.log('✅ Carousel sans autoplay (contrôle manuel uniquement)');
       }
       
       element.appendChild(container);
       
-      console.log(`✅ Carousel v4.2 ${mode.toUpperCase()} - Thème: ${theme.toUpperCase()} (ID: ${uniqueId}) - ${items.length} items - ${slidesPerView} par vue`);
+      console.log(`✅ Carousel v4.3 ${mode.toUpperCase()} - Thème: ${theme.toUpperCase()} (ID: ${uniqueId}) - ${items.length} items - ${slidesPerView} par vue - Autoplay: ${autoplay}`);
       
       // Cleanup
       return () => {

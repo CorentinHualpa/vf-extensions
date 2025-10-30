@@ -4,7 +4,7 @@
  *  ║                                                           ║
  *  ║  • Entrée seule = Retour à la ligne (visible)            ║
  *  ║  • Ctrl+Entrée = Envoi du message                        ║
- *  ║  • Compatible Shadow DOM                                 ║
+ *  ║  • Compatible avec autres extensions                     ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 export const CtrlEnterOnlyExtension = {
@@ -59,52 +59,41 @@ export const CtrlEnterOnlyExtension = {
               setTimeout(() => sendButton.click(), 0);
               return false;
             } else {
-              // ✅ Enter seul → Retour à la ligne VISIBLE
+              // ✅ Enter seul → Retour à la ligne
               console.log('↩️ Enter seul → Retour à la ligne');
-              e.preventDefault(); // Empêche le comportement par défaut
+              e.preventDefault();
               e.stopPropagation();
               e.stopImmediatePropagation();
               
-              // Insérer manuellement un retour à la ligne
+              // Insérer le retour à la ligne
               const start = textarea.selectionStart;
               const end = textarea.selectionEnd;
               const value = textarea.value;
               
-              // Insérer le \n
               const newValue = value.substring(0, start) + '\n' + value.substring(end);
               textarea.value = newValue;
               
-              // Repositionner le curseur APRÈS le \n
+              // Repositionner le curseur
               const newCursorPos = start + 1;
               textarea.selectionStart = newCursorPos;
               textarea.selectionEnd = newCursorPos;
               
-              // ✅ FORCER LA MISE À JOUR VISUELLE
-              // 1. Déclencher l'événement input
-              const inputEvent = new Event('input', { bubbles: true, cancelable: true });
+              // ✅ Déclencher les événements pour la mise à jour
+              const inputEvent = new Event('input', { bubbles: true });
               textarea.dispatchEvent(inputEvent);
               
-              // 2. Déclencher l'événement change
-              const changeEvent = new Event('change', { bubbles: true, cancelable: true });
-              textarea.dispatchEvent(changeEvent);
-              
-              // 3. Forcer le redimensionnement du textarea
+              // ✅ Redimensionner le textarea
               textarea.style.height = 'auto';
               textarea.style.height = textarea.scrollHeight + 'px';
               
-              // 4. Forcer le focus pour rendre le curseur visible
-              textarea.blur();
-              textarea.focus();
-              
-              // 5. Scroll vers la position du curseur
-              textarea.scrollTop = textarea.scrollHeight;
+              // ✅ SUPPRIMÉ blur/focus qui causait le problème
               
               return false;
             }
           }
         };
         
-        // Ajouter le listener uniquement sur keydown
+        // Listener uniquement sur keydown
         textarea.addEventListener('keydown', keyHandler, true);
         
         console.log('🎉 Ctrl+Enter configuré avec succès !');

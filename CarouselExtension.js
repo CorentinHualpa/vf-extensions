@@ -1,10 +1,10 @@
 /**
  *  ╔═══════════════════════════════════════════════════════════╗
  *  ║  Carousel – Voiceflow Response Extension                  ║
- *  ║  VERSION 4.1 - AUTO MODE + DÉGRADÉ STYLÉ                 ║
+ *  ║  VERSION 4.2 - AUTO MODE + THÈME CLAIR/SOMBRE            ║
  *  ║                                                           ║
  *  ║  • Choix automatique showcase (1-2 items) / gallery (3+) ║
- *  ║  • Dégradé de fond stylé par défaut                      ║
+ *  ║  • Thème clair ou sombre configurable                    ║
  *  ║  • Design optimisé pour véhicules                        ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
@@ -25,8 +25,9 @@ export const CarouselExtension = {
         maxDescriptionLength = 250,
         instanceId = null,
         userMessageText = null,
-        displayMode = null,  // Si null, choix automatique
-        cardsPerView = null  // Si null, choix automatique
+        displayMode = null,
+        cardsPerView = null,
+        theme = 'dark'  // ✅ NOUVEAU : 'dark' ou 'light'
       } = trace.payload;
       
       // Validation
@@ -98,6 +99,67 @@ export const CarouselExtension = {
       const lightColor = lightenColor(color1, 0.3);
       const darkColor = darkenColor(color1, 0.2);
       
+      // ✅ VARIABLES DE THÈME
+      const themeVars = theme === 'light' ? {
+        // MODE CLAIR
+        containerBg: 'rgba(255, 255, 255, 0.98)',
+        containerBorder: 'rgba(0, 0, 0, 0.08)',
+        containerShadow: '0 15px 50px rgba(0, 0, 0, 0.08)',
+        overlayBg: 'linear-gradient(135deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.5) 100%)',
+        backgroundOpacity: '0.15',
+        backgroundBrightness: '1.1',
+        imageBackgroundOpacity: '0.3',
+        
+        titleBg: 'rgba(255, 255, 255, 0.95)',
+        titleColor: '#1a1a1a',
+        titleBorder: 'rgba(0, 0, 0, 0.1)',
+        titleShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+        titleTextShadow: 'none',
+        
+        navBtnBg: 'rgba(255, 255, 255, 0.95)',
+        navBtnBorder: 'rgba(0, 0, 0, 0.15)',
+        navBtnColor: color1,
+        navBtnHoverBg: color1,
+        navBtnHoverColor: '#ffffff',
+        navBtnShadow: '0 4px 15px rgba(0, 0, 0, 0.1)',
+        
+        dotBg: 'rgba(0, 0, 0, 0.2)',
+        dotBorder: 'rgba(0, 0, 0, 0.3)',
+        dotHoverBg: 'rgba(0, 0, 0, 0.4)',
+        dotActiveBg: color1,
+        dotActiveBorder: color1,
+        dotGlow: `0 0 15px rgba(${r1}, ${g1}, ${b1}, 0.5)`
+      } : {
+        // MODE SOMBRE
+        containerBg: 'rgba(0, 0, 0, 0.3)',
+        containerBorder: 'rgba(255, 255, 255, 0.1)',
+        containerShadow: '0 15px 50px rgba(0, 0, 0, 0.3)',
+        overlayBg: 'linear-gradient(135deg, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.2) 50%, rgba(0, 0, 0, 0.3) 100%)',
+        backgroundOpacity: '1',
+        backgroundBrightness: '0.7',
+        imageBackgroundOpacity: '0.9',
+        
+        titleBg: 'rgba(0, 0, 0, 0.7)',
+        titleColor: '#ffffff',
+        titleBorder: 'rgba(255, 255, 255, 0.2)',
+        titleShadow: '0 8px 30px rgba(0, 0, 0, 0.4)',
+        titleTextShadow: '0 2px 10px rgba(0, 0, 0, 0.8)',
+        
+        navBtnBg: 'rgba(0, 0, 0, 0.6)',
+        navBtnBorder: 'rgba(255, 255, 255, 0.8)',
+        navBtnColor: '#fff',
+        navBtnHoverBg: 'rgba(255, 255, 255, 0.9)',
+        navBtnHoverColor: color1,
+        navBtnShadow: '0 4px 15px rgba(0, 0, 0, 0.3)',
+        
+        dotBg: 'rgba(255, 255, 255, 0.3)',
+        dotBorder: 'rgba(255, 255, 255, 0.6)',
+        dotHoverBg: 'rgba(255, 255, 255, 0.6)',
+        dotActiveBg: 'rgba(255, 255, 255, 0.95)',
+        dotActiveBorder: 'rgba(255, 255, 255, 1)',
+        dotGlow: '0 0 15px rgba(255, 255, 255, 0.5)'
+      };
+      
       // Container principal
       const container = document.createElement('div');
       container.className = 'vf-carousel-container';
@@ -106,6 +168,7 @@ export const CarouselExtension = {
       container.setAttribute('data-has-background', backgroundImage ? 'true' : 'false');
       container.setAttribute('data-display-mode', mode);
       container.setAttribute('data-cards-per-view', slidesPerView);
+      container.setAttribute('data-theme', theme);
       
       // CSS
       const styleEl = document.createElement('style');
@@ -131,7 +194,6 @@ export const CarouselExtension = {
   overflow: visible !important;
   position: relative !important;
 }
-
 /* ═══════════════════════════════════════════════════════════ */
 /* ✅ VARIABLES CSS                                             */
 /* ═══════════════════════════════════════════════════════════ */
@@ -150,9 +212,8 @@ export const CarouselExtension = {
   --shadow-strong: 0 20px 60px rgba(0, 0, 0, 0.3);
   --glow-color: rgba(var(--rgb-1), 0.5);
 }
-
 /* ═══════════════════════════════════════════════════════════ */
-/* ✅ CONTAINER PRINCIPAL - DÉGRADÉ STYLÉ PAR DÉFAUT           */
+/* ✅ CONTAINER PRINCIPAL                                       */
 /* ═══════════════════════════════════════════════════════════ */
 .vf-carousel-container {
   position: relative !important;
@@ -167,12 +228,9 @@ export const CarouselExtension = {
   display: block !important;
   z-index: 1 !important;
   
-  box-shadow: 
-    0 15px 50px rgba(0, 0, 0, 0.3),
-    0 0 0 1px rgba(255, 255, 255, 0.1);
+  box-shadow: ${themeVars.containerShadow}, 0 0 0 1px ${themeVars.containerBorder};
 }
-
-/* ✅ Fond avec dégradé stylé (par défaut si pas d'image) */
+/* ✅ Fond avec dégradé (si pas d'image) */
 .vf-carousel-container[data-has-background="false"]::before {
   content: '';
   position: absolute;
@@ -185,9 +243,8 @@ export const CarouselExtension = {
     var(--color-1) 0%, 
     var(--color-2) 100%);
   z-index: -2;
-  opacity: 1;
+  opacity: ${themeVars.backgroundOpacity};
 }
-
 /* ✅ Fond avec image personnalisée */
 .vf-carousel-container[data-has-background="true"]::before {
   content: '';
@@ -201,13 +258,12 @@ export const CarouselExtension = {
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  filter: blur(12px) brightness(0.7);
+  filter: blur(12px) brightness(${themeVars.backgroundBrightness});
   transform: scale(1.1);
   z-index: -2;
-  opacity: 0.9;
+  opacity: ${themeVars.imageBackgroundOpacity};
 }
-
-/* ✅ Overlay subtil pour améliorer la lisibilité */
+/* ✅ Overlay */
 .vf-carousel-container::after {
   content: '';
   position: absolute;
@@ -216,13 +272,9 @@ export const CarouselExtension = {
   right: 0;
   bottom: 0;
   border-radius: var(--border-radius);
-  background: linear-gradient(135deg, 
-    rgba(0, 0, 0, 0.1) 0%, 
-    rgba(0, 0, 0, 0.2) 50%, 
-    rgba(0, 0, 0, 0.3) 100%);
+  background: ${themeVars.overlayBg};
   z-index: -1;
 }
-
 /* ═══════════════════════════════════════════════════════════ */
 /* ✅ TITRE STYLÉ                                               */
 /* ═══════════════════════════════════════════════════════════ */
@@ -234,23 +286,22 @@ export const CarouselExtension = {
   padding: 16px 24px;
   font-size: 22px;
   font-weight: 900;
-  color: #ffffff;
+  color: ${themeVars.titleColor};
   letter-spacing: -0.3px;
   line-height: 1.2;
   
-  background: rgba(0, 0, 0, 0.7);
+  background: ${themeVars.titleBg};
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border-radius: 12px;
-  border: 2px solid rgba(255, 255, 255, 0.2);
+  border: 2px solid ${themeVars.titleBorder};
   
   box-shadow: 
-    0 8px 30px rgba(0, 0, 0, 0.4),
+    ${themeVars.titleShadow},
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
   
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+  text-shadow: ${themeVars.titleTextShadow};
 }
-
 @media (max-width: 768px) {
   .vf-carousel-title {
     font-size: 18px;
@@ -258,7 +309,6 @@ export const CarouselExtension = {
     margin-bottom: 16px;
   }
 }
-
 /* ═══════════════════════════════════════════════════════════ */
 /* ✅ VIEWPORT                                                  */
 /* ═══════════════════════════════════════════════════════════ */
@@ -270,7 +320,6 @@ export const CarouselExtension = {
   width: 100%;
   box-sizing: border-box;
 }
-
 .vf-carousel-track {
   display: flex;
   gap: 16px;
@@ -279,13 +328,11 @@ export const CarouselExtension = {
   width: 100%;
   box-sizing: border-box;
 }
-
 @media (max-width: 768px) {
   .vf-carousel-track {
     gap: 12px;
   }
 }
-
 /* ═══════════════════════════════════════════════════════════ */
 /* ✅ CARTES - MODE SHOWCASE (1 carte pleine largeur)         */
 /* ═══════════════════════════════════════════════════════════ */
@@ -294,7 +341,6 @@ export const CarouselExtension = {
   min-width: 100% !important;
   max-width: 100% !important;
 }
-
 /* ═══════════════════════════════════════════════════════════ */
 /* ✅ CARTES - MODE GALLERY (2-3 cartes côte à côte)          */
 /* ═══════════════════════════════════════════════════════════ */
@@ -303,13 +349,11 @@ export const CarouselExtension = {
   min-width: calc(50% - 8px) !important;
   max-width: calc(50% - 8px) !important;
 }
-
 .vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="3"] .vf-carousel-card {
   flex: 0 0 calc(33.333% - 11px) !important;
   min-width: calc(33.333% - 11px) !important;
   max-width: calc(33.333% - 11px) !important;
 }
-
 /* Sur mobile, toujours 1 carte */
 @media (max-width: 768px) {
   .vf-carousel-card {
@@ -318,7 +362,6 @@ export const CarouselExtension = {
     max-width: 100% !important;
   }
 }
-
 /* ═══════════════════════════════════════════════════════════ */
 /* ✅ STYLES COMMUNS DES CARTES                                */
 /* ═══════════════════════════════════════════════════════════ */
@@ -336,7 +379,6 @@ export const CarouselExtension = {
     0 10px 30px rgba(0, 0, 0, 0.3),
     0 5px 15px rgba(0, 0, 0, 0.2);
 }
-
 @media (min-width: 769px) {
   .vf-carousel-card:hover {
     transform: translateY(-6px) scale(1.01);
@@ -347,7 +389,6 @@ export const CarouselExtension = {
       0 10px 25px rgba(0, 0, 0, 0.3);
   }
 }
-
 /* ═══════════════════════════════════════════════════════════ */
 /* ✅ IMAGE - HAUTEUR SELON LE MODE                            */
 /* ═══════════════════════════════════════════════════════════ */
@@ -358,17 +399,14 @@ export const CarouselExtension = {
   overflow: hidden;
   background: linear-gradient(135deg, #f5f5f5, #e8e8e8);
 }
-
 /* Mode showcase: image 50% */
 .vf-carousel-container[data-display-mode="showcase"] .vf-carousel-image-container {
   padding-bottom: 50%;
 }
-
 /* Mode gallery: image 45% */
 .vf-carousel-container[data-display-mode="gallery"] .vf-carousel-image-container {
   padding-bottom: 45%;
 }
-
 .vf-carousel-image {
   position: absolute;
   top: 0;
@@ -380,11 +418,9 @@ export const CarouselExtension = {
   transition: transform 0.6s ease;
   transform-origin: center center;
 }
-
 .vf-carousel-card:hover .vf-carousel-image {
   transform: scale(1.08);
 }
-
 /* ═══════════════════════════════════════════════════════════ */
 /* ✅ CONTENU                                                   */
 /* ═══════════════════════════════════════════════════════════ */
@@ -398,14 +434,12 @@ export const CarouselExtension = {
   z-index: 2;
   background: rgba(255, 255, 255, 0.98);
 }
-
 /* Mode gallery: contenu plus compact */
 .vf-carousel-container[data-display-mode="gallery"] .vf-carousel-content {
   padding: 16px;
   min-height: 130px;
   gap: 10px;
 }
-
 @media (max-width: 768px) {
   .vf-carousel-content {
     padding: 16px;
@@ -413,7 +447,6 @@ export const CarouselExtension = {
     gap: 10px;
   }
 }
-
 .vf-carousel-card-title {
   font-size: 18px;
   font-weight: 800;
@@ -427,17 +460,14 @@ export const CarouselExtension = {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
 .vf-carousel-container[data-display-mode="gallery"] .vf-carousel-card-title {
   font-size: 15px;
 }
-
 @media (max-width: 768px) {
   .vf-carousel-card-title {
     font-size: 16px;
   }
 }
-
 /* ═══════════════════════════════════════════════════════════ */
 /* ✅ DESCRIPTION                                               */
 /* ═══════════════════════════════════════════════════════════ */
@@ -452,26 +482,22 @@ export const CarouselExtension = {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
 /* Showcase: 5 lignes */
 .vf-carousel-container[data-display-mode="showcase"] .vf-carousel-description {
   -webkit-line-clamp: 5;
   font-size: 14px;
 }
-
 /* Gallery: 3 lignes */
 .vf-carousel-container[data-display-mode="gallery"] .vf-carousel-description {
   -webkit-line-clamp: 3;
   font-size: 12px;
 }
-
 @media (max-width: 768px) {
   .vf-carousel-description {
     font-size: 12px;
     -webkit-line-clamp: 3;
   }
 }
-
 /* ═══════════════════════════════════════════════════════════ */
 /* ✅ BOUTON CTA                                                */
 /* ═══════════════════════════════════════════════════════════ */
@@ -499,16 +525,13 @@ export const CarouselExtension = {
   text-align: center;
   min-height: 44px;
 }
-
 .vf-carousel-button:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(var(--rgb-1), 0.6);
 }
-
 .vf-carousel-button:active {
   transform: translateY(0);
 }
-
 @media (max-width: 768px) {
   .vf-carousel-button {
     padding: 10px 16px;
@@ -516,7 +539,6 @@ export const CarouselExtension = {
     min-height: 40px;
   }
 }
-
 /* ═══════════════════════════════════════════════════════════ */
 /* ✅ CONTRÔLES NAVIGATION                                      */
 /* ═══════════════════════════════════════════════════════════ */
@@ -529,23 +551,21 @@ export const CarouselExtension = {
   z-index: 3;
   gap: 16px;
 }
-
 /* Masquer si pas nécessaire */
 .vf-carousel-container[data-display-mode="showcase"][data-items-count="1"] .vf-carousel-controls,
 .vf-carousel-container[data-display-mode="gallery"][data-items-count="2"][data-cards-per-view="2"] .vf-carousel-controls,
 .vf-carousel-container[data-display-mode="gallery"][data-items-count="3"][data-cards-per-view="3"] .vf-carousel-controls {
   display: none;
 }
-
 .vf-carousel-nav-button {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.8);
-  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid ${themeVars.navBtnBorder};
+  background: ${themeVars.navBtnBg};
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  color: #fff;
+  color: ${themeVars.navBtnColor};
   cursor: pointer;
   transition: var(--transition-smooth);
   display: flex;
@@ -554,27 +574,23 @@ export const CarouselExtension = {
   font-size: 20px;
   font-weight: bold;
   
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  box-shadow: ${themeVars.navBtnShadow};
 }
-
 .vf-carousel-nav-button:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.9);
-  color: var(--color-1);
-  border-color: rgba(255, 255, 255, 1);
+  background: ${themeVars.navBtnHoverBg};
+  color: ${themeVars.navBtnHoverColor};
+  border-color: ${themeVars.navBtnHoverBg};
   transform: scale(1.1);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
 }
-
 .vf-carousel-nav-button:active:not(:disabled) {
   transform: scale(1);
 }
-
 .vf-carousel-nav-button:disabled {
   opacity: 0.3;
   cursor: not-allowed;
   transform: none;
 }
-
 @media (max-width: 768px) {
   .vf-carousel-nav-button {
     width: 38px;
@@ -582,7 +598,6 @@ export const CarouselExtension = {
     font-size: 18px;
   }
 }
-
 /* ═══════════════════════════════════════════════════════════ */
 /* ✅ DOTS DE NAVIGATION                                        */
 /* ═══════════════════════════════════════════════════════════ */
@@ -593,29 +608,25 @@ export const CarouselExtension = {
   align-items: center;
   flex: 1;
 }
-
 .vf-carousel-dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.6);
-  background: rgba(255, 255, 255, 0.3);
+  border: 2px solid ${themeVars.dotBorder};
+  background: ${themeVars.dotBg};
   cursor: pointer;
   transition: var(--transition-smooth);
 }
-
 .vf-carousel-dot:hover {
-  background: rgba(255, 255, 255, 0.6);
+  background: ${themeVars.dotHoverBg};
   transform: scale(1.2);
 }
-
 .vf-carousel-dot.active {
-  background: rgba(255, 255, 255, 0.95);
-  border-color: rgba(255, 255, 255, 1);
+  background: ${themeVars.dotActiveBg};
+  border-color: ${themeVars.dotActiveBorder};
   transform: scale(1.3);
-  box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+  box-shadow: ${themeVars.dotGlow};
 }
-
 /* ═══════════════════════════════════════════════════════════ */
 /* ✅ ANIMATIONS                                                */
 /* ═══════════════════════════════════════════════════════════ */
@@ -629,7 +640,6 @@ export const CarouselExtension = {
     transform: translateY(0); 
   }
 }
-
 .vf-carousel-container {
   animation: fadeInUp 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
@@ -926,7 +936,7 @@ export const CarouselExtension = {
       
       element.appendChild(container);
       
-      console.log(`✅ Carousel v4.1 ${mode.toUpperCase()} (ID: ${uniqueId}) - ${items.length} items - ${slidesPerView} par vue`);
+      console.log(`✅ Carousel v4.2 ${mode.toUpperCase()} - Thème: ${theme.toUpperCase()} (ID: ${uniqueId}) - ${items.length} items - ${slidesPerView} par vue`);
       
       // Cleanup
       return () => {

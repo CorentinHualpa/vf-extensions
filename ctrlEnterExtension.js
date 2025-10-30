@@ -10,47 +10,59 @@
 export const CtrlEnterOnlyExtension = {
   name: 'CtrlEnterOnly',
   type: 'effect',
-  match: () => true, // Toujours actif
-  effect: ({ element }) => {
+  match: () => true,
+  effect: () => {  // ✅ PAS de paramètre element pour les extensions "effect"
     console.log('🚀 Extension Ctrl+Enter chargée');
     
-    // Accès au Shadow DOM (comme dans MultiSelect)
-    const root = element.getRootNode();
-    const host = root instanceof ShadowRoot ? root : document;
+    // ✅ Accès direct au Shadow DOM du widget Voiceflow
+    const getHost = () => {
+      // Le widget Voiceflow crée un shadow-root, on doit le trouver
+      const vfContainer = document.querySelector('#voiceflow-chat-container');
+      if (vfContainer) {
+        // Chercher le shadow-root dans le container
+        const shadowHost = vfContainer.querySelector('[data-vf-chat]') || 
+                          vfContainer.querySelector('div > div');
+        if (shadowHost && shadowHost.shadowRoot) {
+          return shadowHost.shadowRoot;
+        }
+      }
+      // Fallback : chercher dans tous les shadow roots
+      const allElements = document.querySelectorAll('*');
+      for (let el of allElements) {
+        if (el.shadowRoot) {
+          const textarea = el.shadowRoot.querySelector('textarea.vfrc-chat-input');
+          if (textarea) return el.shadowRoot;
+        }
+      }
+      return document; // Fallback au document normal
+    };
     
     let isSetup = false;
     let attempts = 0;
-    const maxAttempts = 30;
+    const maxAttempts = 40;
     
     const setupKeyboardHandler = () => {
-      // Chercher dans le Shadow DOM
+      const host = getHost();
       const textarea = host.querySelector('textarea.vfrc-chat-input');
       const sendButton = host.querySelector('#vfrc-send-message');
       
       if (textarea && sendButton && !isSetup) {
-        console.log('✅ Textarea et bouton trouvés dans le Shadow DOM !');
+        console.log('✅ Textarea et bouton trouvés !');
+        console.log('📍 Host type:', host === document ? 'Document' : 'Shadow Root');
         isSetup = true;
         
-        // Handler principal pour gérer Entrée et Ctrl+Entrée
         const keyHandler = (e) => {
           if (e.key === 'Enter' || e.keyCode === 13) {
             console.log('🔑 Enter détecté - Ctrl:', e.ctrlKey, 'Meta:', e.metaKey);
             
             if (e.ctrlKey || e.metaKey) {
-              // ✅ Ctrl+Enter ou Cmd+Enter : envoyer
               console.log('✅ Ctrl+Enter → Envoi');
               e.preventDefault();
               e.stopPropagation();
               e.stopImmediatePropagation();
-              
-              // Cliquer sur le bouton d'envoi
-              setTimeout(() => {
-                sendButton.click();
-              }, 0);
-              
+              setTimeout(() => sendButton.click(), 0);
               return false;
             } else {
-              // ❌ Enter seul : bloquer
               console.log('❌ Enter seul → Bloqué');
               e.preventDefault();
               e.stopPropagation();
@@ -60,39 +72,31 @@ export const CtrlEnterOnlyExtension = {
           }
         };
         
-        // Ajouter les listeners avec capture pour intercepter avant le widget
+        // Ajouter les listeners avec capture
         textarea.addEventListener('keydown', keyHandler, true);
         textarea.addEventListener('keypress', keyHandler, true);
         textarea.addEventListener('keyup', keyHandler, true);
         
         console.log('🎉 Ctrl+Enter configuré avec succès !');
-        console.log('📝 Instructions : Utilisez Ctrl+Entrée (ou Cmd+Entrée sur Mac) pour envoyer vos messages');
+        console.log('📝 Utilisez Ctrl+Entrée (ou Cmd+Entrée sur Mac) pour envoyer vos messages');
         
       } else if (!isSetup) {
         attempts++;
         if (attempts < maxAttempts) {
-          console.log(`⏳ Tentative ${attempts}/${maxAttempts} - Éléments non trouvés, réessai dans 200ms...`);
-          setTimeout(setupKeyboardHandler, 200);
+          console.log(`⏳ Tentative ${attempts}/${maxAttempts} - Réessai...`);
+          setTimeout(setupKeyboardHandler, 250);
         } else {
           console.error('❌ Impossible de trouver les éléments après', maxAttempts, 'tentatives');
-          console.log('🔍 Debug - Root:', root);
-          console.log('🔍 Debug - Host:', host);
-          console.log('🔍 Debug - Textarea:', host.querySelector('textarea'));
+          console.log('🔍 Debug - Host:', getHost());
         }
       }
     };
     
-    // Démarrer le setup avec un délai initial
-    setTimeout(setupKeyboardHandler, 300);
+    // Démarrer avec un délai pour laisser le widget se charger
+    setTimeout(setupKeyboardHandler, 500);
     
-    // Cleanup function si l'extension est déchargée
     return () => {
       console.log('🧹 Nettoyage de l\'extension Ctrl+Enter');
-      const textarea = host.querySelector('textarea.vfrc-chat-input');
-      if (textarea) {
-        // Impossible de retirer les listeners sans référence, mais ça reste propre
-        console.log('Extension désactivée');
-      }
     };
   }
 };

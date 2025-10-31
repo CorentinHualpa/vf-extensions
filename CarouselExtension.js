@@ -950,4 +950,158 @@ export const CarouselExtension = {
       controls.className = 'vf-carousel-controls';
       
       const prevBtn = document.createElement('button');
-      prevBtn.className
+      prevBtn.className = 'vf-carousel-nav-button vf-carousel-prev';
+      prevBtn.innerHTML = '‹';
+      prevBtn.addEventListener('click', prevSlide);
+      
+      const dotsContainer = document.createElement('div');
+      dotsContainer.className = 'vf-carousel-dots';
+      
+      // Calcul du nombre de dots selon l'écran
+      const calculateDots = () => {
+        const currentSlidesPerView = getSlidesPerView();
+        return isMobile() || mode === 'showcase' 
+          ? items.length 
+          : Math.ceil(items.length / currentSlidesPerView);
+      };
+      
+      const totalDots = calculateDots();
+      for (let i = 0; i < totalDots; i++) {
+        const dot = document.createElement('button');
+        dot.className = 'vf-carousel-dot';
+        dot.addEventListener('click', () => goToSlide(i));
+        dotsContainer.appendChild(dot);
+      }
+      
+      const nextBtn = document.createElement('button');
+      nextBtn.className = 'vf-carousel-nav-button vf-carousel-next';
+      nextBtn.innerHTML = '›';
+      nextBtn.addEventListener('click', nextSlide);
+      
+      controls.appendChild(prevBtn);
+      controls.appendChild(dotsContainer);
+      controls.appendChild(nextBtn);
+      container.appendChild(controls);
+      
+      // Gestion du redimensionnement (desktop ↔ mobile)
+      let resizeTimeout;
+      window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+          // Reset à l'index 0 si on change de mode
+          currentIndex = 0;
+          updateCarouselPosition();
+          
+          // Recalcul des dots si nécessaire
+          const newTotalDots = calculateDots();
+          if (newTotalDots !== dotsContainer.children.length) {
+            dotsContainer.innerHTML = '';
+            for (let i = 0; i < newTotalDots; i++) {
+              const dot = document.createElement('button');
+              dot.className = 'vf-carousel-dot';
+              dot.addEventListener('click', () => goToSlide(i));
+              dotsContainer.appendChild(dot);
+            }
+            updateCarouselPosition();
+          }
+        }, 300);
+      });
+      
+      // Support trackpad
+      let wheelTimeout;
+      container.addEventListener('wheel', (e) => {
+        if (Math.abs(e.deltaX) > Math.abs(e.deltaY) && Math.abs(e.deltaX) > 10) {
+          e.preventDefault();
+          stopAutoplay();
+          
+          clearTimeout(wheelTimeout);
+          
+          if (e.deltaX > 10) {
+            nextSlide();
+          } else if (e.deltaX < -10) {
+            prevSlide();
+          }
+          
+          if (autoplay === true) {
+            wheelTimeout = setTimeout(startAutoplay, 2000);
+          }
+        }
+      }, { passive: false });
+      
+      // Support tactile
+      let isDragging = false;
+      
+      track.addEventListener('touchstart', (e) => {
+        touchStartX = e.touches[0].clientX;
+        stopAutoplay();
+      }, { passive: true });
+      
+      track.addEventListener('touchmove', (e) => {
+        if (!touchStartX) return;
+        touchEndX = e.touches[0].clientX;
+        isDragging = true;
+      }, { passive: true });
+      
+      track.addEventListener('touchend', () => {
+        if (!isDragging) return;
+        
+        const touchDiff = touchStartX - touchEndX;
+        const threshold = 50;
+        
+        if (Math.abs(touchDiff) > threshold) {
+          if (touchDiff > 0) {
+            nextSlide();
+          } else {
+            prevSlide();
+          }
+        }
+        
+        touchStartX = 0;
+        touchEndX = 0;
+        isDragging = false;
+        
+        if (autoplay === true) {
+          setTimeout(startAutoplay, 2000);
+        }
+      });
+      
+      // Support clavier
+      container.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') prevSlide();
+        if (e.key === 'ArrowRight') nextSlide();
+      });
+      
+      // Pause autoplay au hover (seulement si activé)
+      if (autoplay === true) {
+        container.addEventListener('mouseenter', stopAutoplay);
+        container.addEventListener('mouseleave', startAutoplay);
+      }
+      
+      // Initialisation
+      updateCarouselPosition();
+      
+      // NE démarre l'autoplay QUE si explicitement demandé
+      if (autoplay === true) {
+        setTimeout(startAutoplay, 1000);
+        console.log('✅ Carousel avec autoplay activé');
+      } else {
+        console.log('✅ Carousel sans autoplay (contrôle manuel uniquement)');
+      }
+      
+      element.appendChild(container);
+      
+      console.log(`✅ Carousel v4.4 ${mode.toUpperCase()} - Thème: ${theme.toUpperCase()} (ID: ${uniqueId}) - ${items.length} items - Mobile: ${isMobile()} - Autoplay: ${autoplay}`);
+      
+      // Cleanup
+      return () => {
+        stopAutoplay();
+        window.removeEventListener('resize', resizeTimeout);
+      };
+      
+    } catch (error) {
+      console.error('❌ Carousel Error:', error);
+      element.innerHTML = `<div style="color: #ff4444; padding: 20px; text-align: center;">❌ Erreur Carousel: ${error.message}</div>`;
+    }
+  }
+};
+export default CarouselExtension;

@@ -1,142 +1,133 @@
-<!-- Conteneur utilisé UNIQUEMENT en mode 'embedded' -->
-<div id="voiceflow-chat-container"
-     style="width:80%; max-width:780px; height:90vh; margin:0 auto; display:block;"></div>
+/**
+ *  ╔═══════════════════════════════════════════════════════════╗
+ *  ║  CtrlEnterExtension – Voiceflow Keyboard Handler         ║
+ *  ║                                                           ║
+ *  ║  • Entrée seule = Retour à la ligne                      ║
+ *  ║  • Ctrl+Entrée (ou Cmd+Entrée) = Envoi du message       ║
+ *  ║  • N'interfère PAS avec les autres extensions            ║
+ *  ║                                                           ║
+ *  ║  Usage:                                                   ║
+ *  ║  import { installCtrlEnter } from './ctrlEnterExtension.js'; ║
+ *  ║  // Après window.voiceflow.chat.load(config):            ║
+ *  ║  setTimeout(() => installCtrlEnter(), 2000);             ║
+ *  ╚═══════════════════════════════════════════════════════════╝
+ */
 
-<script type="module">
-  import { FormExtension } from 'https://corentinhualpa.github.io/vf-extensions/formExtension.js';
-  import { UploadToN8nWithLoader } from 'https://corentinhualpa.github.io/vf-extensions/UploadToN8nWithLoader.js';
+export function installCtrlEnter() {
+  if (window.__ctrlEnterInstalled__) {
+    console.log('⚠️ Ctrl+Enter déjà installé');
+    return;
+  }
   
-  const MODE = 'embedded';
-  const PERSISTENCE = 'memory';
-
-  (function(d, t) {
-    const v = d.createElement(t), s = d.getElementsByTagName(t)[0];
-    v.onload = function() {
-      const container = document.getElementById('voiceflow-chat-container');
-      const config = {
-        verify: { projectID: '68f0bdc4a01f6758e03c369e' },
-        url: 'https://general-runtime.voiceflow.com',
-        versionID: 'production',
-        autostart: true,
-        assistant: { 
-          type: 'chat', 
-          persistence: PERSISTENCE, 
-          extensions: [
-            // ❌ PLUS d'extension Ctrl+Enter ici !
-            FormExtension, 
-            UploadToN8nWithLoader 
-          ] 
-        },
-        render: { mode: 'embedded', target: container }
-      };
-      window.voiceflow.chat.load(config);
-      
-      // ✅ Configuration Ctrl+Enter APRÈS le chargement complet
-      // Attendre que tout soit bien chargé
-      setTimeout(() => {
-        installCtrlEnterHandler();
-      }, 2000);
-    };
-    v.src = 'https://cdn.voiceflow.com/widget-next/bundle.mjs';
-    v.type = 'text/javascript';
-    s.parentNode.insertBefore(v, s);
-  })(document, 'script');
+  console.log('🔧 Installation du handler Ctrl+Enter...');
   
-  // ✅ Fonction d'installation du handler Ctrl+Enter
-  function installCtrlEnterHandler() {
-    if (window.__ctrlEnterInstalled__) {
-      console.log('⚠️ Ctrl+Enter déjà installé');
-      return;
-    }
+  /**
+   * Recherche récursive du textarea dans le Shadow DOM
+   */
+  function findTextarea() {
+    console.log('🔍 Recherche du textarea dans le Shadow DOM...');
     
-    console.log('🔧 Installation du handler Ctrl+Enter...');
-    
-    // Fonction pour trouver le Shadow DOM
-    function findShadowRoot() {
-      const container = document.getElementById('voiceflow-chat-container');
-      if (!container) return null;
-      
-      const walker = document.createTreeWalker(
-        container,
-        NodeFilter.SHOW_ELEMENT,
-        null,
-        false
-      );
-      
-      let node;
-      while (node = walker.nextNode()) {
-        if (node.shadowRoot) {
-          const textarea = node.shadowRoot.querySelector('textarea.vfrc-chat-input');
-          if (textarea) {
-            return node.shadowRoot;
-          }
-        }
-      }
+    const container = document.getElementById('voiceflow-chat-container');
+    if (!container) {
+      console.log('❌ Container Voiceflow non trouvé');
       return null;
     }
     
-    let attempts = 0;
-    const maxAttempts = 30;
-    
-    function tryInstall() {
-      const shadowRoot = findShadowRoot();
-      const textarea = shadowRoot?.querySelector('textarea.vfrc-chat-input');
-      const sendButton = shadowRoot?.querySelector('#vfrc-send-message');
-      
-      if (textarea && sendButton && !textarea.__hasCtrlEnter__) {
-        console.log('✅ Installation du handler sur le textarea');
+    // Fonction récursive pour explorer l'arbre DOM
+    function searchInElement(element) {
+      // Vérifier si cet élément a un shadowRoot
+      if (element.shadowRoot) {
+        console.log('✅ Shadow root trouvé sur', element.tagName);
+        const textarea = element.shadowRoot.querySelector('textarea.vfrc-chat-input');
+        const sendButton = element.shadowRoot.querySelector('#vfrc-send-message');
         
-        textarea.__hasCtrlEnter__ = true;
-        window.__ctrlEnterInstalled__ = true;
-        
-        // Handler leger qui n'interfère pas
-        textarea.addEventListener('keydown', function(e) {
-          // Seulement si c'est Enter
-          if (e.key !== 'Enter' && e.keyCode !== 13) return;
-          
-          if (e.ctrlKey || e.metaKey) {
-            // Ctrl+Enter : envoyer
-            e.preventDefault();
-            e.stopPropagation();
-            sendButton.click();
-            console.log('✅ Message envoyé via Ctrl+Enter');
-          } else {
-            // Enter seul : nouvelle ligne
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const start = this.selectionStart;
-            const end = this.selectionEnd;
-            const value = this.value;
-            
-            this.value = value.substring(0, start) + '\n' + value.substring(end);
-            this.selectionStart = this.selectionEnd = start + 1;
-            
-            // Trigger resize
-            this.dispatchEvent(new Event('input', { bubbles: true }));
-            this.style.height = 'auto';
-            this.style.height = this.scrollHeight + 'px';
-            
-            console.log('↩️ Nouvelle ligne ajoutée');
-          }
-        }, false); // ✅ IMPORTANT: false = pas de capture
-        
-        console.log('🎉 Ctrl+Enter configuré !');
-        console.log('📝 Enter = Nouvelle ligne | Ctrl+Enter = Envoyer');
-        
-      } else if (!window.__ctrlEnterInstalled__ && attempts < maxAttempts) {
-        attempts++;
-        console.log(`⏳ Tentative ${attempts}/${maxAttempts}...`);
-        setTimeout(tryInstall, 300);
+        if (textarea && sendButton) {
+          console.log('✅✅ Textarea ET bouton d\'envoi trouvés !');
+          return { textarea, sendButton, shadowRoot: element.shadowRoot };
+        }
       }
+      
+      // Chercher récursivement dans les enfants
+      for (let child of element.children) {
+        const result = searchInElement(child);
+        if (result) return result;
+      }
+      
+      return null;
     }
     
-    tryInstall();
+    return searchInElement(container);
   }
-</script>
+  
+  let attempts = 0;
+  const maxAttempts = 40;
+  
+  function tryInstall() {
+    const result = findTextarea();
+    
+    if (result && !result.textarea.__hasCtrlEnter__) {
+      const { textarea, sendButton } = result;
+      
+      console.log('✅ Installation du keyboard handler...');
+      
+      textarea.__hasCtrlEnter__ = true;
+      window.__ctrlEnterInstalled__ = true;
+      
+      /**
+       * Handler principal pour gérer Enter et Ctrl+Enter
+       */
+      textarea.addEventListener('keydown', function(e) {
+        // Ne traiter que la touche Enter
+        if (e.key !== 'Enter' && e.keyCode !== 13) return;
+        
+        if (e.ctrlKey || e.metaKey) {
+          // Ctrl+Enter ou Cmd+Enter : Envoyer le message
+          console.log('✅ Ctrl+Enter → Envoi du message');
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          setTimeout(() => sendButton.click(), 10);
+          
+        } else {
+          // Enter seul : Retour à la ligne
+          console.log('↩️ Enter → Retour à la ligne');
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          
+          // Insérer le retour à la ligne à la position du curseur
+          const start = this.selectionStart;
+          const end = this.selectionEnd;
+          const value = this.value;
+          
+          this.value = value.substring(0, start) + '\n' + value.substring(end);
+          this.selectionStart = this.selectionEnd = start + 1;
+          
+          // Déclencher l'événement input pour la mise à jour
+          this.dispatchEvent(new Event('input', { bubbles: true }));
+          
+          // Redimensionner le textarea
+          this.style.height = 'auto';
+          this.style.height = this.scrollHeight + 'px';
+        }
+      }, true); // ✅ Capture phase = intercepte AVANT Voiceflow
+      
+      console.log('🎉 Ctrl+Enter configuré avec succès !');
+      console.log('📝 Enter = Retour à la ligne | Ctrl+Enter (Cmd+Enter) = Envoyer');
+      
+    } else if (!window.__ctrlEnterInstalled__ && attempts < maxAttempts) {
+      attempts++;
+      console.log(`⏳ Tentative ${attempts}/${maxAttempts}...`);
+      setTimeout(tryInstall, 400);
+      
+    } else if (attempts >= maxAttempts) {
+      console.error('❌ Impossible de trouver le textarea après', maxAttempts, 'tentatives');
+      console.log('🔍 Debug: vérifiez que le widget Voiceflow est bien chargé');
+    }
+  }
+  
+  tryInstall();
+}
 
-<style>
-/* Responsive (facultatif) */
-@media (max-width:1024px){ #voiceflow-chat-container{ width:90% !important; } }
-@media (max-width:640px){  #voiceflow-chat-container{ width:100% !important; height:80vh; } }
-</style>
+// Export par défaut pour compatibilité
+export default installCtrlEnter;

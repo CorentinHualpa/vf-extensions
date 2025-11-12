@@ -74,6 +74,13 @@ export const CarouselExtension = {
       mode = validModes.includes(mode) ? mode : 'showcase';
       slidesPerView = mode === 'gallery' ? Math.min(3, Math.max(2, slidesPerView)) : 1;
       
+      // ✅ FORCER showcase dans le widget, peu importe le payload
+      if (isInWidget()) {
+        mode = 'showcase';
+        slidesPerView = 1;
+        console.log('🔧 Widget détecté - Forçage mode showcase (1 carte)');
+      }
+      
       // Identifiant unique
       const uniqueId = instanceId || `carousel_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
       

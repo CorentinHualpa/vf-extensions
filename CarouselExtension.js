@@ -1,12 +1,12 @@
 /**
  *  ╔═══════════════════════════════════════════════════════════╗
  *  ║  Carousel – Voiceflow Response Extension                  ║
- *  ║  VERSION 4.4 - CORRECTION DIMENSIONS CARTES               ║
+ *  ║  VERSION 4.5 - FIX WIDGET MODE                            ║
  *  ║                                                           ║
  *  ║  • Choix automatique showcase (1-2 items) / gallery (3+) ║
  *  ║  • Thème clair ou sombre configurable                    ║
+ *  ║  • Détection widget Voiceflow (1 carte forcée)           ║
  *  ║  • Affichage mobile optimisé (1 carte en plein écran)    ║
- *  ║  • FIX: Calcul correct des largeurs de cartes            ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 export const CarouselExtension = {
@@ -37,12 +37,27 @@ export const CarouselExtension = {
         return;
       }
       
-      // ✅ CHOIX AUTOMATIQUE DU MODE selon le nombre d'items
+      // ✅ DÉTECTION WIDGET VOICEFLOW
+      // Le widget a une largeur fixe, détectons-le
+      const isInWidget = () => {
+        // Méthode 1: Vérifier si on est dans un iframe (widget)
+        if (window.self !== window.top) return true;
+        
+        // Méthode 2: Vérifier la largeur du container parent
+        const parentWidth = element.parentElement?.offsetWidth || window.innerWidth;
+        return parentWidth < 500;
+      };
+      
+      // ✅ CHOIX AUTOMATIQUE DU MODE selon le contexte
       let mode = displayMode;
       let slidesPerView = cardsPerView;
       
       if (!mode || !slidesPerView) {
-        if (items.length <= 2) {
+        // Dans le widget: toujours 1 carte
+        if (isInWidget()) {
+          mode = 'showcase';
+          slidesPerView = 1;
+        } else if (items.length <= 2) {
           mode = 'showcase';
           slidesPerView = 1;
         } else if (items.length <= 4) {
@@ -170,6 +185,7 @@ export const CarouselExtension = {
       container.setAttribute('data-display-mode', mode);
       container.setAttribute('data-cards-per-view', slidesPerView);
       container.setAttribute('data-theme', theme);
+      container.setAttribute('data-in-widget', isInWidget() ? 'true' : 'false');
       
       // CSS
       const styleEl = document.createElement('style');
@@ -232,6 +248,12 @@ export const CarouselExtension = {
   box-shadow: ${themeVars.containerShadow}, 0 0 0 1px ${themeVars.containerBorder};
 }
 
+/* Widget mode: padding réduit */
+.vf-carousel-container[data-in-widget="true"] {
+  padding: 16px !important;
+  border-radius: 16px;
+}
+
 @media (max-width: 768px) {
   .vf-carousel-container {
     padding: 12px !important;
@@ -285,6 +307,12 @@ export const CarouselExtension = {
   z-index: -1;
 }
 
+/* Widget mode: border radius réduit */
+.vf-carousel-container[data-in-widget="true"]::before,
+.vf-carousel-container[data-in-widget="true"]::after {
+  border-radius: 16px;
+}
+
 @media (max-width: 768px) {
   .vf-carousel-container[data-has-background="false"]::before,
   .vf-carousel-container[data-has-background="true"]::before,
@@ -320,6 +348,15 @@ export const CarouselExtension = {
   
   text-shadow: ${themeVars.titleTextShadow};
 }
+
+/* Widget mode: titre plus compact */
+.vf-carousel-container[data-in-widget="true"] .vf-carousel-title {
+  font-size: 18px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border-radius: 10px;
+}
+
 @media (max-width: 768px) {
   .vf-carousel-title {
     font-size: 16px;
@@ -347,6 +384,11 @@ export const CarouselExtension = {
   }
 }
 
+.vf-carousel-container[data-in-widget="true"] .vf-carousel-viewport {
+  border-radius: 12px;
+  margin-bottom: 12px;
+}
+
 .vf-carousel-track {
   display: flex;
   gap: 16px;
@@ -355,6 +397,11 @@ export const CarouselExtension = {
   width: 100%;
   box-sizing: border-box;
 }
+
+.vf-carousel-container[data-in-widget="true"] .vf-carousel-track {
+  gap: 0;
+}
+
 @media (max-width: 768px) {
   .vf-carousel-track {
     gap: 12px;
@@ -369,7 +416,7 @@ export const CarouselExtension = {
   max-width: 100% !important;
 }
 /* ═══════════════════════════════════════════════════════════ */
-/* ✅ CARTES - MODE GALLERY (2-3 cartes côte à côte) - CORRIGÉ */
+/* ✅ CARTES - MODE GALLERY (2-3 cartes côte à côte)          */
 /* ═══════════════════════════════════════════════════════════ */
 /* 2 cartes: (100% - gap) / 2 */
 .vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="2"] .vf-carousel-card {
@@ -382,6 +429,15 @@ export const CarouselExtension = {
   flex: 0 0 calc((100% - 32px) / 3) !important;
   min-width: calc((100% - 32px) / 3) !important;
   max-width: calc((100% - 32px) / 3) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════ */
+/* ✅ MODE WIDGET - TOUJOURS 1 CARTE EN PLEIN ÉCRAN           */
+/* ═══════════════════════════════════════════════════════════ */
+.vf-carousel-container[data-in-widget="true"] .vf-carousel-card {
+  flex: 0 0 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
 }
 
 /* ═══════════════════════════════════════════════════════════ */
@@ -427,6 +483,10 @@ export const CarouselExtension = {
   }
 }
 
+.vf-carousel-container[data-in-widget="true"] .vf-carousel-card {
+  border-radius: 12px;
+}
+
 @media (min-width: 769px) {
   .vf-carousel-card:hover {
     transform: translateY(-6px) scale(1.01);
@@ -435,6 +495,11 @@ export const CarouselExtension = {
     box-shadow: 
       0 20px 50px rgba(0, 0, 0, 0.4),
       0 10px 25px rgba(0, 0, 0, 0.3);
+  }
+  
+  /* Pas d'effet hover dans le widget */
+  .vf-carousel-container[data-in-widget="true"] .vf-carousel-card:hover {
+    transform: none;
   }
 }
 /* ═══════════════════════════════════════════════════════════ */
@@ -454,6 +519,11 @@ export const CarouselExtension = {
 /* Mode gallery: image 45% */
 .vf-carousel-container[data-display-mode="gallery"] .vf-carousel-image-container {
   padding-bottom: 45%;
+}
+
+/* Widget mode: image 55% */
+.vf-carousel-container[data-in-widget="true"] .vf-carousel-image-container {
+  padding-bottom: 55% !important;
 }
 
 @media (max-width: 768px) {
@@ -478,6 +548,11 @@ export const CarouselExtension = {
   .vf-carousel-card:hover .vf-carousel-image {
     transform: scale(1.08);
   }
+  
+  /* Pas d'effet hover dans le widget */
+  .vf-carousel-container[data-in-widget="true"] .vf-carousel-card:hover .vf-carousel-image {
+    transform: none;
+  }
 }
 /* ═══════════════════════════════════════════════════════════ */
 /* ✅ CONTENU                                                   */
@@ -498,6 +573,14 @@ export const CarouselExtension = {
   min-height: 130px;
   gap: 10px;
 }
+
+/* Widget mode: contenu adapté */
+.vf-carousel-container[data-in-widget="true"] .vf-carousel-content {
+  padding: 16px;
+  min-height: 140px;
+  gap: 10px;
+}
+
 @media (max-width: 768px) {
   .vf-carousel-content {
     padding: 16px;
@@ -521,6 +604,11 @@ export const CarouselExtension = {
 .vf-carousel-container[data-display-mode="gallery"] .vf-carousel-card-title {
   font-size: 15px;
 }
+
+.vf-carousel-container[data-in-widget="true"] .vf-carousel-card-title {
+  font-size: 16px;
+}
+
 @media (max-width: 768px) {
   .vf-carousel-card-title {
     font-size: 16px;
@@ -550,6 +638,13 @@ export const CarouselExtension = {
   -webkit-line-clamp: 3;
   font-size: 12px;
 }
+
+/* Widget mode: 4 lignes */
+.vf-carousel-container[data-in-widget="true"] .vf-carousel-description {
+  -webkit-line-clamp: 4 !important;
+  font-size: 13px !important;
+}
+
 @media (max-width: 768px) {
   .vf-carousel-description {
     font-size: 13px;
@@ -589,11 +684,24 @@ export const CarouselExtension = {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(var(--rgb-1), 0.6);
   }
+  
+  /* Pas d'effet hover dans le widget */
+  .vf-carousel-container[data-in-widget="true"] .vf-carousel-button:hover {
+    transform: none;
+  }
 }
 
 .vf-carousel-button:active {
   transform: translateY(0);
 }
+
+.vf-carousel-container[data-in-widget="true"] .vf-carousel-button {
+  padding: 12px 16px;
+  font-size: 12px;
+  min-height: 42px;
+  border-radius: 8px;
+}
+
 @media (max-width: 768px) {
   .vf-carousel-button {
     padding: 12px 18px;
@@ -622,11 +730,25 @@ export const CarouselExtension = {
   }
 }
 
+.vf-carousel-container[data-in-widget="true"] .vf-carousel-controls {
+  margin-top: 12px;
+  gap: 12px;
+}
+
 /* Masquer si pas nécessaire */
 .vf-carousel-container[data-display-mode="showcase"][data-items-count="1"] .vf-carousel-controls,
 .vf-carousel-container[data-display-mode="gallery"][data-items-count="2"][data-cards-per-view="2"] .vf-carousel-controls,
 .vf-carousel-container[data-display-mode="gallery"][data-items-count="3"][data-cards-per-view="3"] .vf-carousel-controls {
   display: none;
+}
+
+/* Widget mode: toujours afficher les contrôles si plus d'1 item */
+.vf-carousel-container[data-in-widget="true"][data-items-count="1"] .vf-carousel-controls {
+  display: none !important;
+}
+
+.vf-carousel-container[data-in-widget="true"]:not([data-items-count="1"]) .vf-carousel-controls {
+  display: flex !important;
 }
 
 /* Sur mobile, toujours afficher les contrôles si plus d'1 item */
@@ -678,6 +800,13 @@ export const CarouselExtension = {
   cursor: not-allowed;
   transform: none;
 }
+
+.vf-carousel-container[data-in-widget="true"] .vf-carousel-nav-button {
+  width: 38px;
+  height: 38px;
+  font-size: 18px;
+}
+
 @media (max-width: 768px) {
   .vf-carousel-nav-button {
     width: 42px;
@@ -702,6 +831,10 @@ export const CarouselExtension = {
   }
 }
 
+.vf-carousel-container[data-in-widget="true"] .vf-carousel-dots {
+  gap: 8px;
+}
+
 .vf-carousel-dot {
   width: 10px;
   height: 10px;
@@ -719,6 +852,11 @@ export const CarouselExtension = {
   }
 }
 
+.vf-carousel-container[data-in-widget="true"] .vf-carousel-dot {
+  width: 9px;
+  height: 9px;
+}
+
 .vf-carousel-dot:hover {
   background: ${themeVars.dotHoverBg};
   transform: scale(1.2);
@@ -734,6 +872,10 @@ export const CarouselExtension = {
   .vf-carousel-dot.active {
     transform: scale(1.4);
   }
+}
+
+.vf-carousel-container[data-in-widget="true"] .vf-carousel-dot.active {
+  transform: scale(1.3);
 }
 
 /* ═══════════════════════════════════════════════════════════ */
@@ -771,8 +913,8 @@ export const CarouselExtension = {
       const isMobile = () => window.innerWidth <= 768;
       
       const getSlidesPerView = () => {
-        // Sur mobile, toujours 1 carte
-        if (isMobile()) return 1;
+        // Dans le widget ou sur mobile, toujours 1 carte
+        if (isInWidget() || isMobile()) return 1;
         return slidesPerView;
       };
       
@@ -783,7 +925,7 @@ export const CarouselExtension = {
         const track = container.querySelector('.vf-carousel-track');
         const currentSlidesPerView = getSlidesPerView();
         
-        if (mode === 'showcase' || isMobile()) {
+        if (mode === 'showcase' || isInWidget() || isMobile()) {
           const translateX = -(currentIndex * 100);
           track.style.transform = `translateX(${translateX}%)`;
         } else {
@@ -792,7 +934,7 @@ export const CarouselExtension = {
           track.style.transform = `translateX(${translateX}%)`;
         }
         
-        const totalDots = isMobile() || mode === 'showcase' 
+        const totalDots = isInWidget() || isMobile() || mode === 'showcase' 
           ? items.length 
           : Math.ceil(items.length / currentSlidesPerView);
           
@@ -963,7 +1105,7 @@ export const CarouselExtension = {
       // Calcul du nombre de dots selon l'écran
       const calculateDots = () => {
         const currentSlidesPerView = getSlidesPerView();
-        return isMobile() || mode === 'showcase' 
+        return isInWidget() || isMobile() || mode === 'showcase' 
           ? items.length 
           : Math.ceil(items.length / currentSlidesPerView);
       };
@@ -986,7 +1128,7 @@ export const CarouselExtension = {
       controls.appendChild(nextBtn);
       container.appendChild(controls);
       
-      // Gestion du redimensionnement (desktop ↔ mobile)
+      // Gestion du redimensionnement (desktop ↔ mobile ↔ widget)
       let resizeTimeout;
       window.addEventListener('resize', () => {
         clearTimeout(resizeTimeout);
@@ -1093,7 +1235,7 @@ export const CarouselExtension = {
       
       element.appendChild(container);
       
-      console.log(`✅ Carousel v4.4 ${mode.toUpperCase()} - Thème: ${theme.toUpperCase()} (ID: ${uniqueId}) - ${items.length} items - Mobile: ${isMobile()} - Autoplay: ${autoplay}`);
+      console.log(`✅ Carousel v4.5 ${mode.toUpperCase()} - Thème: ${theme.toUpperCase()} (ID: ${uniqueId}) - ${items.length} items - Widget: ${isInWidget()} - Mobile: ${isMobile()} - Autoplay: ${autoplay}`);
       
       // Cleanup
       return () => {

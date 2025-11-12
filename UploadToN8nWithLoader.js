@@ -1,4 +1,4 @@
-// UploadToN8nWithLoader.js – v2.5 (avec temps minimum de chargement - CORRIGÉ)
+// UploadToN8nWithLoader.js – v2.6 (title/subtitle optionnels)
 // © Corentin-ready – optimisé pour Voiceflow + n8n
 export const UploadToN8nWithLoader = {
   name: 'UploadToN8nWithLoader',
@@ -23,8 +23,8 @@ export const UploadToN8nWithLoader = {
     // ---------- CONFIG ----------
     const p = trace?.payload || {};
     // UI upload
-    const title         = p.title || 'Téléverser vos documents';
-    const subtitle      = p.subtitle || 'PDF ou DOCX - Maximum 25 MB par fichier';
+    const title         = p.title || '';
+    const subtitle      = p.subtitle || '';
     const description   = p.description || 'Glissez-déposez vos fichiers ici ou cliquez pour sélectionner';
     const accept        = p.accept || '.pdf,.docx';
     const maxFileSizeMB = p.maxFileSizeMB || 25;
@@ -67,10 +67,10 @@ export const UploadToN8nWithLoader = {
     const loaderCfg = p.loader || {};
     const loaderMode = (loaderCfg.mode || 'auto').toLowerCase();
     
-    // ⭐ NOUVEAU : Temps minimum de chargement (en millisecondes)
+    // Temps minimum de chargement (en millisecondes)
     const minLoadingTimeMs = Number(loaderCfg.minLoadingTimeMs) > 0 
       ? Number(loaderCfg.minLoadingTimeMs) 
-      : 0; // Par défaut : pas de temps minimum
+      : 0;
     
     // Steps "auto" fallback
     const defaultAutoSteps = [
@@ -99,6 +99,7 @@ export const UploadToN8nWithLoader = {
     const doneText  = loaderCfg.finalText || 'Continuer';
     const doneIcon  = loaderCfg.finalButtonIcon || '✅';
     const loaderMsg = loaderCfg.message || '⏳ Traitement en cours...';
+    
     if (!webhookUrl) {
       const div = document.createElement('div');
       div.innerHTML = `<div style="padding:16px;border-radius:12px;background:linear-gradient(135deg,#fee2e2,#fecaca);border:1px solid #fca5a5;color:#991b1b;font-weight:500">
@@ -113,6 +114,12 @@ export const UploadToN8nWithLoader = {
       } catch {}
       return;
     }
+    
+    // ✅ Vérifier si on doit afficher le header
+    const hasTitle = title && title.trim() !== '';
+    const hasSubtitle = subtitle && subtitle.trim() !== '';
+    const showHeader = hasTitle || hasSubtitle;
+    
     // ---------- STYLES ----------
     const styles = `
       @keyframes uploadPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.05);opacity:.8}}
@@ -164,19 +171,31 @@ export const UploadToN8nWithLoader = {
       .upload-modern-loader-done-btn{margin-top:12px;padding:14px 32px;background:${accentColor};color:#fff;border:none;border-radius:12px;font-weight:700;font-size:16px;cursor:pointer;box-shadow:0 8px 24px ${accentColor}60;transition:all .3s;display:flex;align-items:center;gap:10px}
       .upload-modern-loader-done-btn:hover{transform:translateY(-2px);box-shadow:0 12px 32px ${accentColor}80}
     `;
+    
     // ---------- UI ----------
     const root = document.createElement('div');
     root.className = 'upload-modern-wrap';
     const styleTag = document.createElement('style');
     styleTag.textContent = styles;
     root.appendChild(styleTag);
+    
+    // ✅ Génération conditionnelle du header
+    let headerHTML = '';
+    if (showHeader) {
+      headerHTML = `<div class="upload-modern-header">`;
+      if (hasTitle) {
+        headerHTML += `<div class="upload-modern-title">${title}</div>`;
+      }
+      if (hasSubtitle) {
+        headerHTML += `<div class="upload-modern-subtitle">${subtitle}</div>`;
+      }
+      headerHTML += `</div>`;
+    }
+    
     root.innerHTML += `
       <div class="upload-modern-disabled-overlay"></div>
       <div class="upload-modern-card">
-        <div class="upload-modern-header">
-          <div class="upload-modern-title">${title}</div>
-          <div class="upload-modern-subtitle">${subtitle}</div>
-        </div>
+        ${headerHTML}
         <div class="upload-modern-zone">
           <div class="upload-modern-icon">📁</div>
           <div class="upload-modern-desc">${description}</div>
@@ -211,6 +230,7 @@ export const UploadToN8nWithLoader = {
       </div>
     `;
     element.appendChild(root);
+    
     // ---------- DOM refs ----------
     const uploadZone   = root.querySelector('.upload-modern-zone');
     const fileInput    = root.querySelector('input[type="file"]');
@@ -225,10 +245,12 @@ export const UploadToN8nWithLoader = {
     const loaderStep   = root.querySelector('.upload-modern-loader-step');
     const loaderCircle = root.querySelector('.loader-circle');
     const disabledOverlay = root.querySelector('.upload-modern-disabled-overlay');
+    
     // ---------- STATE ----------
     let selectedFiles = [];
     let timedTimer = null;
     let timedPlan = [];
+    
     // ---------- Helpers ----------
     const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
     function formatSize(bytes) {
@@ -286,6 +308,7 @@ export const UploadToN8nWithLoader = {
       if (valid.length) { selectedFiles.push(...valid); updateFilesList(); }
       if (errs.length) setStatus(`⚠️ ${errs.join(' • ')}`,'error');
     }
+    
     // ---------- Events ----------
     uploadZone.addEventListener('click', ()=> fileInput.click());
     uploadZone.addEventListener('dragover', e=>{ e.preventDefault(); uploadZone.classList.add('dragging'); });
@@ -313,7 +336,6 @@ export const UploadToN8nWithLoader = {
       backButtons.forEach(b=>b.disabled=true);
       setStatus(`📤 Envoi de ${selectedFiles.length} fichier${selectedFiles.length>1?'s':''}...`,'processing');
       
-      // ⭐ Démarrer le chronomètre
       const startTime = Date.now();
       
       const loaderUI = showLoader(loaderMsg);
@@ -361,7 +383,6 @@ export const UploadToN8nWithLoader = {
           }
         }
         
-        // ⭐ Attendre le temps minimum restant si nécessaire
         const elapsedTime = Date.now() - startTime;
         const remainingTime = minLoadingTimeMs - elapsedTime;
         
@@ -529,6 +550,7 @@ export const UploadToN8nWithLoader = {
       }
       return plan;
     }
+    
     // ---------- Network ----------
     async function postToN8n({ url, method, headers, timeoutMs, retries, files, fileFieldName, extra, vfContext }) {
       let lastErr;

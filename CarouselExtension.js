@@ -1,11 +1,12 @@
 /**
  *  ╔═══════════════════════════════════════════════════════════╗
  *  ║  Carousel – Voiceflow Response Extension                  ║
- *  ║  VERSION 4.4 - CORRECTION MOBILE                          ║
+ *  ║  VERSION 4.4 - CORRECTION DIMENSIONS CARTES               ║
  *  ║                                                           ║
  *  ║  • Choix automatique showcase (1-2 items) / gallery (3+) ║
  *  ║  • Thème clair ou sombre configurable                    ║
  *  ║  • Affichage mobile optimisé (1 carte en plein écran)    ║
+ *  ║  • FIX: Calcul correct des largeurs de cartes            ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 export const CarouselExtension = {
@@ -368,17 +369,19 @@ export const CarouselExtension = {
   max-width: 100% !important;
 }
 /* ═══════════════════════════════════════════════════════════ */
-/* ✅ CARTES - MODE GALLERY (2-3 cartes côte à côte)          */
+/* ✅ CARTES - MODE GALLERY (2-3 cartes côte à côte) - CORRIGÉ */
 /* ═══════════════════════════════════════════════════════════ */
+/* 2 cartes: (100% - gap) / 2 */
 .vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="2"] .vf-carousel-card {
-  flex: 0 0 calc(50% - 8px) !important;
-  min-width: calc(50% - 8px) !important;
-  max-width: calc(50% - 8px) !important;
+  flex: 0 0 calc((100% - 16px) / 2) !important;
+  min-width: calc((100% - 16px) / 2) !important;
+  max-width: calc((100% - 16px) / 2) !important;
 }
+/* 3 cartes: (100% - 2*gap) / 3 */
 .vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="3"] .vf-carousel-card {
-  flex: 0 0 calc(33.333% - 11px) !important;
-  min-width: calc(33.333% - 11px) !important;
-  max-width: calc(33.333% - 11px) !important;
+  flex: 0 0 calc((100% - 32px) / 3) !important;
+  min-width: calc((100% - 32px) / 3) !important;
+  max-width: calc((100% - 32px) / 3) !important;
 }
 
 /* ═══════════════════════════════════════════════════════════ */
@@ -901,11 +904,11 @@ export const CarouselExtension = {
           img.loading = 'lazy';
           img.onerror = () => {
             console.warn(`❌ Image failed to load: ${fixedImageUrl}`);
-            imageContainer.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:48px;color:#ccc;">🚗</div>';
+            imageContainer.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:48px;color:#ccc;">🌴</div>';
           };
           imageContainer.appendChild(img);
         } else {
-          imageContainer.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:48px;color:#ccc;">🚗</div>';
+          imageContainer.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:48px;color:#ccc;">🌴</div>';
         }
         
         // Contenu

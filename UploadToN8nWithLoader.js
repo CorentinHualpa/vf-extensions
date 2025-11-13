@@ -207,13 +207,13 @@ export const UploadToN8nWithLoader = {
       .upload-modern-status.error{background:linear-gradient(135deg,#fee2e2,#fecaca);color:#991b1b;border:1px solid #fca5a5}
       .upload-modern-status.success{background:linear-gradient(135deg,#d1fae5,#a7f3d0);color:#065f46;border:1px solid #6ee7b7}
       .upload-modern-status.processing{background:linear-gradient(135deg, ${primaryColor}20, ${secondaryColor}20);color:${secondaryColor};border:1px solid ${primaryColor}60}
-      .upload-modern-loader{display:none;background:linear-gradient(145deg, ${loaderBgColor}, ${loaderBgColor2});border-radius:20px;padding:32px;margin-top:16px;box-shadow:0 20px 60px rgba(0,0,0,.3);animation:slideUp .4s ease-out;transition:opacity .4s ease-out;border:2px solid ${accentColor}}
+      .upload-modern-loader{display:none;background:linear-gradient(145deg,#0a5d7a,#003a52);border-radius:20px;padding:40px;margin-top:16px;box-shadow:0 20px 60px rgba(0,0,0,.5),0 0 0 3px #FF8C00;animation:slideUp .4s ease-out;transition:opacity .4s ease-out}
       .upload-modern-loader.active{display:block}
       .upload-modern-loader.closing{animation:fadeOut .4s ease-out}
-      .upload-modern-loader-content{display:flex;flex-direction:column;align-items:center;gap:20px}
-      .upload-modern-loader-title{color:${loaderTextColor};font-weight:800;font-size:20px;letter-spacing:.5px;text-align:center;text-shadow:0 2px 4px rgba(0,0,0,.3)}
-      .upload-modern-loader-percentage{color:${loaderTextColor};font-weight:900;font-size:48px;text-align:center;text-shadow:0 2px 8px rgba(0,0,0,.4);letter-spacing:2px}
-      .upload-modern-loader-step{color:${loaderTextColor};font-size:16px;font-weight:600;text-align:center;min-height:24px;text-shadow:0 1px 2px rgba(0,0,0,.3);background:rgba(255,255,255,.1);padding:8px 16px;border-radius:8px}
+      .upload-modern-loader-content{display:flex;flex-direction:column;align-items:center;gap:24px}
+      .upload-modern-loader-title{color:#FFFFFF;font-weight:800;font-size:22px;letter-spacing:.5px;text-align:center;text-shadow:0 3px 6px rgba(0,0,0,.5)}
+      .upload-modern-loader-percentage{color:#FFFFFF;font-weight:900;font-size:56px;text-align:center;text-shadow:0 4px 12px rgba(0,0,0,.6);letter-spacing:3px;line-height:1}
+      .upload-modern-loader-step{color:#FFFFFF;font-size:18px;font-weight:600;text-align:center;min-height:28px;text-shadow:0 2px 4px rgba(0,0,0,.4);background:rgba(255,255,255,.15);padding:12px 20px;border-radius:10px;backdrop-filter:blur(10px)}
     `;
     
     // ---------- UI ----------
@@ -255,13 +255,14 @@ export const UploadToN8nWithLoader = {
       <div class="upload-modern-loader">
         <div class="upload-modern-loader-content">
           <div class="upload-modern-loader-title"></div>
-          <svg width="160" height="160" viewBox="0 0 160 160">
-            <circle cx="80" cy="80" r="70" stroke="rgba(255,255,255,0.2)" stroke-width="8" fill="none"/>
-            <circle class="loader-circle" cx="80" cy="80" r="70"
-                    stroke="${accentColor}" stroke-width="8" fill="none"
+          <svg width="180" height="180" viewBox="0 0 180 180">
+            <circle cx="90" cy="90" r="80" stroke="rgba(255,255,255,0.2)" stroke-width="10" fill="none"/>
+            <circle class="loader-circle" cx="90" cy="90" r="80"
+                    stroke="#FF8C00" stroke-width="10" fill="none"
                     stroke-linecap="round"
-                    transform="rotate(-90 80 80)"
-                    stroke-dasharray="440" stroke-dashoffset="440"/>
+                    transform="rotate(-90 90 90)"
+                    stroke-dasharray="502" stroke-dashoffset="502"
+                    style="filter:drop-shadow(0 0 8px #FF8C00)"/>
           </svg>
           <div class="upload-modern-loader-percentage">0%</div>
           <div class="upload-modern-loader-step"></div>
@@ -441,22 +442,9 @@ export const UploadToN8nWithLoader = {
         }
         
         loaderUI.finish((data) => {
-          // ✅ PROTECTION 2 : Réactiver le chat AVANT .interact()
+          // ✅ PROTECTION 2 : Réactiver le chat uniquement
           enableChatInput(chatRefs);
-          
-          try {
-            window?.voiceflow?.chat?.interact?.({
-              type: 'complete',
-              payload: {
-                webhookSuccess: true,
-                webhookResponse: data, // ✅ Utiliser le paramètre
-                files: selectedFiles.map(f=>({name:f.name,size:f.size,type:f.type}))
-              }
-            });
-            console.log('✅ .interact() appelé avec succès');
-          } catch(e) {
-            console.error('❌ Erreur .interact():', e);
-          }
+          // ❌ NE PAS appeler .interact() ici - c'est fait dans finish()
         }, finalData); // ✅ Passer finalData en 2ème argument
       } catch (err) {
         loader.classList.remove('active');
@@ -489,7 +477,7 @@ export const UploadToN8nWithLoader = {
       let current = 0;
       let lockedByFinish = false;
       function paint() {
-        const offset = 440 - (current/100)*440;
+        const offset = 502 - (current/100)*502;
         loaderCircle.style.strokeDashoffset = offset;
         loaderPct.textContent = `${Math.round(current)}%`;
       }

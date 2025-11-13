@@ -469,8 +469,12 @@ export const UploadToN8nWithLoader = {
         
         try {
           window?.voiceflow?.chat?.interact?.({
-            type:'complete',
-            payload:{ webhookSuccess:false, error:String(err?.message || err), path: pathError }
+            type: 'complete',
+            payload: { 
+              webhookSuccess: false, 
+              error: String(err?.message || err)
+              // ❌ PLUS DE "path" ici non plus
+            }
           });
         } catch {}
       }
@@ -567,10 +571,29 @@ export const UploadToN8nWithLoader = {
               
               setTimeout(() => {
                 loader.classList.remove('active', 'closing');
-                console.log('✅ Loader fermé, attente avant .interact()...');
+                console.log('✅ Loader fermé');
                 
                 setTimeout(() => {
                   console.log('🚀 Déclenchement du flow Voiceflow...');
+                  
+                  // ✅ CORRECTION : Ne PAS inclure "path" dans le payload
+                  // Le routing se fait dans le bloc JavaScript qui suit
+                  try {
+                    window?.voiceflow?.chat?.interact?.({
+                      type: 'complete',
+                      payload: {
+                        webhookSuccess: true,
+                        webhookResponse: finalData,
+                        files: selectedFiles.map(f=>({name:f.name,size:f.size,type:f.type}))
+                        // ❌ PLUS DE "path" ici - le bloc JS s'en occupe
+                      }
+                    });
+                    console.log('✅ .interact() appelé avec succès (sans path)');
+                  } catch(e) {
+                    console.error('❌ Erreur .interact():', e);
+                  }
+                  
+                  // Réactiver le chat
                   if (onClick) onClick();
                   
                   // ✅ PROTECTION 3 : Destruction TOTALE après succès

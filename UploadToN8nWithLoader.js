@@ -1,7 +1,6 @@
-// UploadToN8nWithLoader.js – v2.8 DEBUG (avec bouton manuel pour tester)
-// Cette version n'appelle PAS .interact() automatiquement
-// Elle laisse un bouton visible pour que tu puisses tester manuellement
-
+// UploadToN8nWithLoader.js – v2.7 FIXED (title/subtitle optionnels + auto-close loader)
+// © Corentin-ready – optimisé pour Voiceflow + n8n
+// ✅ CORRECTION : Le loader se ferme automatiquement pour laisser Voiceflow afficher ses boutons
 export const UploadToN8nWithLoader = {
   name: 'UploadToN8nWithLoader',
   type: 'response',
@@ -22,17 +21,8 @@ export const UploadToN8nWithLoader = {
       console.error('[UploadToN8nWithLoader] Élément parent introuvable');
       return;
     }
-    
     // ---------- CONFIG ----------
     const p = trace?.payload || {};
-    
-    console.log('🔧 DEBUG: Configuration de l\'extension:', {
-      pathSuccess: p.pathSuccess || 'Default',
-      pathError: p.pathError || 'Fail',
-      webhookUrl: p.webhook?.url,
-      trace: trace
-    });
-    
     // UI upload
     const title         = p.title || '';
     const subtitle      = p.subtitle || '';
@@ -40,14 +30,16 @@ export const UploadToN8nWithLoader = {
     const accept        = p.accept || '.pdf,.docx';
     const maxFileSizeMB = p.maxFileSizeMB || 25;
     const maxFiles      = p.maxFiles || 10;
+    // 🎨 Couleurs
     const primaryColor   = p.primaryColor || '#087095';
     const secondaryColor = p.secondaryColor || '#003D5C';
     const accentColor    = p.accentColor || '#FF8C00';
+    // Loader colors
     const loaderBgColor   = p.loaderBgColor || secondaryColor;
     const loaderBgColor2  = p.loaderBgColor2 || primaryColor;
     const loaderTextColor = p.loaderTextColor || '#FFFFFF';
     const buttons = Array.isArray(p.buttons) ? p.buttons : [];
-    
+    // Webhook n8n
     const webhook          = p.webhook || {};
     const webhookUrl       = webhook.url;
     const webhookMethod    = (webhook.method || 'POST').toUpperCase();
@@ -56,29 +48,37 @@ export const UploadToN8nWithLoader = {
     const webhookRetries   = Number.isFinite(webhook.retries) ? webhook.retries : 1;
     const fileFieldName    = webhook.fileFieldName || 'files';
     const extra            = webhook.extra || {};
-    
+    // Await / polling
     const awaitResponse      = p.awaitResponse !== false;
     const polling            = p.polling || {};
     const pollingEnabled     = !!polling.enabled;
     const pollingIntervalMs  = Number.isFinite(polling.intervalMs) ? polling.intervalMs : 2000;
     const pollingMaxAttempts = Number.isFinite(polling.maxAttempts) ? polling.maxAttempts : 120;
     const pollingHeaders     = polling.headers || {};
-    
+    // Paths
     const pathSuccess = p.pathSuccess || 'Default';
     const pathError   = p.pathError || 'Fail';
-    
-    console.log('🎯 DEBUG: Paths configurés:', { pathSuccess, pathError });
-    
+    // VF context (optionnel)
     const vfContext = {
       conversation_id: p.conversation_id || null,
       user_id: p.user_id || null,
       locale: p.locale || null,
     };
-    
+    // Loader config
     const loaderCfg = p.loader || {};
     const loaderMode = (loaderCfg.mode || 'auto').toLowerCase();
-    const minLoadingTimeMs = Number(loaderCfg.minLoadingTimeMs) > 0 ? Number(loaderCfg.minLoadingTimeMs) : 0;
     
+    // Temps minimum de chargement (en millisecondes)
+    const minLoadingTimeMs = Number(loaderCfg.minLoadingTimeMs) > 0 
+      ? Number(loaderCfg.minLoadingTimeMs) 
+      : 0;
+    
+    // ✅ NOUVEAU : Délai avant fermeture auto du loader (en ms)
+    const autoCloseDelayMs = Number(loaderCfg.autoCloseDelayMs) > 0
+      ? Number(loaderCfg.autoCloseDelayMs)
+      : 1500; // 1.5 secondes par défaut
+    
+    // Steps "auto" fallback
     const defaultAutoSteps = [
       { progress: 0,  text: '📋 Préparation' },
       { progress: 30, text: '🚀 Envoi' },
@@ -86,10 +86,10 @@ export const UploadToN8nWithLoader = {
       { progress: 85, text: '✨ Finalisation' },
       { progress: 100,text: '✅ Terminé !' }
     ];
-    
+    // Timed phases
     const timedPhases = Array.isArray(loaderCfg.phases) ? loaderCfg.phases : [];
     const totalSeconds = Number(loaderCfg.totalSeconds) > 0 ? Number(loaderCfg.totalSeconds) : 120;
-    
+    // External mapping
     const stepMap = loaderCfg.stepMap || {
       upload:      { text: '📤 Téléversement',            progress: 10 },
       sign_url:    { text: '🔐 Signature URL sécurisée',  progress: 18 },
@@ -102,7 +102,6 @@ export const UploadToN8nWithLoader = {
       gdrive_copy: { text: '☁️ Copie dans Google Drive',  progress: 93 },
       gdoc_update: { text: '📄 Mise à jour du document',  progress: 97 }
     };
-    
     const doneText  = loaderCfg.finalText || 'Continuer';
     const doneIcon  = loaderCfg.finalButtonIcon || '✅';
     const loaderMsg = loaderCfg.message || '⏳ Traitement en cours...';
@@ -113,29 +112,29 @@ export const UploadToN8nWithLoader = {
         ⚠️ Erreur de configuration : <b>webhook.url</b> manquant.
       </div>`;
       element.appendChild(div);
-      
-      console.error('❌ DEBUG: webhook.url est manquant !');
-      
       try {
         window?.voiceflow?.chat?.interact?.({
           type: 'complete',
           payload: { webhookSuccess: false, error: 'WEBHOOK_URL_MISSING', path: pathError }
         });
-      } catch(e) {
-        console.error('❌ DEBUG: Erreur lors de .interact():', e);
-      }
+      } catch {}
       return;
     }
     
+    // ✅ Vérifier si on doit afficher le header
     const hasTitle = title && title.trim() !== '';
     const hasSubtitle = subtitle && subtitle.trim() !== '';
     const showHeader = hasTitle || hasSubtitle;
     
+    // ---------- STYLES ----------
     const styles = `
       @keyframes uploadPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.05);opacity:.8}}
       @keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
       @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+      @keyframes fadeOut{from{opacity:1}to{opacity:0}}
       .upload-modern-wrap{width:100%;max-width:100%;animation:slideUp .4s ease-out;position:relative}
+      .upload-modern-disabled-overlay{display:none;position:absolute;inset:0;background:rgba(255,255,255,.8);backdrop-filter:blur(3px);z-index:9999;border-radius:20px;cursor:not-allowed}
+      .upload-modern-disabled-overlay.active{display:block}
       .upload-modern-card{background:linear-gradient(145deg,#fff 0%,#f8fafc 100%);border-radius:20px;padding:24px;box-shadow:0 10px 40px rgba(0,0,0,.08),0 2px 8px rgba(0,0,0,.04);border:1px solid rgba(0,0,0,.06);position:relative;overflow:hidden}
       .upload-modern-header{text-align:center;margin-bottom:24px;position:relative;z-index:2}
       .upload-modern-title{font-size:22px;font-weight:800;background:linear-gradient(135deg, ${primaryColor}, ${secondaryColor});-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin:0 0 8px 0;letter-spacing:-.5px}
@@ -170,8 +169,9 @@ export const UploadToN8nWithLoader = {
       .upload-modern-status.error{background:linear-gradient(135deg,#fee2e2,#fecaca);color:#991b1b;border:1px solid #fca5a5}
       .upload-modern-status.success{background:linear-gradient(135deg,#d1fae5,#a7f3d0);color:#065f46;border:1px solid #6ee7b7}
       .upload-modern-status.processing{background:linear-gradient(135deg, ${primaryColor}20, ${secondaryColor}20);color:${secondaryColor};border:1px solid ${primaryColor}60}
-      .upload-modern-loader{display:none;background:linear-gradient(145deg, ${loaderBgColor}, ${loaderBgColor2});border-radius:20px;padding:32px;margin-top:16px;box-shadow:0 20px 60px rgba(0,0,0,.3);animation:slideUp .4s ease-out}
+      .upload-modern-loader{display:none;background:linear-gradient(145deg, ${loaderBgColor}, ${loaderBgColor2});border-radius:20px;padding:32px;margin-top:16px;box-shadow:0 20px 60px rgba(0,0,0,.3);animation:slideUp .4s ease-out;transition:opacity .4s ease-out}
       .upload-modern-loader.active{display:block}
+      .upload-modern-loader.closing{animation:fadeOut .4s ease-out}
       .upload-modern-loader-content{display:flex;flex-direction:column;align-items:center;gap:20px}
       .upload-modern-loader-title{color:${loaderTextColor};font-weight:800;font-size:18px;letter-spacing:.5px;text-align:center}
       .upload-modern-loader-percentage{color:${loaderTextColor};font-weight:900;font-size:32px;text-align:center}
@@ -180,21 +180,28 @@ export const UploadToN8nWithLoader = {
       .upload-modern-loader-done-btn:hover{transform:translateY(-2px);box-shadow:0 12px 32px ${accentColor}80}
     `;
     
+    // ---------- UI ----------
     const root = document.createElement('div');
     root.className = 'upload-modern-wrap';
     const styleTag = document.createElement('style');
     styleTag.textContent = styles;
     root.appendChild(styleTag);
     
+    // ✅ Génération conditionnelle du header
     let headerHTML = '';
     if (showHeader) {
       headerHTML = `<div class="upload-modern-header">`;
-      if (hasTitle) headerHTML += `<div class="upload-modern-title">${title}</div>`;
-      if (hasSubtitle) headerHTML += `<div class="upload-modern-subtitle">${subtitle}</div>`;
+      if (hasTitle) {
+        headerHTML += `<div class="upload-modern-title">${title}</div>`;
+      }
+      if (hasSubtitle) {
+        headerHTML += `<div class="upload-modern-subtitle">${subtitle}</div>`;
+      }
       headerHTML += `</div>`;
     }
     
     root.innerHTML += `
+      <div class="upload-modern-disabled-overlay"></div>
       <div class="upload-modern-card">
         ${headerHTML}
         <div class="upload-modern-zone">
@@ -232,6 +239,7 @@ export const UploadToN8nWithLoader = {
     `;
     element.appendChild(root);
     
+    // ---------- DOM refs ----------
     const uploadZone   = root.querySelector('.upload-modern-zone');
     const fileInput    = root.querySelector('input[type="file"]');
     const filesList    = root.querySelector('.upload-modern-files-list');
@@ -244,25 +252,25 @@ export const UploadToN8nWithLoader = {
     const loaderPct    = root.querySelector('.upload-modern-loader-percentage');
     const loaderStep   = root.querySelector('.upload-modern-loader-step');
     const loaderCircle = root.querySelector('.loader-circle');
+    const disabledOverlay = root.querySelector('.upload-modern-disabled-overlay');
     
+    // ---------- STATE ----------
     let selectedFiles = [];
     let timedTimer = null;
-    let finalDataGlobal = null; // Pour stocker la réponse
+    let timedPlan = [];
     
+    // ---------- Helpers ----------
     const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-    
     function formatSize(bytes) {
       if (bytes < 1024) return bytes + ' B';
       if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
       return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
     }
-    
     function setStatus(message, type='processing') {
       statusDiv.textContent = message;
       statusDiv.className = `upload-modern-status ${type}`;
       statusDiv.style.display = 'block';
     }
-    
     function updateFilesList() {
       filesList.innerHTML = '';
       if (!selectedFiles.length) {
@@ -297,7 +305,6 @@ export const UploadToN8nWithLoader = {
       sendBtn.disabled = false;
       statusDiv.style.display = 'none';
     }
-    
     function addFiles(newFiles) {
       const valid = [], errs=[];
       for (const file of newFiles) {
@@ -310,6 +317,7 @@ export const UploadToN8nWithLoader = {
       if (errs.length) setStatus(`⚠️ ${errs.join(' • ')}`,'error');
     }
     
+    // ---------- Events ----------
     uploadZone.addEventListener('click', ()=> fileInput.click());
     uploadZone.addEventListener('dragover', e=>{ e.preventDefault(); uploadZone.classList.add('dragging'); });
     uploadZone.addEventListener('dragleave', ()=> uploadZone.classList.remove('dragging'));
@@ -323,19 +331,11 @@ export const UploadToN8nWithLoader = {
       if (files.length) addFiles(files);
       fileInput.value = '';
     });
-    
     backButtons.forEach(b => b.addEventListener('click', ()=>{
       const path = b.getAttribute('data-path') || pathError;
-      console.log('🔙 DEBUG: Bouton retour cliqué, path:', path);
       try {
-        window?.voiceflow?.chat?.interact?.({ 
-          type:'complete', 
-          payload:{ webhookSuccess:false, path }
-        });
-        console.log('✅ DEBUG: .interact() appelé avec succès (retour)');
-      } catch(e) {
-        console.error('❌ DEBUG: Erreur .interact() (retour):', e);
-      }
+        window?.voiceflow?.chat?.interact?.({ type:'complete', payload:{ webhookSuccess:false, path }});
+      } catch {}
     }));
     
     sendBtn.addEventListener('click', async ()=>{
@@ -343,6 +343,8 @@ export const UploadToN8nWithLoader = {
       sendBtn.disabled = true;
       backButtons.forEach(b=>b.disabled=true);
       setStatus(`📤 Envoi de ${selectedFiles.length} fichier${selectedFiles.length>1?'s':''}...`,'processing');
+      
+      const startTime = Date.now();
       
       const loaderUI = showLoader(loaderMsg);
       if (loaderMode === 'auto') {
@@ -355,14 +357,11 @@ export const UploadToN8nWithLoader = {
       }
       
       try {
-        console.log('📤 DEBUG: Envoi vers webhook:', webhookUrl);
         const resp = await postToN8n({
           url: webhookUrl, method: webhookMethod, headers: webhookHeaders,
           timeoutMs: webhookTimeoutMs, retries: webhookRetries,
           files: selectedFiles, fileFieldName, extra, vfContext
         });
-        
-        console.log('✅ DEBUG: Réponse webhook reçue:', resp);
         
         let finalData = resp?.data ?? null;
         
@@ -370,7 +369,6 @@ export const UploadToN8nWithLoader = {
           const jobId    = finalData?.jobId;
           const statusUrl= finalData?.statusUrl || p?.polling?.statusUrl;
           if (statusUrl || jobId) {
-            console.log('🔄 DEBUG: Démarrage du polling...');
             finalData = await pollStatus({
               statusUrl: statusUrl || `${webhookUrl.split('/webhook')[0]}/rest/jobs/${jobId}`,
               headers: pollingHeaders,
@@ -390,17 +388,36 @@ export const UploadToN8nWithLoader = {
                 }
               }
             });
-            console.log('✅ DEBUG: Polling terminé, résultat:', finalData);
           }
         }
         
-        finalDataGlobal = finalData;
+        const elapsedTime = Date.now() - startTime;
+        const remainingTime = minLoadingTimeMs - elapsedTime;
         
-        // ✅ AFFICHER LE BOUTON MANUEL (pas d'auto-close)
-        loaderUI.finish();
+        if (remainingTime > 0) {
+          loaderUI.showPhase('✨ Finalisation...');
+          loaderUI.animateTo(98, Math.min(remainingTime, 1500));
+          await new Promise(resolve => setTimeout(resolve, remainingTime));
+        }
         
+        // ✅ Désactiver l'overlay AVANT de finir
+        disabledOverlay.classList.remove('active');
+        console.log('🔓 Overlay désactivé, extension ne bloque plus les interactions');
+        
+        loaderUI.finish(()=>{
+          try {
+            window?.voiceflow?.chat?.interact?.({
+              type:'complete',
+              payload:{
+                webhookSuccess:true,
+                webhookResponse: finalData,
+                files: selectedFiles.map(f=>({name:f.name,size:f.size,type:f.type})),
+                path: pathSuccess
+              }
+            });
+          } catch {}
+        });
       } catch (err) {
-        console.error('❌ DEBUG: Erreur pendant l\'upload:', err);
         loader.classList.remove('active');
         setStatus(`❌ ${String(err?.message || err)}`,'error');
         sendBtn.disabled = false;
@@ -408,31 +425,27 @@ export const UploadToN8nWithLoader = {
         try {
           window?.voiceflow?.chat?.interact?.({
             type:'complete',
-            payload:{ webhookSuccess:false, error:String(err?.message || err), path: pathError }
+            payload:{ webhookSuccess:false, error:String(err?.message || err), path:pathError }
           });
-        } catch(e) {
-          console.error('❌ DEBUG: Erreur .interact() (erreur):', e);
-        }
+        } catch {}
       }
     });
     
+    // ---------- Loader controller ----------
     function showLoader(message) {
       loaderTitle.textContent = message;
       loader.classList.add('active');
       let current = 0;
       let lockedByFinish = false;
-      
       function paint() {
         const offset = 440 - (current/100)*440;
         loaderCircle.style.strokeDashoffset = offset;
         loaderPct.textContent = `${Math.round(current)}%`;
       }
       paint();
-      
       function clearTimers() {
         if (timedTimer) { clearInterval(timedTimer); timedTimer = null; }
       }
-      
       return {
         startAuto(steps) {
           let i = 0;
@@ -440,7 +453,9 @@ export const UploadToN8nWithLoader = {
             if (i >= steps.length || lockedByFinish) return;
             const s = steps[i];
             if (s.text) this.showPhase(s.text);
-            this.animateTo(s.progress, 1800, ()=> { i++; walk(); });
+            this.animateTo(s.progress, 1800, ()=> {
+              i++; walk();
+            });
           };
           walk();
         },
@@ -494,64 +509,53 @@ export const UploadToN8nWithLoader = {
           };
           requestAnimationFrame(step);
         },
-        // 🔧 DEBUG: Bouton manuel au lieu de l'auto-close
-        finish() {
+        // ✅ CORRECTION : Auto-fermeture du loader
+        finish(onClick) {
           lockedByFinish = true;
           clearTimers();
           this.animateTo(100, 500, ()=>{
             this.showPhase('✅ Terminé !');
-            console.log('🎉 DEBUG: Upload terminé !');
+            console.log(`🎉 Upload terminé ! Fermeture auto dans ${autoCloseDelayMs}ms...`);
             
-            // ✅ CRÉER LE BOUTON MANUEL
-            const btn = document.createElement('button');
-            btn.className = 'upload-modern-loader-done-btn';
-            btn.innerHTML = `<span style="font-size:24px">${doneIcon}</span> ${doneText}`;
-            btn.onclick = ()=>{
-              console.log('👆 DEBUG: Bouton "Continuer" cliqué manuellement');
-              console.log('📦 DEBUG: Payload à envoyer:', {
-                type: 'complete',
-                payload: {
-                  webhookSuccess: true,
-                  webhookResponse: finalDataGlobal,
-                  files: selectedFiles.map(f=>({name:f.name,size:f.size,type:f.type})),
-                  path: pathSuccess
-                }
-              });
+            // ✅ AUTO-FERMETURE : Cacher le loader automatiquement après le délai
+            setTimeout(() => {
+              console.log('🔄 Fermeture du loader et déclenchement du flow Voiceflow...');
+              loader.classList.add('closing');
               
-              try {
-                window?.voiceflow?.chat?.interact?.({
-                  type: 'complete',
-                  payload: {
-                    webhookSuccess: true,
-                    webhookResponse: finalDataGlobal,
-                    files: selectedFiles.map(f=>({name:f.name,size:f.size,type:f.type})),
-                    path: pathSuccess
-                  }
-                });
-                console.log('✅ DEBUG: .interact() appelé avec succès (success)');
+              // Attendre la fin de l'animation de fermeture
+              setTimeout(() => {
+                loader.classList.remove('active', 'closing');
+                console.log('✅ Loader fermé, attente de 600ms avant .interact()...');
                 
-                // Cacher le loader APRÈS l'appel
+                // ✅ CACHER COMPLÈTEMENT L'EXTENSION
+                root.style.opacity = '0';
+                root.style.maxHeight = '0';
+                root.style.overflow = 'hidden';
+                root.style.transition = 'opacity 0.3s, max-height 0.3s';
+                console.log('🚫 Extension complètement cachée pour éviter tout blocage');
+                
+                // ✅ DÉLAI SUPPLÉMENTAIRE : Laisser Voiceflow se préparer
                 setTimeout(() => {
-                  loader.classList.remove('active');
-                  console.log('🚫 DEBUG: Loader caché');
-                }, 300);
-                
-              } catch(e) {
-                console.error('❌ DEBUG: Erreur .interact() (success):', e);
-              }
-            };
-            root.querySelector('.upload-modern-loader-content').appendChild(btn);
+                  console.log('🚀 Déclenchement du flow Voiceflow maintenant...');
+                  // Déclencher la suite du flow Voiceflow APRÈS avoir caché le loader
+                  if (onClick) onClick();
+                }, 600); // Délai pour que Voiceflow soit prêt
+              }, 400); // Durée de l'animation fadeOut
+            }, autoCloseDelayMs);
           });
         }
       };
     }
-    
     function buildTimedPlan() {
       const haveSeconds = timedPhases.every(ph => Number(ph.seconds) > 0);
-      let total = haveSeconds ? timedPhases.reduce((s,ph)=>s+Number(ph.seconds),0) : totalSeconds;
+      let total = haveSeconds
+        ? timedPhases.reduce((s,ph)=>s+Number(ph.seconds),0)
+        : totalSeconds;
       const weightsSum = timedPhases.reduce((s,ph)=> s + (Number(ph.weight)||0), 0) || timedPhases.length;
       const alloc = timedPhases.map((ph,i)=>{
-        const sec = haveSeconds ? Number(ph.seconds) : (Number(ph.weight)||1) / weightsSum * total;
+        const sec = haveSeconds
+          ? Number(ph.seconds)
+          : (Number(ph.weight)||1) / weightsSum * total;
         return { key: ph.key, text: ph.label || stepMap[ph.key]?.text || `Étape ${i+1}`, seconds: sec };
       });
       const startP = 5, endP = 98;
@@ -561,17 +565,25 @@ export const UploadToN8nWithLoader = {
         const pStart = i === 0 ? startP : last;
         const pEnd   = i === alloc.length-1 ? endP : startP + (endP-startP) * ((acc + a.seconds*1000)/totalMs);
         acc += a.seconds*1000; last = pEnd;
-        return { text: a.text, durationMs: Math.max(500, a.seconds*1000), progressStart: pStart, progressEnd: pEnd };
+        return {
+          text: a.text,
+          durationMs: Math.max(500, a.seconds*1000),
+          progressStart: pStart,
+          progressEnd: pEnd
+        };
       });
       if (!plan.length) {
         return defaultAutoSteps.map((s, i, arr) => ({
-          text: s.text, durationMs: i===0 ? 1000 : 1500,
-          progressStart: i ? arr[i-1].progress : 0, progressEnd: s.progress
+          text: s.text,
+          durationMs: i===0 ? 1000 : 1500,
+          progressStart: i ? arr[i-1].progress : 0,
+          progressEnd: s.progress
         }));
       }
       return plan;
     }
     
+    // ---------- Network ----------
     async function postToN8n({ url, method, headers, timeoutMs, retries, files, fileFieldName, extra, vfContext }) {
       let lastErr;
       for (let attempt = 0; attempt <= retries; attempt++) {
@@ -584,8 +596,8 @@ export const UploadToN8nWithLoader = {
             fd.append(k, typeof v === 'object' ? JSON.stringify(v) : String(v ?? ''));
           });
           if (vfContext.conversation_id) fd.append('conversation_id', vfContext.conversation_id);
-          if (vfContext.user_id) fd.append('user_id', vfContext.user_id);
-          if (vfContext.locale) fd.append('locale', vfContext.locale);
+          if (vfContext.user_id)        fd.append('user_id', vfContext.user_id);
+          if (vfContext.locale)         fd.append('locale', vfContext.locale);
           const finalHeaders = { ...headers };
           delete finalHeaders['Content-Type'];
           const resp = await fetch(url, { method, headers: finalHeaders, body: fd, signal: controller.signal });
@@ -602,7 +614,6 @@ export const UploadToN8nWithLoader = {
       }
       throw lastErr || new Error('Échec de l\'envoi');
     }
-    
     async function pollStatus({ statusUrl, headers, intervalMs, maxAttempts, onTick }) {
       for (let i=1;i<=maxAttempts;i++) {
         const r = await fetch(statusUrl, { headers });
@@ -617,10 +628,8 @@ export const UploadToN8nWithLoader = {
       }
       throw new Error('Polling timeout');
     }
-    
     async function safeJson(r){ try { return await r.json(); } catch { return null; } }
     async function safeText(r){ try { return await r.text(); } catch { return null; } }
   }
 };
-
 try { window.UploadToN8nWithLoader = UploadToN8nWithLoader; } catch {}

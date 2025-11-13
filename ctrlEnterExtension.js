@@ -65,12 +65,13 @@ export function installCtrlEnter() {
    */
   function hasVisibleInteractiveElements(shadowRoot) {
     // Liste étendue des sélecteurs pour tous les éléments interactifs Voiceflow
+    // ⚠️ IMPORTANT : Exclure les boutons du header avec :not()
     const selectors = [
-      'button[type="button"]:not(#vfrc-send-message)', // Boutons standards
-      'a[href]', // Liens cliquables
-      '[role="button"]', // Éléments avec rôle button
-      '.vfrc-button', // Classe bouton Voiceflow
-      '[data-testid*="button"]', // Boutons avec data-testid
+      'button[type="button"]:not(#vfrc-send-message):not(.vfrc-header--button)', // Boutons standards SAUF header
+      'a[href]:not(.vfrc-header--button)', // Liens cliquables SAUF header
+      '[role="button"]:not(.vfrc-header--button)', // Éléments avec rôle button SAUF header
+      '.vfrc-button:not(.vfrc-header--button)', // Classe bouton Voiceflow SAUF header
+      '[data-testid*="button"]:not(.vfrc-header--button)', // Boutons avec data-testid SAUF header
       '.vfrc-card button', // Boutons dans les cartes
       '.vfrc-carousel button', // Boutons dans les carousels
       '.vfrc-prompt button', // Boutons dans les prompts

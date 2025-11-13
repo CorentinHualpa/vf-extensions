@@ -1,11 +1,10 @@
 /**
  *  ╔═══════════════════════════════════════════════════════════╗
- *  ║  CtrlEnterExtension v2 – Voiceflow Keyboard Handler      ║
+ *  ║  CtrlEnterExtension v3 – Voiceflow Keyboard Handler      ║
  *  ║                                                           ║
  *  ║  • Entrée seule = Retour à la ligne                      ║
  *  ║  • Ctrl+Entrée (ou Cmd+Entrée) = Envoi du message       ║
- *  ║  • Détecte TOUS les boutons/liens Voiceflow              ║
- *  ║  • N'interfère PAS avec les boutons interactifs          ║
+ *  ║  • Détection robuste des boutons et liens                ║
  *  ║                                                           ║
  *  ║  Usage:                                                   ║
  *  ║  import { installCtrlEnter } from './ctrlEnterExtension.js'; ║
@@ -20,7 +19,7 @@ export function installCtrlEnter() {
     return;
   }
   
-  console.log('🔧 Installation du handler Ctrl+Enter v2...');
+  console.log('🔧 Installation du handler Ctrl+Enter v3...');
   
   /**
    * Recherche récursive du textarea dans le Shadow DOM
@@ -62,18 +61,19 @@ export function installCtrlEnter() {
   
   /**
    * ✅ Détecte si des éléments interactifs Voiceflow sont visibles
-   * (boutons, liens cliquables, etc.)
+   * Version améliorée avec MutationObserver pour détecter les changements DOM
    */
   function hasVisibleInteractiveElements(shadowRoot) {
-    // Liste des sélecteurs pour tous les éléments interactifs Voiceflow
+    // Liste étendue des sélecteurs pour tous les éléments interactifs Voiceflow
     const selectors = [
       'button[type="button"]:not(#vfrc-send-message)', // Boutons standards
-      'a[href]', // Liens cliquables (comme "Accéder au dossier")
+      'a[href]', // Liens cliquables
       '[role="button"]', // Éléments avec rôle button
       '.vfrc-button', // Classe bouton Voiceflow
       '[data-testid*="button"]', // Boutons avec data-testid
       '.vfrc-card button', // Boutons dans les cartes
       '.vfrc-carousel button', // Boutons dans les carousels
+      '.vfrc-prompt button', // Boutons dans les prompts
     ];
     
     for (const selector of selectors) {
@@ -119,7 +119,7 @@ export function installCtrlEnter() {
     if (result && !result.textarea.__hasCtrlEnter__) {
       const { textarea, sendButton, shadowRoot } = result;
       
-      console.log('✅ Installation du keyboard handler v2...');
+      console.log('✅ Installation du keyboard handler v3...');
       
       textarea.__hasCtrlEnter__ = true;
       window.__ctrlEnterInstalled__ = true;
@@ -127,7 +127,7 @@ export function installCtrlEnter() {
       /**
        * Handler principal pour gérer Enter et Ctrl+Enter
        */
-      textarea.addEventListener('keydown', function(e) {
+      function handleKeydown(e) {
         // Ne traiter que la touche Enter
         if (e.key !== 'Enter' && e.keyCode !== 13) return;
         
@@ -169,9 +169,23 @@ export function installCtrlEnter() {
           this.style.height = 'auto';
           this.style.height = this.scrollHeight + 'px';
         }
-      }, true); // Capture phase = intercepte AVANT Voiceflow
+      }
       
-      console.log('🎉 Ctrl+Enter v2 configuré avec succès !');
+      // Attacher l'event listener en capture phase
+      textarea.addEventListener('keydown', handleKeydown, true);
+      
+      // ✅ Observer les changements DOM pour réactiver au besoin
+      const observer = new MutationObserver(() => {
+        if (!textarea.isConnected) {
+          console.log('🔄 Textarea déconnecté, tentative de réinstallation...');
+          window.__ctrlEnterInstalled__ = false;
+          setTimeout(() => installCtrlEnter(), 1000);
+        }
+      });
+      
+      observer.observe(shadowRoot, { childList: true, subtree: true });
+      
+      console.log('🎉 Ctrl+Enter v3 configuré avec succès !');
       console.log('📝 Enter = Retour à la ligne | Ctrl+Enter (Cmd+Enter) = Envoyer');
       console.log('🔘 Détection automatique des boutons Voiceflow activée');
       

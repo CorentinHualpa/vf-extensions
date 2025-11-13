@@ -527,18 +527,18 @@ export const UploadToN8nWithLoader = {
                 loader.classList.remove('active', 'closing');
                 console.log('✅ Loader fermé, attente de 600ms avant .interact()...');
                 
-                // ✅ CACHER COMPLÈTEMENT L'EXTENSION
-                root.style.opacity = '0';
-                root.style.maxHeight = '0';
-                root.style.overflow = 'hidden';
-                root.style.transition = 'opacity 0.3s, max-height 0.3s';
-                console.log('🚫 Extension complètement cachée pour éviter tout blocage');
-                
                 // ✅ DÉLAI SUPPLÉMENTAIRE : Laisser Voiceflow se préparer
                 setTimeout(() => {
                   console.log('🚀 Déclenchement du flow Voiceflow maintenant...');
                   // Déclencher la suite du flow Voiceflow APRÈS avoir caché le loader
                   if (onClick) onClick();
+                  
+                  // ✅ DESTRUCTION COMPLÈTE de l'extension après 1 seconde
+                  setTimeout(() => {
+                    console.log('🗑️ Suppression complète de l\'extension du DOM...');
+                    root.remove();
+                    console.log('✅ Extension supprimée, ne devrait plus bloquer aucune interaction');
+                  }, 1000);
                 }, 600); // Délai pour que Voiceflow soit prêt
               }, 400); // Durée de l'animation fadeOut
             }, autoCloseDelayMs);

@@ -1,25 +1,23 @@
 /**
  *  ╔═══════════════════════════════════════════════════════════╗
- *  ║  CtrlEnterExtension v3 – Voiceflow Keyboard Handler      ║
+ *  ║  CtrlEnterExtension v4 – FIXED                           ║
  *  ║                                                           ║
- *  ║  • Entrée seule = Retour à la ligne                      ║
- *  ║  • Ctrl+Entrée (ou Cmd+Entrée) = Envoi du message       ║
- *  ║  • Détection robuste des boutons et liens                ║
+ *  ║  • Entrée seule = Retour à la ligne (TOUJOURS)           ║
+ *  ║  • Ctrl+Entrée ou Shift+Entrée = Envoi du message       ║
+ *  ║  • Plus de détection des boutons qui bloquait tout       ║
  *  ║                                                           ║
  *  ║  Usage:                                                   ║
  *  ║  import { installCtrlEnter } from './ctrlEnterExtension.js'; ║
- *  ║  // Après window.voiceflow.chat.load(config):            ║
  *  ║  setTimeout(() => installCtrlEnter(), 2000);             ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
-
 export function installCtrlEnter() {
   if (window.__ctrlEnterInstalled__) {
     console.log('⚠️ Ctrl+Enter déjà installé');
     return;
   }
   
-  console.log('🔧 Installation du handler Ctrl+Enter v3...');
+  console.log('🔧 Installation du handler Ctrl+Enter v4 (FIXED)...');
   
   /**
    * Recherche récursive du textarea dans le Shadow DOM
@@ -33,9 +31,7 @@ export function installCtrlEnter() {
       return null;
     }
     
-    // Fonction récursive pour explorer l'arbre DOM
     function searchInElement(element) {
-      // Vérifier si cet élément a un shadowRoot
       if (element.shadowRoot) {
         console.log('✅ Shadow root trouvé sur', element.tagName);
         const textarea = element.shadowRoot.querySelector('textarea.vfrc-chat-input');
@@ -47,7 +43,6 @@ export function installCtrlEnter() {
         }
       }
       
-      // Chercher récursivement dans les enfants
       for (let child of element.children) {
         const result = searchInElement(child);
         if (result) return result;
@@ -59,58 +54,6 @@ export function installCtrlEnter() {
     return searchInElement(container);
   }
   
-  /**
-   * ✅ Détecte si des éléments interactifs Voiceflow sont visibles
-   * Version améliorée avec MutationObserver pour détecter les changements DOM
-   */
-  function hasVisibleInteractiveElements(shadowRoot) {
-    // Liste étendue des sélecteurs pour tous les éléments interactifs Voiceflow
-    // ⚠️ IMPORTANT : Exclure les boutons du header avec :not()
-    const selectors = [
-      'button[type="button"]:not(#vfrc-send-message):not(.vfrc-header--button)', // Boutons standards SAUF header
-      'a[href]:not(.vfrc-header--button)', // Liens cliquables SAUF header
-      '[role="button"]:not(.vfrc-header--button)', // Éléments avec rôle button SAUF header
-      '.vfrc-button:not(.vfrc-header--button)', // Classe bouton Voiceflow SAUF header
-      '[data-testid*="button"]:not(.vfrc-header--button)', // Boutons avec data-testid SAUF header
-      '.vfrc-card button', // Boutons dans les cartes
-      '.vfrc-carousel button', // Boutons dans les carousels
-      '.vfrc-prompt button', // Boutons dans les prompts
-    ];
-    
-    for (const selector of selectors) {
-      try {
-        const elements = shadowRoot.querySelectorAll(selector);
-        
-        // Vérifier si au moins un élément est visible
-        for (const el of elements) {
-          const style = window.getComputedStyle(el);
-          const rect = el.getBoundingClientRect();
-          
-          // Élément visible si :
-          // - display !== 'none'
-          // - visibility !== 'hidden'
-          // - opacity > 0
-          // - a une taille > 0
-          const isVisible = 
-            style.display !== 'none' &&
-            style.visibility !== 'hidden' &&
-            parseFloat(style.opacity) > 0 &&
-            rect.width > 0 &&
-            rect.height > 0;
-          
-          if (isVisible) {
-            console.log('🔘 Élément interactif détecté:', selector, el);
-            return true;
-          }
-        }
-      } catch (e) {
-        // Ignorer les erreurs de sélection
-      }
-    }
-    
-    return false;
-  }
-  
   let attempts = 0;
   const maxAttempts = 40;
   
@@ -120,36 +63,36 @@ export function installCtrlEnter() {
     if (result && !result.textarea.__hasCtrlEnter__) {
       const { textarea, sendButton, shadowRoot } = result;
       
-      console.log('✅ Installation du keyboard handler v3...');
+      console.log('✅ Installation du keyboard handler v4...');
       
       textarea.__hasCtrlEnter__ = true;
       window.__ctrlEnterInstalled__ = true;
       
       /**
-       * Handler principal pour gérer Enter et Ctrl+Enter
+       * ✅ Handler simplifié : TOUJOURS appliquer la logique custom
+       * - Enter seul = Nouvelle ligne
+       * - Ctrl+Enter ou Shift+Enter = Envoyer
        */
       function handleKeydown(e) {
         // Ne traiter que la touche Enter
         if (e.key !== 'Enter' && e.keyCode !== 13) return;
         
-        // ✅ VÉRIFIER D'ABORD s'il y a des éléments interactifs visibles
-        if (hasVisibleInteractiveElements(shadowRoot)) {
-          console.log('🔘 Éléments interactifs présents → Laisser Voiceflow gérer Enter');
-          // Ne rien faire, laisser Voiceflow gérer l'événement normalement
-          return;
-        }
-        
-        // Pas d'éléments interactifs → Appliquer notre logique
-        if (e.ctrlKey || e.metaKey) {
-          // Ctrl+Enter ou Cmd+Enter : Envoyer le message
-          console.log('✅ Ctrl+Enter → Envoi du message');
+        // ✅ LOGIQUE SIMPLIFIÉE : Pas de détection des boutons
+        if (e.ctrlKey || e.metaKey || e.shiftKey) {
+          // Ctrl+Enter, Cmd+Enter ou Shift+Enter : Envoyer le message
+          console.log('✅ Ctrl/Shift+Enter → Envoi du message');
           e.preventDefault();
           e.stopPropagation();
           e.stopImmediatePropagation();
-          setTimeout(() => sendButton.click(), 10);
+          
+          // Envoyer le message si le textarea n'est pas vide
+          const message = textarea.value.trim();
+          if (message) {
+            setTimeout(() => sendButton.click(), 10);
+          }
           
         } else {
-          // Enter seul : Retour à la ligne
+          // Enter seul : TOUJOURS insérer un retour à la ligne
           console.log('↩️ Enter → Retour à la ligne');
           e.preventDefault();
           e.stopPropagation();
@@ -172,7 +115,7 @@ export function installCtrlEnter() {
         }
       }
       
-      // Attacher l'event listener en capture phase
+      // Attacher l'event listener en capture phase pour intercepter avant Voiceflow
       textarea.addEventListener('keydown', handleKeydown, true);
       
       // ✅ Observer les changements DOM pour réactiver au besoin
@@ -186,9 +129,9 @@ export function installCtrlEnter() {
       
       observer.observe(shadowRoot, { childList: true, subtree: true });
       
-      console.log('🎉 Ctrl+Enter v3 configuré avec succès !');
-      console.log('📝 Enter = Retour à la ligne | Ctrl+Enter (Cmd+Enter) = Envoyer');
-      console.log('🔘 Détection automatique des boutons Voiceflow activée');
+      console.log('🎉 Ctrl+Enter v4 configuré avec succès !');
+      console.log('📝 Enter = Retour à la ligne (TOUJOURS)');
+      console.log('✉️ Ctrl+Enter ou Shift+Enter = Envoyer');
       
     } else if (!window.__ctrlEnterInstalled__ && attempts < maxAttempts) {
       attempts++;

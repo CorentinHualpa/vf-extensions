@@ -474,6 +474,11 @@ export const UploadToN8nWithLoader = {
     function showLoader(message) {
       loaderTitle.textContent = message;
       loader.classList.add('active');
+      
+      // ✅ DÉSACTIVER L'OVERLAY pour voir le loader
+      console.log('🔓 Désactivation de l\'overlay pour afficher le loader');
+      disabledOverlay.classList.remove('active');
+      
       let current = 0;
       let lockedByFinish = false;
       function paint() {
@@ -573,12 +578,12 @@ export const UploadToN8nWithLoader = {
                       type: 'complete',
                       payload: {
                         webhookSuccess: true,
-                        webhookResponse: data, // ✅ Utiliser le paramètre
-                        files: selectedFiles.map(f=>({name:f.name,size:f.size,type:f.type}))
-                        // ❌ PLUS DE "path" ici - le bloc JS s'en occupe
+                        webhookResponse: data,
+                        files: selectedFiles.map(f=>({name:f.name,size:f.size,type:f.type})),
+                        buttonPath: 'success' // ✅ CRITIQUE pour que le bloc JS s'exécute !
                       }
                     });
-                    console.log('✅ .interact() appelé avec succès (sans path)');
+                    console.log('✅ .interact() appelé avec succès (avec buttonPath)');
                   } catch(e) {
                     console.error('❌ Erreur .interact():', e);
                   }

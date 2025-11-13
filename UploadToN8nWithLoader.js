@@ -1,5 +1,6 @@
-// UploadToN8nWithLoader.js – v2.6 (title/subtitle optionnels)
+// UploadToN8nWithLoader.js – v2.7 FIXED (title/subtitle optionnels + auto-close loader)
 // © Corentin-ready – optimisé pour Voiceflow + n8n
+// ✅ CORRECTION : Le loader se ferme automatiquement pour laisser Voiceflow afficher ses boutons
 export const UploadToN8nWithLoader = {
   name: 'UploadToN8nWithLoader',
   type: 'response',
@@ -72,6 +73,11 @@ export const UploadToN8nWithLoader = {
       ? Number(loaderCfg.minLoadingTimeMs) 
       : 0;
     
+    // ✅ NOUVEAU : Délai avant fermeture auto du loader (en ms)
+    const autoCloseDelayMs = Number(loaderCfg.autoCloseDelayMs) > 0
+      ? Number(loaderCfg.autoCloseDelayMs)
+      : 1500; // 1.5 secondes par défaut
+    
     // Steps "auto" fallback
     const defaultAutoSteps = [
       { progress: 0,  text: '📋 Préparation' },
@@ -125,6 +131,7 @@ export const UploadToN8nWithLoader = {
       @keyframes uploadPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.05);opacity:.8}}
       @keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
       @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+      @keyframes fadeOut{from{opacity:1}to{opacity:0}}
       .upload-modern-wrap{width:100%;max-width:100%;animation:slideUp .4s ease-out;position:relative}
       .upload-modern-disabled-overlay{display:none;position:absolute;inset:0;background:rgba(255,255,255,.8);backdrop-filter:blur(3px);z-index:9999;border-radius:20px;cursor:not-allowed}
       .upload-modern-disabled-overlay.active{display:block}
@@ -162,8 +169,9 @@ export const UploadToN8nWithLoader = {
       .upload-modern-status.error{background:linear-gradient(135deg,#fee2e2,#fecaca);color:#991b1b;border:1px solid #fca5a5}
       .upload-modern-status.success{background:linear-gradient(135deg,#d1fae5,#a7f3d0);color:#065f46;border:1px solid #6ee7b7}
       .upload-modern-status.processing{background:linear-gradient(135deg, ${primaryColor}20, ${secondaryColor}20);color:${secondaryColor};border:1px solid ${primaryColor}60}
-      .upload-modern-loader{display:none;background:linear-gradient(145deg, ${loaderBgColor}, ${loaderBgColor2});border-radius:20px;padding:32px;margin-top:16px;box-shadow:0 20px 60px rgba(0,0,0,.3);animation:slideUp .4s ease-out}
+      .upload-modern-loader{display:none;background:linear-gradient(145deg, ${loaderBgColor}, ${loaderBgColor2});border-radius:20px;padding:32px;margin-top:16px;box-shadow:0 20px 60px rgba(0,0,0,.3);animation:slideUp .4s ease-out;transition:opacity .4s ease-out}
       .upload-modern-loader.active{display:block}
+      .upload-modern-loader.closing{animation:fadeOut .4s ease-out}
       .upload-modern-loader-content{display:flex;flex-direction:column;align-items:center;gap:20px}
       .upload-modern-loader-title{color:${loaderTextColor};font-weight:800;font-size:18px;letter-spacing:.5px;text-align:center}
       .upload-modern-loader-percentage{color:${loaderTextColor};font-weight:900;font-size:32px;text-align:center}
@@ -497,20 +505,26 @@ export const UploadToN8nWithLoader = {
           };
           requestAnimationFrame(step);
         },
+        // ✅ CORRECTION : Auto-fermeture du loader
         finish(onClick) {
           lockedByFinish = true;
           clearTimers();
           this.animateTo(100, 500, ()=>{
-            const btn = document.createElement('button');
-            btn.className = 'upload-modern-loader-done-btn';
-            btn.innerHTML = `<span style="font-size:24px">${doneIcon}</span> ${doneText}`;
-            btn.onclick = ()=>{
-              // ✅ Cacher le loader pour laisser Voiceflow continuer
-              loader.classList.remove('active');
-              if (onClick) onClick();
-            };
-            root.querySelector('.upload-modern-loader-content').appendChild(btn);
             this.showPhase('✅ Terminé !');
+            console.log(`🎉 Upload terminé ! Fermeture auto dans ${autoCloseDelayMs}ms...`);
+            
+            // ✅ AUTO-FERMETURE : Cacher le loader automatiquement après le délai
+            setTimeout(() => {
+              console.log('🔄 Fermeture du loader et déclenchement du flow Voiceflow...');
+              loader.classList.add('closing');
+              
+              // Attendre la fin de l'animation de fermeture
+              setTimeout(() => {
+                loader.classList.remove('active', 'closing');
+                // Déclencher la suite du flow Voiceflow APRÈS avoir caché le loader
+                if (onClick) onClick();
+              }, 400); // Durée de l'animation fadeOut
+            }, autoCloseDelayMs);
           });
         }
       };

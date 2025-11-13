@@ -1,9 +1,6 @@
-// UploadToN8nWithLoader.js – v2.9 FIXED
-// © Corentin – CORRECTION FINALE : chat réactivé avant .interact()
-// ✅ CORRECTIONS CRITIQUES :
-// 1. Chat réactivé AVANT .interact() pour éviter "Chat has ended"
-// 2. Extension ne se détruit PLUS (Voiceflow la gère)
-// 3. Overlay retiré après le loader pour permettre la suite du flow
+// UploadToN8nWithLoader.js – v3.0 EMBEDDED-COMPATIBLE
+// © Corentin – Compatible mode embedded ET widget
+// ✅ CORRECTION : Détection automatique du conteneur chat
 
 export const UploadToN8nWithLoader = {
   name: 'UploadToN8nWithLoader',
@@ -27,29 +24,80 @@ export const UploadToN8nWithLoader = {
       return;
     }
     
+    // ✅ FONCTION POUR TROUVER LE CONTENEUR CHAT (embedded OU widget)
+    const findChatContainer = () => {
+      // Mode embedded
+      let container = document.querySelector('#voiceflow-chat-container');
+      if (container?.shadowRoot) {
+        console.log('✅ Mode détecté : EMBEDDED (#voiceflow-chat-container)');
+        return container;
+      }
+      
+      // Mode widget
+      container = document.querySelector('#voiceflow-chat');
+      if (container?.shadowRoot) {
+        console.log('✅ Mode détecté : WIDGET (#voiceflow-chat)');
+        return container;
+      }
+      
+      // Fallback : chercher n'importe quel élément avec shadowRoot contenant vfrc
+      const allWithShadow = document.querySelectorAll('*');
+      for (const el of allWithShadow) {
+        if (el.shadowRoot) {
+          const hasVfrc = el.shadowRoot.querySelector('[class*="vfrc"]');
+          if (hasVfrc) {
+            console.log('✅ Mode détecté : FALLBACK (shadowRoot trouvé)');
+            return el;
+          }
+        }
+      }
+      
+      console.error('❌ Aucun conteneur Voiceflow trouvé !');
+      return null;
+    };
+    
     // ✅ FONCTION POUR DÉSACTIVER LE CHAT
     const disableChatInput = () => {
-      const container = document.querySelector('#voiceflow-chat');
+      const container = findChatContainer();
       if (!container?.shadowRoot) {
         console.warn('⚠️ Shadow root non trouvé pour désactiver le chat');
         return null;
       }
       
-      const textarea = container.shadowRoot.querySelector('textarea.vfrc-chat-input') || 
-                       container.shadowRoot.querySelector('textarea[id^="vf-chat-input"]');
-      const sendBtn = container.shadowRoot.querySelector('button.vfrc-send-button') || 
-                      container.shadowRoot.querySelector('button[aria-label*="Send"]');
+      const shadowRoot = container.shadowRoot;
+      
+      // Chercher le textarea avec plusieurs sélecteurs
+      const textarea = 
+        shadowRoot.querySelector('textarea.vfrc-chat-input') ||
+        shadowRoot.querySelector('textarea[id^="vf-chat-input"]') ||
+        shadowRoot.querySelector('textarea[placeholder*="Message"]') ||
+        shadowRoot.querySelector('textarea');
+      
+      // Chercher le bouton d'envoi
+      const sendBtn = 
+        shadowRoot.querySelector('#vfrc-send-message') ||
+        shadowRoot.querySelector('button.vfrc-chat-input__send') ||
+        shadowRoot.querySelector('button[aria-label*="Send"]') ||
+        shadowRoot.querySelector('button[type="submit"]');
       
       if (textarea) {
+        const originalPlaceholder = textarea.placeholder;
         textarea.disabled = true;
         textarea.style.opacity = '0.5';
-        const originalPlaceholder = textarea.placeholder;
+        textarea.style.cursor = 'not-allowed';
         textarea.placeholder = '📁 Veuillez d\'abord charger vos documents...';
         console.log('🚫 Chat désactivé : upload requis');
-        return { textarea, sendBtn, originalPlaceholder };
+        
+        if (sendBtn) {
+          sendBtn.disabled = true;
+          sendBtn.style.opacity = '0.5';
+          sendBtn.style.cursor = 'not-allowed';
+        }
+        
+        return { container, textarea, sendBtn, originalPlaceholder };
       }
       
-      console.warn('⚠️ Textarea non trouvé');
+      console.warn('⚠️ Textarea non trouvé dans le shadow DOM');
       return null;
     };
     
@@ -57,22 +105,41 @@ export const UploadToN8nWithLoader = {
     const enableChatInput = (chatRefs) => {
       if (!chatRefs) {
         console.warn('⚠️ Pas de références chat à réactiver');
-        return;
+        return false;
       }
       
-      const { textarea, sendBtn, originalPlaceholder } = chatRefs;
+      const { container, textarea, sendBtn, originalPlaceholder } = chatRefs;
+      
+      if (!container?.shadowRoot) {
+        console.error('❌ Container ou shadowRoot disparu');
+        return false;
+      }
       
       if (textarea) {
         textarea.disabled = false;
         textarea.style.opacity = '1';
+        textarea.style.cursor = 'text';
         textarea.placeholder = originalPlaceholder || 'Message...';
-        console.log('✅ Chat réactivé');
+        console.log('✅ Textarea réactivé');
       }
       
       if (sendBtn) {
         sendBtn.disabled = false;
         sendBtn.style.opacity = '1';
+        sendBtn.style.cursor = 'pointer';
+        console.log('✅ Bouton Send réactivé');
       }
+      
+      // Forcer le focus sur le textarea pour réveiller le chat
+      if (textarea) {
+        setTimeout(() => {
+          textarea.focus();
+          textarea.blur();
+          console.log('✅ Chat réactivé avec succès');
+        }, 100);
+      }
+      
+      return true;
     };
     
     // Désactiver le chat immédiatement
@@ -374,11 +441,13 @@ export const UploadToN8nWithLoader = {
       if (files.length) addFiles(files);
       fileInput.value = '';
     });
+    
     backButtons.forEach(b => b.addEventListener('click', ()=>{
       const path = b.getAttribute('data-path') || pathError;
       
       // Réactiver le chat avant de quitter
-      enableChatInput(chatRefs);
+      const reactivated = enableChatInput(chatRefs);
+      console.log(reactivated ? '✅ Chat réactivé avant retour' : '⚠️ Échec réactivation avant retour');
       
       try {
         window?.voiceflow?.chat?.interact?.({ 
@@ -394,7 +463,6 @@ export const UploadToN8nWithLoader = {
     sendBtn.addEventListener('click', async ()=>{
       if (!selectedFiles.length) return;
       
-      // ✅ PROTECTION : Rendre toute l'extension incliquable
       console.log('🔒 PROTECTION : Extension désactivée');
       root.style.pointerEvents = 'none';
       disabledOverlay.classList.add('active');
@@ -459,7 +527,6 @@ export const UploadToN8nWithLoader = {
           await new Promise(resolve => setTimeout(resolve, remainingTime));
         }
         
-        // ✅ CORRECTION CRITIQUE : Passer finalData ET chatRefs à finish()
         loaderUI.finish(finalData, chatRefs);
         
       } catch (err) {
@@ -471,7 +538,8 @@ export const UploadToN8nWithLoader = {
         disabledOverlay.classList.remove('active');
         
         // Réactiver le chat en cas d'erreur
-        enableChatInput(chatRefs);
+        const reactivated = enableChatInput(chatRefs);
+        console.log(reactivated ? '✅ Chat réactivé après erreur' : '⚠️ Échec réactivation après erreur');
         
         try {
           window?.voiceflow?.chat?.interact?.({
@@ -491,7 +559,6 @@ export const UploadToN8nWithLoader = {
       loaderTitle.textContent = message;
       loader.classList.add('active');
       
-      // Retirer l'overlay pour voir le loader
       console.log('👁️ Affichage du loader (overlay retiré temporairement)');
       disabledOverlay.classList.remove('active');
       
@@ -578,7 +645,6 @@ export const UploadToN8nWithLoader = {
           requestAnimationFrame(step);
         },
         
-        // ✅ CORRECTION : finish prend (data, chatRefs) au lieu de (callback, data)
         finish(data, chatRefsToReactivate) {
           lockedByFinish = true;
           clearTimers();
@@ -595,17 +661,27 @@ export const UploadToN8nWithLoader = {
                 loader.classList.remove('active', 'closing');
                 console.log('✅ Loader fermé');
                 
-                // ✅ CORRECTION CRITIQUE : Retirer l'overlay AVANT de réactiver le chat
                 console.log('🔓 Retrait de l\'overlay pour permettre l\'interaction');
                 disabledOverlay.classList.remove('active');
                 root.style.pointerEvents = 'auto';
                 
                 setTimeout(() => {
-                  // ✅ ÉTAPE 1 : RÉACTIVER LE CHAT EN PREMIER
                   console.log('✅ ÉTAPE 1/2 : Réactivation du chat');
-                  enableChatInput(chatRefsToReactivate);
+                  const reactivated = enableChatInput(chatRefsToReactivate);
                   
-                  // ✅ ÉTAPE 2 : ATTENDRE UN PEU PUIS APPELER .interact()
+                  if (!reactivated) {
+                    console.error('❌ ÉCHEC : Impossible de réactiver le chat !');
+                    console.log('🔍 Tentative de réactivation forcée...');
+                    
+                    // Tentative de réactivation forcée
+                    const forcedRefs = disableChatInput();
+                    if (forcedRefs) {
+                      setTimeout(() => {
+                        enableChatInput(forcedRefs);
+                      }, 100);
+                    }
+                  }
+                  
                   setTimeout(() => {
                     console.log('✅ ÉTAPE 2/2 : Déclenchement du flow Voiceflow');
                     
@@ -616,7 +692,7 @@ export const UploadToN8nWithLoader = {
                           webhookSuccess: true,
                           webhookResponse: data,
                           files: selectedFiles.map(f=>({name:f.name,size:f.size,type:f.type})),
-                          buttonPath: 'success' // ✅ Pour que le bloc JS s'exécute
+                          buttonPath: 'success'
                         }
                       });
                       console.log('✅ .interact() appelé avec succès (avec buttonPath)');
@@ -624,12 +700,11 @@ export const UploadToN8nWithLoader = {
                       console.error('❌ Erreur .interact():', e);
                     }
                     
-                    // ✅ NE PLUS détruire l'extension - Voiceflow le gère
                     console.log('ℹ️ Extension conservée (Voiceflow gère le nettoyage)');
                     
-                  }, 300); // Attendre 300ms après la réactivation du chat
+                  }, 300);
                   
-                }, 200); // Attendre 200ms après le retrait de l'overlay
+                }, 200);
                 
               }, 400);
             }, autoCloseDelayMs);
@@ -714,11 +789,9 @@ export const UploadToN8nWithLoader = {
     async function safeJson(r){ try { return await r.json(); } catch { return null; } }
     async function safeText(r){ try { return await r.text(); } catch { return null; } }
     
-    // ✅ FONCTION DE NETTOYAGE (optionnelle - Voiceflow le gère normalement)
     return () => {
       console.log('🧹 Nettoyage de l\'extension demandé par Voiceflow');
       clearTimers();
-      // Ne pas supprimer root - Voiceflow s'en charge
     };
   }
 };

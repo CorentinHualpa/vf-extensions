@@ -440,22 +440,24 @@ export const UploadToN8nWithLoader = {
           await new Promise(resolve => setTimeout(resolve, remainingTime));
         }
         
-        loaderUI.finish(()=>{
+        loaderUI.finish((data) => {
           // ✅ PROTECTION 2 : Réactiver le chat AVANT .interact()
           enableChatInput(chatRefs);
           
           try {
             window?.voiceflow?.chat?.interact?.({
-              type:'complete',
-              payload:{
-                webhookSuccess:true,
-                webhookResponse: finalData,
-                files: selectedFiles.map(f=>({name:f.name,size:f.size,type:f.type})),
-                path: pathSuccess
+              type: 'complete',
+              payload: {
+                webhookSuccess: true,
+                webhookResponse: data, // ✅ Utiliser le paramètre
+                files: selectedFiles.map(f=>({name:f.name,size:f.size,type:f.type}))
               }
             });
-          } catch {}
-        });
+            console.log('✅ .interact() appelé avec succès');
+          } catch(e) {
+            console.error('❌ Erreur .interact():', e);
+          }
+        }, finalData); // ✅ Passer finalData en 2ème argument
       } catch (err) {
         loader.classList.remove('active');
         setStatus(`❌ ${String(err?.message || err)}`,'error');
@@ -558,7 +560,7 @@ export const UploadToN8nWithLoader = {
           };
           requestAnimationFrame(step);
         },
-        finish(onClick) {
+        finish(onClick, data) {
           lockedByFinish = true;
           clearTimers();
           this.animateTo(100, 500, ()=>{
@@ -583,7 +585,7 @@ export const UploadToN8nWithLoader = {
                       type: 'complete',
                       payload: {
                         webhookSuccess: true,
-                        webhookResponse: finalData,
+                        webhookResponse: data, // ✅ Utiliser le paramètre
                         files: selectedFiles.map(f=>({name:f.name,size:f.size,type:f.type}))
                         // ❌ PLUS DE "path" ici - le bloc JS s'en occupe
                       }
@@ -594,7 +596,7 @@ export const UploadToN8nWithLoader = {
                   }
                   
                   // Réactiver le chat
-                  if (onClick) onClick();
+                  if (onClick) onClick(data);
                   
                   // ✅ PROTECTION 3 : Destruction TOTALE après succès
                   setTimeout(() => {

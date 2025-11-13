@@ -207,13 +207,13 @@ export const UploadToN8nWithLoader = {
       .upload-modern-status.error{background:linear-gradient(135deg,#fee2e2,#fecaca);color:#991b1b;border:1px solid #fca5a5}
       .upload-modern-status.success{background:linear-gradient(135deg,#d1fae5,#a7f3d0);color:#065f46;border:1px solid #6ee7b7}
       .upload-modern-status.processing{background:linear-gradient(135deg, ${primaryColor}20, ${secondaryColor}20);color:${secondaryColor};border:1px solid ${primaryColor}60}
-      .upload-modern-loader{display:none;background:linear-gradient(145deg, ${loaderBgColor}, ${loaderBgColor2});border-radius:20px;padding:32px;margin-top:16px;box-shadow:0 20px 60px rgba(0,0,0,.3);animation:slideUp .4s ease-out;transition:opacity .4s ease-out}
+      .upload-modern-loader{display:none;background:linear-gradient(145deg, ${loaderBgColor}, ${loaderBgColor2});border-radius:20px;padding:32px;margin-top:16px;box-shadow:0 20px 60px rgba(0,0,0,.3);animation:slideUp .4s ease-out;transition:opacity .4s ease-out;border:2px solid ${accentColor}}
       .upload-modern-loader.active{display:block}
       .upload-modern-loader.closing{animation:fadeOut .4s ease-out}
       .upload-modern-loader-content{display:flex;flex-direction:column;align-items:center;gap:20px}
-      .upload-modern-loader-title{color:${loaderTextColor};font-weight:800;font-size:18px;letter-spacing:.5px;text-align:center}
-      .upload-modern-loader-percentage{color:${loaderTextColor};font-weight:900;font-size:32px;text-align:center}
-      .upload-modern-loader-step{color:${loaderTextColor}CC;font-size:14px;font-weight:500;text-align:center;min-height:20px}
+      .upload-modern-loader-title{color:${loaderTextColor};font-weight:800;font-size:20px;letter-spacing:.5px;text-align:center;text-shadow:0 2px 4px rgba(0,0,0,.3)}
+      .upload-modern-loader-percentage{color:${loaderTextColor};font-weight:900;font-size:48px;text-align:center;text-shadow:0 2px 8px rgba(0,0,0,.4);letter-spacing:2px}
+      .upload-modern-loader-step{color:${loaderTextColor};font-size:16px;font-weight:600;text-align:center;min-height:24px;text-shadow:0 1px 2px rgba(0,0,0,.3);background:rgba(255,255,255,.1);padding:8px 16px;border-radius:8px}
     `;
     
     // ---------- UI ----------

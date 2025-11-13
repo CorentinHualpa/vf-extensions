@@ -505,7 +505,7 @@ export const UploadToN8nWithLoader = {
             btn.className = 'upload-modern-loader-done-btn';
             btn.innerHTML = `<span style="font-size:24px">${doneIcon}</span> ${doneText}`;
             btn.onclick = ()=>{
-              disabledOverlay.classList.add('active');
+              // ✅ Ne pas bloquer l'overlay - laisser Voiceflow continuer
               if (onClick) onClick();
             };
             root.querySelector('.upload-modern-loader-content').appendChild(btn);

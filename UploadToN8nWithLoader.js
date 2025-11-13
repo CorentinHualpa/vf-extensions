@@ -400,6 +400,10 @@ export const UploadToN8nWithLoader = {
           await new Promise(resolve => setTimeout(resolve, remainingTime));
         }
         
+        // ✅ Désactiver l'overlay AVANT de finir
+        disabledOverlay.classList.remove('active');
+        console.log('🔓 Overlay désactivé, extension ne bloque plus les interactions');
+        
         loaderUI.finish(()=>{
           try {
             window?.voiceflow?.chat?.interact?.({
@@ -521,8 +525,21 @@ export const UploadToN8nWithLoader = {
               // Attendre la fin de l'animation de fermeture
               setTimeout(() => {
                 loader.classList.remove('active', 'closing');
-                // Déclencher la suite du flow Voiceflow APRÈS avoir caché le loader
-                if (onClick) onClick();
+                console.log('✅ Loader fermé, attente de 600ms avant .interact()...');
+                
+                // ✅ CACHER COMPLÈTEMENT L'EXTENSION
+                root.style.opacity = '0';
+                root.style.maxHeight = '0';
+                root.style.overflow = 'hidden';
+                root.style.transition = 'opacity 0.3s, max-height 0.3s';
+                console.log('🚫 Extension complètement cachée pour éviter tout blocage');
+                
+                // ✅ DÉLAI SUPPLÉMENTAIRE : Laisser Voiceflow se préparer
+                setTimeout(() => {
+                  console.log('🚀 Déclenchement du flow Voiceflow maintenant...');
+                  // Déclencher la suite du flow Voiceflow APRÈS avoir caché le loader
+                  if (onClick) onClick();
+                }, 600); // Délai pour que Voiceflow soit prêt
               }, 400); // Durée de l'animation fadeOut
             }, autoCloseDelayMs);
           });

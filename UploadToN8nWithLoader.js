@@ -1,9 +1,10 @@
-// UploadToN8nWithLoader.js – v2.8 ULTRA-SAFE
-// © Corentin-ready – optimisé pour Voiceflow + n8n
-// ✅ PROTECTIONS MAXIMALES :
-// 1. Extension devient incliquable dès le clic sur "Envoyer"
-// 2. Chat désactivé pendant tout le traitement
-// 3. Destruction complète après succès
+// UploadToN8nWithLoader.js – v2.9 FIXED
+// © Corentin – CORRECTION FINALE : chat réactivé avant .interact()
+// ✅ CORRECTIONS CRITIQUES :
+// 1. Chat réactivé AVANT .interact() pour éviter "Chat has ended"
+// 2. Extension ne se détruit PLUS (Voiceflow la gère)
+// 3. Overlay retiré après le loader pour permettre la suite du flow
+
 export const UploadToN8nWithLoader = {
   name: 'UploadToN8nWithLoader',
   type: 'response',
@@ -19,44 +20,55 @@ export const UploadToN8nWithLoader = {
       return false;
     }
   },
+  
   render({ trace, element }) {
     if (!element) {
       console.error('[UploadToN8nWithLoader] Élément parent introuvable');
       return;
     }
     
-    // ✅ DÉSACTIVER LE CHAT DÈS L'AFFICHAGE DE L'EXTENSION
+    // ✅ FONCTION POUR DÉSACTIVER LE CHAT
     const disableChatInput = () => {
-      const container = document.querySelector('#voiceflow-chat-container');
-      if (!container?.shadowRoot) return null;
+      const container = document.querySelector('#voiceflow-chat');
+      if (!container?.shadowRoot) {
+        console.warn('⚠️ Shadow root non trouvé pour désactiver le chat');
+        return null;
+      }
       
-      const textarea = container.shadowRoot.querySelector('textarea.vfrc-chat-input');
-      const sendBtn = container.shadowRoot.querySelector('#vfrc-send-message');
+      const textarea = container.shadowRoot.querySelector('textarea.vfrc-chat-input') || 
+                       container.shadowRoot.querySelector('textarea[id^="vf-chat-input"]');
+      const sendBtn = container.shadowRoot.querySelector('button.vfrc-send-button') || 
+                      container.shadowRoot.querySelector('button[aria-label*="Send"]');
       
       if (textarea) {
         textarea.disabled = true;
         textarea.style.opacity = '0.5';
+        const originalPlaceholder = textarea.placeholder;
         textarea.placeholder = '📁 Veuillez d\'abord charger vos documents...';
         console.log('🚫 Chat désactivé : upload requis');
-      }
-      if (sendBtn) {
-        sendBtn.disabled = true;
-        sendBtn.style.opacity = '0.5';
+        return { textarea, sendBtn, originalPlaceholder };
       }
       
-      return { textarea, sendBtn };
+      console.warn('⚠️ Textarea non trouvé');
+      return null;
     };
     
+    // ✅ FONCTION POUR RÉACTIVER LE CHAT
     const enableChatInput = (chatRefs) => {
-      if (!chatRefs) return;
-      const { textarea, sendBtn } = chatRefs;
+      if (!chatRefs) {
+        console.warn('⚠️ Pas de références chat à réactiver');
+        return;
+      }
+      
+      const { textarea, sendBtn, originalPlaceholder } = chatRefs;
       
       if (textarea) {
         textarea.disabled = false;
         textarea.style.opacity = '1';
-        textarea.placeholder = 'Message...';
+        textarea.placeholder = originalPlaceholder || 'Message...';
         console.log('✅ Chat réactivé');
       }
+      
       if (sendBtn) {
         sendBtn.disabled = false;
         sendBtn.style.opacity = '1';
@@ -153,7 +165,7 @@ export const UploadToN8nWithLoader = {
       try {
         window?.voiceflow?.chat?.interact?.({
           type: 'complete',
-          payload: { webhookSuccess: false, error: 'WEBHOOK_URL_MISSING', path: pathError }
+          payload: { webhookSuccess: false, error: 'WEBHOOK_URL_MISSING', buttonPath: 'error' }
         });
       } catch {}
       return;
@@ -369,14 +381,20 @@ export const UploadToN8nWithLoader = {
       enableChatInput(chatRefs);
       
       try {
-        window?.voiceflow?.chat?.interact?.({ type:'complete', payload:{ webhookSuccess:false, path }});
+        window?.voiceflow?.chat?.interact?.({ 
+          type:'complete', 
+          payload:{ 
+            webhookSuccess:false, 
+            buttonPath: path
+          }
+        });
       } catch {}
     }));
     
     sendBtn.addEventListener('click', async ()=>{
       if (!selectedFiles.length) return;
       
-      // ✅ PROTECTION 1 : Rendre toute l'extension incliquable
+      // ✅ PROTECTION : Rendre toute l'extension incliquable
       console.log('🔒 PROTECTION : Extension désactivée');
       root.style.pointerEvents = 'none';
       disabledOverlay.classList.add('active');
@@ -441,11 +459,9 @@ export const UploadToN8nWithLoader = {
           await new Promise(resolve => setTimeout(resolve, remainingTime));
         }
         
-        loaderUI.finish((data) => {
-          // ✅ PROTECTION 2 : Réactiver le chat uniquement
-          enableChatInput(chatRefs);
-          // ❌ NE PAS appeler .interact() ici - c'est fait dans finish()
-        }, finalData); // ✅ Passer finalData en 2ème argument
+        // ✅ CORRECTION CRITIQUE : Passer finalData ET chatRefs à finish()
+        loaderUI.finish(finalData, chatRefs);
+        
       } catch (err) {
         loader.classList.remove('active');
         setStatus(`❌ ${String(err?.message || err)}`,'error');
@@ -462,8 +478,8 @@ export const UploadToN8nWithLoader = {
             type: 'complete',
             payload: { 
               webhookSuccess: false, 
-              error: String(err?.message || err)
-              // ❌ PLUS DE "path" ici non plus
+              error: String(err?.message || err),
+              buttonPath: 'error'
             }
           });
         } catch {}
@@ -475,21 +491,24 @@ export const UploadToN8nWithLoader = {
       loaderTitle.textContent = message;
       loader.classList.add('active');
       
-      // ✅ DÉSACTIVER L'OVERLAY pour voir le loader
-      console.log('🔓 Désactivation de l\'overlay pour afficher le loader');
+      // Retirer l'overlay pour voir le loader
+      console.log('👁️ Affichage du loader (overlay retiré temporairement)');
       disabledOverlay.classList.remove('active');
       
       let current = 0;
       let lockedByFinish = false;
+      
       function paint() {
         const offset = 502 - (current/100)*502;
         loaderCircle.style.strokeDashoffset = offset;
         loaderPct.textContent = `${Math.round(current)}%`;
       }
       paint();
+      
       function clearTimers() {
         if (timedTimer) { clearInterval(timedTimer); timedTimer = null; }
       }
+      
       return {
         startAuto(steps) {
           let i = 0;
@@ -503,6 +522,7 @@ export const UploadToN8nWithLoader = {
           };
           walk();
         },
+        
         startTimed(plan) {
           let idx = 0;
           const startNext = () => {
@@ -526,20 +546,24 @@ export const UploadToN8nWithLoader = {
           };
           startNext();
         },
+        
         showPhase(text) {
           if (text) loaderStep.textContent = text;
         },
+        
         setPercent(p) {
           if (lockedByFinish) return;
           current = clamp(p, 0, 100);
           paint();
         },
+        
         softPercent(p) {
           if (lockedByFinish) return;
           const target = clamp(p, 0, 100);
           current = current + (target - current) * 0.5;
           paint();
         },
+        
         animateTo(target, ms=1200, cb) {
           const start = current;
           const end   = clamp(target, 0, 100);
@@ -553,9 +577,12 @@ export const UploadToN8nWithLoader = {
           };
           requestAnimationFrame(step);
         },
-        finish(onClick, data) {
+        
+        // ✅ CORRECTION : finish prend (data, chatRefs) au lieu de (callback, data)
+        finish(data, chatRefsToReactivate) {
           lockedByFinish = true;
           clearTimers();
+          
           this.animateTo(100, 500, ()=>{
             this.showPhase('✅ Terminé !');
             console.log(`🎉 Upload terminé ! Fermeture auto dans ${autoCloseDelayMs}ms...`);
@@ -568,116 +595,6 @@ export const UploadToN8nWithLoader = {
                 loader.classList.remove('active', 'closing');
                 console.log('✅ Loader fermé');
                 
-                setTimeout(() => {
-                  console.log('🚀 Déclenchement du flow Voiceflow...');
-                  
-                  // ✅ CORRECTION : Ne PAS inclure "path" dans le payload
-                  // Le routing se fait dans le bloc JavaScript qui suit
-                  try {
-                    window?.voiceflow?.chat?.interact?.({
-                      type: 'complete',
-                      payload: {
-                        webhookSuccess: true,
-                        webhookResponse: data,
-                        files: selectedFiles.map(f=>({name:f.name,size:f.size,type:f.type})),
-                        buttonPath: 'success' // ✅ CRITIQUE pour que le bloc JS s'exécute !
-                      }
-                    });
-                    console.log('✅ .interact() appelé avec succès (avec buttonPath)');
-                  } catch(e) {
-                    console.error('❌ Erreur .interact():', e);
-                  }
-                  
-                  // Réactiver le chat
-                  if (onClick) onClick(data);
-                  
-                  // ✅ PROTECTION 3 : Destruction TOTALE après succès
-                  setTimeout(() => {
-                    console.log('🗑️ DESTRUCTION complète de l\'extension...');
-                    root.remove();
-                    console.log('✅ Extension supprimée du DOM, plus aucune interaction possible');
-                  }, 1000);
-                }, 600);
-              }, 400);
-            }, autoCloseDelayMs);
-          });
-        }
-      };
-    }
-    
-    function buildTimedPlan() {
-      const haveSeconds = timedPhases.every(ph => Number(ph.seconds) > 0);
-      let total = haveSeconds ? timedPhases.reduce((s,ph)=>s+Number(ph.seconds),0) : totalSeconds;
-      const weightsSum = timedPhases.reduce((s,ph)=> s + (Number(ph.weight)||0), 0) || timedPhases.length;
-      const alloc = timedPhases.map((ph,i)=>{
-        const sec = haveSeconds ? Number(ph.seconds) : (Number(ph.weight)||1) / weightsSum * total;
-        return { key: ph.key, text: ph.label || stepMap[ph.key]?.text || `Étape ${i+1}`, seconds: sec };
-      });
-      const startP = 5, endP = 98;
-      const totalMs = alloc.reduce((s,a)=> s + a.seconds*1000, 0);
-      let acc = 0, last = startP;
-      const plan = alloc.map((a,i)=>{
-        const pStart = i === 0 ? startP : last;
-        const pEnd   = i === alloc.length-1 ? endP : startP + (endP-startP) * ((acc + a.seconds*1000)/totalMs);
-        acc += a.seconds*1000; last = pEnd;
-        return { text: a.text, durationMs: Math.max(500, a.seconds*1000), progressStart: pStart, progressEnd: pEnd };
-      });
-      if (!plan.length) {
-        return defaultAutoSteps.map((s, i, arr) => ({
-          text: s.text, durationMs: i===0 ? 1000 : 1500,
-          progressStart: i ? arr[i-1].progress : 0, progressEnd: s.progress
-        }));
-      }
-      return plan;
-    }
-    
-    // ---------- Network ----------
-    async function postToN8n({ url, method, headers, timeoutMs, retries, files, fileFieldName, extra, vfContext }) {
-      let lastErr;
-      for (let attempt = 0; attempt <= retries; attempt++) {
-        try {
-          const controller = new AbortController();
-          const to = setTimeout(()=>controller.abort(), timeoutMs);
-          const fd = new FormData();
-          files.forEach(f=> fd.append(fileFieldName, f, f.name));
-          Object.entries(extra).forEach(([k,v])=>{
-            fd.append(k, typeof v === 'object' ? JSON.stringify(v) : String(v ?? ''));
-          });
-          if (vfContext.conversation_id) fd.append('conversation_id', vfContext.conversation_id);
-          if (vfContext.user_id) fd.append('user_id', vfContext.user_id);
-          if (vfContext.locale) fd.append('locale', vfContext.locale);
-          const finalHeaders = { ...headers };
-          delete finalHeaders['Content-Type'];
-          const resp = await fetch(url, { method, headers: finalHeaders, body: fd, signal: controller.signal });
-          clearTimeout(to);
-          if (!resp.ok) {
-            const text = await safeText(resp);
-            throw new Error(`Erreur ${resp.status} : ${text?.slice(0,200) || resp.statusText}`);
-          }
-          return { ok:true, data: await safeJson(resp) };
-        } catch (e) {
-          lastErr = e;
-          if (attempt < retries) await new Promise(r=>setTimeout(r, 900));
-        }
-      }
-      throw lastErr || new Error('Échec de l\'envoi');
-    }
-    async function pollStatus({ statusUrl, headers, intervalMs, maxAttempts, onTick }) {
-      for (let i=1;i<=maxAttempts;i++) {
-        const r = await fetch(statusUrl, { headers });
-        if (!r.ok) throw new Error(`Polling ${r.status}`);
-        const j = await safeJson(r);
-        if (j?.status === 'error') throw new Error(j?.error || 'Erreur pipeline');
-        if (typeof onTick === 'function') {
-          try { onTick({ percent: j?.percent, phase: j?.phase, message: j?.message }); } catch {}
-        }
-        if (j?.status === 'done') return j?.data ?? j;
-        await new Promise(res=>setTimeout(res, intervalMs));
-      }
-      throw new Error('Polling timeout');
-    }
-    async function safeJson(r){ try { return await r.json(); } catch { return null; } }
-    async function safeText(r){ try { return await r.text(); } catch { return null; } }
-  }
-};
-try { window.UploadToN8nWithLoader = UploadToN8nWithLoader; } catch {}
+                // ✅ CORRECTION CRITIQUE : Retirer l'overlay AVANT de réactiver le chat
+                console.log('🔓 Retrait de l\'overlay pour permettre l\'interaction');
+                disabl

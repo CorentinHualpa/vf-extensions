@@ -1,6 +1,9 @@
-// UploadToN8nWithLoader.js – v2.7 FIXED (title/subtitle optionnels + auto-close loader)
+// UploadToN8nWithLoader.js – v2.8 ULTRA-SAFE
 // © Corentin-ready – optimisé pour Voiceflow + n8n
-// ✅ CORRECTION : Le loader se ferme automatiquement pour laisser Voiceflow afficher ses boutons
+// ✅ PROTECTIONS MAXIMALES :
+// 1. Extension devient incliquable dès le clic sur "Envoyer"
+// 2. Chat désactivé pendant tout le traitement
+// 3. Destruction complète après succès
 export const UploadToN8nWithLoader = {
   name: 'UploadToN8nWithLoader',
   type: 'response',
@@ -21,25 +24,64 @@ export const UploadToN8nWithLoader = {
       console.error('[UploadToN8nWithLoader] Élément parent introuvable');
       return;
     }
+    
+    // ✅ DÉSACTIVER LE CHAT DÈS L'AFFICHAGE DE L'EXTENSION
+    const disableChatInput = () => {
+      const container = document.querySelector('#voiceflow-chat-container');
+      if (!container?.shadowRoot) return null;
+      
+      const textarea = container.shadowRoot.querySelector('textarea.vfrc-chat-input');
+      const sendBtn = container.shadowRoot.querySelector('#vfrc-send-message');
+      
+      if (textarea) {
+        textarea.disabled = true;
+        textarea.style.opacity = '0.5';
+        textarea.placeholder = '📁 Veuillez d\'abord charger vos documents...';
+        console.log('🚫 Chat désactivé : upload requis');
+      }
+      if (sendBtn) {
+        sendBtn.disabled = true;
+        sendBtn.style.opacity = '0.5';
+      }
+      
+      return { textarea, sendBtn };
+    };
+    
+    const enableChatInput = (chatRefs) => {
+      if (!chatRefs) return;
+      const { textarea, sendBtn } = chatRefs;
+      
+      if (textarea) {
+        textarea.disabled = false;
+        textarea.style.opacity = '1';
+        textarea.placeholder = 'Message...';
+        console.log('✅ Chat réactivé');
+      }
+      if (sendBtn) {
+        sendBtn.disabled = false;
+        sendBtn.style.opacity = '1';
+      }
+    };
+    
+    // Désactiver le chat immédiatement
+    const chatRefs = disableChatInput();
+    
     // ---------- CONFIG ----------
     const p = trace?.payload || {};
-    // UI upload
     const title         = p.title || '';
     const subtitle      = p.subtitle || '';
     const description   = p.description || 'Glissez-déposez vos fichiers ici ou cliquez pour sélectionner';
     const accept        = p.accept || '.pdf,.docx';
     const maxFileSizeMB = p.maxFileSizeMB || 25;
     const maxFiles      = p.maxFiles || 10;
-    // 🎨 Couleurs
     const primaryColor   = p.primaryColor || '#087095';
     const secondaryColor = p.secondaryColor || '#003D5C';
     const accentColor    = p.accentColor || '#FF8C00';
-    // Loader colors
     const loaderBgColor   = p.loaderBgColor || secondaryColor;
     const loaderBgColor2  = p.loaderBgColor2 || primaryColor;
     const loaderTextColor = p.loaderTextColor || '#FFFFFF';
     const buttons = Array.isArray(p.buttons) ? p.buttons : [];
-    // Webhook n8n
+    
     const webhook          = p.webhook || {};
     const webhookUrl       = webhook.url;
     const webhookMethod    = (webhook.method || 'POST').toUpperCase();
@@ -48,37 +90,28 @@ export const UploadToN8nWithLoader = {
     const webhookRetries   = Number.isFinite(webhook.retries) ? webhook.retries : 1;
     const fileFieldName    = webhook.fileFieldName || 'files';
     const extra            = webhook.extra || {};
-    // Await / polling
+    
     const awaitResponse      = p.awaitResponse !== false;
     const polling            = p.polling || {};
     const pollingEnabled     = !!polling.enabled;
     const pollingIntervalMs  = Number.isFinite(polling.intervalMs) ? polling.intervalMs : 2000;
     const pollingMaxAttempts = Number.isFinite(polling.maxAttempts) ? polling.maxAttempts : 120;
     const pollingHeaders     = polling.headers || {};
-    // Paths
+    
     const pathSuccess = p.pathSuccess || 'Default';
     const pathError   = p.pathError || 'Fail';
-    // VF context (optionnel)
+    
     const vfContext = {
       conversation_id: p.conversation_id || null,
       user_id: p.user_id || null,
       locale: p.locale || null,
     };
-    // Loader config
+    
     const loaderCfg = p.loader || {};
     const loaderMode = (loaderCfg.mode || 'auto').toLowerCase();
+    const minLoadingTimeMs = Number(loaderCfg.minLoadingTimeMs) > 0 ? Number(loaderCfg.minLoadingTimeMs) : 0;
+    const autoCloseDelayMs = Number(loaderCfg.autoCloseDelayMs) > 0 ? Number(loaderCfg.autoCloseDelayMs) : 1500;
     
-    // Temps minimum de chargement (en millisecondes)
-    const minLoadingTimeMs = Number(loaderCfg.minLoadingTimeMs) > 0 
-      ? Number(loaderCfg.minLoadingTimeMs) 
-      : 0;
-    
-    // ✅ NOUVEAU : Délai avant fermeture auto du loader (en ms)
-    const autoCloseDelayMs = Number(loaderCfg.autoCloseDelayMs) > 0
-      ? Number(loaderCfg.autoCloseDelayMs)
-      : 1500; // 1.5 secondes par défaut
-    
-    // Steps "auto" fallback
     const defaultAutoSteps = [
       { progress: 0,  text: '📋 Préparation' },
       { progress: 30, text: '🚀 Envoi' },
@@ -86,10 +119,10 @@ export const UploadToN8nWithLoader = {
       { progress: 85, text: '✨ Finalisation' },
       { progress: 100,text: '✅ Terminé !' }
     ];
-    // Timed phases
+    
     const timedPhases = Array.isArray(loaderCfg.phases) ? loaderCfg.phases : [];
     const totalSeconds = Number(loaderCfg.totalSeconds) > 0 ? Number(loaderCfg.totalSeconds) : 120;
-    // External mapping
+    
     const stepMap = loaderCfg.stepMap || {
       upload:      { text: '📤 Téléversement',            progress: 10 },
       sign_url:    { text: '🔐 Signature URL sécurisée',  progress: 18 },
@@ -102,6 +135,7 @@ export const UploadToN8nWithLoader = {
       gdrive_copy: { text: '☁️ Copie dans Google Drive',  progress: 93 },
       gdoc_update: { text: '📄 Mise à jour du document',  progress: 97 }
     };
+    
     const doneText  = loaderCfg.finalText || 'Continuer';
     const doneIcon  = loaderCfg.finalButtonIcon || '✅';
     const loaderMsg = loaderCfg.message || '⏳ Traitement en cours...';
@@ -112,6 +146,10 @@ export const UploadToN8nWithLoader = {
         ⚠️ Erreur de configuration : <b>webhook.url</b> manquant.
       </div>`;
       element.appendChild(div);
+      
+      // Réactiver le chat en cas d'erreur
+      enableChatInput(chatRefs);
+      
       try {
         window?.voiceflow?.chat?.interact?.({
           type: 'complete',
@@ -121,7 +159,6 @@ export const UploadToN8nWithLoader = {
       return;
     }
     
-    // ✅ Vérifier si on doit afficher le header
     const hasTitle = title && title.trim() !== '';
     const hasSubtitle = subtitle && subtitle.trim() !== '';
     const showHeader = hasTitle || hasSubtitle;
@@ -133,8 +170,9 @@ export const UploadToN8nWithLoader = {
       @keyframes fadeIn{from{opacity:0}to{opacity:1}}
       @keyframes fadeOut{from{opacity:1}to{opacity:0}}
       .upload-modern-wrap{width:100%;max-width:100%;animation:slideUp .4s ease-out;position:relative}
-      .upload-modern-disabled-overlay{display:none;position:absolute;inset:0;background:rgba(255,255,255,.8);backdrop-filter:blur(3px);z-index:9999;border-radius:20px;cursor:not-allowed}
-      .upload-modern-disabled-overlay.active{display:block}
+      .upload-modern-disabled-overlay{display:none;position:absolute;inset:0;background:rgba(255,255,255,.95);backdrop-filter:blur(4px);z-index:9999;border-radius:20px;cursor:not-allowed}
+      .upload-modern-disabled-overlay.active{display:flex;align-items:center;justify-content:center}
+      .upload-modern-disabled-overlay.active::after{content:'🔒 Traitement en cours...';font-size:18px;font-weight:700;color:#64748b}
       .upload-modern-card{background:linear-gradient(145deg,#fff 0%,#f8fafc 100%);border-radius:20px;padding:24px;box-shadow:0 10px 40px rgba(0,0,0,.08),0 2px 8px rgba(0,0,0,.04);border:1px solid rgba(0,0,0,.06);position:relative;overflow:hidden}
       .upload-modern-header{text-align:center;margin-bottom:24px;position:relative;z-index:2}
       .upload-modern-title{font-size:22px;font-weight:800;background:linear-gradient(135deg, ${primaryColor}, ${secondaryColor});-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin:0 0 8px 0;letter-spacing:-.5px}
@@ -176,8 +214,6 @@ export const UploadToN8nWithLoader = {
       .upload-modern-loader-title{color:${loaderTextColor};font-weight:800;font-size:18px;letter-spacing:.5px;text-align:center}
       .upload-modern-loader-percentage{color:${loaderTextColor};font-weight:900;font-size:32px;text-align:center}
       .upload-modern-loader-step{color:${loaderTextColor}CC;font-size:14px;font-weight:500;text-align:center;min-height:20px}
-      .upload-modern-loader-done-btn{margin-top:12px;padding:14px 32px;background:${accentColor};color:#fff;border:none;border-radius:12px;font-weight:700;font-size:16px;cursor:pointer;box-shadow:0 8px 24px ${accentColor}60;transition:all .3s;display:flex;align-items:center;gap:10px}
-      .upload-modern-loader-done-btn:hover{transform:translateY(-2px);box-shadow:0 12px 32px ${accentColor}80}
     `;
     
     // ---------- UI ----------
@@ -187,16 +223,11 @@ export const UploadToN8nWithLoader = {
     styleTag.textContent = styles;
     root.appendChild(styleTag);
     
-    // ✅ Génération conditionnelle du header
     let headerHTML = '';
     if (showHeader) {
       headerHTML = `<div class="upload-modern-header">`;
-      if (hasTitle) {
-        headerHTML += `<div class="upload-modern-title">${title}</div>`;
-      }
-      if (hasSubtitle) {
-        headerHTML += `<div class="upload-modern-subtitle">${subtitle}</div>`;
-      }
+      if (hasTitle) headerHTML += `<div class="upload-modern-title">${title}</div>`;
+      if (hasSubtitle) headerHTML += `<div class="upload-modern-subtitle">${subtitle}</div>`;
       headerHTML += `</div>`;
     }
     
@@ -257,7 +288,6 @@ export const UploadToN8nWithLoader = {
     // ---------- STATE ----------
     let selectedFiles = [];
     let timedTimer = null;
-    let timedPlan = [];
     
     // ---------- Helpers ----------
     const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -333,6 +363,10 @@ export const UploadToN8nWithLoader = {
     });
     backButtons.forEach(b => b.addEventListener('click', ()=>{
       const path = b.getAttribute('data-path') || pathError;
+      
+      // Réactiver le chat avant de quitter
+      enableChatInput(chatRefs);
+      
       try {
         window?.voiceflow?.chat?.interact?.({ type:'complete', payload:{ webhookSuccess:false, path }});
       } catch {}
@@ -340,6 +374,12 @@ export const UploadToN8nWithLoader = {
     
     sendBtn.addEventListener('click', async ()=>{
       if (!selectedFiles.length) return;
+      
+      // ✅ PROTECTION 1 : Rendre toute l'extension incliquable
+      console.log('🔒 PROTECTION : Extension désactivée');
+      root.style.pointerEvents = 'none';
+      disabledOverlay.classList.add('active');
+      
       sendBtn.disabled = true;
       backButtons.forEach(b=>b.disabled=true);
       setStatus(`📤 Envoi de ${selectedFiles.length} fichier${selectedFiles.length>1?'s':''}...`,'processing');
@@ -400,11 +440,10 @@ export const UploadToN8nWithLoader = {
           await new Promise(resolve => setTimeout(resolve, remainingTime));
         }
         
-        // ✅ Désactiver l'overlay AVANT de finir
-        disabledOverlay.classList.remove('active');
-        console.log('🔓 Overlay désactivé, extension ne bloque plus les interactions');
-        
         loaderUI.finish(()=>{
+          // ✅ PROTECTION 2 : Réactiver le chat AVANT .interact()
+          enableChatInput(chatRefs);
+          
           try {
             window?.voiceflow?.chat?.interact?.({
               type:'complete',
@@ -422,10 +461,16 @@ export const UploadToN8nWithLoader = {
         setStatus(`❌ ${String(err?.message || err)}`,'error');
         sendBtn.disabled = false;
         backButtons.forEach(b=>b.disabled=false);
+        root.style.pointerEvents = 'auto';
+        disabledOverlay.classList.remove('active');
+        
+        // Réactiver le chat en cas d'erreur
+        enableChatInput(chatRefs);
+        
         try {
           window?.voiceflow?.chat?.interact?.({
             type:'complete',
-            payload:{ webhookSuccess:false, error:String(err?.message || err), path:pathError }
+            payload:{ webhookSuccess:false, error:String(err?.message || err), path: pathError }
           });
         } catch {}
       }
@@ -509,7 +554,6 @@ export const UploadToN8nWithLoader = {
           };
           requestAnimationFrame(step);
         },
-        // ✅ CORRECTION : Auto-fermeture du loader
         finish(onClick) {
           lockedByFinish = true;
           clearTimers();
@@ -517,45 +561,38 @@ export const UploadToN8nWithLoader = {
             this.showPhase('✅ Terminé !');
             console.log(`🎉 Upload terminé ! Fermeture auto dans ${autoCloseDelayMs}ms...`);
             
-            // ✅ AUTO-FERMETURE : Cacher le loader automatiquement après le délai
             setTimeout(() => {
-              console.log('🔄 Fermeture du loader et déclenchement du flow Voiceflow...');
+              console.log('🔄 Fermeture du loader...');
               loader.classList.add('closing');
               
-              // Attendre la fin de l'animation de fermeture
               setTimeout(() => {
                 loader.classList.remove('active', 'closing');
-                console.log('✅ Loader fermé, attente de 600ms avant .interact()...');
+                console.log('✅ Loader fermé, attente avant .interact()...');
                 
-                // ✅ DÉLAI SUPPLÉMENTAIRE : Laisser Voiceflow se préparer
                 setTimeout(() => {
-                  console.log('🚀 Déclenchement du flow Voiceflow maintenant...');
-                  // Déclencher la suite du flow Voiceflow APRÈS avoir caché le loader
+                  console.log('🚀 Déclenchement du flow Voiceflow...');
                   if (onClick) onClick();
                   
-                  // ✅ DESTRUCTION COMPLÈTE de l'extension après 1 seconde
+                  // ✅ PROTECTION 3 : Destruction TOTALE après succès
                   setTimeout(() => {
-                    console.log('🗑️ Suppression complète de l\'extension du DOM...');
+                    console.log('🗑️ DESTRUCTION complète de l\'extension...');
                     root.remove();
-                    console.log('✅ Extension supprimée, ne devrait plus bloquer aucune interaction');
+                    console.log('✅ Extension supprimée du DOM, plus aucune interaction possible');
                   }, 1000);
-                }, 600); // Délai pour que Voiceflow soit prêt
-              }, 400); // Durée de l'animation fadeOut
+                }, 600);
+              }, 400);
             }, autoCloseDelayMs);
           });
         }
       };
     }
+    
     function buildTimedPlan() {
       const haveSeconds = timedPhases.every(ph => Number(ph.seconds) > 0);
-      let total = haveSeconds
-        ? timedPhases.reduce((s,ph)=>s+Number(ph.seconds),0)
-        : totalSeconds;
+      let total = haveSeconds ? timedPhases.reduce((s,ph)=>s+Number(ph.seconds),0) : totalSeconds;
       const weightsSum = timedPhases.reduce((s,ph)=> s + (Number(ph.weight)||0), 0) || timedPhases.length;
       const alloc = timedPhases.map((ph,i)=>{
-        const sec = haveSeconds
-          ? Number(ph.seconds)
-          : (Number(ph.weight)||1) / weightsSum * total;
+        const sec = haveSeconds ? Number(ph.seconds) : (Number(ph.weight)||1) / weightsSum * total;
         return { key: ph.key, text: ph.label || stepMap[ph.key]?.text || `Étape ${i+1}`, seconds: sec };
       });
       const startP = 5, endP = 98;
@@ -565,19 +602,12 @@ export const UploadToN8nWithLoader = {
         const pStart = i === 0 ? startP : last;
         const pEnd   = i === alloc.length-1 ? endP : startP + (endP-startP) * ((acc + a.seconds*1000)/totalMs);
         acc += a.seconds*1000; last = pEnd;
-        return {
-          text: a.text,
-          durationMs: Math.max(500, a.seconds*1000),
-          progressStart: pStart,
-          progressEnd: pEnd
-        };
+        return { text: a.text, durationMs: Math.max(500, a.seconds*1000), progressStart: pStart, progressEnd: pEnd };
       });
       if (!plan.length) {
         return defaultAutoSteps.map((s, i, arr) => ({
-          text: s.text,
-          durationMs: i===0 ? 1000 : 1500,
-          progressStart: i ? arr[i-1].progress : 0,
-          progressEnd: s.progress
+          text: s.text, durationMs: i===0 ? 1000 : 1500,
+          progressStart: i ? arr[i-1].progress : 0, progressEnd: s.progress
         }));
       }
       return plan;
@@ -596,8 +626,8 @@ export const UploadToN8nWithLoader = {
             fd.append(k, typeof v === 'object' ? JSON.stringify(v) : String(v ?? ''));
           });
           if (vfContext.conversation_id) fd.append('conversation_id', vfContext.conversation_id);
-          if (vfContext.user_id)        fd.append('user_id', vfContext.user_id);
-          if (vfContext.locale)         fd.append('locale', vfContext.locale);
+          if (vfContext.user_id) fd.append('user_id', vfContext.user_id);
+          if (vfContext.locale) fd.append('locale', vfContext.locale);
           const finalHeaders = { ...headers };
           delete finalHeaders['Content-Type'];
           const resp = await fetch(url, { method, headers: finalHeaders, body: fd, signal: controller.signal });

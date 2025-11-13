@@ -597,4 +597,130 @@ export const UploadToN8nWithLoader = {
                 
                 // ✅ CORRECTION CRITIQUE : Retirer l'overlay AVANT de réactiver le chat
                 console.log('🔓 Retrait de l\'overlay pour permettre l\'interaction');
-                disabl
+                disabledOverlay.classList.remove('active');
+                root.style.pointerEvents = 'auto';
+                
+                setTimeout(() => {
+                  // ✅ ÉTAPE 1 : RÉACTIVER LE CHAT EN PREMIER
+                  console.log('✅ ÉTAPE 1/2 : Réactivation du chat');
+                  enableChatInput(chatRefsToReactivate);
+                  
+                  // ✅ ÉTAPE 2 : ATTENDRE UN PEU PUIS APPELER .interact()
+                  setTimeout(() => {
+                    console.log('✅ ÉTAPE 2/2 : Déclenchement du flow Voiceflow');
+                    
+                    try {
+                      window?.voiceflow?.chat?.interact?.({
+                        type: 'complete',
+                        payload: {
+                          webhookSuccess: true,
+                          webhookResponse: data,
+                          files: selectedFiles.map(f=>({name:f.name,size:f.size,type:f.type})),
+                          buttonPath: 'success' // ✅ Pour que le bloc JS s'exécute
+                        }
+                      });
+                      console.log('✅ .interact() appelé avec succès (avec buttonPath)');
+                    } catch(e) {
+                      console.error('❌ Erreur .interact():', e);
+                    }
+                    
+                    // ✅ NE PLUS détruire l'extension - Voiceflow le gère
+                    console.log('ℹ️ Extension conservée (Voiceflow gère le nettoyage)');
+                    
+                  }, 300); // Attendre 300ms après la réactivation du chat
+                  
+                }, 200); // Attendre 200ms après le retrait de l'overlay
+                
+              }, 400);
+            }, autoCloseDelayMs);
+          });
+        }
+      };
+    }
+    
+    function buildTimedPlan() {
+      const haveSeconds = timedPhases.every(ph => Number(ph.seconds) > 0);
+      let total = haveSeconds ? timedPhases.reduce((s,ph)=>s+Number(ph.seconds),0) : totalSeconds;
+      const weightsSum = timedPhases.reduce((s,ph)=> s + (Number(ph.weight)||0), 0) || timedPhases.length;
+      const alloc = timedPhases.map((ph,i)=>{
+        const sec = haveSeconds ? Number(ph.seconds) : (Number(ph.weight)||1) / weightsSum * total;
+        return { key: ph.key, text: ph.label || stepMap[ph.key]?.text || `Étape ${i+1}`, seconds: sec };
+      });
+      const startP = 5, endP = 98;
+      const totalMs = alloc.reduce((s,a)=> s + a.seconds*1000, 0);
+      let acc = 0, last = startP;
+      const plan = alloc.map((a,i)=>{
+        const pStart = i === 0 ? startP : last;
+        const pEnd   = i === alloc.length-1 ? endP : startP + (endP-startP) * ((acc + a.seconds*1000)/totalMs);
+        acc += a.seconds*1000; last = pEnd;
+        return { text: a.text, durationMs: Math.max(500, a.seconds*1000), progressStart: pStart, progressEnd: pEnd };
+      });
+      if (!plan.length) {
+        return defaultAutoSteps.map((s, i, arr) => ({
+          text: s.text, durationMs: i===0 ? 1000 : 1500,
+          progressStart: i ? arr[i-1].progress : 0, progressEnd: s.progress
+        }));
+      }
+      return plan;
+    }
+    
+    // ---------- Network ----------
+    async function postToN8n({ url, method, headers, timeoutMs, retries, files, fileFieldName, extra, vfContext }) {
+      let lastErr;
+      for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+          const controller = new AbortController();
+          const to = setTimeout(()=>controller.abort(), timeoutMs);
+          const fd = new FormData();
+          files.forEach(f=> fd.append(fileFieldName, f, f.name));
+          Object.entries(extra).forEach(([k,v])=>{
+            fd.append(k, typeof v === 'object' ? JSON.stringify(v) : String(v ?? ''));
+          });
+          if (vfContext.conversation_id) fd.append('conversation_id', vfContext.conversation_id);
+          if (vfContext.user_id) fd.append('user_id', vfContext.user_id);
+          if (vfContext.locale) fd.append('locale', vfContext.locale);
+          const finalHeaders = { ...headers };
+          delete finalHeaders['Content-Type'];
+          const resp = await fetch(url, { method, headers: finalHeaders, body: fd, signal: controller.signal });
+          clearTimeout(to);
+          if (!resp.ok) {
+            const text = await safeText(resp);
+            throw new Error(`Erreur ${resp.status} : ${text?.slice(0,200) || resp.statusText}`);
+          }
+          return { ok:true, data: await safeJson(resp) };
+        } catch (e) {
+          lastErr = e;
+          if (attempt < retries) await new Promise(r=>setTimeout(r, 900));
+        }
+      }
+      throw lastErr || new Error('Échec de l\'envoi');
+    }
+    
+    async function pollStatus({ statusUrl, headers, intervalMs, maxAttempts, onTick }) {
+      for (let i=1;i<=maxAttempts;i++) {
+        const r = await fetch(statusUrl, { headers });
+        if (!r.ok) throw new Error(`Polling ${r.status}`);
+        const j = await safeJson(r);
+        if (j?.status === 'error') throw new Error(j?.error || 'Erreur pipeline');
+        if (typeof onTick === 'function') {
+          try { onTick({ percent: j?.percent, phase: j?.phase, message: j?.message }); } catch {}
+        }
+        if (j?.status === 'done') return j?.data ?? j;
+        await new Promise(res=>setTimeout(res, intervalMs));
+      }
+      throw new Error('Polling timeout');
+    }
+    
+    async function safeJson(r){ try { return await r.json(); } catch { return null; } }
+    async function safeText(r){ try { return await r.text(); } catch { return null; } }
+    
+    // ✅ FONCTION DE NETTOYAGE (optionnelle - Voiceflow le gère normalement)
+    return () => {
+      console.log('🧹 Nettoyage de l\'extension demandé par Voiceflow');
+      clearTimers();
+      // Ne pas supprimer root - Voiceflow s'en charge
+    };
+  }
+};
+
+try { window.UploadToN8nWithLoader = UploadToN8nWithLoader; } catch {}

@@ -1,6 +1,6 @@
 // UploadToN8nWithLoader.js – v3.0 EMBEDDED-COMPATIBLE
 // © Corentin – Compatible mode embedded ET widget
-// ✅ CORRECTION : Détection automatique du conteneur chat
+// ✅ CORRECTION : Détection automatique du conteneur chat 
 
 export const UploadToN8nWithLoader = {
   name: 'UploadToN8nWithLoader',

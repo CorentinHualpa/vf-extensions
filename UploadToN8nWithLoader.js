@@ -1,7 +1,6 @@
-// UploadToN8nWithLoader.js – v3.0 EMBEDDED-COMPATIBLE
+// UploadToN8nWithLoader.js – v4.1 CLIENT-SIDE VALIDATION
 // © Corentin – Compatible mode embedded ET widget
-// ✅ CORRECTION : Détection automatique du conteneur chat 
-
+// ✅ Validation du nombre de fichiers AVANT envoi (selon variable obms)
 export const UploadToN8nWithLoader = {
   name: 'UploadToN8nWithLoader',
   type: 'response',
@@ -24,60 +23,35 @@ export const UploadToN8nWithLoader = {
       return;
     }
     
-    // ✅ FONCTION POUR TROUVER LE CONTENEUR CHAT (embedded OU widget)
+    // ✅ FONCTION POUR TROUVER LE CONTENEUR CHAT
     const findChatContainer = () => {
-      // Mode embedded
       let container = document.querySelector('#voiceflow-chat-container');
-      if (container?.shadowRoot) {
-        console.log('✅ Mode détecté : EMBEDDED (#voiceflow-chat-container)');
-        return container;
-      }
+      if (container?.shadowRoot) return container;
       
-      // Mode widget
       container = document.querySelector('#voiceflow-chat');
-      if (container?.shadowRoot) {
-        console.log('✅ Mode détecté : WIDGET (#voiceflow-chat)');
-        return container;
-      }
+      if (container?.shadowRoot) return container;
       
-      // Fallback : chercher n'importe quel élément avec shadowRoot contenant vfrc
       const allWithShadow = document.querySelectorAll('*');
       for (const el of allWithShadow) {
-        if (el.shadowRoot) {
-          const hasVfrc = el.shadowRoot.querySelector('[class*="vfrc"]');
-          if (hasVfrc) {
-            console.log('✅ Mode détecté : FALLBACK (shadowRoot trouvé)');
-            return el;
-          }
-        }
+        if (el.shadowRoot?.querySelector('[class*="vfrc"]')) return el;
       }
-      
-      console.error('❌ Aucun conteneur Voiceflow trouvé !');
       return null;
     };
     
     // ✅ FONCTION POUR DÉSACTIVER LE CHAT
     const disableChatInput = () => {
       const container = findChatContainer();
-      if (!container?.shadowRoot) {
-        console.warn('⚠️ Shadow root non trouvé pour désactiver le chat');
-        return null;
-      }
+      if (!container?.shadowRoot) return null;
       
       const shadowRoot = container.shadowRoot;
-      
-      // Chercher le textarea avec plusieurs sélecteurs
       const textarea = 
         shadowRoot.querySelector('textarea.vfrc-chat-input') ||
         shadowRoot.querySelector('textarea[id^="vf-chat-input"]') ||
-        shadowRoot.querySelector('textarea[placeholder*="Message"]') ||
         shadowRoot.querySelector('textarea');
       
-      // Chercher le bouton d'envoi
       const sendBtn = 
         shadowRoot.querySelector('#vfrc-send-message') ||
         shadowRoot.querySelector('button.vfrc-chat-input__send') ||
-        shadowRoot.querySelector('button[aria-label*="Send"]') ||
         shadowRoot.querySelector('button[type="submit"]');
       
       if (textarea) {
@@ -86,7 +60,6 @@ export const UploadToN8nWithLoader = {
         textarea.style.opacity = '0.5';
         textarea.style.cursor = 'not-allowed';
         textarea.placeholder = '📁 Veuillez d\'abord charger vos documents...';
-        console.log('🚫 Chat désactivé : upload requis');
         
         if (sendBtn) {
           sendBtn.disabled = true;
@@ -96,53 +69,35 @@ export const UploadToN8nWithLoader = {
         
         return { container, textarea, sendBtn, originalPlaceholder };
       }
-      
-      console.warn('⚠️ Textarea non trouvé dans le shadow DOM');
       return null;
     };
     
     // ✅ FONCTION POUR RÉACTIVER LE CHAT
     const enableChatInput = (chatRefs) => {
-      if (!chatRefs) {
-        console.warn('⚠️ Pas de références chat à réactiver');
-        return false;
-      }
+      if (!chatRefs?.container?.shadowRoot) return false;
       
-      const { container, textarea, sendBtn, originalPlaceholder } = chatRefs;
-      
-      if (!container?.shadowRoot) {
-        console.error('❌ Container ou shadowRoot disparu');
-        return false;
-      }
+      const { textarea, sendBtn, originalPlaceholder } = chatRefs;
       
       if (textarea) {
         textarea.disabled = false;
         textarea.style.opacity = '1';
         textarea.style.cursor = 'text';
         textarea.placeholder = originalPlaceholder || 'Message...';
-        console.log('✅ Textarea réactivé');
       }
       
       if (sendBtn) {
         sendBtn.disabled = false;
         sendBtn.style.opacity = '1';
         sendBtn.style.cursor = 'pointer';
-        console.log('✅ Bouton Send réactivé');
       }
       
-      // Forcer le focus sur le textarea pour réveiller le chat
       if (textarea) {
-        setTimeout(() => {
-          textarea.focus();
-          textarea.blur();
-          console.log('✅ Chat réactivé avec succès');
-        }, 100);
+        setTimeout(() => { textarea.focus(); textarea.blur(); }, 100);
       }
       
       return true;
     };
     
-    // Désactiver le chat immédiatement
     const chatRefs = disableChatInput();
     
     // ---------- CONFIG ----------
@@ -156,9 +111,6 @@ export const UploadToN8nWithLoader = {
     const primaryColor   = p.primaryColor || '#087095';
     const secondaryColor = p.secondaryColor || '#003D5C';
     const accentColor    = p.accentColor || '#FF8C00';
-    const loaderBgColor   = p.loaderBgColor || secondaryColor;
-    const loaderBgColor2  = p.loaderBgColor2 || primaryColor;
-    const loaderTextColor = p.loaderTextColor || '#FFFFFF';
     const buttons = Array.isArray(p.buttons) ? p.buttons : [];
     
     const webhook          = p.webhook || {};
@@ -169,6 +121,13 @@ export const UploadToN8nWithLoader = {
     const webhookRetries   = Number.isFinite(webhook.retries) ? webhook.retries : 1;
     const fileFieldName    = webhook.fileFieldName || 'files';
     const extra            = webhook.extra || {};
+    
+    // ✅ RÉCUPÉRER LA VARIABLE OBMS DEPUIS EXTRA
+    const obmsValue = (extra.obms || 'non').toLowerCase().trim();
+    const isOBMS = obmsValue === 'oui';
+    const requiredFiles = isOBMS ? 2 : 3;
+    
+    console.log(`📋 Configuration OBMS: "${obmsValue}" → ${requiredFiles} fichiers requis`);
     
     const awaitResponse      = p.awaitResponse !== false;
     const polling            = p.polling || {};
@@ -215,8 +174,6 @@ export const UploadToN8nWithLoader = {
       gdoc_update: { text: '📄 Mise à jour du document',  progress: 97 }
     };
     
-    const doneText  = loaderCfg.finalText || 'Continuer';
-    const doneIcon  = loaderCfg.finalButtonIcon || '✅';
     const loaderMsg = loaderCfg.message || '⏳ Traitement en cours...';
     
     if (!webhookUrl) {
@@ -225,16 +182,7 @@ export const UploadToN8nWithLoader = {
         ⚠️ Erreur de configuration : <b>webhook.url</b> manquant.
       </div>`;
       element.appendChild(div);
-      
-      // Réactiver le chat en cas d'erreur
       enableChatInput(chatRefs);
-      
-      try {
-        window?.voiceflow?.chat?.interact?.({
-          type: 'complete',
-          payload: { webhookSuccess: false, error: 'WEBHOOK_URL_MISSING', buttonPath: 'error' }
-        });
-      } catch {}
       return;
     }
     
@@ -248,6 +196,7 @@ export const UploadToN8nWithLoader = {
       @keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
       @keyframes fadeIn{from{opacity:0}to{opacity:1}}
       @keyframes fadeOut{from{opacity:1}to{opacity:0}}
+      @keyframes shake{0%,100%{transform:translateX(0)}10%,30%,50%,70%,90%{transform:translateX(-5px)}20%,40%,60%,80%{transform:translateX(5px)}}
       .upload-modern-wrap{width:100%;max-width:100%;animation:slideUp .4s ease-out;position:relative}
       .upload-modern-disabled-overlay{display:none;position:absolute;inset:0;background:rgba(255,255,255,.95);backdrop-filter:blur(4px);z-index:9999;border-radius:20px;cursor:not-allowed}
       .upload-modern-disabled-overlay.active{display:flex;align-items:center;justify-content:center}
@@ -286,6 +235,7 @@ export const UploadToN8nWithLoader = {
       .upload-modern-status.error{background:linear-gradient(135deg,#fee2e2,#fecaca);color:#991b1b;border:1px solid #fca5a5}
       .upload-modern-status.success{background:linear-gradient(135deg,#d1fae5,#a7f3d0);color:#065f46;border:1px solid #6ee7b7}
       .upload-modern-status.processing{background:linear-gradient(135deg, ${primaryColor}20, ${secondaryColor}20);color:${secondaryColor};border:1px solid ${primaryColor}60}
+      .upload-modern-status.warning{background:linear-gradient(135deg,#fef3c7,#fde68a);color:#92400e;border:1px solid #f59e0b}
       .upload-modern-loader{display:none;background:linear-gradient(145deg,#0a5d7a,#003a52);border-radius:20px;padding:40px;margin-top:16px;box-shadow:0 20px 60px rgba(0,0,0,.5),0 0 0 3px #FF8C00;animation:slideUp .4s ease-out;transition:opacity .4s ease-out}
       .upload-modern-loader.active{display:block}
       .upload-modern-loader.closing{animation:fadeOut .4s ease-out}
@@ -293,6 +243,16 @@ export const UploadToN8nWithLoader = {
       .upload-modern-loader-title{color:#FFFFFF;font-weight:800;font-size:22px;letter-spacing:.5px;text-align:center;text-shadow:0 3px 6px rgba(0,0,0,.5)}
       .upload-modern-loader-percentage{color:#FFFFFF;font-weight:900;font-size:56px;text-align:center;text-shadow:0 4px 12px rgba(0,0,0,.6);letter-spacing:3px;line-height:1}
       .upload-modern-loader-step{color:#FFFFFF;font-size:18px;font-weight:600;text-align:center;min-height:28px;text-shadow:0 2px 4px rgba(0,0,0,.4);background:rgba(255,255,255,.15);padding:12px 20px;border-radius:10px;backdrop-filter:blur(10px)}
+      .upload-validation-error{margin-top:16px;padding:24px;background:linear-gradient(135deg,#fef3c7,#fde68a);border:2px solid #f59e0b;border-radius:16px;text-align:center;animation:shake .5s ease-out}
+      .upload-validation-error-icon{font-size:40px;margin-bottom:12px}
+      .upload-validation-error-title{font-weight:700;color:#92400e;font-size:16px;margin-bottom:12px}
+      .upload-validation-error-message{color:#78350f;font-size:14px;white-space:pre-line;margin-bottom:20px;line-height:1.6;text-align:left;background:rgba(255,255,255,.5);padding:12px;border-radius:8px}
+      .upload-validation-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+      .upload-validation-btn{padding:12px 24px;border-radius:10px;border:none;font-weight:600;font-size:14px;cursor:pointer;transition:all .2s}
+      .upload-validation-btn:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.15)}
+      .upload-validation-btn-primary{background:linear-gradient(135deg,${primaryColor},${secondaryColor});color:white}
+      .upload-validation-btn-secondary{background:#e5e7eb;color:#374151}
+      .upload-required-info{margin-top:12px;padding:10px 14px;background:linear-gradient(135deg,#dbeafe,#bfdbfe);border-radius:8px;font-size:12px;color:#1e40af;text-align:center;border:1px solid #93c5fd}
     `;
     
     // ---------- UI ----------
@@ -310,6 +270,13 @@ export const UploadToN8nWithLoader = {
       headerHTML += `</div>`;
     }
     
+    // ✅ Message informatif sur le nombre de fichiers requis
+    const docsListOBMS = '• Lettre de mission / Descriptif du poste\n• CV du candidat';
+    const docsListFull = '• Lettre de mission / Descriptif du poste\n• CV du candidat\n• Profil AssessFirst du candidat';
+    const requiredDocsInfo = isOBMS 
+      ? `ℹ️ Mode OBMS : ${requiredFiles} documents requis`
+      : `ℹ️ ${requiredFiles} documents requis`;
+    
     root.innerHTML += `
       <div class="upload-modern-disabled-overlay"></div>
       <div class="upload-modern-card">
@@ -319,6 +286,7 @@ export const UploadToN8nWithLoader = {
           <div class="upload-modern-desc">${description}</div>
           <input type="file" accept="${accept}" multiple style="display:none" />
         </div>
+        <div class="upload-required-info">${requiredDocsInfo}</div>
         <div class="upload-modern-files-list"></div>
         <div class="upload-modern-files-count" style="display:none"></div>
         <div class="upload-modern-actions">
@@ -364,6 +332,7 @@ export const UploadToN8nWithLoader = {
     const loaderStep   = root.querySelector('.upload-modern-loader-step');
     const loaderCircle = root.querySelector('.loader-circle');
     const disabledOverlay = root.querySelector('.upload-modern-disabled-overlay');
+    const card         = root.querySelector('.upload-modern-card');
     
     // ---------- STATE ----------
     let selectedFiles = [];
@@ -381,18 +350,36 @@ export const UploadToN8nWithLoader = {
       statusDiv.className = `upload-modern-status ${type}`;
       statusDiv.style.display = 'block';
     }
+    function clearValidationError() {
+      const existingError = root.querySelector('.upload-validation-error');
+      if (existingError) existingError.remove();
+    }
     function updateFilesList() {
       filesList.innerHTML = '';
+      clearValidationError();
+      statusDiv.style.display = 'none';
+      
       if (!selectedFiles.length) {
         filesList.classList.remove('active');
         filesCount.style.display = 'none';
         sendBtn.disabled = true;
         return;
       }
+      
       filesList.classList.add('active');
       filesCount.style.display = 'block';
       const totalSize = selectedFiles.reduce((s,f)=>s+f.size,0);
-      filesCount.textContent = `${selectedFiles.length} fichier${selectedFiles.length>1?'s':''} sélectionné${selectedFiles.length>1?'s':''} (${formatSize(totalSize)})`;
+      
+      // ✅ Indicateur visuel du nombre de fichiers vs requis
+      const countColor = selectedFiles.length >= requiredFiles ? '#065f46' : '#92400e';
+      const countBg = selectedFiles.length >= requiredFiles 
+        ? 'linear-gradient(135deg, #d1fae5, #a7f3d0)' 
+        : `linear-gradient(135deg, ${accentColor}20, ${accentColor}30)`;
+      
+      filesCount.style.background = countBg;
+      filesCount.style.color = countColor;
+      filesCount.textContent = `${selectedFiles.length}/${requiredFiles} fichier${selectedFiles.length>1?'s':''} (${formatSize(totalSize)})`;
+      
       selectedFiles.forEach((file, i) => {
         const item = document.createElement('div');
         item.className = 'upload-modern-file-item';
@@ -405,6 +392,7 @@ export const UploadToN8nWithLoader = {
         `;
         filesList.appendChild(item);
       });
+      
       root.querySelectorAll('.upload-modern-file-item-remove').forEach(btn=>{
         btn.addEventListener('click',()=>{
           const i = parseInt(btn.getAttribute('data-index'));
@@ -412,9 +400,17 @@ export const UploadToN8nWithLoader = {
           updateFilesList();
         });
       });
-      sendBtn.disabled = false;
-      statusDiv.style.display = 'none';
+      
+      // ✅ Activer le bouton seulement si assez de fichiers
+      sendBtn.disabled = selectedFiles.length < requiredFiles;
+      
+      // Afficher un warning si pas assez de fichiers
+      if (selectedFiles.length > 0 && selectedFiles.length < requiredFiles) {
+        const missing = requiredFiles - selectedFiles.length;
+        setStatus(`⚠️ Il manque encore ${missing} fichier${missing > 1 ? 's' : ''}`, 'warning');
+      }
     }
+    
     function addFiles(newFiles) {
       const valid = [], errs=[];
       for (const file of newFiles) {
@@ -425,6 +421,54 @@ export const UploadToN8nWithLoader = {
       }
       if (valid.length) { selectedFiles.push(...valid); updateFilesList(); }
       if (errs.length) setStatus(`⚠️ ${errs.join(' • ')}`,'error');
+    }
+    
+    // ✅ VALIDATION CÔTÉ CLIENT AVANT ENVOI
+    function validateBeforeSend() {
+      if (selectedFiles.length < requiredFiles) {
+        const docsList = isOBMS ? docsListOBMS : docsListFull;
+        const missing = requiredFiles - selectedFiles.length;
+        
+        clearValidationError();
+        
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'upload-validation-error';
+        errorDiv.innerHTML = `
+          <div class="upload-validation-error-icon">⚠️</div>
+          <div class="upload-validation-error-title">Nombre de documents insuffisant</div>
+          <div class="upload-validation-error-message">Vous avez sélectionné <strong>${selectedFiles.length}</strong> fichier${selectedFiles.length > 1 ? 's' : ''}, mais <strong>${requiredFiles}</strong> sont requis${isOBMS ? ' (mode OBMS)' : ''}.
+
+Documents attendus :
+${docsList}
+
+Il manque <strong>${missing}</strong> fichier${missing > 1 ? 's' : ''}.</div>
+          <div class="upload-validation-actions">
+            <button class="upload-validation-btn upload-validation-btn-secondary" data-action="back">← Retour</button>
+            <button class="upload-validation-btn upload-validation-btn-primary" data-action="add">📁 Ajouter des fichiers</button>
+          </div>
+        `;
+        
+        card.appendChild(errorDiv);
+        
+        // Event listeners
+        errorDiv.querySelector('[data-action="back"]').addEventListener('click', () => {
+          enableChatInput(chatRefs);
+          try {
+            window?.voiceflow?.chat?.interact?.({
+              type: 'complete',
+              payload: { webhookSuccess: false, buttonPath: 'back' }
+            });
+          } catch (e) {}
+        });
+        
+        errorDiv.querySelector('[data-action="add"]').addEventListener('click', () => {
+          clearValidationError();
+          fileInput.click();
+        });
+        
+        return false;
+      }
+      return true;
     }
     
     // ---------- Events ----------
@@ -444,18 +488,11 @@ export const UploadToN8nWithLoader = {
     
     backButtons.forEach(b => b.addEventListener('click', ()=>{
       const path = b.getAttribute('data-path') || pathError;
-      
-      // Réactiver le chat avant de quitter
-      const reactivated = enableChatInput(chatRefs);
-      console.log(reactivated ? '✅ Chat réactivé avant retour' : '⚠️ Échec réactivation avant retour');
-      
+      enableChatInput(chatRefs);
       try {
         window?.voiceflow?.chat?.interact?.({ 
           type:'complete', 
-          payload:{ 
-            webhookSuccess:false, 
-            buttonPath: path
-          }
+          payload:{ webhookSuccess:false, buttonPath: path }
         });
       } catch {}
     }));
@@ -463,9 +500,17 @@ export const UploadToN8nWithLoader = {
     sendBtn.addEventListener('click', async ()=>{
       if (!selectedFiles.length) return;
       
-      console.log('🔒 PROTECTION : Extension désactivée');
+      // ✅ VALIDATION CÔTÉ CLIENT
+      if (!validateBeforeSend()) {
+        console.log('❌ Validation échouée : pas assez de fichiers');
+        return;
+      }
+      
+      console.log(`✅ Validation OK : ${selectedFiles.length}/${requiredFiles} fichiers`);
+      
       root.style.pointerEvents = 'none';
       disabledOverlay.classList.add('active');
+      clearValidationError();
       
       sendBtn.disabled = true;
       backButtons.forEach(b=>b.disabled=true);
@@ -537,18 +582,12 @@ export const UploadToN8nWithLoader = {
         root.style.pointerEvents = 'auto';
         disabledOverlay.classList.remove('active');
         
-        // Réactiver le chat en cas d'erreur
-        const reactivated = enableChatInput(chatRefs);
-        console.log(reactivated ? '✅ Chat réactivé après erreur' : '⚠️ Échec réactivation après erreur');
+        enableChatInput(chatRefs);
         
         try {
           window?.voiceflow?.chat?.interact?.({
             type: 'complete',
-            payload: { 
-              webhookSuccess: false, 
-              error: String(err?.message || err),
-              buttonPath: 'error'
-            }
+            payload: { webhookSuccess: false, error: String(err?.message || err), buttonPath: 'error' }
           });
         } catch {}
       }
@@ -558,8 +597,6 @@ export const UploadToN8nWithLoader = {
     function showLoader(message) {
       loaderTitle.textContent = message;
       loader.classList.add('active');
-      
-      console.log('👁️ Affichage du loader (overlay retiré temporairement)');
       disabledOverlay.classList.remove('active');
       
       let current = 0;
@@ -583,9 +620,7 @@ export const UploadToN8nWithLoader = {
             if (i >= steps.length || lockedByFinish) return;
             const s = steps[i];
             if (s.text) this.showPhase(s.text);
-            this.animateTo(s.progress, 1800, ()=> {
-              i++; walk();
-            });
+            this.animateTo(s.progress, 1800, ()=> { i++; walk(); });
           };
           walk();
         },
@@ -614,22 +649,9 @@ export const UploadToN8nWithLoader = {
           startNext();
         },
         
-        showPhase(text) {
-          if (text) loaderStep.textContent = text;
-        },
-        
-        setPercent(p) {
-          if (lockedByFinish) return;
-          current = clamp(p, 0, 100);
-          paint();
-        },
-        
-        softPercent(p) {
-          if (lockedByFinish) return;
-          const target = clamp(p, 0, 100);
-          current = current + (target - current) * 0.5;
-          paint();
-        },
+        showPhase(text) { if (text) loaderStep.textContent = text; },
+        setPercent(p) { if (!lockedByFinish) { current = clamp(p, 0, 100); paint(); } },
+        softPercent(p) { if (!lockedByFinish) { current = current + (clamp(p, 0, 100) - current) * 0.5; paint(); } },
         
         animateTo(target, ms=1200, cb) {
           const start = current;
@@ -651,40 +673,19 @@ export const UploadToN8nWithLoader = {
           
           this.animateTo(100, 500, ()=>{
             this.showPhase('✅ Terminé !');
-            console.log(`🎉 Upload terminé ! Fermeture auto dans ${autoCloseDelayMs}ms...`);
             
             setTimeout(() => {
-              console.log('🔄 Fermeture du loader...');
               loader.classList.add('closing');
               
               setTimeout(() => {
                 loader.classList.remove('active', 'closing');
-                console.log('✅ Loader fermé');
-                
-                console.log('🔓 Retrait de l\'overlay pour permettre l\'interaction');
                 disabledOverlay.classList.remove('active');
                 root.style.pointerEvents = 'auto';
                 
                 setTimeout(() => {
-                  console.log('✅ ÉTAPE 1/2 : Réactivation du chat');
-                  const reactivated = enableChatInput(chatRefsToReactivate);
-                  
-                  if (!reactivated) {
-                    console.error('❌ ÉCHEC : Impossible de réactiver le chat !');
-                    console.log('🔍 Tentative de réactivation forcée...');
-                    
-                    // Tentative de réactivation forcée
-                    const forcedRefs = disableChatInput();
-                    if (forcedRefs) {
-                      setTimeout(() => {
-                        enableChatInput(forcedRefs);
-                      }, 100);
-                    }
-                  }
+                  enableChatInput(chatRefsToReactivate);
                   
                   setTimeout(() => {
-                    console.log('✅ ÉTAPE 2/2 : Déclenchement du flow Voiceflow');
-                    
                     try {
                       window?.voiceflow?.chat?.interact?.({
                         type: 'complete',
@@ -695,17 +696,11 @@ export const UploadToN8nWithLoader = {
                           buttonPath: 'success'
                         }
                       });
-                      console.log('✅ .interact() appelé avec succès (avec buttonPath)');
                     } catch(e) {
                       console.error('❌ Erreur .interact():', e);
                     }
-                    
-                    console.log('ℹ️ Extension conservée (Voiceflow gère le nettoyage)');
-                    
                   }, 300);
-                  
                 }, 200);
-                
               }, 400);
             }, autoCloseDelayMs);
           });
@@ -790,8 +785,7 @@ export const UploadToN8nWithLoader = {
     async function safeText(r){ try { return await r.text(); } catch { return null; } }
     
     return () => {
-      console.log('🧹 Nettoyage de l\'extension demandé par Voiceflow');
-      clearTimers();
+      if (timedTimer) { clearInterval(timedTimer); timedTimer = null; }
     };
   }
 };

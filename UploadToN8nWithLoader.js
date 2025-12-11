@@ -1,6 +1,11 @@
-// UploadToN8nWithLoader.js – v4.1 CLIENT-SIDE VALIDATION
+// UploadToN8nWithLoader.js – v4.2 RÉTROCOMPATIBLE
 // © Corentin – Compatible mode embedded ET widget
-// ✅ Validation du nombre de fichiers AVANT envoi (selon variable obms)
+// ✅ Support minFiles (nouveau) + logique OBMS (rétrocompatibilité)
+// 
+// RÉTROCOMPATIBILITÉ :
+// - Si minFiles est défini dans le payload → mode simple (utilise minFiles)
+// - Si minFiles n'est PAS défini → logique OBMS existante (2 ou 3 fichiers selon obms)
+//
 export const UploadToN8nWithLoader = {
   name: 'UploadToN8nWithLoader',
   type: 'response',
@@ -122,12 +127,25 @@ export const UploadToN8nWithLoader = {
     const fileFieldName    = webhook.fileFieldName || 'files';
     const extra            = webhook.extra || {};
     
-    // ✅ RÉCUPÉRER LA VARIABLE OBMS DEPUIS EXTRA
-    const obmsValue = (extra.obms || 'non').toLowerCase().trim();
-    const isOBMS = obmsValue === 'oui';
-    const requiredFiles = isOBMS ? 2 : 3;
+    // ═══════════════════════════════════════════════════════════════
+    // ✅ LOGIQUE RÉTROCOMPATIBLE : minFiles vs OBMS
+    // ═══════════════════════════════════════════════════════════════
+    let requiredFiles;
+    let isSimpleMode = false;
+    let isOBMS = false;
     
-    console.log(`📋 Configuration OBMS: "${obmsValue}" → ${requiredFiles} fichiers requis`);
+    if (p.minFiles !== undefined && p.minFiles !== null) {
+      // ✅ MODE SIMPLE : minFiles est défini dans le payload
+      requiredFiles = Math.max(1, Math.min(Number(p.minFiles) || 1, maxFiles));
+      isSimpleMode = true;
+      console.log(`📋 Mode SIMPLE: ${requiredFiles} fichier(s) minimum requis`);
+    } else {
+      // ✅ MODE OBMS : logique existante (rétrocompatibilité)
+      const obmsValue = (extra.obms || 'non').toLowerCase().trim();
+      isOBMS = obmsValue === 'oui';
+      requiredFiles = isOBMS ? 2 : 3;
+      console.log(`📋 Mode OBMS: "${obmsValue}" → ${requiredFiles} fichiers requis`);
+    }
     
     const awaitResponse      = p.awaitResponse !== false;
     const polling            = p.polling || {};
@@ -189,6 +207,28 @@ export const UploadToN8nWithLoader = {
     const hasTitle = title && title.trim() !== '';
     const hasSubtitle = subtitle && subtitle.trim() !== '';
     const showHeader = hasTitle || hasSubtitle;
+    
+    // ═══════════════════════════════════════════════════════════════
+    // ✅ MESSAGE INFORMATIF ADAPTÉ AU MODE
+    // ═══════════════════════════════════════════════════════════════
+    let requiredDocsInfo;
+    let docsListOBMS, docsListFull;
+    
+    if (isSimpleMode) {
+      // Mode simple : message générique
+      if (requiredFiles === 1) {
+        requiredDocsInfo = `ℹ️ 1 à ${maxFiles} fichiers acceptés`;
+      } else {
+        requiredDocsInfo = `ℹ️ ${requiredFiles} à ${maxFiles} fichiers acceptés`;
+      }
+    } else {
+      // Mode OBMS : messages spécifiques existants
+      docsListOBMS = '• Lettre de mission / Descriptif du poste\n• CV du candidat';
+      docsListFull = '• Lettre de mission / Descriptif du poste\n• CV du candidat\n• Profil AssessFirst du candidat';
+      requiredDocsInfo = isOBMS 
+        ? `ℹ️ Mode OBMS : ${requiredFiles} documents requis`
+        : `ℹ️ ${requiredFiles} documents requis`;
+    }
     
     // ---------- STYLES ----------
     const styles = `
@@ -270,13 +310,6 @@ export const UploadToN8nWithLoader = {
       headerHTML += `</div>`;
     }
     
-    // ✅ Message informatif sur le nombre de fichiers requis
-    const docsListOBMS = '• Lettre de mission / Descriptif du poste\n• CV du candidat';
-    const docsListFull = '• Lettre de mission / Descriptif du poste\n• CV du candidat\n• Profil AssessFirst du candidat';
-    const requiredDocsInfo = isOBMS 
-      ? `ℹ️ Mode OBMS : ${requiredFiles} documents requis`
-      : `ℹ️ ${requiredFiles} documents requis`;
-    
     root.innerHTML += `
       <div class="upload-modern-disabled-overlay"></div>
       <div class="upload-modern-card">
@@ -354,6 +387,7 @@ export const UploadToN8nWithLoader = {
       const existingError = root.querySelector('.upload-validation-error');
       if (existingError) existingError.remove();
     }
+    
     function updateFilesList() {
       filesList.innerHTML = '';
       clearValidationError();
@@ -370,15 +404,25 @@ export const UploadToN8nWithLoader = {
       filesCount.style.display = 'block';
       const totalSize = selectedFiles.reduce((s,f)=>s+f.size,0);
       
-      // ✅ Indicateur visuel du nombre de fichiers vs requis
-      const countColor = selectedFiles.length >= requiredFiles ? '#065f46' : '#92400e';
-      const countBg = selectedFiles.length >= requiredFiles 
+      // ═══════════════════════════════════════════════════════════════
+      // ✅ INDICATEUR VISUEL ADAPTÉ AU MODE
+      // ═══════════════════════════════════════════════════════════════
+      const hasEnoughFiles = selectedFiles.length >= requiredFiles;
+      const countColor = hasEnoughFiles ? '#065f46' : '#92400e';
+      const countBg = hasEnoughFiles 
         ? 'linear-gradient(135deg, #d1fae5, #a7f3d0)' 
         : `linear-gradient(135deg, ${accentColor}20, ${accentColor}30)`;
       
       filesCount.style.background = countBg;
       filesCount.style.color = countColor;
-      filesCount.textContent = `${selectedFiles.length}/${requiredFiles} fichier${selectedFiles.length>1?'s':''} (${formatSize(totalSize)})`;
+      
+      if (isSimpleMode) {
+        // Mode simple : affichage sans "requis"
+        filesCount.textContent = `${selectedFiles.length} fichier${selectedFiles.length>1?'s':''} (${formatSize(totalSize)})`;
+      } else {
+        // Mode OBMS : affichage avec compteur requis
+        filesCount.textContent = `${selectedFiles.length}/${requiredFiles} fichier${selectedFiles.length>1?'s':''} (${formatSize(totalSize)})`;
+      }
       
       selectedFiles.forEach((file, i) => {
         const item = document.createElement('div');
@@ -401,14 +445,18 @@ export const UploadToN8nWithLoader = {
         });
       });
       
-      // ✅ Activer le bouton seulement si assez de fichiers
+      // ✅ Activer le bouton si assez de fichiers
       sendBtn.disabled = selectedFiles.length < requiredFiles;
       
-      // Afficher un warning si pas assez de fichiers
-      if (selectedFiles.length > 0 && selectedFiles.length < requiredFiles) {
+      // ═══════════════════════════════════════════════════════════════
+      // ✅ WARNING ADAPTÉ AU MODE (seulement si pas assez de fichiers)
+      // ═══════════════════════════════════════════════════════════════
+      if (selectedFiles.length > 0 && selectedFiles.length < requiredFiles && !isSimpleMode) {
+        // Mode OBMS : afficher le warning
         const missing = requiredFiles - selectedFiles.length;
         setStatus(`⚠️ Il manque encore ${missing} fichier${missing > 1 ? 's' : ''}`, 'warning');
       }
+      // En mode simple, pas de warning car 1 fichier suffit
     }
     
     function addFiles(newFiles) {
@@ -423,8 +471,16 @@ export const UploadToN8nWithLoader = {
       if (errs.length) setStatus(`⚠️ ${errs.join(' • ')}`,'error');
     }
     
-    // ✅ VALIDATION CÔTÉ CLIENT AVANT ENVOI
+    // ═══════════════════════════════════════════════════════════════
+    // ✅ VALIDATION AVANT ENVOI (MODE OBMS UNIQUEMENT)
+    // ═══════════════════════════════════════════════════════════════
     function validateBeforeSend() {
+      // En mode simple, pas de validation stricte
+      if (isSimpleMode) {
+        return selectedFiles.length >= requiredFiles;
+      }
+      
+      // Mode OBMS : validation avec popup d'erreur
       if (selectedFiles.length < requiredFiles) {
         const docsList = isOBMS ? docsListOBMS : docsListFull;
         const missing = requiredFiles - selectedFiles.length;
@@ -500,13 +556,13 @@ Il manque <strong>${missing}</strong> fichier${missing > 1 ? 's' : ''}.</div>
     sendBtn.addEventListener('click', async ()=>{
       if (!selectedFiles.length) return;
       
-      // ✅ VALIDATION CÔTÉ CLIENT
+      // ✅ VALIDATION (stricte en mode OBMS, simple en mode minFiles)
       if (!validateBeforeSend()) {
         console.log('❌ Validation échouée : pas assez de fichiers');
         return;
       }
       
-      console.log(`✅ Validation OK : ${selectedFiles.length}/${requiredFiles} fichiers`);
+      console.log(`✅ Envoi de ${selectedFiles.length} fichier(s)`);
       
       root.style.pointerEvents = 'none';
       disabledOverlay.classList.add('active');

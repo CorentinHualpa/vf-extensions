@@ -11,13 +11,29 @@
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 
+// ═══════════════════════════════════════════════════════════
+// LOG DE CHARGEMENT
+// ═══════════════════════════════════════════════════════════
+console.log('🟢 [InfortiveExecutiveSummary] Extension CHARGÉE - v2.1 - ' + new Date().toISOString());
+
 export const InfortiveExecutiveSummary = {
   name: 'InfortiveExecutiveSummary',
   type: 'response',
   
-  match: ({ trace }) => trace.type === 'infortive_summary' || trace.payload?.type === 'infortive_summary',
+  match: ({ trace }) => {
+    const isMatch = trace.type === 'infortive_summary' || trace.payload?.type === 'infortive_summary';
+    console.log('🔍 [InfortiveExecutiveSummary] match() appelé:', {
+      traceType: trace.type,
+      payloadType: trace.payload?.type,
+      isMatch: isMatch
+    });
+    return isMatch;
+  },
 
   render: ({ trace, element }) => {
+    console.log('🎨 [InfortiveExecutiveSummary] render() appelé');
+    console.log('📦 [InfortiveExecutiveSummary] Payload reçu:', trace.payload);
+    
     try {
       // ═══════════════════════════════════════════════════════════
       // CONFIGURATION INFORTIVE
@@ -121,10 +137,19 @@ export const InfortiveExecutiveSummary = {
         config = { ...defaultConfig, ...trace.payload };
       }
 
+      console.log('⚙️ [InfortiveExecutiveSummary] Config parsée:', {
+        missionName: config.missionName,
+        missionTitle: config.missionTitle,
+        contentLength: config.content?.length || 0,
+        formats: config.formats
+      });
+
       if (!config.content || config.content.trim() === '') {
-        console.warn('InfortiveExecutiveSummary: Aucun contenu fourni');
+        console.warn('⚠️ [InfortiveExecutiveSummary] Aucun contenu fourni');
         return;
       }
+      
+      console.log('✅ [InfortiveExecutiveSummary] Contenu valide, création des boutons...');
 
       const container = document.createElement('div');
       container.className = 'infortive-actions-container';
@@ -276,6 +301,7 @@ export const InfortiveExecutiveSummary = {
       // GÉNÉRATION HTML - VERSION CORRIGÉE
       // ═══════════════════════════════════════════════════════════
       const generateHTML = () => {
+        console.log('📄 [InfortiveExecutiveSummary] generateHTML() appelé');
         const date = new Date();
         const dateStr = date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
         
@@ -505,6 +531,7 @@ export const InfortiveExecutiveSummary = {
       // GÉNÉRATION WORD - VERSION CORRIGÉE
       // ═══════════════════════════════════════════════════════════
       const generateDOCX = async () => {
+        console.log('📝 [InfortiveExecutiveSummary] generateDOCX() appelé');
         const date = new Date();
         const dateStr = date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
         
@@ -686,6 +713,7 @@ export const InfortiveExecutiveSummary = {
       // GÉNÉRATION PDF (inchangé - fonctionne bien)
       // ═══════════════════════════════════════════════════════════
       const generatePDF = async () => {
+        console.log('📕 [InfortiveExecutiveSummary] generatePDF() appelé');
         if (!window.jspdf) {
           const script = document.createElement('script');
           script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';

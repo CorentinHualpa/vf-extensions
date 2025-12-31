@@ -1,5 +1,5 @@
-// UploadToN8nWithLoader.js – v5.0 CLEAN DESIGN
-// © Corentin – Version épurée style Infortive
+// UploadToN8nWithLoader.js – v5.1 SOFT MINIMAL
+// © Corentin – Version douce et moderne
 // Compatible mode embedded ET widget
 //
 export const UploadToN8nWithLoader = {
@@ -24,14 +24,11 @@ export const UploadToN8nWithLoader = {
       return;
     }
     
-    // ✅ FONCTION POUR TROUVER LE CONTENEUR CHAT
     const findChatContainer = () => {
       let container = document.querySelector('#voiceflow-chat-container');
       if (container?.shadowRoot) return container;
-      
       container = document.querySelector('#voiceflow-chat');
       if (container?.shadowRoot) return container;
-      
       const allWithShadow = document.querySelectorAll('*');
       for (const el of allWithShadow) {
         if (el.shadowRoot?.querySelector('[class*="vfrc"]')) return el;
@@ -39,63 +36,51 @@ export const UploadToN8nWithLoader = {
       return null;
     };
     
-    // ✅ FONCTION POUR DÉSACTIVER LE CHAT
     const disableChatInput = () => {
       const container = findChatContainer();
       if (!container?.shadowRoot) return null;
-      
       const shadowRoot = container.shadowRoot;
       const textarea = 
         shadowRoot.querySelector('textarea.vfrc-chat-input') ||
         shadowRoot.querySelector('textarea[id^="vf-chat-input"]') ||
         shadowRoot.querySelector('textarea');
-      
       const sendBtn = 
         shadowRoot.querySelector('#vfrc-send-message') ||
         shadowRoot.querySelector('button.vfrc-chat-input__send') ||
         shadowRoot.querySelector('button[type="submit"]');
-      
       if (textarea) {
         const originalPlaceholder = textarea.placeholder;
         textarea.disabled = true;
         textarea.style.opacity = '0.5';
         textarea.style.cursor = 'not-allowed';
         textarea.placeholder = 'Veuillez d\'abord charger vos documents...';
-        
         if (sendBtn) {
           sendBtn.disabled = true;
           sendBtn.style.opacity = '0.5';
           sendBtn.style.cursor = 'not-allowed';
         }
-        
         return { container, textarea, sendBtn, originalPlaceholder };
       }
       return null;
     };
     
-    // ✅ FONCTION POUR RÉACTIVER LE CHAT
     const enableChatInput = (chatRefs) => {
       if (!chatRefs?.container?.shadowRoot) return false;
-      
       const { textarea, sendBtn, originalPlaceholder } = chatRefs;
-      
       if (textarea) {
         textarea.disabled = false;
         textarea.style.opacity = '1';
         textarea.style.cursor = 'text';
         textarea.placeholder = originalPlaceholder || 'Message...';
       }
-      
       if (sendBtn) {
         sendBtn.disabled = false;
         sendBtn.style.opacity = '1';
         sendBtn.style.cursor = 'pointer';
       }
-      
       if (textarea) {
         setTimeout(() => { textarea.focus(); textarea.blur(); }, 100);
       }
-      
       return true;
     };
     
@@ -105,27 +90,31 @@ export const UploadToN8nWithLoader = {
     const p = trace?.payload || {};
     const title         = p.title || '';
     const subtitle      = p.subtitle || '';
-    const description   = p.description || 'Glissez-déposez vos fichiers ici ou cliquez pour sélectionner';
+    const description   = p.description || 'Déposez vos fichiers ici';
     const accept        = p.accept || '.pdf,.docx';
     const maxFileSizeMB = p.maxFileSizeMB || 25;
     const maxFiles      = p.maxFiles || 10;
     
     // ═══════════════════════════════════════════════════════════════
-    // 🎨 PALETTE INFORTIVE - FOND BLANC
+    // 🎨 PALETTE SOFT MINIMAL
     // ═══════════════════════════════════════════════════════════════
     const colors = {
-      primary: '#1E2A4A',      // Bleu marine Infortive
-      accent: '#C4954A',       // Or/bronze
-      accentHover: '#B8860B',  // Or plus foncé au hover
-      text: '#1E2A4A',         // Texte principal
-      textMuted: '#6B7280',    // Texte secondaire
-      border: '#E5E7EB',       // Bordures
-      borderHover: '#D1D5DB',  // Bordures hover
-      bgSubtle: '#F9FAFB',     // Fond très léger
-      white: '#FFFFFF',
-      success: '#059669',      // Vert succès
-      error: '#DC2626',        // Rouge erreur
-      warning: '#D97706',      // Orange warning
+      primary: '#6366F1',      // Indigo doux
+      primaryLight: '#EEF2FF', // Indigo très clair
+      primaryMuted: '#A5B4FC', // Indigo pastel
+      text: '#111827',         // Quasi noir
+      textSecondary: '#6B7280',// Gris moyen
+      textTertiary: '#9CA3AF', // Gris clair
+      bg: '#FFFFFF',
+      bgSoft: '#F9FAFB',
+      bgHover: '#F3F4F6',
+      border: '#E5E7EB',
+      success: '#10B981',
+      successLight: '#D1FAE5',
+      error: '#EF4444',
+      errorLight: '#FEE2E2',
+      warning: '#F59E0B',
+      warningLight: '#FEF3C7',
     };
     
     const buttons = Array.isArray(p.buttons) ? p.buttons : [];
@@ -139,7 +128,6 @@ export const UploadToN8nWithLoader = {
     const fileFieldName    = webhook.fileFieldName || 'files';
     const extra            = webhook.extra || {};
     
-    // Logique minFiles
     let requiredFiles;
     let isSimpleMode = false;
     let isOBMS = false;
@@ -175,11 +163,11 @@ export const UploadToN8nWithLoader = {
     const autoCloseDelayMs = Number(loaderCfg.autoCloseDelayMs) > 0 ? Number(loaderCfg.autoCloseDelayMs) : 1500;
     
     const defaultAutoSteps = [
-      { progress: 0,  text: 'Préparation' },
-      { progress: 30, text: 'Envoi en cours' },
-      { progress: 60, text: 'Traitement' },
+      { progress: 0,  text: 'Préparation des fichiers' },
+      { progress: 30, text: 'Transfert en cours' },
+      { progress: 60, text: 'Analyse des documents' },
       { progress: 85, text: 'Finalisation' },
-      { progress: 100,text: 'Terminé' }
+      { progress: 100, text: 'Terminé' }
     ];
     
     const timedPhases = Array.isArray(loaderCfg.phases) ? loaderCfg.phases : [];
@@ -198,11 +186,11 @@ export const UploadToN8nWithLoader = {
       gdoc_update: { text: 'Mise à jour du document',  progress: 97 }
     };
     
-    const loaderMsg = loaderCfg.message || 'Traitement en cours...';
+    const loaderMsg = loaderCfg.message || 'Traitement en cours';
     
     if (!webhookUrl) {
       const div = document.createElement('div');
-      div.innerHTML = `<div style="padding:16px;border-radius:8px;background:${colors.bgSubtle};border:1px solid ${colors.error};color:${colors.error};font-weight:500;font-size:14px">
+      div.innerHTML = `<div style="padding:16px;border-radius:16px;background:${colors.errorLight};color:${colors.error};font-weight:500;font-size:14px">
         Erreur de configuration : webhook.url manquant.
       </div>`;
       element.appendChild(div);
@@ -214,433 +202,485 @@ export const UploadToN8nWithLoader = {
     const hasSubtitle = subtitle && subtitle.trim() !== '';
     const showHeader = hasTitle || hasSubtitle;
     
-    // Message informatif
     let requiredDocsInfo;
     let docsListOBMS, docsListFull;
     
     if (isSimpleMode) {
-      if (requiredFiles === 1) {
-        requiredDocsInfo = `1 à ${maxFiles} fichiers acceptés`;
-      } else {
-        requiredDocsInfo = `${requiredFiles} à ${maxFiles} fichiers acceptés`;
-      }
+      requiredDocsInfo = requiredFiles === 1 
+        ? `1 à ${maxFiles} fichiers` 
+        : `${requiredFiles} à ${maxFiles} fichiers`;
     } else {
       docsListOBMS = '• Lettre de mission / Descriptif du poste\n• CV du candidat';
       docsListFull = '• Lettre de mission / Descriptif du poste\n• CV du candidat\n• Profil AssessFirst du candidat';
-      requiredDocsInfo = isOBMS 
-        ? `Mode OBMS : ${requiredFiles} documents requis`
-        : `${requiredFiles} documents requis`;
+      requiredDocsInfo = `${requiredFiles} documents requis`;
     }
     
-    // ---------- STYLES ÉPURÉS ----------
+    // ---------- STYLES SOFT MINIMAL ----------
     const styles = `
-      @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(8px); }
+      @keyframes softFadeIn {
+        from { opacity: 0; transform: translateY(12px); }
         to { opacity: 1; transform: translateY(0); }
       }
-      @keyframes fadeOut {
+      @keyframes softFadeOut {
         from { opacity: 1; }
         to { opacity: 0; }
       }
-      @keyframes spin {
-        to { transform: rotate(360deg); }
+      @keyframes progressPulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
       }
       
-      .upload-wrap {
+      .upl-wrap {
         width: 100%;
         max-width: 100%;
-        animation: fadeIn 0.3s ease-out;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        animation: softFadeIn 0.4s ease-out;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       }
       
-      .upload-card {
-        background: ${colors.white};
-        border-radius: 12px;
-        padding: 24px;
-        border: 1px solid ${colors.border};
+      .upl-card {
+        background: ${colors.bg};
+        border-radius: 20px;
+        padding: 28px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
       }
       
-      .upload-header {
-        text-align: center;
-        margin-bottom: 20px;
+      .upl-header {
+        margin-bottom: 24px;
       }
       
-      .upload-title {
-        font-size: 18px;
+      .upl-title {
+        font-size: 20px;
         font-weight: 600;
-        color: ${colors.primary};
-        margin: 0 0 4px 0;
-        letter-spacing: -0.3px;
+        color: ${colors.text};
+        margin: 0 0 6px 0;
+        letter-spacing: -0.4px;
       }
       
-      .upload-subtitle {
-        font-size: 13px;
-        color: ${colors.textMuted};
+      .upl-subtitle {
+        font-size: 14px;
+        color: ${colors.textSecondary};
         font-weight: 400;
+        line-height: 1.4;
       }
       
-      .upload-zone {
+      .upl-dropzone {
+        background: ${colors.bgSoft};
         border: 2px dashed ${colors.border};
-        border-radius: 8px;
-        padding: 32px 24px;
+        border-radius: 16px;
+        padding: 40px 24px;
         text-align: center;
         cursor: pointer;
-        transition: all 0.2s ease;
-        background: ${colors.white};
+        transition: all 0.25s ease;
       }
       
-      .upload-zone:hover {
-        border-color: ${colors.accent};
-        background: ${colors.bgSubtle};
+      .upl-dropzone:hover {
+        background: ${colors.primaryLight};
+        border-color: ${colors.primaryMuted};
       }
       
-      .upload-zone.dragging {
-        border-color: ${colors.accent};
-        background: rgba(196, 149, 74, 0.05);
+      .upl-dropzone.dragging {
+        background: ${colors.primaryLight};
+        border-color: ${colors.primary};
+        border-style: solid;
       }
       
-      .upload-zone-icon {
-        width: 48px;
-        height: 48px;
-        margin: 0 auto 12px;
-        color: ${colors.textMuted};
+      .upl-dropzone-icon {
+        width: 56px;
+        height: 56px;
+        margin: 0 auto 16px;
+        background: ${colors.bg};
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        transition: all 0.25s ease;
       }
       
-      .upload-zone:hover .upload-zone-icon {
-        color: ${colors.accent};
+      .upl-dropzone:hover .upl-dropzone-icon {
+        background: ${colors.primary};
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
       }
       
-      .upload-zone-text {
-        font-size: 14px;
-        color: ${colors.textMuted};
+      .upl-dropzone-icon svg {
+        width: 24px;
+        height: 24px;
+        color: ${colors.primary};
+        transition: color 0.25s ease;
+      }
+      
+      .upl-dropzone:hover .upl-dropzone-icon svg {
+        color: white;
+      }
+      
+      .upl-dropzone-text {
+        font-size: 15px;
+        color: ${colors.textSecondary};
         font-weight: 500;
+        margin-bottom: 6px;
       }
       
-      .upload-info {
-        margin-top: 12px;
-        padding: 8px 12px;
-        background: ${colors.bgSubtle};
-        border-radius: 6px;
-        font-size: 12px;
-        color: ${colors.textMuted};
-        text-align: center;
+      .upl-dropzone-hint {
+        font-size: 13px;
+        color: ${colors.textTertiary};
       }
       
-      .upload-files-list {
-        margin-top: 16px;
+      .upl-files {
+        margin-top: 20px;
         display: none;
         flex-direction: column;
-        gap: 8px;
-      }
-      
-      .upload-files-list.active {
-        display: flex;
-      }
-      
-      .upload-file-item {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 12px 14px;
-        background: ${colors.bgSubtle};
-        border-radius: 8px;
-        border: 1px solid ${colors.border};
-        animation: fadeIn 0.2s ease-out;
-      }
-      
-      .upload-file-info {
-        display: flex;
-        align-items: center;
         gap: 10px;
-        min-width: 0;
-        flex: 1;
       }
       
-      .upload-file-icon {
-        width: 20px;
-        height: 20px;
-        color: ${colors.accent};
+      .upl-files.active {
+        display: flex;
+      }
+      
+      .upl-file {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 16px;
+        background: ${colors.bg};
+        border-radius: 12px;
+        border: 1px solid ${colors.border};
+        animation: softFadeIn 0.25s ease-out;
+      }
+      
+      .upl-file-icon {
+        width: 40px;
+        height: 40px;
+        background: ${colors.primaryLight};
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         flex-shrink: 0;
       }
       
-      .upload-file-details {
+      .upl-file-icon svg {
+        width: 20px;
+        height: 20px;
+        color: ${colors.primary};
+      }
+      
+      .upl-file-info {
+        flex: 1;
         min-width: 0;
       }
       
-      .upload-file-name {
+      .upl-file-name {
         font-weight: 500;
         color: ${colors.text};
-        font-size: 13px;
+        font-size: 14px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
       }
       
-      .upload-file-size {
-        font-size: 11px;
-        color: ${colors.textMuted};
+      .upl-file-size {
+        font-size: 12px;
+        color: ${colors.textTertiary};
         margin-top: 2px;
       }
       
-      .upload-file-remove {
-        flex-shrink: 0;
-        width: 28px;
-        height: 28px;
-        border-radius: 6px;
+      .upl-file-remove {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
         border: none;
         background: transparent;
-        color: ${colors.textMuted};
+        color: ${colors.textTertiary};
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: all 0.15s ease;
+        transition: all 0.2s ease;
+        flex-shrink: 0;
       }
       
-      .upload-file-remove:hover {
-        background: rgba(220, 38, 38, 0.1);
+      .upl-file-remove:hover {
+        background: ${colors.errorLight};
         color: ${colors.error};
       }
       
-      .upload-count {
-        margin-top: 12px;
-        padding: 8px 12px;
-        background: ${colors.bgSubtle};
-        border-radius: 6px;
-        text-align: center;
-        font-size: 12px;
-        font-weight: 500;
-        color: ${colors.textMuted};
+      .upl-summary {
+        margin-top: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 10px 16px;
+        background: ${colors.bgSoft};
+        border-radius: 10px;
+        font-size: 13px;
+        color: ${colors.textSecondary};
         display: none;
       }
       
-      .upload-count.ready {
-        background: rgba(5, 150, 105, 0.08);
+      .upl-summary.active {
+        display: flex;
+      }
+      
+      .upl-summary.ready {
+        background: ${colors.successLight};
         color: ${colors.success};
       }
       
-      .upload-actions {
+      .upl-summary-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+      
+      .upl-actions {
         display: flex;
-        gap: 10px;
-        margin-top: 16px;
+        gap: 12px;
+        margin-top: 20px;
       }
       
-      .upload-btn {
+      .upl-btn {
         flex: 1;
-        padding: 12px 20px;
-        border-radius: 8px;
+        padding: 14px 24px;
+        border-radius: 12px;
         border: none;
-        font-weight: 500;
-        font-size: 14px;
+        font-weight: 600;
+        font-size: 15px;
         cursor: pointer;
-        transition: all 0.15s ease;
+        transition: all 0.2s ease;
       }
       
-      .upload-btn-primary {
-        background: ${colors.accent};
-        color: ${colors.white};
+      .upl-btn-primary {
+        background: ${colors.primary};
+        color: white;
       }
       
-      .upload-btn-primary:hover:not(:disabled) {
-        background: ${colors.accentHover};
+      .upl-btn-primary:hover:not(:disabled) {
+        background: #4F46E5;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
       }
       
-      .upload-btn-primary:disabled {
-        opacity: 0.5;
+      .upl-btn-primary:disabled {
+        background: ${colors.primaryMuted};
         cursor: not-allowed;
       }
       
-      .upload-btn-secondary {
-        background: ${colors.bgSubtle};
+      .upl-btn-secondary {
+        background: ${colors.bgSoft};
+        color: ${colors.textSecondary};
+      }
+      
+      .upl-btn-secondary:hover:not(:disabled) {
+        background: ${colors.bgHover};
         color: ${colors.text};
-        border: 1px solid ${colors.border};
       }
       
-      .upload-btn-secondary:hover:not(:disabled) {
-        background: ${colors.border};
-      }
-      
-      .upload-status {
-        margin-top: 12px;
-        padding: 10px 14px;
-        border-radius: 6px;
-        font-size: 13px;
+      .upl-status {
+        margin-top: 16px;
+        padding: 12px 16px;
+        border-radius: 12px;
+        font-size: 14px;
         font-weight: 500;
         text-align: center;
         display: none;
-        animation: fadeIn 0.2s ease-out;
+        animation: softFadeIn 0.25s ease-out;
       }
       
-      .upload-status.error {
-        background: rgba(220, 38, 38, 0.08);
+      .upl-status.error {
+        background: ${colors.errorLight};
         color: ${colors.error};
       }
       
-      .upload-status.success {
-        background: rgba(5, 150, 105, 0.08);
+      .upl-status.success {
+        background: ${colors.successLight};
         color: ${colors.success};
       }
       
-      .upload-status.processing {
-        background: rgba(196, 149, 74, 0.08);
-        color: ${colors.accent};
+      .upl-status.processing {
+        background: ${colors.primaryLight};
+        color: ${colors.primary};
       }
       
-      .upload-status.warning {
-        background: rgba(217, 119, 6, 0.08);
+      .upl-status.warning {
+        background: ${colors.warningLight};
         color: ${colors.warning};
       }
       
-      /* LOADER */
-      .upload-loader {
+      /* LOADER - BARRE HORIZONTALE */
+      .upl-loader {
         display: none;
-        background: ${colors.white};
-        border-radius: 12px;
+        background: ${colors.bg};
+        border-radius: 20px;
         padding: 32px;
         margin-top: 16px;
-        border: 1px solid ${colors.border};
-        animation: fadeIn 0.3s ease-out;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
+        animation: softFadeIn 0.4s ease-out;
       }
       
-      .upload-loader.active {
+      .upl-loader.active {
         display: block;
       }
       
-      .upload-loader.closing {
-        animation: fadeOut 0.3s ease-out;
+      .upl-loader.closing {
+        animation: softFadeOut 0.3s ease-out forwards;
       }
       
-      .upload-loader-content {
+      .upl-loader-content {
         display: flex;
         flex-direction: column;
+        gap: 24px;
+      }
+      
+      .upl-loader-header {
+        display: flex;
         align-items: center;
-        gap: 20px;
+        justify-content: space-between;
       }
       
-      .upload-loader-title {
-        color: ${colors.text};
-        font-weight: 600;
+      .upl-loader-title {
         font-size: 16px;
-        text-align: center;
+        font-weight: 600;
+        color: ${colors.text};
       }
       
-      .upload-loader-ring {
-        position: relative;
-        width: 120px;
-        height: 120px;
-      }
-      
-      .upload-loader-ring svg {
-        transform: rotate(-90deg);
-      }
-      
-      .upload-loader-ring-bg {
-        fill: none;
-        stroke: ${colors.border};
-        stroke-width: 8;
-      }
-      
-      .upload-loader-ring-progress {
-        fill: none;
-        stroke: ${colors.accent};
-        stroke-width: 8;
-        stroke-linecap: round;
-        stroke-dasharray: 339.292;
-        stroke-dashoffset: 339.292;
-        transition: stroke-dashoffset 0.3s ease;
-      }
-      
-      .upload-loader-percent {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
+      .upl-loader-percent {
         font-size: 24px;
         font-weight: 700;
         color: ${colors.primary};
       }
       
-      .upload-loader-step {
+      .upl-loader-bar-container {
+        height: 8px;
+        background: ${colors.bgSoft};
+        border-radius: 4px;
+        overflow: hidden;
+      }
+      
+      .upl-loader-bar {
+        height: 100%;
+        background: ${colors.primary};
+        border-radius: 4px;
+        width: 0%;
+        transition: width 0.3s ease;
+      }
+      
+      .upl-loader-bar.animating {
+        animation: progressPulse 1.5s ease-in-out infinite;
+      }
+      
+      .upl-loader-step {
         font-size: 14px;
-        color: ${colors.textMuted};
+        color: ${colors.textSecondary};
         text-align: center;
         min-height: 20px;
       }
       
-      /* VALIDATION ERROR */
-      .upload-validation-error {
-        margin-top: 16px;
-        padding: 20px;
-        background: rgba(217, 119, 6, 0.08);
-        border: 1px solid rgba(217, 119, 6, 0.2);
-        border-radius: 8px;
-        text-align: center;
-        animation: fadeIn 0.2s ease-out;
+      .upl-loader-steps {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 8px;
       }
       
-      .upload-validation-title {
+      .upl-loader-step-dot {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+      }
+      
+      .upl-loader-step-circle {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: ${colors.border};
+        transition: all 0.3s ease;
+      }
+      
+      .upl-loader-step-circle.active {
+        background: ${colors.primary};
+        box-shadow: 0 0 0 4px ${colors.primaryLight};
+      }
+      
+      .upl-loader-step-circle.done {
+        background: ${colors.success};
+      }
+      
+      /* VALIDATION ERROR */
+      .upl-validation {
+        margin-top: 20px;
+        padding: 24px;
+        background: ${colors.warningLight};
+        border-radius: 16px;
+        animation: softFadeIn 0.25s ease-out;
+      }
+      
+      .upl-validation-title {
         font-weight: 600;
         color: ${colors.warning};
-        font-size: 14px;
-        margin-bottom: 8px;
-      }
-      
-      .upload-validation-message {
-        color: ${colors.text};
-        font-size: 13px;
-        white-space: pre-line;
-        margin-bottom: 16px;
-        line-height: 1.5;
-        text-align: left;
-      }
-      
-      .upload-validation-actions {
+        font-size: 15px;
+        margin-bottom: 12px;
         display: flex;
-        gap: 10px;
-        justify-content: center;
+        align-items: center;
+        gap: 8px;
       }
       
-      .upload-disabled-overlay {
+      .upl-validation-message {
+        color: ${colors.text};
+        font-size: 14px;
+        white-space: pre-line;
+        margin-bottom: 20px;
+        line-height: 1.6;
+      }
+      
+      .upl-validation-actions {
+        display: flex;
+        gap: 12px;
+      }
+      
+      .upl-overlay {
         display: none;
         position: absolute;
         inset: 0;
-        background: rgba(255, 255, 255, 0.9);
+        background: rgba(255, 255, 255, 0.95);
         z-index: 100;
-        border-radius: 12px;
+        border-radius: 20px;
         align-items: center;
         justify-content: center;
+        backdrop-filter: blur(4px);
       }
       
-      .upload-disabled-overlay.active {
+      .upl-overlay.active {
         display: flex;
-      }
-      
-      .upload-disabled-overlay::after {
-        content: 'Traitement en cours...';
-        font-size: 14px;
-        font-weight: 500;
-        color: ${colors.textMuted};
       }
     `;
     
     // ---------- ICÔNES SVG ----------
     const icons = {
-      upload: `<svg class="upload-zone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <path d="M12 16V4m0 0L8 8m4-4l4 4" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M3 17v3a2 2 0 002 2h14a2 2 0 002-2v-3" stroke-linecap="round" stroke-linejoin="round"/>
+      upload: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
       </svg>`,
-      file: `<svg class="upload-file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke-linecap="round" stroke-linejoin="round"/>
+      file: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
       </svg>`,
-      remove: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"/>
+      close: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"/>
+        <line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>`,
+      warning: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+        <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
       </svg>`
     };
     
     // ---------- UI ----------
     const root = document.createElement('div');
-    root.className = 'upload-wrap';
+    root.className = 'upl-wrap';
     root.style.position = 'relative';
     
     const styleTag = document.createElement('style');
@@ -649,65 +689,68 @@ export const UploadToN8nWithLoader = {
     
     let headerHTML = '';
     if (showHeader) {
-      headerHTML = `<div class="upload-header">`;
-      if (hasTitle) headerHTML += `<div class="upload-title">${title}</div>`;
-      if (hasSubtitle) headerHTML += `<div class="upload-subtitle">${subtitle}</div>`;
+      headerHTML = `<div class="upl-header">`;
+      if (hasTitle) headerHTML += `<div class="upl-title">${title}</div>`;
+      if (hasSubtitle) headerHTML += `<div class="upl-subtitle">${subtitle}</div>`;
       headerHTML += `</div>`;
     }
     
     root.innerHTML += `
-      <div class="upload-disabled-overlay"></div>
-      <div class="upload-card">
+      <div class="upl-overlay"></div>
+      <div class="upl-card">
         ${headerHTML}
-        <div class="upload-zone">
-          ${icons.upload}
-          <div class="upload-zone-text">${description}</div>
+        <div class="upl-dropzone">
+          <div class="upl-dropzone-icon">${icons.upload}</div>
+          <div class="upl-dropzone-text">${description}</div>
+          <div class="upl-dropzone-hint">${requiredDocsInfo}</div>
           <input type="file" accept="${accept}" multiple style="display:none" />
         </div>
-        <div class="upload-info">${requiredDocsInfo}</div>
-        <div class="upload-files-list"></div>
-        <div class="upload-count"></div>
-        <div class="upload-actions">
+        <div class="upl-files"></div>
+        <div class="upl-summary">
+          <span class="upl-summary-dot"></span>
+          <span class="upl-summary-text"></span>
+        </div>
+        <div class="upl-actions">
           ${buttons.map(b => `
-            <button class="upload-btn upload-btn-secondary back-button" data-path="${b.path || pathError}">
+            <button class="upl-btn upl-btn-secondary back-button" data-path="${b.path || pathError}">
               ${b.text || 'Retour'}
             </button>
           `).join('')}
-          <button class="upload-btn upload-btn-primary send-button" disabled>Envoyer</button>
+          <button class="upl-btn upl-btn-primary send-button" disabled>Envoyer</button>
         </div>
-        <div class="upload-status"></div>
+        <div class="upl-status"></div>
       </div>
-      <div class="upload-loader">
-        <div class="upload-loader-content">
-          <div class="upload-loader-title"></div>
-          <div class="upload-loader-ring">
-            <svg width="120" height="120" viewBox="0 0 120 120">
-              <circle class="upload-loader-ring-bg" cx="60" cy="60" r="54"/>
-              <circle class="upload-loader-ring-progress" cx="60" cy="60" r="54"/>
-            </svg>
-            <div class="upload-loader-percent">0%</div>
+      <div class="upl-loader">
+        <div class="upl-loader-content">
+          <div class="upl-loader-header">
+            <div class="upl-loader-title"></div>
+            <div class="upl-loader-percent">0%</div>
           </div>
-          <div class="upload-loader-step"></div>
+          <div class="upl-loader-bar-container">
+            <div class="upl-loader-bar"></div>
+          </div>
+          <div class="upl-loader-step"></div>
         </div>
       </div>
     `;
     element.appendChild(root);
     
     // ---------- DOM refs ----------
-    const uploadZone   = root.querySelector('.upload-zone');
+    const dropzone     = root.querySelector('.upl-dropzone');
     const fileInput    = root.querySelector('input[type="file"]');
-    const filesList    = root.querySelector('.upload-files-list');
-    const filesCount   = root.querySelector('.upload-count');
+    const filesList    = root.querySelector('.upl-files');
+    const summary      = root.querySelector('.upl-summary');
+    const summaryText  = root.querySelector('.upl-summary-text');
     const sendBtn      = root.querySelector('.send-button');
     const backButtons  = root.querySelectorAll('.back-button');
-    const statusDiv    = root.querySelector('.upload-status');
-    const loader       = root.querySelector('.upload-loader');
-    const loaderTitle  = root.querySelector('.upload-loader-title');
-    const loaderPct    = root.querySelector('.upload-loader-percent');
-    const loaderStep   = root.querySelector('.upload-loader-step');
-    const loaderCircle = root.querySelector('.upload-loader-ring-progress');
-    const disabledOverlay = root.querySelector('.upload-disabled-overlay');
-    const card         = root.querySelector('.upload-card');
+    const statusDiv    = root.querySelector('.upl-status');
+    const loader       = root.querySelector('.upl-loader');
+    const loaderTitle  = root.querySelector('.upl-loader-title');
+    const loaderPct    = root.querySelector('.upl-loader-percent');
+    const loaderStep   = root.querySelector('.upl-loader-step');
+    const loaderBar    = root.querySelector('.upl-loader-bar');
+    const overlay      = root.querySelector('.upl-overlay');
+    const card         = root.querySelector('.upl-card');
     
     // ---------- STATE ----------
     let selectedFiles = [];
@@ -715,23 +758,22 @@ export const UploadToN8nWithLoader = {
     
     // ---------- Helpers ----------
     const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-    const circumference = 2 * Math.PI * 54; // 339.292
     
     function formatSize(bytes) {
-      if (bytes < 1024) return bytes + ' B';
-      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+      if (bytes < 1024) return bytes + ' o';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' Ko';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' Mo';
     }
     
     function setStatus(message, type = 'processing') {
       statusDiv.textContent = message;
-      statusDiv.className = `upload-status ${type}`;
+      statusDiv.className = `upl-status ${type}`;
       statusDiv.style.display = 'block';
     }
     
     function clearValidationError() {
-      const existingError = root.querySelector('.upload-validation-error');
-      if (existingError) existingError.remove();
+      const existing = root.querySelector('.upl-validation');
+      if (existing) existing.remove();
     }
     
     function updateFilesList() {
@@ -741,42 +783,35 @@ export const UploadToN8nWithLoader = {
       
       if (!selectedFiles.length) {
         filesList.classList.remove('active');
-        filesCount.style.display = 'none';
+        summary.classList.remove('active', 'ready');
         sendBtn.disabled = true;
         return;
       }
       
       filesList.classList.add('active');
-      filesCount.style.display = 'block';
+      summary.classList.add('active');
+      
       const totalSize = selectedFiles.reduce((s, f) => s + f.size, 0);
+      const hasEnough = selectedFiles.length >= requiredFiles;
       
-      const hasEnoughFiles = selectedFiles.length >= requiredFiles;
-      
-      filesCount.classList.toggle('ready', hasEnoughFiles);
-      
-      if (isSimpleMode) {
-        filesCount.textContent = `${selectedFiles.length} fichier${selectedFiles.length > 1 ? 's' : ''} sélectionné${selectedFiles.length > 1 ? 's' : ''} (${formatSize(totalSize)})`;
-      } else {
-        filesCount.textContent = `${selectedFiles.length}/${requiredFiles} fichier${selectedFiles.length > 1 ? 's' : ''} (${formatSize(totalSize)})`;
-      }
+      summary.classList.toggle('ready', hasEnough);
+      summaryText.textContent = `${selectedFiles.length} fichier${selectedFiles.length > 1 ? 's' : ''} • ${formatSize(totalSize)}`;
       
       selectedFiles.forEach((file, i) => {
         const item = document.createElement('div');
-        item.className = 'upload-file-item';
+        item.className = 'upl-file';
         item.innerHTML = `
-          <div class="upload-file-info">
-            ${icons.file}
-            <div class="upload-file-details">
-              <div class="upload-file-name">${file.name}</div>
-              <div class="upload-file-size">${formatSize(file.size)}</div>
-            </div>
+          <div class="upl-file-icon">${icons.file}</div>
+          <div class="upl-file-info">
+            <div class="upl-file-name">${file.name}</div>
+            <div class="upl-file-size">${formatSize(file.size)}</div>
           </div>
-          <button class="upload-file-remove" data-index="${i}">${icons.remove}</button>
+          <button class="upl-file-remove" data-index="${i}">${icons.close}</button>
         `;
         filesList.appendChild(item);
       });
       
-      root.querySelectorAll('.upload-file-remove').forEach(btn => {
+      root.querySelectorAll('.upl-file-remove').forEach(btn => {
         btn.addEventListener('click', () => {
           const i = parseInt(btn.getAttribute('data-index'));
           selectedFiles.splice(i, 1);
@@ -784,11 +819,11 @@ export const UploadToN8nWithLoader = {
         });
       });
       
-      sendBtn.disabled = selectedFiles.length < requiredFiles;
+      sendBtn.disabled = !hasEnough;
       
-      if (selectedFiles.length > 0 && selectedFiles.length < requiredFiles && !isSimpleMode) {
+      if (selectedFiles.length > 0 && !hasEnough && !isSimpleMode) {
         const missing = requiredFiles - selectedFiles.length;
-        setStatus(`Il manque encore ${missing} fichier${missing > 1 ? 's' : ''}`, 'warning');
+        setStatus(`Encore ${missing} fichier${missing > 1 ? 's' : ''} requis`, 'warning');
       }
     }
     
@@ -796,15 +831,15 @@ export const UploadToN8nWithLoader = {
       const valid = [], errs = [];
       for (const file of newFiles) {
         if (selectedFiles.length + valid.length >= maxFiles) {
-          errs.push(`Limite de ${maxFiles} fichiers atteinte`);
+          errs.push(`Maximum ${maxFiles} fichiers`);
           break;
         }
         if (maxFileSizeMB && file.size > maxFileSizeMB * 1024 * 1024) {
-          errs.push(`${file.name} : trop volumineux`);
+          errs.push(`${file.name} trop volumineux`);
           continue;
         }
         if (selectedFiles.some(f => f.name === file.name && f.size === file.size)) {
-          errs.push(`${file.name} : déjà ajouté`);
+          errs.push(`${file.name} déjà ajouté`);
           continue;
         }
         valid.push(file);
@@ -817,9 +852,7 @@ export const UploadToN8nWithLoader = {
     }
     
     function validateBeforeSend() {
-      if (isSimpleMode) {
-        return selectedFiles.length >= requiredFiles;
-      }
+      if (isSimpleMode) return selectedFiles.length >= requiredFiles;
       
       if (selectedFiles.length < requiredFiles) {
         const docsList = isOBMS ? docsListOBMS : docsListFull;
@@ -828,18 +861,16 @@ export const UploadToN8nWithLoader = {
         clearValidationError();
         
         const errorDiv = document.createElement('div');
-        errorDiv.className = 'upload-validation-error';
+        errorDiv.className = 'upl-validation';
         errorDiv.innerHTML = `
-          <div class="upload-validation-title">Documents insuffisants</div>
-          <div class="upload-validation-message">Vous avez sélectionné ${selectedFiles.length} fichier${selectedFiles.length > 1 ? 's' : ''}, mais ${requiredFiles} sont requis.
+          <div class="upl-validation-title">${icons.warning} Documents manquants</div>
+          <div class="upl-validation-message">${selectedFiles.length}/${requiredFiles} fichiers sélectionnés.
 
 Documents attendus :
-${docsList}
-
-Il manque ${missing} fichier${missing > 1 ? 's' : ''}.</div>
-          <div class="upload-validation-actions">
-            <button class="upload-btn upload-btn-secondary" data-action="back">Retour</button>
-            <button class="upload-btn upload-btn-primary" data-action="add">Ajouter des fichiers</button>
+${docsList}</div>
+          <div class="upl-validation-actions">
+            <button class="upl-btn upl-btn-secondary" data-action="back">Retour</button>
+            <button class="upl-btn upl-btn-primary" data-action="add">Ajouter des fichiers</button>
           </div>
         `;
         
@@ -852,7 +883,7 @@ Il manque ${missing} fichier${missing > 1 ? 's' : ''}.</div>
               type: 'complete',
               payload: { webhookSuccess: false, buttonPath: 'back' }
             });
-          } catch (e) {}
+          } catch {}
         });
         
         errorDiv.querySelector('[data-action="add"]').addEventListener('click', () => {
@@ -866,15 +897,15 @@ Il manque ${missing} fichier${missing > 1 ? 's' : ''}.</div>
     }
     
     // ---------- Events ----------
-    uploadZone.addEventListener('click', () => fileInput.click());
-    uploadZone.addEventListener('dragover', e => {
+    dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('dragover', e => {
       e.preventDefault();
-      uploadZone.classList.add('dragging');
+      dropzone.classList.add('dragging');
     });
-    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragging'));
-    uploadZone.addEventListener('drop', e => {
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragging'));
+    dropzone.addEventListener('drop', e => {
       e.preventDefault();
-      uploadZone.classList.remove('dragging');
+      dropzone.classList.remove('dragging');
       const files = Array.from(e.dataTransfer?.files || []);
       if (files.length) addFiles(files);
     });
@@ -896,14 +927,10 @@ Il manque ${missing} fichier${missing > 1 ? 's' : ''}.</div>
     }));
     
     sendBtn.addEventListener('click', async () => {
-      if (!selectedFiles.length) return;
-      
-      if (!validateBeforeSend()) {
-        return;
-      }
+      if (!selectedFiles.length || !validateBeforeSend()) return;
       
       root.style.pointerEvents = 'none';
-      disabledOverlay.classList.add('active');
+      overlay.classList.add('active');
       clearValidationError();
       
       sendBtn.disabled = true;
@@ -911,8 +938,8 @@ Il manque ${missing} fichier${missing > 1 ? 's' : ''}.</div>
       setStatus(`Envoi de ${selectedFiles.length} fichier${selectedFiles.length > 1 ? 's' : ''}...`, 'processing');
       
       const startTime = Date.now();
-      
       const loaderUI = showLoader(loaderMsg);
+      
       if (loaderMode === 'auto') {
         loaderUI.startAuto(defaultAutoSteps);
       } else if (loaderMode === 'timed') {
@@ -963,25 +990,25 @@ Il manque ${missing} fichier${missing > 1 ? 's' : ''}.</div>
           }
         }
         
-        const elapsedTime = Date.now() - startTime;
-        const remainingTime = minLoadingTimeMs - elapsedTime;
+        const elapsed = Date.now() - startTime;
+        const remaining = minLoadingTimeMs - elapsed;
         
-        if (remainingTime > 0) {
+        if (remaining > 0) {
           loaderUI.showPhase('Finalisation...');
-          loaderUI.animateTo(98, Math.min(remainingTime, 1500));
-          await new Promise(resolve => setTimeout(resolve, remainingTime));
+          loaderUI.animateTo(98, Math.min(remaining, 1500));
+          await new Promise(r => setTimeout(r, remaining));
         }
         
         loaderUI.finish(finalData, chatRefs);
         
       } catch (err) {
         loader.classList.remove('active');
+        card.style.display = '';
         setStatus(String(err?.message || err), 'error');
         sendBtn.disabled = false;
         backButtons.forEach(b => b.disabled = false);
         root.style.pointerEvents = 'auto';
-        disabledOverlay.classList.remove('active');
-        
+        overlay.classList.remove('active');
         enableChatInput(chatRefs);
         
         try {
@@ -998,35 +1025,29 @@ Il manque ${missing} fichier${missing > 1 ? 's' : ''}.</div>
       loaderTitle.textContent = message;
       loader.classList.add('active');
       card.style.display = 'none';
+      loaderBar.classList.add('animating');
       
       let current = 0;
-      let lockedByFinish = false;
+      let locked = false;
       
       function paint() {
-        const offset = circumference - (current / 100) * circumference;
-        loaderCircle.style.strokeDashoffset = offset;
+        loaderBar.style.width = `${current}%`;
         loaderPct.textContent = `${Math.round(current)}%`;
       }
       paint();
       
       function clearTimers() {
-        if (timedTimer) {
-          clearInterval(timedTimer);
-          timedTimer = null;
-        }
+        if (timedTimer) { clearInterval(timedTimer); timedTimer = null; }
       }
       
       return {
         startAuto(steps) {
           let i = 0;
           const walk = () => {
-            if (i >= steps.length || lockedByFinish) return;
+            if (i >= steps.length || locked) return;
             const s = steps[i];
             if (s.text) this.showPhase(s.text);
-            this.animateTo(s.progress, 1800, () => {
-              i++;
-              walk();
-            });
+            this.animateTo(s.progress, 1800, () => { i++; walk(); });
           };
           walk();
         },
@@ -1034,18 +1055,18 @@ Il manque ${missing} fichier${missing > 1 ? 's' : ''}.</div>
         startTimed(plan) {
           let idx = 0;
           const startNext = () => {
-            if (idx >= plan.length || lockedByFinish) return;
+            if (idx >= plan.length || locked) return;
             const ph = plan[idx++];
             this.showPhase(ph.text);
-            const startTime = Date.now();
-            const endTime = startTime + ph.durationMs;
+            const start = Date.now();
+            const end = start + ph.durationMs;
             clearTimers();
             timedTimer = setInterval(() => {
               const now = Date.now();
-              const ratio = clamp((now - startTime) / ph.durationMs, 0, 1);
+              const ratio = clamp((now - start) / ph.durationMs, 0, 1);
               current = ph.progressStart + (ph.progressEnd - ph.progressStart) * ratio;
               paint();
-              if (now >= endTime) {
+              if (now >= end) {
                 clearTimers();
                 current = ph.progressEnd;
                 paint();
@@ -1056,23 +1077,9 @@ Il manque ${missing} fichier${missing > 1 ? 's' : ''}.</div>
           startNext();
         },
         
-        showPhase(text) {
-          if (text) loaderStep.textContent = text;
-        },
-        
-        setPercent(p) {
-          if (!lockedByFinish) {
-            current = clamp(p, 0, 100);
-            paint();
-          }
-        },
-        
-        softPercent(p) {
-          if (!lockedByFinish) {
-            current = current + (clamp(p, 0, 100) - current) * 0.5;
-            paint();
-          }
-        },
+        showPhase(text) { if (text) loaderStep.textContent = text; },
+        setPercent(p) { if (!locked) { current = clamp(p, 0, 100); paint(); } },
+        softPercent(p) { if (!locked) { current = current + (clamp(p, 0, 100) - current) * 0.5; paint(); } },
         
         animateTo(target, ms = 1200, cb) {
           const start = current;
@@ -1089,8 +1096,9 @@ Il manque ${missing} fichier${missing > 1 ? 's' : ''}.</div>
         },
         
         finish(data, chatRefsToReactivate) {
-          lockedByFinish = true;
+          locked = true;
           clearTimers();
+          loaderBar.classList.remove('animating');
           
           this.animateTo(100, 500, () => {
             this.showPhase('Terminé');
@@ -1101,7 +1109,7 @@ Il manque ${missing} fichier${missing > 1 ? 's' : ''}.</div>
               setTimeout(() => {
                 loader.classList.remove('active', 'closing');
                 card.style.display = '';
-                disabledOverlay.classList.remove('active');
+                overlay.classList.remove('active');
                 root.style.pointerEvents = 'auto';
                 
                 setTimeout(() => {
@@ -1198,41 +1206,21 @@ Il manque ${missing} fichier${missing > 1 ? 's' : ''}.</div>
         const j = await safeJson(r);
         if (j?.status === 'error') throw new Error(j?.error || 'Erreur pipeline');
         if (typeof onTick === 'function') {
-          try {
-            onTick({ percent: j?.percent, phase: j?.phase, message: j?.message });
-          } catch {}
+          try { onTick({ percent: j?.percent, phase: j?.phase, message: j?.message }); } catch {}
         }
         if (j?.status === 'done') return j?.data ?? j;
-        await new Promise(res => setTimeout(res, intervalMs));
+        await new Promise(r => setTimeout(r, intervalMs));
       }
       throw new Error('Polling timeout');
     }
     
-    async function safeJson(r) {
-      try {
-        return await r.json();
-      } catch {
-        return null;
-      }
-    }
-    
-    async function safeText(r) {
-      try {
-        return await r.text();
-      } catch {
-        return null;
-      }
-    }
+    async function safeJson(r) { try { return await r.json(); } catch { return null; } }
+    async function safeText(r) { try { return await r.text(); } catch { return null; } }
     
     return () => {
-      if (timedTimer) {
-        clearInterval(timedTimer);
-        timedTimer = null;
-      }
+      if (timedTimer) { clearInterval(timedTimer); timedTimer = null; }
     };
   }
 };
 
-try {
-  window.UploadToN8nWithLoader = UploadToN8nWithLoader;
-} catch {}
+try { window.UploadToN8nWithLoader = UploadToN8nWithLoader; } catch {}

@@ -1,5 +1,5 @@
-// UploadToN8nWithLoader.js – v5.1 SOFT MINIMAL
-// © Corentin – Version douce et moderne
+// UploadToN8nWithLoader.js – v5.1 ULTRA MINIMAL
+// © Corentin – Version ultra-épurée monochrome
 // Compatible mode embedded ET widget
 //
 export const UploadToN8nWithLoader = {
@@ -53,7 +53,7 @@ export const UploadToN8nWithLoader = {
         textarea.disabled = true;
         textarea.style.opacity = '0.5';
         textarea.style.cursor = 'not-allowed';
-        textarea.placeholder = 'Veuillez d\'abord charger vos documents...';
+        textarea.placeholder = 'Veuillez charger vos documents...';
         if (sendBtn) {
           sendBtn.disabled = true;
           sendBtn.style.opacity = '0.5';
@@ -96,25 +96,18 @@ export const UploadToN8nWithLoader = {
     const maxFiles      = p.maxFiles || 10;
     
     // ═══════════════════════════════════════════════════════════════
-    // 🎨 PALETTE SOFT MINIMAL
+    // 🎨 PALETTE ULTRA MINIMALE - MONOCHROME
     // ═══════════════════════════════════════════════════════════════
     const colors = {
-      primary: '#6366F1',      // Indigo doux
-      primaryLight: '#EEF2FF', // Indigo très clair
-      primaryMuted: '#A5B4FC', // Indigo pastel
-      text: '#111827',         // Quasi noir
-      textSecondary: '#6B7280',// Gris moyen
-      textTertiary: '#9CA3AF', // Gris clair
-      bg: '#FFFFFF',
-      bgSoft: '#F9FAFB',
-      bgHover: '#F3F4F6',
+      text: '#111827',
+      textLight: '#9CA3AF',
       border: '#E5E7EB',
+      bg: '#FAFAFA',
+      white: '#FFFFFF',
+      accent: '#111827',
       success: '#10B981',
-      successLight: '#D1FAE5',
       error: '#EF4444',
-      errorLight: '#FEE2E2',
       warning: '#F59E0B',
-      warningLight: '#FEF3C7',
     };
     
     const buttons = Array.isArray(p.buttons) ? p.buttons : [];
@@ -163,10 +156,10 @@ export const UploadToN8nWithLoader = {
     const autoCloseDelayMs = Number(loaderCfg.autoCloseDelayMs) > 0 ? Number(loaderCfg.autoCloseDelayMs) : 1500;
     
     const defaultAutoSteps = [
-      { progress: 0,  text: 'Préparation des fichiers' },
-      { progress: 30, text: 'Transfert en cours' },
-      { progress: 60, text: 'Analyse des documents' },
-      { progress: 85, text: 'Finalisation' },
+      { progress: 0,  text: 'Préparation...' },
+      { progress: 30, text: 'Envoi...' },
+      { progress: 60, text: 'Traitement...' },
+      { progress: 85, text: 'Finalisation...' },
       { progress: 100, text: 'Terminé' }
     ];
     
@@ -175,23 +168,23 @@ export const UploadToN8nWithLoader = {
     
     const stepMap = loaderCfg.stepMap || {
       upload:      { text: 'Téléversement',            progress: 10 },
-      sign_url:    { text: 'Signature URL sécurisée',  progress: 18 },
-      ocr_annot:   { text: 'OCR (annotation)',         progress: 35 },
-      ocr_classic: { text: 'OCR (fallback)',           progress: 42 },
-      merge:       { text: 'Fusion & agrégation',      progress: 55 },
-      combine:     { text: 'Préparation des documents',progress: 62 },
-      ai_agent:    { text: 'Analyse RH avancée',       progress: 82 },
-      gdoc_prep:   { text: 'Préparation Google Doc',   progress: 88 },
-      gdrive_copy: { text: 'Copie dans Google Drive',  progress: 93 },
-      gdoc_update: { text: 'Mise à jour du document',  progress: 97 }
+      sign_url:    { text: 'Signature URL',            progress: 18 },
+      ocr_annot:   { text: 'OCR',                      progress: 35 },
+      ocr_classic: { text: 'OCR',                      progress: 42 },
+      merge:       { text: 'Fusion',                   progress: 55 },
+      combine:     { text: 'Préparation',              progress: 62 },
+      ai_agent:    { text: 'Analyse',                  progress: 82 },
+      gdoc_prep:   { text: 'Préparation doc',          progress: 88 },
+      gdrive_copy: { text: 'Copie Drive',              progress: 93 },
+      gdoc_update: { text: 'Mise à jour',              progress: 97 }
     };
     
     const loaderMsg = loaderCfg.message || 'Traitement en cours';
     
     if (!webhookUrl) {
       const div = document.createElement('div');
-      div.innerHTML = `<div style="padding:16px;border-radius:16px;background:${colors.errorLight};color:${colors.error};font-weight:500;font-size:14px">
-        Erreur de configuration : webhook.url manquant.
+      div.innerHTML = `<div style="padding:16px;font-size:13px;color:${colors.error}">
+        Configuration manquante : webhook.url
       </div>`;
       element.appendChild(div);
       enableChatInput(chatRefs);
@@ -215,472 +208,410 @@ export const UploadToN8nWithLoader = {
       requiredDocsInfo = `${requiredFiles} documents requis`;
     }
     
-    // ---------- STYLES SOFT MINIMAL ----------
+    // ---------- STYLES ULTRA MINIMAUX ----------
     const styles = `
-      @keyframes softFadeIn {
-        from { opacity: 0; transform: translateY(12px); }
-        to { opacity: 1; transform: translateY(0); }
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
       }
-      @keyframes softFadeOut {
+      @keyframes fadeOut {
         from { opacity: 1; }
         to { opacity: 0; }
       }
-      @keyframes progressPulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.7; }
+      @keyframes slideIn {
+        from { opacity: 0; transform: translateY(4px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes progress {
+        from { width: 0%; }
       }
       
-      .upl-wrap {
+      .upl {
         width: 100%;
-        max-width: 100%;
-        animation: softFadeIn 0.4s ease-out;
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+        font-size: 14px;
+        color: ${colors.text};
+        animation: fadeIn 0.2s ease;
+      }
+      
+      .upl * {
+        box-sizing: border-box;
       }
       
       .upl-card {
-        background: ${colors.bg};
-        border-radius: 20px;
-        padding: 28px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
+        background: ${colors.white};
+        border: 1px solid ${colors.border};
+        border-radius: 8px;
+        overflow: hidden;
       }
       
       .upl-header {
-        margin-bottom: 24px;
+        padding: 20px 20px 0;
       }
       
       .upl-title {
-        font-size: 20px;
+        font-size: 15px;
         font-weight: 600;
         color: ${colors.text};
-        margin: 0 0 6px 0;
-        letter-spacing: -0.4px;
+        margin: 0 0 2px;
+        letter-spacing: -0.2px;
       }
       
       .upl-subtitle {
-        font-size: 14px;
-        color: ${colors.textSecondary};
+        font-size: 13px;
+        color: ${colors.textLight};
         font-weight: 400;
-        line-height: 1.4;
       }
       
-      .upl-dropzone {
-        background: ${colors.bgSoft};
-        border: 2px dashed ${colors.border};
-        border-radius: 16px;
-        padding: 40px 24px;
+      .upl-body {
+        padding: 20px;
+      }
+      
+      .upl-zone {
+        background: ${colors.bg};
+        border-radius: 6px;
+        padding: 32px 20px;
         text-align: center;
         cursor: pointer;
-        transition: all 0.25s ease;
+        transition: background 0.15s ease;
+        position: relative;
       }
       
-      .upl-dropzone:hover {
-        background: ${colors.primaryLight};
-        border-color: ${colors.primaryMuted};
+      .upl-zone::before {
+        content: '';
+        position: absolute;
+        inset: 8px;
+        border: 1px dashed ${colors.border};
+        border-radius: 4px;
+        pointer-events: none;
+        transition: border-color 0.15s ease;
       }
       
-      .upl-dropzone.dragging {
-        background: ${colors.primaryLight};
-        border-color: ${colors.primary};
-        border-style: solid;
+      .upl-zone:hover {
+        background: #F3F4F6;
       }
       
-      .upl-dropzone-icon {
-        width: 56px;
-        height: 56px;
-        margin: 0 auto 16px;
-        background: ${colors.bg};
-        border-radius: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-        transition: all 0.25s ease;
+      .upl-zone:hover::before {
+        border-color: ${colors.textLight};
       }
       
-      .upl-dropzone:hover .upl-dropzone-icon {
-        background: ${colors.primary};
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+      .upl-zone.drag {
+        background: #F3F4F6;
       }
       
-      .upl-dropzone-icon svg {
-        width: 24px;
-        height: 24px;
-        color: ${colors.primary};
-        transition: color 0.25s ease;
+      .upl-zone.drag::before {
+        border-color: ${colors.text};
       }
       
-      .upl-dropzone:hover .upl-dropzone-icon svg {
-        color: white;
+      .upl-zone-icon {
+        width: 32px;
+        height: 32px;
+        margin: 0 auto 10px;
+        color: ${colors.textLight};
+        transition: color 0.15s ease;
       }
       
-      .upl-dropzone-text {
-        font-size: 15px;
-        color: ${colors.textSecondary};
-        font-weight: 500;
-        margin-bottom: 6px;
+      .upl-zone:hover .upl-zone-icon {
+        color: ${colors.text};
       }
       
-      .upl-dropzone-hint {
+      .upl-zone-text {
         font-size: 13px;
-        color: ${colors.textTertiary};
+        color: ${colors.textLight};
+        font-weight: 400;
       }
       
-      .upl-files {
-        margin-top: 20px;
+      .upl-zone-hint {
+        font-size: 11px;
+        color: ${colors.textLight};
+        margin-top: 6px;
+        opacity: 0.7;
+      }
+      
+      .upl-list {
+        margin-top: 16px;
         display: none;
-        flex-direction: column;
-        gap: 10px;
       }
       
-      .upl-files.active {
-        display: flex;
+      .upl-list.show {
+        display: block;
       }
       
-      .upl-file {
+      .upl-item {
         display: flex;
         align-items: center;
-        gap: 12px;
-        padding: 14px 16px;
+        padding: 10px 12px;
         background: ${colors.bg};
-        border-radius: 12px;
-        border: 1px solid ${colors.border};
-        animation: softFadeIn 0.25s ease-out;
+        border-radius: 6px;
+        margin-bottom: 6px;
+        animation: slideIn 0.15s ease;
       }
       
-      .upl-file-icon {
-        width: 40px;
-        height: 40px;
-        background: ${colors.primaryLight};
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+      .upl-item:last-child {
+        margin-bottom: 0;
+      }
+      
+      .upl-item-icon {
+        width: 16px;
+        height: 16px;
+        color: ${colors.textLight};
+        margin-right: 10px;
         flex-shrink: 0;
       }
       
-      .upl-file-icon svg {
-        width: 20px;
-        height: 20px;
-        color: ${colors.primary};
-      }
-      
-      .upl-file-info {
+      .upl-item-info {
         flex: 1;
         min-width: 0;
       }
       
-      .upl-file-name {
+      .upl-item-name {
+        font-size: 13px;
         font-weight: 500;
         color: ${colors.text};
-        font-size: 14px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
       }
       
-      .upl-file-size {
-        font-size: 12px;
-        color: ${colors.textTertiary};
-        margin-top: 2px;
+      .upl-item-size {
+        font-size: 11px;
+        color: ${colors.textLight};
+        margin-top: 1px;
       }
       
-      .upl-file-remove {
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
+      .upl-item-del {
+        width: 24px;
+        height: 24px;
         border: none;
-        background: transparent;
-        color: ${colors.textTertiary};
+        background: none;
+        color: ${colors.textLight};
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: all 0.2s ease;
-        flex-shrink: 0;
+        border-radius: 4px;
+        margin-left: 8px;
+        transition: all 0.1s ease;
       }
       
-      .upl-file-remove:hover {
-        background: ${colors.errorLight};
+      .upl-item-del:hover {
+        background: rgba(239, 68, 68, 0.1);
         color: ${colors.error};
       }
       
-      .upl-summary {
-        margin-top: 16px;
+      .upl-meta {
         display: flex;
         align-items: center;
-        justify-content: center;
-        gap: 8px;
-        padding: 10px 16px;
-        background: ${colors.bgSoft};
-        border-radius: 10px;
-        font-size: 13px;
-        color: ${colors.textSecondary};
-        display: none;
+        justify-content: space-between;
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid ${colors.border};
       }
       
-      .upl-summary.active {
-        display: flex;
+      .upl-count {
+        font-size: 12px;
+        color: ${colors.textLight};
       }
       
-      .upl-summary.ready {
-        background: ${colors.successLight};
+      .upl-count.ok {
         color: ${colors.success};
-      }
-      
-      .upl-summary-dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: currentColor;
       }
       
       .upl-actions {
         display: flex;
-        gap: 12px;
-        margin-top: 20px;
-      }
-      
-      .upl-btn {
-        flex: 1;
-        padding: 14px 24px;
-        border-radius: 12px;
-        border: none;
-        font-weight: 600;
-        font-size: 15px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-      }
-      
-      .upl-btn-primary {
-        background: ${colors.primary};
-        color: white;
-      }
-      
-      .upl-btn-primary:hover:not(:disabled) {
-        background: #4F46E5;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-      }
-      
-      .upl-btn-primary:disabled {
-        background: ${colors.primaryMuted};
-        cursor: not-allowed;
-      }
-      
-      .upl-btn-secondary {
-        background: ${colors.bgSoft};
-        color: ${colors.textSecondary};
-      }
-      
-      .upl-btn-secondary:hover:not(:disabled) {
-        background: ${colors.bgHover};
-        color: ${colors.text};
-      }
-      
-      .upl-status {
-        margin-top: 16px;
-        padding: 12px 16px;
-        border-radius: 12px;
-        font-size: 14px;
-        font-weight: 500;
-        text-align: center;
-        display: none;
-        animation: softFadeIn 0.25s ease-out;
-      }
-      
-      .upl-status.error {
-        background: ${colors.errorLight};
-        color: ${colors.error};
-      }
-      
-      .upl-status.success {
-        background: ${colors.successLight};
-        color: ${colors.success};
-      }
-      
-      .upl-status.processing {
-        background: ${colors.primaryLight};
-        color: ${colors.primary};
-      }
-      
-      .upl-status.warning {
-        background: ${colors.warningLight};
-        color: ${colors.warning};
-      }
-      
-      /* LOADER - BARRE HORIZONTALE */
-      .upl-loader {
-        display: none;
-        background: ${colors.bg};
-        border-radius: 20px;
-        padding: 32px;
-        margin-top: 16px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
-        animation: softFadeIn 0.4s ease-out;
-      }
-      
-      .upl-loader.active {
-        display: block;
-      }
-      
-      .upl-loader.closing {
-        animation: softFadeOut 0.3s ease-out forwards;
-      }
-      
-      .upl-loader-content {
-        display: flex;
-        flex-direction: column;
-        gap: 24px;
-      }
-      
-      .upl-loader-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-      }
-      
-      .upl-loader-title {
-        font-size: 16px;
-        font-weight: 600;
-        color: ${colors.text};
-      }
-      
-      .upl-loader-percent {
-        font-size: 24px;
-        font-weight: 700;
-        color: ${colors.primary};
-      }
-      
-      .upl-loader-bar-container {
-        height: 8px;
-        background: ${colors.bgSoft};
-        border-radius: 4px;
-        overflow: hidden;
-      }
-      
-      .upl-loader-bar {
-        height: 100%;
-        background: ${colors.primary};
-        border-radius: 4px;
-        width: 0%;
-        transition: width 0.3s ease;
-      }
-      
-      .upl-loader-bar.animating {
-        animation: progressPulse 1.5s ease-in-out infinite;
-      }
-      
-      .upl-loader-step {
-        font-size: 14px;
-        color: ${colors.textSecondary};
-        text-align: center;
-        min-height: 20px;
-      }
-      
-      .upl-loader-steps {
-        display: flex;
-        justify-content: space-between;
-        margin-top: 8px;
-      }
-      
-      .upl-loader-step-dot {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 6px;
-      }
-      
-      .upl-loader-step-circle {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        background: ${colors.border};
-        transition: all 0.3s ease;
-      }
-      
-      .upl-loader-step-circle.active {
-        background: ${colors.primary};
-        box-shadow: 0 0 0 4px ${colors.primaryLight};
-      }
-      
-      .upl-loader-step-circle.done {
-        background: ${colors.success};
-      }
-      
-      /* VALIDATION ERROR */
-      .upl-validation {
-        margin-top: 20px;
-        padding: 24px;
-        background: ${colors.warningLight};
-        border-radius: 16px;
-        animation: softFadeIn 0.25s ease-out;
-      }
-      
-      .upl-validation-title {
-        font-weight: 600;
-        color: ${colors.warning};
-        font-size: 15px;
-        margin-bottom: 12px;
-        display: flex;
-        align-items: center;
         gap: 8px;
       }
       
-      .upl-validation-message {
+      .upl-btn {
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.1s ease;
+        border: 1px solid transparent;
+      }
+      
+      .upl-btn-primary {
+        background: ${colors.text};
+        color: ${colors.white};
+        border-color: ${colors.text};
+      }
+      
+      .upl-btn-primary:hover:not(:disabled) {
+        background: #374151;
+        border-color: #374151;
+      }
+      
+      .upl-btn-primary:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+      
+      .upl-btn-ghost {
+        background: transparent;
+        color: ${colors.textLight};
+        border-color: ${colors.border};
+      }
+      
+      .upl-btn-ghost:hover {
+        background: ${colors.bg};
         color: ${colors.text};
-        font-size: 14px;
-        white-space: pre-line;
-        margin-bottom: 20px;
-        line-height: 1.6;
       }
       
-      .upl-validation-actions {
+      .upl-msg {
+        margin-top: 12px;
+        padding: 10px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        display: none;
+        animation: fadeIn 0.15s ease;
+      }
+      
+      .upl-msg.show {
+        display: block;
+      }
+      
+      .upl-msg.err {
+        background: rgba(239, 68, 68, 0.08);
+        color: ${colors.error};
+      }
+      
+      .upl-msg.ok {
+        background: rgba(16, 185, 129, 0.08);
+        color: ${colors.success};
+      }
+      
+      .upl-msg.warn {
+        background: rgba(245, 158, 11, 0.08);
+        color: ${colors.warning};
+      }
+      
+      .upl-msg.load {
+        background: ${colors.bg};
+        color: ${colors.textLight};
+      }
+      
+      /* LOADER - Style linéaire */
+      .upl-loader {
+        display: none;
+        padding: 24px 20px;
+        animation: fadeIn 0.2s ease;
+      }
+      
+      .upl-loader.show {
+        display: block;
+      }
+      
+      .upl-loader.hide {
+        animation: fadeOut 0.2s ease;
+      }
+      
+      .upl-loader-head {
         display: flex;
-        gap: 12px;
+        align-items: baseline;
+        justify-content: space-between;
+        margin-bottom: 12px;
       }
       
+      .upl-loader-title {
+        font-size: 13px;
+        font-weight: 500;
+        color: ${colors.text};
+      }
+      
+      .upl-loader-pct {
+        font-size: 12px;
+        font-weight: 600;
+        color: ${colors.text};
+        font-variant-numeric: tabular-nums;
+      }
+      
+      .upl-loader-bar {
+        height: 4px;
+        background: ${colors.border};
+        border-radius: 2px;
+        overflow: hidden;
+      }
+      
+      .upl-loader-fill {
+        height: 100%;
+        width: 0%;
+        background: ${colors.text};
+        border-radius: 2px;
+        transition: width 0.3s ease;
+      }
+      
+      .upl-loader-step {
+        margin-top: 10px;
+        font-size: 12px;
+        color: ${colors.textLight};
+        min-height: 16px;
+      }
+      
+      /* VALIDATION */
+      .upl-valid {
+        margin-top: 16px;
+        padding: 16px;
+        background: rgba(245, 158, 11, 0.06);
+        border: 1px solid rgba(245, 158, 11, 0.15);
+        border-radius: 6px;
+        animation: slideIn 0.15s ease;
+      }
+      
+      .upl-valid-title {
+        font-size: 13px;
+        font-weight: 500;
+        color: ${colors.warning};
+        margin-bottom: 8px;
+      }
+      
+      .upl-valid-text {
+        font-size: 12px;
+        color: ${colors.text};
+        line-height: 1.5;
+        white-space: pre-line;
+        margin-bottom: 12px;
+      }
+      
+      .upl-valid-actions {
+        display: flex;
+        gap: 8px;
+      }
+      
+      /* OVERLAY */
       .upl-overlay {
         display: none;
         position: absolute;
         inset: 0;
         background: rgba(255, 255, 255, 0.95);
-        z-index: 100;
-        border-radius: 20px;
-        align-items: center;
-        justify-content: center;
-        backdrop-filter: blur(4px);
+        z-index: 10;
+        border-radius: 8px;
       }
       
-      .upl-overlay.active {
-        display: flex;
+      .upl-overlay.show {
+        display: block;
       }
     `;
     
-    // ---------- ICÔNES SVG ----------
+    // ---------- ICÔNES SVG MINIMALISTES ----------
     const icons = {
-      upload: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-        <polyline points="17 8 12 3 7 8"/>
-        <line x1="12" y1="3" x2="12" y2="15"/>
+      upload: `<svg class="upl-zone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 15V3m0 0l-4 4m4-4l4 4"/>
+        <path d="M2 17l.621 2.485A2 2 0 004.561 21h14.878a2 2 0 001.94-1.515L22 17"/>
       </svg>`,
-      file: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      file: `<svg class="upl-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-        <polyline points="14 2 14 8 20 8"/>
+        <path d="M14 2v6h6"/>
       </svg>`,
-      close: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="18" y1="6" x2="6" y2="18"/>
-        <line x1="6" y1="6" x2="18" y2="18"/>
-      </svg>`,
-      warning: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
-        <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-        <line x1="12" y1="9" x2="12" y2="13"/>
-        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      x: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M18 6L6 18M6 6l12 12"/>
       </svg>`
     };
     
     // ---------- UI ----------
     const root = document.createElement('div');
-    root.className = 'upl-wrap';
+    root.className = 'upl';
     root.style.position = 'relative';
     
     const styleTag = document.createElement('style');
@@ -699,35 +630,38 @@ export const UploadToN8nWithLoader = {
       <div class="upl-overlay"></div>
       <div class="upl-card">
         ${headerHTML}
-        <div class="upl-dropzone">
-          <div class="upl-dropzone-icon">${icons.upload}</div>
-          <div class="upl-dropzone-text">${description}</div>
-          <div class="upl-dropzone-hint">${requiredDocsInfo}</div>
-          <input type="file" accept="${accept}" multiple style="display:none" />
-        </div>
-        <div class="upl-files"></div>
-        <div class="upl-summary">
-          <span class="upl-summary-dot"></span>
-          <span class="upl-summary-text"></span>
-        </div>
-        <div class="upl-actions">
-          ${buttons.map(b => `
-            <button class="upl-btn upl-btn-secondary back-button" data-path="${b.path || pathError}">
-              ${b.text || 'Retour'}
-            </button>
-          `).join('')}
-          <button class="upl-btn upl-btn-primary send-button" disabled>Envoyer</button>
-        </div>
-        <div class="upl-status"></div>
-      </div>
-      <div class="upl-loader">
-        <div class="upl-loader-content">
-          <div class="upl-loader-header">
-            <div class="upl-loader-title"></div>
-            <div class="upl-loader-percent">0%</div>
+        <div class="upl-body">
+          <div class="upl-zone">
+            ${icons.upload}
+            <div class="upl-zone-text">${description}</div>
+            <div class="upl-zone-hint">${requiredDocsInfo}</div>
+            <input type="file" accept="${accept}" multiple style="display:none" />
           </div>
-          <div class="upl-loader-bar-container">
-            <div class="upl-loader-bar"></div>
+          
+          <div class="upl-list"></div>
+          
+          <div class="upl-meta" style="display:none">
+            <div class="upl-count"></div>
+            <div class="upl-actions">
+              ${buttons.map(b => `
+                <button class="upl-btn upl-btn-ghost back-btn" data-path="${b.path || pathError}">
+                  ${b.text || 'Retour'}
+                </button>
+              `).join('')}
+              <button class="upl-btn upl-btn-primary send-btn" disabled>Envoyer</button>
+            </div>
+          </div>
+          
+          <div class="upl-msg"></div>
+        </div>
+        
+        <div class="upl-loader">
+          <div class="upl-loader-head">
+            <div class="upl-loader-title"></div>
+            <div class="upl-loader-pct">0%</div>
+          </div>
+          <div class="upl-loader-bar">
+            <div class="upl-loader-fill"></div>
           </div>
           <div class="upl-loader-step"></div>
         </div>
@@ -736,21 +670,22 @@ export const UploadToN8nWithLoader = {
     element.appendChild(root);
     
     // ---------- DOM refs ----------
-    const dropzone     = root.querySelector('.upl-dropzone');
-    const fileInput    = root.querySelector('input[type="file"]');
-    const filesList    = root.querySelector('.upl-files');
-    const summary      = root.querySelector('.upl-summary');
-    const summaryText  = root.querySelector('.upl-summary-text');
-    const sendBtn      = root.querySelector('.send-button');
-    const backButtons  = root.querySelectorAll('.back-button');
-    const statusDiv    = root.querySelector('.upl-status');
-    const loader       = root.querySelector('.upl-loader');
-    const loaderTitle  = root.querySelector('.upl-loader-title');
-    const loaderPct    = root.querySelector('.upl-loader-percent');
-    const loaderStep   = root.querySelector('.upl-loader-step');
-    const loaderBar    = root.querySelector('.upl-loader-bar');
-    const overlay      = root.querySelector('.upl-overlay');
-    const card         = root.querySelector('.upl-card');
+    const uploadZone = root.querySelector('.upl-zone');
+    const fileInput = root.querySelector('input[type="file"]');
+    const filesList = root.querySelector('.upl-list');
+    const metaDiv = root.querySelector('.upl-meta');
+    const countDiv = root.querySelector('.upl-count');
+    const sendBtn = root.querySelector('.send-btn');
+    const backButtons = root.querySelectorAll('.back-btn');
+    const msgDiv = root.querySelector('.upl-msg');
+    const loader = root.querySelector('.upl-loader');
+    const loaderTitle = root.querySelector('.upl-loader-title');
+    const loaderPct = root.querySelector('.upl-loader-pct');
+    const loaderFill = root.querySelector('.upl-loader-fill');
+    const loaderStep = root.querySelector('.upl-loader-step');
+    const overlay = root.querySelector('.upl-overlay');
+    const card = root.querySelector('.upl-card');
+    const bodyDiv = root.querySelector('.upl-body');
     
     // ---------- STATE ----------
     let selectedFiles = [];
@@ -765,131 +700,128 @@ export const UploadToN8nWithLoader = {
       return (bytes / (1024 * 1024)).toFixed(1) + ' Mo';
     }
     
-    function setStatus(message, type = 'processing') {
-      statusDiv.textContent = message;
-      statusDiv.className = `upl-status ${type}`;
-      statusDiv.style.display = 'block';
+    function showMsg(text, type = 'load') {
+      msgDiv.textContent = text;
+      msgDiv.className = `upl-msg show ${type}`;
     }
     
-    function clearValidationError() {
-      const existing = root.querySelector('.upl-validation');
-      if (existing) existing.remove();
+    function hideMsg() {
+      msgDiv.className = 'upl-msg';
     }
     
-    function updateFilesList() {
+    function clearValidation() {
+      const v = root.querySelector('.upl-valid');
+      if (v) v.remove();
+    }
+    
+    function updateList() {
       filesList.innerHTML = '';
-      clearValidationError();
-      statusDiv.style.display = 'none';
+      clearValidation();
+      hideMsg();
       
       if (!selectedFiles.length) {
-        filesList.classList.remove('active');
-        summary.classList.remove('active', 'ready');
+        filesList.classList.remove('show');
+        metaDiv.style.display = 'none';
         sendBtn.disabled = true;
         return;
       }
       
-      filesList.classList.add('active');
-      summary.classList.add('active');
+      filesList.classList.add('show');
+      metaDiv.style.display = 'flex';
       
-      const totalSize = selectedFiles.reduce((s, f) => s + f.size, 0);
-      const hasEnough = selectedFiles.length >= requiredFiles;
+      const total = selectedFiles.reduce((s, f) => s + f.size, 0);
+      const enough = selectedFiles.length >= requiredFiles;
       
-      summary.classList.toggle('ready', hasEnough);
-      summaryText.textContent = `${selectedFiles.length} fichier${selectedFiles.length > 1 ? 's' : ''} • ${formatSize(totalSize)}`;
+      countDiv.className = `upl-count${enough ? ' ok' : ''}`;
+      countDiv.textContent = `${selectedFiles.length} fichier${selectedFiles.length > 1 ? 's' : ''} · ${formatSize(total)}`;
       
       selectedFiles.forEach((file, i) => {
         const item = document.createElement('div');
-        item.className = 'upl-file';
+        item.className = 'upl-item';
         item.innerHTML = `
-          <div class="upl-file-icon">${icons.file}</div>
-          <div class="upl-file-info">
-            <div class="upl-file-name">${file.name}</div>
-            <div class="upl-file-size">${formatSize(file.size)}</div>
+          ${icons.file}
+          <div class="upl-item-info">
+            <div class="upl-item-name">${file.name}</div>
+            <div class="upl-item-size">${formatSize(file.size)}</div>
           </div>
-          <button class="upl-file-remove" data-index="${i}">${icons.close}</button>
+          <button class="upl-item-del" data-i="${i}">${icons.x}</button>
         `;
         filesList.appendChild(item);
       });
       
-      root.querySelectorAll('.upl-file-remove').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const i = parseInt(btn.getAttribute('data-index'));
-          selectedFiles.splice(i, 1);
-          updateFilesList();
-        });
+      root.querySelectorAll('.upl-item-del').forEach(btn => {
+        btn.onclick = () => {
+          selectedFiles.splice(parseInt(btn.dataset.i), 1);
+          updateList();
+        };
       });
       
-      sendBtn.disabled = !hasEnough;
+      sendBtn.disabled = !enough;
       
-      if (selectedFiles.length > 0 && !hasEnough && !isSimpleMode) {
-        const missing = requiredFiles - selectedFiles.length;
-        setStatus(`Encore ${missing} fichier${missing > 1 ? 's' : ''} requis`, 'warning');
+      if (selectedFiles.length > 0 && !enough && !isSimpleMode) {
+        const m = requiredFiles - selectedFiles.length;
+        showMsg(`${m} fichier${m > 1 ? 's' : ''} manquant${m > 1 ? 's' : ''}`, 'warn');
       }
     }
     
-    function addFiles(newFiles) {
-      const valid = [], errs = [];
-      for (const file of newFiles) {
-        if (selectedFiles.length + valid.length >= maxFiles) {
-          errs.push(`Maximum ${maxFiles} fichiers`);
+    function addFiles(files) {
+      const ok = [], errs = [];
+      for (const f of files) {
+        if (selectedFiles.length + ok.length >= maxFiles) {
+          errs.push('Limite atteinte');
           break;
         }
-        if (maxFileSizeMB && file.size > maxFileSizeMB * 1024 * 1024) {
-          errs.push(`${file.name} trop volumineux`);
+        if (maxFileSizeMB && f.size > maxFileSizeMB * 1024 * 1024) {
+          errs.push(`${f.name} trop volumineux`);
           continue;
         }
-        if (selectedFiles.some(f => f.name === file.name && f.size === file.size)) {
-          errs.push(`${file.name} déjà ajouté`);
+        if (selectedFiles.some(x => x.name === f.name && x.size === f.size)) {
           continue;
         }
-        valid.push(file);
+        ok.push(f);
       }
-      if (valid.length) {
-        selectedFiles.push(...valid);
-        updateFilesList();
+      if (ok.length) {
+        selectedFiles.push(...ok);
+        updateList();
       }
-      if (errs.length) setStatus(errs.join(' • '), 'error');
+      if (errs.length) showMsg(errs.join(' · '), 'err');
     }
     
-    function validateBeforeSend() {
+    function validate() {
       if (isSimpleMode) return selectedFiles.length >= requiredFiles;
       
       if (selectedFiles.length < requiredFiles) {
-        const docsList = isOBMS ? docsListOBMS : docsListFull;
-        const missing = requiredFiles - selectedFiles.length;
+        clearValidation();
+        const docs = isOBMS ? docsListOBMS : docsListFull;
+        const m = requiredFiles - selectedFiles.length;
         
-        clearValidationError();
-        
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'upl-validation';
-        errorDiv.innerHTML = `
-          <div class="upl-validation-title">${icons.warning} Documents manquants</div>
-          <div class="upl-validation-message">${selectedFiles.length}/${requiredFiles} fichiers sélectionnés.
+        const div = document.createElement('div');
+        div.className = 'upl-valid';
+        div.innerHTML = `
+          <div class="upl-valid-title">Documents manquants</div>
+          <div class="upl-valid-text">${selectedFiles.length}/${requiredFiles} fichiers sélectionnés.
 
-Documents attendus :
-${docsList}</div>
-          <div class="upl-validation-actions">
-            <button class="upl-btn upl-btn-secondary" data-action="back">Retour</button>
-            <button class="upl-btn upl-btn-primary" data-action="add">Ajouter des fichiers</button>
+Requis :
+${docs}</div>
+          <div class="upl-valid-actions">
+            <button class="upl-btn upl-btn-ghost" data-a="back">Retour</button>
+            <button class="upl-btn upl-btn-primary" data-a="add">Ajouter</button>
           </div>
         `;
+        bodyDiv.appendChild(div);
         
-        card.appendChild(errorDiv);
-        
-        errorDiv.querySelector('[data-action="back"]').addEventListener('click', () => {
+        div.querySelector('[data-a="back"]').onclick = () => {
           enableChatInput(chatRefs);
-          try {
-            window?.voiceflow?.chat?.interact?.({
-              type: 'complete',
-              payload: { webhookSuccess: false, buttonPath: 'back' }
-            });
-          } catch {}
-        });
+          window?.voiceflow?.chat?.interact?.({
+            type: 'complete',
+            payload: { webhookSuccess: false, buttonPath: 'back' }
+          });
+        };
         
-        errorDiv.querySelector('[data-action="add"]').addEventListener('click', () => {
-          clearValidationError();
+        div.querySelector('[data-a="add"]').onclick = () => {
+          clearValidation();
           fileInput.click();
-        });
+        };
         
         return false;
       }
@@ -897,93 +829,71 @@ ${docsList}</div>
     }
     
     // ---------- Events ----------
-    dropzone.addEventListener('click', () => fileInput.click());
-    dropzone.addEventListener('dragover', e => {
+    uploadZone.onclick = () => fileInput.click();
+    uploadZone.ondragover = e => { e.preventDefault(); uploadZone.classList.add('drag'); };
+    uploadZone.ondragleave = () => uploadZone.classList.remove('drag');
+    uploadZone.ondrop = e => {
       e.preventDefault();
-      dropzone.classList.add('dragging');
-    });
-    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragging'));
-    dropzone.addEventListener('drop', e => {
-      e.preventDefault();
-      dropzone.classList.remove('dragging');
-      const files = Array.from(e.dataTransfer?.files || []);
-      if (files.length) addFiles(files);
-    });
-    fileInput.addEventListener('change', () => {
-      const files = Array.from(fileInput.files || []);
-      if (files.length) addFiles(files);
+      uploadZone.classList.remove('drag');
+      addFiles(Array.from(e.dataTransfer?.files || []));
+    };
+    fileInput.onchange = () => {
+      addFiles(Array.from(fileInput.files || []));
       fileInput.value = '';
-    });
+    };
     
-    backButtons.forEach(b => b.addEventListener('click', () => {
-      const path = b.getAttribute('data-path') || pathError;
-      enableChatInput(chatRefs);
-      try {
+    backButtons.forEach(b => {
+      b.onclick = () => {
+        enableChatInput(chatRefs);
         window?.voiceflow?.chat?.interact?.({
           type: 'complete',
-          payload: { webhookSuccess: false, buttonPath: path }
+          payload: { webhookSuccess: false, buttonPath: b.dataset.path || pathError }
         });
-      } catch {}
-    }));
+      };
+    });
     
-    sendBtn.addEventListener('click', async () => {
-      if (!selectedFiles.length || !validateBeforeSend()) return;
+    sendBtn.onclick = async () => {
+      if (!selectedFiles.length || !validate()) return;
       
       root.style.pointerEvents = 'none';
-      overlay.classList.add('active');
-      clearValidationError();
-      
+      overlay.classList.add('show');
+      clearValidation();
       sendBtn.disabled = true;
       backButtons.forEach(b => b.disabled = true);
-      setStatus(`Envoi de ${selectedFiles.length} fichier${selectedFiles.length > 1 ? 's' : ''}...`, 'processing');
       
       const startTime = Date.now();
-      const loaderUI = showLoader(loaderMsg);
+      const ui = showLoaderUI(loaderMsg);
       
-      if (loaderMode === 'auto') {
-        loaderUI.startAuto(defaultAutoSteps);
-      } else if (loaderMode === 'timed') {
-        loaderUI.startTimed(buildTimedPlan());
-      } else {
-        loaderUI.showPhase('Démarrage...');
-        loaderUI.setPercent(5);
-      }
+      if (loaderMode === 'auto') ui.auto(defaultAutoSteps);
+      else if (loaderMode === 'timed') ui.timed(buildPlan());
+      else { ui.phase('Démarrage...'); ui.set(5); }
       
       try {
-        const resp = await postToN8n({
-          url: webhookUrl,
-          method: webhookMethod,
-          headers: webhookHeaders,
-          timeoutMs: webhookTimeoutMs,
-          retries: webhookRetries,
-          files: selectedFiles,
-          fileFieldName,
-          extra,
-          vfContext
+        const resp = await post({
+          url: webhookUrl, method: webhookMethod, headers: webhookHeaders,
+          timeoutMs: webhookTimeoutMs, retries: webhookRetries,
+          files: selectedFiles, fileFieldName, extra, vfContext
         });
         
-        let finalData = resp?.data ?? null;
+        let data = resp?.data ?? null;
         
         if (awaitResponse && pollingEnabled) {
-          const jobId = finalData?.jobId;
-          const statusUrl = finalData?.statusUrl || p?.polling?.statusUrl;
+          const jobId = data?.jobId;
+          const statusUrl = data?.statusUrl || p?.polling?.statusUrl;
           if (statusUrl || jobId) {
-            finalData = await pollStatus({
+            data = await poll({
               statusUrl: statusUrl || `${webhookUrl.split('/webhook')[0]}/rest/jobs/${jobId}`,
-              headers: pollingHeaders,
-              intervalMs: pollingIntervalMs,
+              headers: pollingHeaders, intervalMs: pollingIntervalMs,
               maxAttempts: pollingMaxAttempts,
-              onTick: (st) => {
+              onTick: st => {
                 if (loaderMode === 'external') {
                   const pct = Number.isFinite(st?.percent) ? clamp(st.percent, 0, 100) : undefined;
                   const key = st?.phase;
                   const map = key && stepMap[key] ? stepMap[key] : null;
-                  const text = st?.message || map?.text || undefined;
-                  if (text) loaderUI.showPhase(text);
-                  if (pct != null) loaderUI.setPercent(pct);
-                  else if (map?.progress != null) loaderUI.softPercent(map.progress);
-                } else if (loaderMode === 'timed') {
-                  if (st?.phase && stepMap[st.phase]?.text) loaderUI.showPhase(stepMap[st.phase].text);
+                  const text = st?.message || map?.text;
+                  if (text) ui.phase(text);
+                  if (pct != null) ui.set(pct);
+                  else if (map?.progress != null) ui.soft(map.progress);
                 }
               }
             });
@@ -991,103 +901,87 @@ ${docsList}</div>
         }
         
         const elapsed = Date.now() - startTime;
-        const remaining = minLoadingTimeMs - elapsed;
-        
-        if (remaining > 0) {
-          loaderUI.showPhase('Finalisation...');
-          loaderUI.animateTo(98, Math.min(remaining, 1500));
-          await new Promise(r => setTimeout(r, remaining));
+        const remain = minLoadingTimeMs - elapsed;
+        if (remain > 0) {
+          ui.phase('Finalisation...');
+          ui.to(98, Math.min(remain, 1500));
+          await new Promise(r => setTimeout(r, remain));
         }
         
-        loaderUI.finish(finalData, chatRefs);
+        ui.done(data, chatRefs);
         
       } catch (err) {
-        loader.classList.remove('active');
-        card.style.display = '';
-        setStatus(String(err?.message || err), 'error');
+        loader.classList.remove('show');
+        bodyDiv.style.display = '';
+        showMsg(String(err?.message || err), 'err');
         sendBtn.disabled = false;
         backButtons.forEach(b => b.disabled = false);
-        root.style.pointerEvents = 'auto';
-        overlay.classList.remove('active');
+        root.style.pointerEvents = '';
+        overlay.classList.remove('show');
         enableChatInput(chatRefs);
-        
-        try {
-          window?.voiceflow?.chat?.interact?.({
-            type: 'complete',
-            payload: { webhookSuccess: false, error: String(err?.message || err), buttonPath: 'error' }
-          });
-        } catch {}
+        window?.voiceflow?.chat?.interact?.({
+          type: 'complete',
+          payload: { webhookSuccess: false, error: String(err?.message || err), buttonPath: 'error' }
+        });
       }
-    });
+    };
     
-    // ---------- Loader controller ----------
-    function showLoader(message) {
-      loaderTitle.textContent = message;
-      loader.classList.add('active');
-      card.style.display = 'none';
-      loaderBar.classList.add('animating');
+    // ---------- Loader ----------
+    function showLoaderUI(msg) {
+      loaderTitle.textContent = msg;
+      loader.classList.add('show');
+      bodyDiv.style.display = 'none';
       
-      let current = 0;
-      let locked = false;
+      let cur = 0, locked = false;
       
-      function paint() {
-        loaderBar.style.width = `${current}%`;
-        loaderPct.textContent = `${Math.round(current)}%`;
-      }
+      const paint = () => {
+        loaderFill.style.width = `${cur}%`;
+        loaderPct.textContent = `${Math.round(cur)}%`;
+      };
       paint();
       
-      function clearTimers() {
-        if (timedTimer) { clearInterval(timedTimer); timedTimer = null; }
-      }
+      const clear = () => { if (timedTimer) { clearInterval(timedTimer); timedTimer = null; } };
       
       return {
-        startAuto(steps) {
+        auto(steps) {
           let i = 0;
-          const walk = () => {
+          const go = () => {
             if (i >= steps.length || locked) return;
             const s = steps[i];
-            if (s.text) this.showPhase(s.text);
-            this.animateTo(s.progress, 1800, () => { i++; walk(); });
+            if (s.text) this.phase(s.text);
+            this.to(s.progress, 1800, () => { i++; go(); });
           };
-          walk();
+          go();
         },
         
-        startTimed(plan) {
+        timed(plan) {
           let idx = 0;
-          const startNext = () => {
+          const next = () => {
             if (idx >= plan.length || locked) return;
-            const ph = plan[idx++];
-            this.showPhase(ph.text);
-            const start = Date.now();
-            const end = start + ph.durationMs;
-            clearTimers();
+            const p = plan[idx++];
+            this.phase(p.text);
+            const t0 = Date.now(), t1 = t0 + p.durationMs;
+            clear();
             timedTimer = setInterval(() => {
               const now = Date.now();
-              const ratio = clamp((now - start) / ph.durationMs, 0, 1);
-              current = ph.progressStart + (ph.progressEnd - ph.progressStart) * ratio;
+              const r = clamp((now - t0) / p.durationMs, 0, 1);
+              cur = p.progressStart + (p.progressEnd - p.progressStart) * r;
               paint();
-              if (now >= end) {
-                clearTimers();
-                current = ph.progressEnd;
-                paint();
-                startNext();
-              }
+              if (now >= t1) { clear(); cur = p.progressEnd; paint(); next(); }
             }, 80);
           };
-          startNext();
+          next();
         },
         
-        showPhase(text) { if (text) loaderStep.textContent = text; },
-        setPercent(p) { if (!locked) { current = clamp(p, 0, 100); paint(); } },
-        softPercent(p) { if (!locked) { current = current + (clamp(p, 0, 100) - current) * 0.5; paint(); } },
+        phase(t) { if (t) loaderStep.textContent = t; },
+        set(p) { if (!locked) { cur = clamp(p, 0, 100); paint(); } },
+        soft(p) { if (!locked) { cur += (clamp(p, 0, 100) - cur) * 0.5; paint(); } },
         
-        animateTo(target, ms = 1200, cb) {
-          const start = current;
-          const end = clamp(target, 0, 100);
-          const t0 = performance.now();
-          const step = (t) => {
+        to(target, ms = 1200, cb) {
+          const s = cur, e = clamp(target, 0, 100), t0 = performance.now();
+          const step = t => {
             const k = clamp((t - t0) / ms, 0, 1);
-            current = start + (end - start) * k;
+            cur = s + (e - s) * k;
             paint();
             if (k < 1) requestAnimationFrame(step);
             else if (cb) cb();
@@ -1095,50 +989,38 @@ ${docsList}</div>
           requestAnimationFrame(step);
         },
         
-        finish(data, chatRefsToReactivate) {
+        done(data, refs) {
           locked = true;
-          clearTimers();
-          loaderBar.classList.remove('animating');
-          
-          this.animateTo(100, 500, () => {
-            this.showPhase('Terminé');
-            
+          clear();
+          this.to(100, 400, () => {
+            this.phase('Terminé');
             setTimeout(() => {
-              loader.classList.add('closing');
-              
+              loader.classList.add('hide');
               setTimeout(() => {
-                loader.classList.remove('active', 'closing');
-                card.style.display = '';
-                overlay.classList.remove('active');
-                root.style.pointerEvents = 'auto';
-                
+                loader.classList.remove('show', 'hide');
+                bodyDiv.style.display = '';
+                overlay.classList.remove('show');
+                root.style.pointerEvents = '';
+                enableChatInput(refs);
                 setTimeout(() => {
-                  enableChatInput(chatRefsToReactivate);
-                  
-                  setTimeout(() => {
-                    try {
-                      window?.voiceflow?.chat?.interact?.({
-                        type: 'complete',
-                        payload: {
-                          webhookSuccess: true,
-                          webhookResponse: data,
-                          files: selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })),
-                          buttonPath: 'success'
-                        }
-                      });
-                    } catch (e) {
-                      console.error('Erreur .interact():', e);
+                  window?.voiceflow?.chat?.interact?.({
+                    type: 'complete',
+                    payload: {
+                      webhookSuccess: true,
+                      webhookResponse: data,
+                      files: selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })),
+                      buttonPath: 'success'
                     }
-                  }, 300);
+                  });
                 }, 200);
-              }, 400);
+              }, 200);
             }, autoCloseDelayMs);
           });
         }
       };
     }
     
-    function buildTimedPlan() {
+    function buildPlan() {
       const haveSeconds = timedPhases.every(ph => Number(ph.seconds) > 0);
       let total = haveSeconds ? timedPhases.reduce((s, ph) => s + Number(ph.seconds), 0) : totalSeconds;
       const weightsSum = timedPhases.reduce((s, ph) => s + (Number(ph.weight) || 0), 0) || timedPhases.length;
@@ -1158,68 +1040,54 @@ ${docsList}</div>
       });
       if (!plan.length) {
         return defaultAutoSteps.map((s, i, arr) => ({
-          text: s.text,
-          durationMs: i === 0 ? 1000 : 1500,
-          progressStart: i ? arr[i - 1].progress : 0,
-          progressEnd: s.progress
+          text: s.text, durationMs: i === 0 ? 1000 : 1500,
+          progressStart: i ? arr[i - 1].progress : 0, progressEnd: s.progress
         }));
       }
       return plan;
     }
     
     // ---------- Network ----------
-    async function postToN8n({ url, method, headers, timeoutMs, retries, files, fileFieldName, extra, vfContext }) {
-      let lastErr;
-      for (let attempt = 0; attempt <= retries; attempt++) {
+    async function post({ url, method, headers, timeoutMs, retries, files, fileFieldName, extra, vfContext }) {
+      let err;
+      for (let i = 0; i <= retries; i++) {
         try {
-          const controller = new AbortController();
-          const to = setTimeout(() => controller.abort(), timeoutMs);
+          const ctrl = new AbortController();
+          const to = setTimeout(() => ctrl.abort(), timeoutMs);
           const fd = new FormData();
           files.forEach(f => fd.append(fileFieldName, f, f.name));
-          Object.entries(extra).forEach(([k, v]) => {
-            fd.append(k, typeof v === 'object' ? JSON.stringify(v) : String(v ?? ''));
-          });
+          Object.entries(extra).forEach(([k, v]) => fd.append(k, typeof v === 'object' ? JSON.stringify(v) : String(v ?? '')));
           if (vfContext.conversation_id) fd.append('conversation_id', vfContext.conversation_id);
           if (vfContext.user_id) fd.append('user_id', vfContext.user_id);
           if (vfContext.locale) fd.append('locale', vfContext.locale);
-          const finalHeaders = { ...headers };
-          delete finalHeaders['Content-Type'];
-          const resp = await fetch(url, { method, headers: finalHeaders, body: fd, signal: controller.signal });
+          const h = { ...headers };
+          delete h['Content-Type'];
+          const r = await fetch(url, { method, headers: h, body: fd, signal: ctrl.signal });
           clearTimeout(to);
-          if (!resp.ok) {
-            const text = await safeText(resp);
-            throw new Error(`Erreur ${resp.status} : ${text?.slice(0, 200) || resp.statusText}`);
-          }
-          return { ok: true, data: await safeJson(resp) };
+          if (!r.ok) throw new Error(`Erreur ${r.status}`);
+          return { ok: true, data: await r.json().catch(() => null) };
         } catch (e) {
-          lastErr = e;
-          if (attempt < retries) await new Promise(r => setTimeout(r, 900));
+          err = e;
+          if (i < retries) await new Promise(r => setTimeout(r, 900));
         }
       }
-      throw lastErr || new Error('Échec de l\'envoi');
+      throw err || new Error('Échec');
     }
     
-    async function pollStatus({ statusUrl, headers, intervalMs, maxAttempts, onTick }) {
+    async function poll({ statusUrl, headers, intervalMs, maxAttempts, onTick }) {
       for (let i = 1; i <= maxAttempts; i++) {
         const r = await fetch(statusUrl, { headers });
         if (!r.ok) throw new Error(`Polling ${r.status}`);
-        const j = await safeJson(r);
-        if (j?.status === 'error') throw new Error(j?.error || 'Erreur pipeline');
-        if (typeof onTick === 'function') {
-          try { onTick({ percent: j?.percent, phase: j?.phase, message: j?.message }); } catch {}
-        }
+        const j = await r.json().catch(() => ({}));
+        if (j?.status === 'error') throw new Error(j?.error || 'Erreur');
+        if (typeof onTick === 'function') onTick({ percent: j?.percent, phase: j?.phase, message: j?.message });
         if (j?.status === 'done') return j?.data ?? j;
         await new Promise(r => setTimeout(r, intervalMs));
       }
-      throw new Error('Polling timeout');
+      throw new Error('Timeout');
     }
     
-    async function safeJson(r) { try { return await r.json(); } catch { return null; } }
-    async function safeText(r) { try { return await r.text(); } catch { return null; } }
-    
-    return () => {
-      if (timedTimer) { clearInterval(timedTimer); timedTimer = null; }
-    };
+    return () => { if (timedTimer) clearInterval(timedTimer); };
   }
 };
 

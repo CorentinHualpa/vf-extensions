@@ -1,10 +1,6 @@
-// UploadToN8nWithLoader.js – v4.2 RÉTROCOMPATIBLE
-// © Corentin – Compatible mode embedded ET widget
-// ✅ Support minFiles (nouveau) + logique OBMS (rétrocompatibilité)
-// 
-// RÉTROCOMPATIBILITÉ :
-// - Si minFiles est défini dans le payload → mode simple (utilise minFiles)
-// - Si minFiles n'est PAS défini → logique OBMS existante (2 ou 3 fichiers selon obms)
+// UploadToN8nWithLoader.js – v5.0 CLEAN DESIGN
+// © Corentin – Version épurée style Infortive
+// Compatible mode embedded ET widget
 //
 export const UploadToN8nWithLoader = {
   name: 'UploadToN8nWithLoader',
@@ -64,7 +60,7 @@ export const UploadToN8nWithLoader = {
         textarea.disabled = true;
         textarea.style.opacity = '0.5';
         textarea.style.cursor = 'not-allowed';
-        textarea.placeholder = '📁 Veuillez d\'abord charger vos documents...';
+        textarea.placeholder = 'Veuillez d\'abord charger vos documents...';
         
         if (sendBtn) {
           sendBtn.disabled = true;
@@ -113,9 +109,25 @@ export const UploadToN8nWithLoader = {
     const accept        = p.accept || '.pdf,.docx';
     const maxFileSizeMB = p.maxFileSizeMB || 25;
     const maxFiles      = p.maxFiles || 10;
-    const primaryColor   = p.primaryColor || '#087095';
-    const secondaryColor = p.secondaryColor || '#003D5C';
-    const accentColor    = p.accentColor || '#FF8C00';
+    
+    // ═══════════════════════════════════════════════════════════════
+    // 🎨 PALETTE INFORTIVE - FOND BLANC
+    // ═══════════════════════════════════════════════════════════════
+    const colors = {
+      primary: '#1E2A4A',      // Bleu marine Infortive
+      accent: '#C4954A',       // Or/bronze
+      accentHover: '#B8860B',  // Or plus foncé au hover
+      text: '#1E2A4A',         // Texte principal
+      textMuted: '#6B7280',    // Texte secondaire
+      border: '#E5E7EB',       // Bordures
+      borderHover: '#D1D5DB',  // Bordures hover
+      bgSubtle: '#F9FAFB',     // Fond très léger
+      white: '#FFFFFF',
+      success: '#059669',      // Vert succès
+      error: '#DC2626',        // Rouge erreur
+      warning: '#D97706',      // Orange warning
+    };
+    
     const buttons = Array.isArray(p.buttons) ? p.buttons : [];
     
     const webhook          = p.webhook || {};
@@ -127,24 +139,18 @@ export const UploadToN8nWithLoader = {
     const fileFieldName    = webhook.fileFieldName || 'files';
     const extra            = webhook.extra || {};
     
-    // ═══════════════════════════════════════════════════════════════
-    // ✅ LOGIQUE RÉTROCOMPATIBLE : minFiles vs OBMS
-    // ═══════════════════════════════════════════════════════════════
+    // Logique minFiles
     let requiredFiles;
     let isSimpleMode = false;
     let isOBMS = false;
     
     if (p.minFiles !== undefined && p.minFiles !== null) {
-      // ✅ MODE SIMPLE : minFiles est défini dans le payload
       requiredFiles = Math.max(1, Math.min(Number(p.minFiles) || 1, maxFiles));
       isSimpleMode = true;
-      console.log(`📋 Mode SIMPLE: ${requiredFiles} fichier(s) minimum requis`);
     } else {
-      // ✅ MODE OBMS : logique existante (rétrocompatibilité)
       const obmsValue = (extra.obms || 'non').toLowerCase().trim();
       isOBMS = obmsValue === 'oui';
       requiredFiles = isOBMS ? 2 : 3;
-      console.log(`📋 Mode OBMS: "${obmsValue}" → ${requiredFiles} fichiers requis`);
     }
     
     const awaitResponse      = p.awaitResponse !== false;
@@ -169,35 +175,35 @@ export const UploadToN8nWithLoader = {
     const autoCloseDelayMs = Number(loaderCfg.autoCloseDelayMs) > 0 ? Number(loaderCfg.autoCloseDelayMs) : 1500;
     
     const defaultAutoSteps = [
-      { progress: 0,  text: '📋 Préparation' },
-      { progress: 30, text: '🚀 Envoi' },
-      { progress: 60, text: '🔄 Traitement' },
-      { progress: 85, text: '✨ Finalisation' },
-      { progress: 100,text: '✅ Terminé !' }
+      { progress: 0,  text: 'Préparation' },
+      { progress: 30, text: 'Envoi en cours' },
+      { progress: 60, text: 'Traitement' },
+      { progress: 85, text: 'Finalisation' },
+      { progress: 100,text: 'Terminé' }
     ];
     
     const timedPhases = Array.isArray(loaderCfg.phases) ? loaderCfg.phases : [];
     const totalSeconds = Number(loaderCfg.totalSeconds) > 0 ? Number(loaderCfg.totalSeconds) : 120;
     
     const stepMap = loaderCfg.stepMap || {
-      upload:      { text: '📤 Téléversement',            progress: 10 },
-      sign_url:    { text: '🔐 Signature URL sécurisée',  progress: 18 },
-      ocr_annot:   { text: '🧠 OCR (annotation)',         progress: 35 },
-      ocr_classic: { text: '📑 OCR (fallback)',           progress: 42 },
-      merge:       { text: '🧩 Fusion & agrégation',      progress: 55 },
-      combine:     { text: '🗂️ Préparation des documents',progress: 62 },
-      ai_agent:    { text: '🤖 Analyse RH avancée',       progress: 82 },
-      gdoc_prep:   { text: '📝 Préparation Google Doc',   progress: 88 },
-      gdrive_copy: { text: '☁️ Copie dans Google Drive',  progress: 93 },
-      gdoc_update: { text: '📄 Mise à jour du document',  progress: 97 }
+      upload:      { text: 'Téléversement',            progress: 10 },
+      sign_url:    { text: 'Signature URL sécurisée',  progress: 18 },
+      ocr_annot:   { text: 'OCR (annotation)',         progress: 35 },
+      ocr_classic: { text: 'OCR (fallback)',           progress: 42 },
+      merge:       { text: 'Fusion & agrégation',      progress: 55 },
+      combine:     { text: 'Préparation des documents',progress: 62 },
+      ai_agent:    { text: 'Analyse RH avancée',       progress: 82 },
+      gdoc_prep:   { text: 'Préparation Google Doc',   progress: 88 },
+      gdrive_copy: { text: 'Copie dans Google Drive',  progress: 93 },
+      gdoc_update: { text: 'Mise à jour du document',  progress: 97 }
     };
     
-    const loaderMsg = loaderCfg.message || '⏳ Traitement en cours...';
+    const loaderMsg = loaderCfg.message || 'Traitement en cours...';
     
     if (!webhookUrl) {
       const div = document.createElement('div');
-      div.innerHTML = `<div style="padding:16px;border-radius:12px;background:linear-gradient(135deg,#fee2e2,#fecaca);border:1px solid #fca5a5;color:#991b1b;font-weight:500">
-        ⚠️ Erreur de configuration : <b>webhook.url</b> manquant.
+      div.innerHTML = `<div style="padding:16px;border-radius:8px;background:${colors.bgSubtle};border:1px solid ${colors.error};color:${colors.error};font-weight:500;font-size:14px">
+        Erreur de configuration : webhook.url manquant.
       </div>`;
       element.appendChild(div);
       enableChatInput(chatRefs);
@@ -208,164 +214,500 @@ export const UploadToN8nWithLoader = {
     const hasSubtitle = subtitle && subtitle.trim() !== '';
     const showHeader = hasTitle || hasSubtitle;
     
-    // ═══════════════════════════════════════════════════════════════
-    // ✅ MESSAGE INFORMATIF ADAPTÉ AU MODE
-    // ═══════════════════════════════════════════════════════════════
+    // Message informatif
     let requiredDocsInfo;
     let docsListOBMS, docsListFull;
     
     if (isSimpleMode) {
-      // Mode simple : message générique
       if (requiredFiles === 1) {
-        requiredDocsInfo = `ℹ️ 1 à ${maxFiles} fichiers acceptés`;
+        requiredDocsInfo = `1 à ${maxFiles} fichiers acceptés`;
       } else {
-        requiredDocsInfo = `ℹ️ ${requiredFiles} à ${maxFiles} fichiers acceptés`;
+        requiredDocsInfo = `${requiredFiles} à ${maxFiles} fichiers acceptés`;
       }
     } else {
-      // Mode OBMS : messages spécifiques existants
       docsListOBMS = '• Lettre de mission / Descriptif du poste\n• CV du candidat';
       docsListFull = '• Lettre de mission / Descriptif du poste\n• CV du candidat\n• Profil AssessFirst du candidat';
       requiredDocsInfo = isOBMS 
-        ? `ℹ️ Mode OBMS : ${requiredFiles} documents requis`
-        : `ℹ️ ${requiredFiles} documents requis`;
+        ? `Mode OBMS : ${requiredFiles} documents requis`
+        : `${requiredFiles} documents requis`;
     }
     
-    // ---------- STYLES ----------
+    // ---------- STYLES ÉPURÉS ----------
     const styles = `
-      @keyframes uploadPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.05);opacity:.8}}
-      @keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
-      @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-      @keyframes fadeOut{from{opacity:1}to{opacity:0}}
-      @keyframes shake{0%,100%{transform:translateX(0)}10%,30%,50%,70%,90%{transform:translateX(-5px)}20%,40%,60%,80%{transform:translateX(5px)}}
-      .upload-modern-wrap{width:100%;max-width:100%;animation:slideUp .4s ease-out;position:relative}
-      .upload-modern-disabled-overlay{display:none;position:absolute;inset:0;background:rgba(255,255,255,.95);backdrop-filter:blur(4px);z-index:9999;border-radius:20px;cursor:not-allowed}
-      .upload-modern-disabled-overlay.active{display:flex;align-items:center;justify-content:center}
-      .upload-modern-disabled-overlay.active::after{content:'🔒 Traitement en cours...';font-size:18px;font-weight:700;color:#64748b}
-      .upload-modern-card{background:linear-gradient(145deg,#fff 0%,#f8fafc 100%);border-radius:20px;padding:24px;box-shadow:0 10px 40px rgba(0,0,0,.08),0 2px 8px rgba(0,0,0,.04);border:1px solid rgba(0,0,0,.06);position:relative;overflow:hidden}
-      .upload-modern-header{text-align:center;margin-bottom:24px;position:relative;z-index:2}
-      .upload-modern-title{font-size:22px;font-weight:800;background:linear-gradient(135deg, ${primaryColor}, ${secondaryColor});-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin:0 0 8px 0;letter-spacing:-.5px}
-      .upload-modern-subtitle{font-size:13px;color:#64748b;font-weight:500}
-      .upload-modern-zone{border:3px dashed transparent;background:linear-gradient(#fff,#fff) padding-box,linear-gradient(135deg, ${primaryColor}40, ${secondaryColor}40) border-box;border-radius:16px;padding:40px 24px;text-align:center;cursor:pointer;transition:all .3s cubic-bezier(.4,0,.2,1);position:relative;overflow:hidden}
-      .upload-modern-zone::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg, ${primaryColor}08, ${secondaryColor}08);opacity:0;transition:opacity .3s}
-      .upload-modern-zone:hover{transform:translateY(-2px);box-shadow:0 12px 24px ${primaryColor}30;border-color:transparent;background:linear-gradient(#fff,#fff) padding-box,linear-gradient(135deg, ${primaryColor}, ${secondaryColor}) border-box}
-      .upload-modern-zone:hover::before{opacity:1}
-      .upload-modern-zone.dragging{background:linear-gradient(#fff,#fff) padding-box,linear-gradient(135deg, ${primaryColor}, ${accentColor}) border-box;transform:scale(1.02)}
-      .upload-modern-icon{font-size:48px;margin-bottom:12px;display:inline-block;filter:drop-shadow(0 4px 8px ${primaryColor}40)}
-      .upload-modern-zone:hover .upload-modern-icon{animation:uploadPulse 1.5s infinite}
-      .upload-modern-desc{font-size:15px;color:#475569;font-weight:600;position:relative;z-index:1}
-      .upload-modern-files-list{margin-top:20px;display:none;flex-direction:column;gap:12px;max-height:300px;overflow-y:auto;padding:4px}
-      .upload-modern-files-list.active{display:flex}
-      .upload-modern-file-item{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:linear-gradient(135deg, ${primaryColor}10, ${secondaryColor}10);border-radius:12px;border-left:4px solid ${primaryColor};animation:fadeIn .3s ease-out;transition:all .2s}
-      .upload-modern-file-item:hover{transform:translateX(4px);box-shadow:0 4px 12px ${primaryColor}20}
-      .upload-modern-file-item-name{font-weight:700;color:#1e293b;font-size:14px;margin-bottom:4px;display:flex;align-items:center;gap:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-      .upload-modern-file-item-size{font-size:12px;color:#64748b;font-weight:500}
-      .upload-modern-file-item-remove{flex-shrink:0;width:32px;height:32px;border-radius:8px;border:none;background:linear-gradient(135deg,#fee2e2,#fecaca);color:#991b1b;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;transition:all .2s;font-weight:bold}
-      .upload-modern-file-item-remove:hover{background:linear-gradient(135deg,#fecaca,#fca5a5);transform:scale(1.1)}
-      .upload-modern-files-count{margin-top:12px;padding:10px;background:linear-gradient(135deg, ${accentColor}20, ${accentColor}30);border-radius:8px;text-align:center;font-size:13px;font-weight:700;color:${secondaryColor}}
-      .upload-modern-actions{display:flex;gap:12px;margin-top:20px;flex-wrap:wrap}
-      .upload-modern-btn{flex:1;min-width:120px;padding:14px 24px;border-radius:12px;border:none;font-weight:700;font-size:14px;cursor:pointer;transition:all .3s cubic-bezier(.4,0,.2,1);position:relative;overflow:hidden;letter-spacing:.3px}
-      .upload-modern-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(45deg,transparent,rgba(255,255,255,.3),transparent);transform:translateX(-100%);transition:transform .6s}
-      .upload-modern-btn:hover::before{transform:translateX(100%)}
-      .upload-modern-btn-primary{background:linear-gradient(135deg, ${primaryColor}, ${secondaryColor});color:#fff;box-shadow:0 4px 12px ${primaryColor}40}
-      .upload-modern-btn-primary:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 8px 20px ${primaryColor}50}
-      .upload-modern-btn-primary:disabled{opacity:.5;cursor:not-allowed}
-      .upload-modern-btn-secondary{background:linear-gradient(145deg,#f1f5f9,#e2e8f0);color:#475569;box-shadow:0 2px 8px rgba(0,0,0,.1)}
-      .upload-modern-btn-secondary:hover:not(:disabled){background:linear-gradient(145deg,#e2e8f0,#cbd5e1);transform:translateY(-1px)}
-      .upload-modern-status{margin-top:16px;padding:12px;border-radius:10px;font-size:13px;font-weight:600;text-align:center;animation:slideUp .3s ease-out}
-      .upload-modern-status.error{background:linear-gradient(135deg,#fee2e2,#fecaca);color:#991b1b;border:1px solid #fca5a5}
-      .upload-modern-status.success{background:linear-gradient(135deg,#d1fae5,#a7f3d0);color:#065f46;border:1px solid #6ee7b7}
-      .upload-modern-status.processing{background:linear-gradient(135deg, ${primaryColor}20, ${secondaryColor}20);color:${secondaryColor};border:1px solid ${primaryColor}60}
-      .upload-modern-status.warning{background:linear-gradient(135deg,#fef3c7,#fde68a);color:#92400e;border:1px solid #f59e0b}
-      .upload-modern-loader{display:none;background:linear-gradient(145deg,#0a5d7a,#003a52);border-radius:20px;padding:40px;margin-top:16px;box-shadow:0 20px 60px rgba(0,0,0,.5),0 0 0 3px #FF8C00;animation:slideUp .4s ease-out;transition:opacity .4s ease-out}
-      .upload-modern-loader.active{display:block}
-      .upload-modern-loader.closing{animation:fadeOut .4s ease-out}
-      .upload-modern-loader-content{display:flex;flex-direction:column;align-items:center;gap:24px}
-      .upload-modern-loader-title{color:#FFFFFF;font-weight:800;font-size:22px;letter-spacing:.5px;text-align:center;text-shadow:0 3px 6px rgba(0,0,0,.5)}
-      .upload-modern-loader-percentage{color:#FFFFFF;font-weight:900;font-size:56px;text-align:center;text-shadow:0 4px 12px rgba(0,0,0,.6);letter-spacing:3px;line-height:1}
-      .upload-modern-loader-step{color:#FFFFFF;font-size:18px;font-weight:600;text-align:center;min-height:28px;text-shadow:0 2px 4px rgba(0,0,0,.4);background:rgba(255,255,255,.15);padding:12px 20px;border-radius:10px;backdrop-filter:blur(10px)}
-      .upload-validation-error{margin-top:16px;padding:24px;background:linear-gradient(135deg,#fef3c7,#fde68a);border:2px solid #f59e0b;border-radius:16px;text-align:center;animation:shake .5s ease-out}
-      .upload-validation-error-icon{font-size:40px;margin-bottom:12px}
-      .upload-validation-error-title{font-weight:700;color:#92400e;font-size:16px;margin-bottom:12px}
-      .upload-validation-error-message{color:#78350f;font-size:14px;white-space:pre-line;margin-bottom:20px;line-height:1.6;text-align:left;background:rgba(255,255,255,.5);padding:12px;border-radius:8px}
-      .upload-validation-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
-      .upload-validation-btn{padding:12px 24px;border-radius:10px;border:none;font-weight:600;font-size:14px;cursor:pointer;transition:all .2s}
-      .upload-validation-btn:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.15)}
-      .upload-validation-btn-primary{background:linear-gradient(135deg,${primaryColor},${secondaryColor});color:white}
-      .upload-validation-btn-secondary{background:#e5e7eb;color:#374151}
-      .upload-required-info{margin-top:12px;padding:10px 14px;background:linear-gradient(135deg,#dbeafe,#bfdbfe);border-radius:8px;font-size:12px;color:#1e40af;text-align:center;border:1px solid #93c5fd}
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes fadeOut {
+        from { opacity: 1; }
+        to { opacity: 0; }
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+      
+      .upload-wrap {
+        width: 100%;
+        max-width: 100%;
+        animation: fadeIn 0.3s ease-out;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      }
+      
+      .upload-card {
+        background: ${colors.white};
+        border-radius: 12px;
+        padding: 24px;
+        border: 1px solid ${colors.border};
+      }
+      
+      .upload-header {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      
+      .upload-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: ${colors.primary};
+        margin: 0 0 4px 0;
+        letter-spacing: -0.3px;
+      }
+      
+      .upload-subtitle {
+        font-size: 13px;
+        color: ${colors.textMuted};
+        font-weight: 400;
+      }
+      
+      .upload-zone {
+        border: 2px dashed ${colors.border};
+        border-radius: 8px;
+        padding: 32px 24px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background: ${colors.white};
+      }
+      
+      .upload-zone:hover {
+        border-color: ${colors.accent};
+        background: ${colors.bgSubtle};
+      }
+      
+      .upload-zone.dragging {
+        border-color: ${colors.accent};
+        background: rgba(196, 149, 74, 0.05);
+      }
+      
+      .upload-zone-icon {
+        width: 48px;
+        height: 48px;
+        margin: 0 auto 12px;
+        color: ${colors.textMuted};
+      }
+      
+      .upload-zone:hover .upload-zone-icon {
+        color: ${colors.accent};
+      }
+      
+      .upload-zone-text {
+        font-size: 14px;
+        color: ${colors.textMuted};
+        font-weight: 500;
+      }
+      
+      .upload-info {
+        margin-top: 12px;
+        padding: 8px 12px;
+        background: ${colors.bgSubtle};
+        border-radius: 6px;
+        font-size: 12px;
+        color: ${colors.textMuted};
+        text-align: center;
+      }
+      
+      .upload-files-list {
+        margin-top: 16px;
+        display: none;
+        flex-direction: column;
+        gap: 8px;
+      }
+      
+      .upload-files-list.active {
+        display: flex;
+      }
+      
+      .upload-file-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 14px;
+        background: ${colors.bgSubtle};
+        border-radius: 8px;
+        border: 1px solid ${colors.border};
+        animation: fadeIn 0.2s ease-out;
+      }
+      
+      .upload-file-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+        flex: 1;
+      }
+      
+      .upload-file-icon {
+        width: 20px;
+        height: 20px;
+        color: ${colors.accent};
+        flex-shrink: 0;
+      }
+      
+      .upload-file-details {
+        min-width: 0;
+      }
+      
+      .upload-file-name {
+        font-weight: 500;
+        color: ${colors.text};
+        font-size: 13px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      
+      .upload-file-size {
+        font-size: 11px;
+        color: ${colors.textMuted};
+        margin-top: 2px;
+      }
+      
+      .upload-file-remove {
+        flex-shrink: 0;
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        border: none;
+        background: transparent;
+        color: ${colors.textMuted};
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s ease;
+      }
+      
+      .upload-file-remove:hover {
+        background: rgba(220, 38, 38, 0.1);
+        color: ${colors.error};
+      }
+      
+      .upload-count {
+        margin-top: 12px;
+        padding: 8px 12px;
+        background: ${colors.bgSubtle};
+        border-radius: 6px;
+        text-align: center;
+        font-size: 12px;
+        font-weight: 500;
+        color: ${colors.textMuted};
+        display: none;
+      }
+      
+      .upload-count.ready {
+        background: rgba(5, 150, 105, 0.08);
+        color: ${colors.success};
+      }
+      
+      .upload-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 16px;
+      }
+      
+      .upload-btn {
+        flex: 1;
+        padding: 12px 20px;
+        border-radius: 8px;
+        border: none;
+        font-weight: 500;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      
+      .upload-btn-primary {
+        background: ${colors.accent};
+        color: ${colors.white};
+      }
+      
+      .upload-btn-primary:hover:not(:disabled) {
+        background: ${colors.accentHover};
+      }
+      
+      .upload-btn-primary:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      
+      .upload-btn-secondary {
+        background: ${colors.bgSubtle};
+        color: ${colors.text};
+        border: 1px solid ${colors.border};
+      }
+      
+      .upload-btn-secondary:hover:not(:disabled) {
+        background: ${colors.border};
+      }
+      
+      .upload-status {
+        margin-top: 12px;
+        padding: 10px 14px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        text-align: center;
+        display: none;
+        animation: fadeIn 0.2s ease-out;
+      }
+      
+      .upload-status.error {
+        background: rgba(220, 38, 38, 0.08);
+        color: ${colors.error};
+      }
+      
+      .upload-status.success {
+        background: rgba(5, 150, 105, 0.08);
+        color: ${colors.success};
+      }
+      
+      .upload-status.processing {
+        background: rgba(196, 149, 74, 0.08);
+        color: ${colors.accent};
+      }
+      
+      .upload-status.warning {
+        background: rgba(217, 119, 6, 0.08);
+        color: ${colors.warning};
+      }
+      
+      /* LOADER */
+      .upload-loader {
+        display: none;
+        background: ${colors.white};
+        border-radius: 12px;
+        padding: 32px;
+        margin-top: 16px;
+        border: 1px solid ${colors.border};
+        animation: fadeIn 0.3s ease-out;
+      }
+      
+      .upload-loader.active {
+        display: block;
+      }
+      
+      .upload-loader.closing {
+        animation: fadeOut 0.3s ease-out;
+      }
+      
+      .upload-loader-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+      }
+      
+      .upload-loader-title {
+        color: ${colors.text};
+        font-weight: 600;
+        font-size: 16px;
+        text-align: center;
+      }
+      
+      .upload-loader-ring {
+        position: relative;
+        width: 120px;
+        height: 120px;
+      }
+      
+      .upload-loader-ring svg {
+        transform: rotate(-90deg);
+      }
+      
+      .upload-loader-ring-bg {
+        fill: none;
+        stroke: ${colors.border};
+        stroke-width: 8;
+      }
+      
+      .upload-loader-ring-progress {
+        fill: none;
+        stroke: ${colors.accent};
+        stroke-width: 8;
+        stroke-linecap: round;
+        stroke-dasharray: 339.292;
+        stroke-dashoffset: 339.292;
+        transition: stroke-dashoffset 0.3s ease;
+      }
+      
+      .upload-loader-percent {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 24px;
+        font-weight: 700;
+        color: ${colors.primary};
+      }
+      
+      .upload-loader-step {
+        font-size: 14px;
+        color: ${colors.textMuted};
+        text-align: center;
+        min-height: 20px;
+      }
+      
+      /* VALIDATION ERROR */
+      .upload-validation-error {
+        margin-top: 16px;
+        padding: 20px;
+        background: rgba(217, 119, 6, 0.08);
+        border: 1px solid rgba(217, 119, 6, 0.2);
+        border-radius: 8px;
+        text-align: center;
+        animation: fadeIn 0.2s ease-out;
+      }
+      
+      .upload-validation-title {
+        font-weight: 600;
+        color: ${colors.warning};
+        font-size: 14px;
+        margin-bottom: 8px;
+      }
+      
+      .upload-validation-message {
+        color: ${colors.text};
+        font-size: 13px;
+        white-space: pre-line;
+        margin-bottom: 16px;
+        line-height: 1.5;
+        text-align: left;
+      }
+      
+      .upload-validation-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+      }
+      
+      .upload-disabled-overlay {
+        display: none;
+        position: absolute;
+        inset: 0;
+        background: rgba(255, 255, 255, 0.9);
+        z-index: 100;
+        border-radius: 12px;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .upload-disabled-overlay.active {
+        display: flex;
+      }
+      
+      .upload-disabled-overlay::after {
+        content: 'Traitement en cours...';
+        font-size: 14px;
+        font-weight: 500;
+        color: ${colors.textMuted};
+      }
     `;
+    
+    // ---------- ICÔNES SVG ----------
+    const icons = {
+      upload: `<svg class="upload-zone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M12 16V4m0 0L8 8m4-4l4 4" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M3 17v3a2 2 0 002 2h14a2 2 0 002-2v-3" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`,
+      file: `<svg class="upload-file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`,
+      remove: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`
+    };
     
     // ---------- UI ----------
     const root = document.createElement('div');
-    root.className = 'upload-modern-wrap';
+    root.className = 'upload-wrap';
+    root.style.position = 'relative';
+    
     const styleTag = document.createElement('style');
     styleTag.textContent = styles;
     root.appendChild(styleTag);
     
     let headerHTML = '';
     if (showHeader) {
-      headerHTML = `<div class="upload-modern-header">`;
-      if (hasTitle) headerHTML += `<div class="upload-modern-title">${title}</div>`;
-      if (hasSubtitle) headerHTML += `<div class="upload-modern-subtitle">${subtitle}</div>`;
+      headerHTML = `<div class="upload-header">`;
+      if (hasTitle) headerHTML += `<div class="upload-title">${title}</div>`;
+      if (hasSubtitle) headerHTML += `<div class="upload-subtitle">${subtitle}</div>`;
       headerHTML += `</div>`;
     }
     
     root.innerHTML += `
-      <div class="upload-modern-disabled-overlay"></div>
-      <div class="upload-modern-card">
+      <div class="upload-disabled-overlay"></div>
+      <div class="upload-card">
         ${headerHTML}
-        <div class="upload-modern-zone">
-          <div class="upload-modern-icon">📁</div>
-          <div class="upload-modern-desc">${description}</div>
+        <div class="upload-zone">
+          ${icons.upload}
+          <div class="upload-zone-text">${description}</div>
           <input type="file" accept="${accept}" multiple style="display:none" />
         </div>
-        <div class="upload-required-info">${requiredDocsInfo}</div>
-        <div class="upload-modern-files-list"></div>
-        <div class="upload-modern-files-count" style="display:none"></div>
-        <div class="upload-modern-actions">
+        <div class="upload-info">${requiredDocsInfo}</div>
+        <div class="upload-files-list"></div>
+        <div class="upload-count"></div>
+        <div class="upload-actions">
           ${buttons.map(b => `
-            <button class="upload-modern-btn upload-modern-btn-secondary back-button" data-path="${b.path || pathError}">
-              ${b.text || '← Retour'}
+            <button class="upload-btn upload-btn-secondary back-button" data-path="${b.path || pathError}">
+              ${b.text || 'Retour'}
             </button>
           `).join('')}
-          <button class="upload-modern-btn upload-modern-btn-primary send-button" disabled>Envoyer</button>
+          <button class="upload-btn upload-btn-primary send-button" disabled>Envoyer</button>
         </div>
-        <div class="upload-modern-status" style="display:none"></div>
+        <div class="upload-status"></div>
       </div>
-      <div class="upload-modern-loader">
-        <div class="upload-modern-loader-content">
-          <div class="upload-modern-loader-title"></div>
-          <svg width="180" height="180" viewBox="0 0 180 180">
-            <circle cx="90" cy="90" r="80" stroke="rgba(255,255,255,0.2)" stroke-width="10" fill="none"/>
-            <circle class="loader-circle" cx="90" cy="90" r="80"
-                    stroke="#FF8C00" stroke-width="10" fill="none"
-                    stroke-linecap="round"
-                    transform="rotate(-90 90 90)"
-                    stroke-dasharray="502" stroke-dashoffset="502"
-                    style="filter:drop-shadow(0 0 8px #FF8C00)"/>
-          </svg>
-          <div class="upload-modern-loader-percentage">0%</div>
-          <div class="upload-modern-loader-step"></div>
+      <div class="upload-loader">
+        <div class="upload-loader-content">
+          <div class="upload-loader-title"></div>
+          <div class="upload-loader-ring">
+            <svg width="120" height="120" viewBox="0 0 120 120">
+              <circle class="upload-loader-ring-bg" cx="60" cy="60" r="54"/>
+              <circle class="upload-loader-ring-progress" cx="60" cy="60" r="54"/>
+            </svg>
+            <div class="upload-loader-percent">0%</div>
+          </div>
+          <div class="upload-loader-step"></div>
         </div>
       </div>
     `;
     element.appendChild(root);
     
     // ---------- DOM refs ----------
-    const uploadZone   = root.querySelector('.upload-modern-zone');
+    const uploadZone   = root.querySelector('.upload-zone');
     const fileInput    = root.querySelector('input[type="file"]');
-    const filesList    = root.querySelector('.upload-modern-files-list');
-    const filesCount   = root.querySelector('.upload-modern-files-count');
+    const filesList    = root.querySelector('.upload-files-list');
+    const filesCount   = root.querySelector('.upload-count');
     const sendBtn      = root.querySelector('.send-button');
     const backButtons  = root.querySelectorAll('.back-button');
-    const statusDiv    = root.querySelector('.upload-modern-status');
-    const loader       = root.querySelector('.upload-modern-loader');
-    const loaderTitle  = root.querySelector('.upload-modern-loader-title');
-    const loaderPct    = root.querySelector('.upload-modern-loader-percentage');
-    const loaderStep   = root.querySelector('.upload-modern-loader-step');
-    const loaderCircle = root.querySelector('.loader-circle');
-    const disabledOverlay = root.querySelector('.upload-modern-disabled-overlay');
-    const card         = root.querySelector('.upload-modern-card');
+    const statusDiv    = root.querySelector('.upload-status');
+    const loader       = root.querySelector('.upload-loader');
+    const loaderTitle  = root.querySelector('.upload-loader-title');
+    const loaderPct    = root.querySelector('.upload-loader-percent');
+    const loaderStep   = root.querySelector('.upload-loader-step');
+    const loaderCircle = root.querySelector('.upload-loader-ring-progress');
+    const disabledOverlay = root.querySelector('.upload-disabled-overlay');
+    const card         = root.querySelector('.upload-card');
     
     // ---------- STATE ----------
     let selectedFiles = [];
@@ -373,16 +715,20 @@ export const UploadToN8nWithLoader = {
     
     // ---------- Helpers ----------
     const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const circumference = 2 * Math.PI * 54; // 339.292
+    
     function formatSize(bytes) {
       if (bytes < 1024) return bytes + ' B';
       if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
       return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
     }
-    function setStatus(message, type='processing') {
+    
+    function setStatus(message, type = 'processing') {
       statusDiv.textContent = message;
-      statusDiv.className = `upload-modern-status ${type}`;
+      statusDiv.className = `upload-status ${type}`;
       statusDiv.style.display = 'block';
     }
+    
     function clearValidationError() {
       const existingError = root.querySelector('.upload-validation-error');
       if (existingError) existingError.remove();
@@ -402,85 +748,79 @@ export const UploadToN8nWithLoader = {
       
       filesList.classList.add('active');
       filesCount.style.display = 'block';
-      const totalSize = selectedFiles.reduce((s,f)=>s+f.size,0);
+      const totalSize = selectedFiles.reduce((s, f) => s + f.size, 0);
       
-      // ═══════════════════════════════════════════════════════════════
-      // ✅ INDICATEUR VISUEL ADAPTÉ AU MODE
-      // ═══════════════════════════════════════════════════════════════
       const hasEnoughFiles = selectedFiles.length >= requiredFiles;
-      const countColor = hasEnoughFiles ? '#065f46' : '#92400e';
-      const countBg = hasEnoughFiles 
-        ? 'linear-gradient(135deg, #d1fae5, #a7f3d0)' 
-        : `linear-gradient(135deg, ${accentColor}20, ${accentColor}30)`;
       
-      filesCount.style.background = countBg;
-      filesCount.style.color = countColor;
+      filesCount.classList.toggle('ready', hasEnoughFiles);
       
       if (isSimpleMode) {
-        // Mode simple : affichage sans "requis"
-        filesCount.textContent = `${selectedFiles.length} fichier${selectedFiles.length>1?'s':''} (${formatSize(totalSize)})`;
+        filesCount.textContent = `${selectedFiles.length} fichier${selectedFiles.length > 1 ? 's' : ''} sélectionné${selectedFiles.length > 1 ? 's' : ''} (${formatSize(totalSize)})`;
       } else {
-        // Mode OBMS : affichage avec compteur requis
-        filesCount.textContent = `${selectedFiles.length}/${requiredFiles} fichier${selectedFiles.length>1?'s':''} (${formatSize(totalSize)})`;
+        filesCount.textContent = `${selectedFiles.length}/${requiredFiles} fichier${selectedFiles.length > 1 ? 's' : ''} (${formatSize(totalSize)})`;
       }
       
       selectedFiles.forEach((file, i) => {
         const item = document.createElement('div');
-        item.className = 'upload-modern-file-item';
+        item.className = 'upload-file-item';
         item.innerHTML = `
-          <div class="upload-modern-file-item-info">
-            <div class="upload-modern-file-item-name">📄 <span>${file.name}</span></div>
-            <div class="upload-modern-file-item-size">${formatSize(file.size)}</div>
+          <div class="upload-file-info">
+            ${icons.file}
+            <div class="upload-file-details">
+              <div class="upload-file-name">${file.name}</div>
+              <div class="upload-file-size">${formatSize(file.size)}</div>
+            </div>
           </div>
-          <button class="upload-modern-file-item-remove" data-index="${i}">×</button>
+          <button class="upload-file-remove" data-index="${i}">${icons.remove}</button>
         `;
         filesList.appendChild(item);
       });
       
-      root.querySelectorAll('.upload-modern-file-item-remove').forEach(btn=>{
-        btn.addEventListener('click',()=>{
+      root.querySelectorAll('.upload-file-remove').forEach(btn => {
+        btn.addEventListener('click', () => {
           const i = parseInt(btn.getAttribute('data-index'));
-          selectedFiles.splice(i,1);
+          selectedFiles.splice(i, 1);
           updateFilesList();
         });
       });
       
-      // ✅ Activer le bouton si assez de fichiers
       sendBtn.disabled = selectedFiles.length < requiredFiles;
       
-      // ═══════════════════════════════════════════════════════════════
-      // ✅ WARNING ADAPTÉ AU MODE (seulement si pas assez de fichiers)
-      // ═══════════════════════════════════════════════════════════════
       if (selectedFiles.length > 0 && selectedFiles.length < requiredFiles && !isSimpleMode) {
-        // Mode OBMS : afficher le warning
         const missing = requiredFiles - selectedFiles.length;
-        setStatus(`⚠️ Il manque encore ${missing} fichier${missing > 1 ? 's' : ''}`, 'warning');
+        setStatus(`Il manque encore ${missing} fichier${missing > 1 ? 's' : ''}`, 'warning');
       }
-      // En mode simple, pas de warning car 1 fichier suffit
     }
     
     function addFiles(newFiles) {
-      const valid = [], errs=[];
+      const valid = [], errs = [];
       for (const file of newFiles) {
-        if (selectedFiles.length + valid.length >= maxFiles) { errs.push(`Limite de ${maxFiles} fichiers atteinte`); break; }
-        if (maxFileSizeMB && file.size > maxFileSizeMB*1024*1024) { errs.push(`${file.name} : trop volumineux (${formatSize(file.size)})`); continue; }
-        if (selectedFiles.some(f=>f.name===file.name && f.size===file.size)) { errs.push(`${file.name} : déjà ajouté`); continue; }
+        if (selectedFiles.length + valid.length >= maxFiles) {
+          errs.push(`Limite de ${maxFiles} fichiers atteinte`);
+          break;
+        }
+        if (maxFileSizeMB && file.size > maxFileSizeMB * 1024 * 1024) {
+          errs.push(`${file.name} : trop volumineux`);
+          continue;
+        }
+        if (selectedFiles.some(f => f.name === file.name && f.size === file.size)) {
+          errs.push(`${file.name} : déjà ajouté`);
+          continue;
+        }
         valid.push(file);
       }
-      if (valid.length) { selectedFiles.push(...valid); updateFilesList(); }
-      if (errs.length) setStatus(`⚠️ ${errs.join(' • ')}`,'error');
+      if (valid.length) {
+        selectedFiles.push(...valid);
+        updateFilesList();
+      }
+      if (errs.length) setStatus(errs.join(' • '), 'error');
     }
     
-    // ═══════════════════════════════════════════════════════════════
-    // ✅ VALIDATION AVANT ENVOI (MODE OBMS UNIQUEMENT)
-    // ═══════════════════════════════════════════════════════════════
     function validateBeforeSend() {
-      // En mode simple, pas de validation stricte
       if (isSimpleMode) {
         return selectedFiles.length >= requiredFiles;
       }
       
-      // Mode OBMS : validation avec popup d'erreur
       if (selectedFiles.length < requiredFiles) {
         const docsList = isOBMS ? docsListOBMS : docsListFull;
         const missing = requiredFiles - selectedFiles.length;
@@ -490,23 +830,21 @@ export const UploadToN8nWithLoader = {
         const errorDiv = document.createElement('div');
         errorDiv.className = 'upload-validation-error';
         errorDiv.innerHTML = `
-          <div class="upload-validation-error-icon">⚠️</div>
-          <div class="upload-validation-error-title">Nombre de documents insuffisant</div>
-          <div class="upload-validation-error-message">Vous avez sélectionné <strong>${selectedFiles.length}</strong> fichier${selectedFiles.length > 1 ? 's' : ''}, mais <strong>${requiredFiles}</strong> sont requis${isOBMS ? ' (mode OBMS)' : ''}.
+          <div class="upload-validation-title">Documents insuffisants</div>
+          <div class="upload-validation-message">Vous avez sélectionné ${selectedFiles.length} fichier${selectedFiles.length > 1 ? 's' : ''}, mais ${requiredFiles} sont requis.
 
 Documents attendus :
 ${docsList}
 
-Il manque <strong>${missing}</strong> fichier${missing > 1 ? 's' : ''}.</div>
+Il manque ${missing} fichier${missing > 1 ? 's' : ''}.</div>
           <div class="upload-validation-actions">
-            <button class="upload-validation-btn upload-validation-btn-secondary" data-action="back">← Retour</button>
-            <button class="upload-validation-btn upload-validation-btn-primary" data-action="add">📁 Ajouter des fichiers</button>
+            <button class="upload-btn upload-btn-secondary" data-action="back">Retour</button>
+            <button class="upload-btn upload-btn-primary" data-action="add">Ajouter des fichiers</button>
           </div>
         `;
         
         card.appendChild(errorDiv);
         
-        // Event listeners
         errorDiv.querySelector('[data-action="back"]').addEventListener('click', () => {
           enableChatInput(chatRefs);
           try {
@@ -528,49 +866,49 @@ Il manque <strong>${missing}</strong> fichier${missing > 1 ? 's' : ''}.</div>
     }
     
     // ---------- Events ----------
-    uploadZone.addEventListener('click', ()=> fileInput.click());
-    uploadZone.addEventListener('dragover', e=>{ e.preventDefault(); uploadZone.classList.add('dragging'); });
-    uploadZone.addEventListener('dragleave', ()=> uploadZone.classList.remove('dragging'));
-    uploadZone.addEventListener('drop', e=>{
-      e.preventDefault(); uploadZone.classList.remove('dragging');
+    uploadZone.addEventListener('click', () => fileInput.click());
+    uploadZone.addEventListener('dragover', e => {
+      e.preventDefault();
+      uploadZone.classList.add('dragging');
+    });
+    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragging'));
+    uploadZone.addEventListener('drop', e => {
+      e.preventDefault();
+      uploadZone.classList.remove('dragging');
       const files = Array.from(e.dataTransfer?.files || []);
       if (files.length) addFiles(files);
     });
-    fileInput.addEventListener('change', ()=>{
+    fileInput.addEventListener('change', () => {
       const files = Array.from(fileInput.files || []);
       if (files.length) addFiles(files);
       fileInput.value = '';
     });
     
-    backButtons.forEach(b => b.addEventListener('click', ()=>{
+    backButtons.forEach(b => b.addEventListener('click', () => {
       const path = b.getAttribute('data-path') || pathError;
       enableChatInput(chatRefs);
       try {
-        window?.voiceflow?.chat?.interact?.({ 
-          type:'complete', 
-          payload:{ webhookSuccess:false, buttonPath: path }
+        window?.voiceflow?.chat?.interact?.({
+          type: 'complete',
+          payload: { webhookSuccess: false, buttonPath: path }
         });
       } catch {}
     }));
     
-    sendBtn.addEventListener('click', async ()=>{
+    sendBtn.addEventListener('click', async () => {
       if (!selectedFiles.length) return;
       
-      // ✅ VALIDATION (stricte en mode OBMS, simple en mode minFiles)
       if (!validateBeforeSend()) {
-        console.log('❌ Validation échouée : pas assez de fichiers');
         return;
       }
-      
-      console.log(`✅ Envoi de ${selectedFiles.length} fichier(s)`);
       
       root.style.pointerEvents = 'none';
       disabledOverlay.classList.add('active');
       clearValidationError();
       
       sendBtn.disabled = true;
-      backButtons.forEach(b=>b.disabled=true);
-      setStatus(`📤 Envoi de ${selectedFiles.length} fichier${selectedFiles.length>1?'s':''}...`,'processing');
+      backButtons.forEach(b => b.disabled = true);
+      setStatus(`Envoi de ${selectedFiles.length} fichier${selectedFiles.length > 1 ? 's' : ''}...`, 'processing');
       
       const startTime = Date.now();
       
@@ -580,33 +918,39 @@ Il manque <strong>${missing}</strong> fichier${missing > 1 ? 's' : ''}.</div>
       } else if (loaderMode === 'timed') {
         loaderUI.startTimed(buildTimedPlan());
       } else {
-        loaderUI.showPhase('⏳ Démarrage...');
+        loaderUI.showPhase('Démarrage...');
         loaderUI.setPercent(5);
       }
       
       try {
         const resp = await postToN8n({
-          url: webhookUrl, method: webhookMethod, headers: webhookHeaders,
-          timeoutMs: webhookTimeoutMs, retries: webhookRetries,
-          files: selectedFiles, fileFieldName, extra, vfContext
+          url: webhookUrl,
+          method: webhookMethod,
+          headers: webhookHeaders,
+          timeoutMs: webhookTimeoutMs,
+          retries: webhookRetries,
+          files: selectedFiles,
+          fileFieldName,
+          extra,
+          vfContext
         });
         
         let finalData = resp?.data ?? null;
         
         if (awaitResponse && pollingEnabled) {
-          const jobId    = finalData?.jobId;
-          const statusUrl= finalData?.statusUrl || p?.polling?.statusUrl;
+          const jobId = finalData?.jobId;
+          const statusUrl = finalData?.statusUrl || p?.polling?.statusUrl;
           if (statusUrl || jobId) {
             finalData = await pollStatus({
               statusUrl: statusUrl || `${webhookUrl.split('/webhook')[0]}/rest/jobs/${jobId}`,
               headers: pollingHeaders,
               intervalMs: pollingIntervalMs,
               maxAttempts: pollingMaxAttempts,
-              onTick: (st)=> {
+              onTick: (st) => {
                 if (loaderMode === 'external') {
-                  const pct  = Number.isFinite(st?.percent) ? clamp(st.percent, 0, 100) : undefined;
-                  const key  = st?.phase;
-                  const map  = key && stepMap[key] ? stepMap[key] : null;
+                  const pct = Number.isFinite(st?.percent) ? clamp(st.percent, 0, 100) : undefined;
+                  const key = st?.phase;
+                  const map = key && stepMap[key] ? stepMap[key] : null;
                   const text = st?.message || map?.text || undefined;
                   if (text) loaderUI.showPhase(text);
                   if (pct != null) loaderUI.setPercent(pct);
@@ -623,7 +967,7 @@ Il manque <strong>${missing}</strong> fichier${missing > 1 ? 's' : ''}.</div>
         const remainingTime = minLoadingTimeMs - elapsedTime;
         
         if (remainingTime > 0) {
-          loaderUI.showPhase('✨ Finalisation...');
+          loaderUI.showPhase('Finalisation...');
           loaderUI.animateTo(98, Math.min(remainingTime, 1500));
           await new Promise(resolve => setTimeout(resolve, remainingTime));
         }
@@ -632,9 +976,9 @@ Il manque <strong>${missing}</strong> fichier${missing > 1 ? 's' : ''}.</div>
         
       } catch (err) {
         loader.classList.remove('active');
-        setStatus(`❌ ${String(err?.message || err)}`,'error');
+        setStatus(String(err?.message || err), 'error');
         sendBtn.disabled = false;
-        backButtons.forEach(b=>b.disabled=false);
+        backButtons.forEach(b => b.disabled = false);
         root.style.pointerEvents = 'auto';
         disabledOverlay.classList.remove('active');
         
@@ -653,30 +997,36 @@ Il manque <strong>${missing}</strong> fichier${missing > 1 ? 's' : ''}.</div>
     function showLoader(message) {
       loaderTitle.textContent = message;
       loader.classList.add('active');
-      disabledOverlay.classList.remove('active');
+      card.style.display = 'none';
       
       let current = 0;
       let lockedByFinish = false;
       
       function paint() {
-        const offset = 502 - (current/100)*502;
+        const offset = circumference - (current / 100) * circumference;
         loaderCircle.style.strokeDashoffset = offset;
         loaderPct.textContent = `${Math.round(current)}%`;
       }
       paint();
       
       function clearTimers() {
-        if (timedTimer) { clearInterval(timedTimer); timedTimer = null; }
+        if (timedTimer) {
+          clearInterval(timedTimer);
+          timedTimer = null;
+        }
       }
       
       return {
         startAuto(steps) {
           let i = 0;
-          const walk = ()=>{
+          const walk = () => {
             if (i >= steps.length || lockedByFinish) return;
             const s = steps[i];
             if (s.text) this.showPhase(s.text);
-            this.animateTo(s.progress, 1800, ()=> { i++; walk(); });
+            this.animateTo(s.progress, 1800, () => {
+              i++;
+              walk();
+            });
           };
           walk();
         },
@@ -688,16 +1038,17 @@ Il manque <strong>${missing}</strong> fichier${missing > 1 ? 's' : ''}.</div>
             const ph = plan[idx++];
             this.showPhase(ph.text);
             const startTime = Date.now();
-            const endTime   = startTime + ph.durationMs;
+            const endTime = startTime + ph.durationMs;
             clearTimers();
-            timedTimer = setInterval(()=> {
+            timedTimer = setInterval(() => {
               const now = Date.now();
               const ratio = clamp((now - startTime) / ph.durationMs, 0, 1);
               current = ph.progressStart + (ph.progressEnd - ph.progressStart) * ratio;
               paint();
               if (now >= endTime) {
                 clearTimers();
-                current = ph.progressEnd; paint();
+                current = ph.progressEnd;
+                paint();
                 startNext();
               }
             }, 80);
@@ -705,16 +1056,30 @@ Il manque <strong>${missing}</strong> fichier${missing > 1 ? 's' : ''}.</div>
           startNext();
         },
         
-        showPhase(text) { if (text) loaderStep.textContent = text; },
-        setPercent(p) { if (!lockedByFinish) { current = clamp(p, 0, 100); paint(); } },
-        softPercent(p) { if (!lockedByFinish) { current = current + (clamp(p, 0, 100) - current) * 0.5; paint(); } },
+        showPhase(text) {
+          if (text) loaderStep.textContent = text;
+        },
         
-        animateTo(target, ms=1200, cb) {
+        setPercent(p) {
+          if (!lockedByFinish) {
+            current = clamp(p, 0, 100);
+            paint();
+          }
+        },
+        
+        softPercent(p) {
+          if (!lockedByFinish) {
+            current = current + (clamp(p, 0, 100) - current) * 0.5;
+            paint();
+          }
+        },
+        
+        animateTo(target, ms = 1200, cb) {
           const start = current;
-          const end   = clamp(target, 0, 100);
+          const end = clamp(target, 0, 100);
           const t0 = performance.now();
-          const step = (t)=>{
-            const k = clamp((t - t0)/ms, 0, 1);
+          const step = (t) => {
+            const k = clamp((t - t0) / ms, 0, 1);
             current = start + (end - start) * k;
             paint();
             if (k < 1) requestAnimationFrame(step);
@@ -727,14 +1092,15 @@ Il manque <strong>${missing}</strong> fichier${missing > 1 ? 's' : ''}.</div>
           lockedByFinish = true;
           clearTimers();
           
-          this.animateTo(100, 500, ()=>{
-            this.showPhase('✅ Terminé !');
+          this.animateTo(100, 500, () => {
+            this.showPhase('Terminé');
             
             setTimeout(() => {
               loader.classList.add('closing');
               
               setTimeout(() => {
                 loader.classList.remove('active', 'closing');
+                card.style.display = '';
                 disabledOverlay.classList.remove('active');
                 root.style.pointerEvents = 'auto';
                 
@@ -748,12 +1114,12 @@ Il manque <strong>${missing}</strong> fichier${missing > 1 ? 's' : ''}.</div>
                         payload: {
                           webhookSuccess: true,
                           webhookResponse: data,
-                          files: selectedFiles.map(f=>({name:f.name,size:f.size,type:f.type})),
+                          files: selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })),
                           buttonPath: 'success'
                         }
                       });
-                    } catch(e) {
-                      console.error('❌ Erreur .interact():', e);
+                    } catch (e) {
+                      console.error('Erreur .interact():', e);
                     }
                   }, 300);
                 }, 200);
@@ -766,25 +1132,28 @@ Il manque <strong>${missing}</strong> fichier${missing > 1 ? 's' : ''}.</div>
     
     function buildTimedPlan() {
       const haveSeconds = timedPhases.every(ph => Number(ph.seconds) > 0);
-      let total = haveSeconds ? timedPhases.reduce((s,ph)=>s+Number(ph.seconds),0) : totalSeconds;
-      const weightsSum = timedPhases.reduce((s,ph)=> s + (Number(ph.weight)||0), 0) || timedPhases.length;
-      const alloc = timedPhases.map((ph,i)=>{
-        const sec = haveSeconds ? Number(ph.seconds) : (Number(ph.weight)||1) / weightsSum * total;
-        return { key: ph.key, text: ph.label || stepMap[ph.key]?.text || `Étape ${i+1}`, seconds: sec };
+      let total = haveSeconds ? timedPhases.reduce((s, ph) => s + Number(ph.seconds), 0) : totalSeconds;
+      const weightsSum = timedPhases.reduce((s, ph) => s + (Number(ph.weight) || 0), 0) || timedPhases.length;
+      const alloc = timedPhases.map((ph, i) => {
+        const sec = haveSeconds ? Number(ph.seconds) : (Number(ph.weight) || 1) / weightsSum * total;
+        return { key: ph.key, text: ph.label || stepMap[ph.key]?.text || `Étape ${i + 1}`, seconds: sec };
       });
       const startP = 5, endP = 98;
-      const totalMs = alloc.reduce((s,a)=> s + a.seconds*1000, 0);
+      const totalMs = alloc.reduce((s, a) => s + a.seconds * 1000, 0);
       let acc = 0, last = startP;
-      const plan = alloc.map((a,i)=>{
+      const plan = alloc.map((a, i) => {
         const pStart = i === 0 ? startP : last;
-        const pEnd   = i === alloc.length-1 ? endP : startP + (endP-startP) * ((acc + a.seconds*1000)/totalMs);
-        acc += a.seconds*1000; last = pEnd;
-        return { text: a.text, durationMs: Math.max(500, a.seconds*1000), progressStart: pStart, progressEnd: pEnd };
+        const pEnd = i === alloc.length - 1 ? endP : startP + (endP - startP) * ((acc + a.seconds * 1000) / totalMs);
+        acc += a.seconds * 1000;
+        last = pEnd;
+        return { text: a.text, durationMs: Math.max(500, a.seconds * 1000), progressStart: pStart, progressEnd: pEnd };
       });
       if (!plan.length) {
         return defaultAutoSteps.map((s, i, arr) => ({
-          text: s.text, durationMs: i===0 ? 1000 : 1500,
-          progressStart: i ? arr[i-1].progress : 0, progressEnd: s.progress
+          text: s.text,
+          durationMs: i === 0 ? 1000 : 1500,
+          progressStart: i ? arr[i - 1].progress : 0,
+          progressEnd: s.progress
         }));
       }
       return plan;
@@ -796,10 +1165,10 @@ Il manque <strong>${missing}</strong> fichier${missing > 1 ? 's' : ''}.</div>
       for (let attempt = 0; attempt <= retries; attempt++) {
         try {
           const controller = new AbortController();
-          const to = setTimeout(()=>controller.abort(), timeoutMs);
+          const to = setTimeout(() => controller.abort(), timeoutMs);
           const fd = new FormData();
-          files.forEach(f=> fd.append(fileFieldName, f, f.name));
-          Object.entries(extra).forEach(([k,v])=>{
+          files.forEach(f => fd.append(fileFieldName, f, f.name));
+          Object.entries(extra).forEach(([k, v]) => {
             fd.append(k, typeof v === 'object' ? JSON.stringify(v) : String(v ?? ''));
           });
           if (vfContext.conversation_id) fd.append('conversation_id', vfContext.conversation_id);
@@ -811,39 +1180,59 @@ Il manque <strong>${missing}</strong> fichier${missing > 1 ? 's' : ''}.</div>
           clearTimeout(to);
           if (!resp.ok) {
             const text = await safeText(resp);
-            throw new Error(`Erreur ${resp.status} : ${text?.slice(0,200) || resp.statusText}`);
+            throw new Error(`Erreur ${resp.status} : ${text?.slice(0, 200) || resp.statusText}`);
           }
-          return { ok:true, data: await safeJson(resp) };
+          return { ok: true, data: await safeJson(resp) };
         } catch (e) {
           lastErr = e;
-          if (attempt < retries) await new Promise(r=>setTimeout(r, 900));
+          if (attempt < retries) await new Promise(r => setTimeout(r, 900));
         }
       }
       throw lastErr || new Error('Échec de l\'envoi');
     }
     
     async function pollStatus({ statusUrl, headers, intervalMs, maxAttempts, onTick }) {
-      for (let i=1;i<=maxAttempts;i++) {
+      for (let i = 1; i <= maxAttempts; i++) {
         const r = await fetch(statusUrl, { headers });
         if (!r.ok) throw new Error(`Polling ${r.status}`);
         const j = await safeJson(r);
         if (j?.status === 'error') throw new Error(j?.error || 'Erreur pipeline');
         if (typeof onTick === 'function') {
-          try { onTick({ percent: j?.percent, phase: j?.phase, message: j?.message }); } catch {}
+          try {
+            onTick({ percent: j?.percent, phase: j?.phase, message: j?.message });
+          } catch {}
         }
         if (j?.status === 'done') return j?.data ?? j;
-        await new Promise(res=>setTimeout(res, intervalMs));
+        await new Promise(res => setTimeout(res, intervalMs));
       }
       throw new Error('Polling timeout');
     }
     
-    async function safeJson(r){ try { return await r.json(); } catch { return null; } }
-    async function safeText(r){ try { return await r.text(); } catch { return null; } }
+    async function safeJson(r) {
+      try {
+        return await r.json();
+      } catch {
+        return null;
+      }
+    }
+    
+    async function safeText(r) {
+      try {
+        return await r.text();
+      } catch {
+        return null;
+      }
+    }
     
     return () => {
-      if (timedTimer) { clearInterval(timedTimer); timedTimer = null; }
+      if (timedTimer) {
+        clearInterval(timedTimer);
+        timedTimer = null;
+      }
     };
   }
 };
 
-try { window.UploadToN8nWithLoader = UploadToN8nWithLoader; } catch {}
+try {
+  window.UploadToN8nWithLoader = UploadToN8nWithLoader;
+} catch {}

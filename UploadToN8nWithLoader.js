@@ -1,6 +1,8 @@
-// UploadToN8nWithLoader.js – v5.1 ULTRA MINIMAL
+// UploadToN8nWithLoader.js – v5.3 ULTRA MINIMAL
 // © Corentin – Version ultra-épurée monochrome
 // Compatible mode embedded ET widget
+// v5.2 : Support title vide, HTML dans description, hint configurable
+// v5.3 : Affichage du message utilisateur dans le chat quand on clique sur Envoyer
 //
 export const UploadToN8nWithLoader = {
   name: 'UploadToN8nWithLoader',
@@ -84,6 +86,45 @@ export const UploadToN8nWithLoader = {
       return true;
     };
     
+    // Fonction pour afficher un message utilisateur dans le chat
+    const showUserMessage = (message) => {
+      const container = findChatContainer();
+      if (!container?.shadowRoot) return;
+      const shadowRoot = container.shadowRoot;
+      
+      // Trouver le conteneur des messages
+      const dialogEl = shadowRoot.querySelector('.vfrc-chat--dialog') ||
+                       shadowRoot.querySelector('[class*="dialog"]') ||
+                       shadowRoot.querySelector('.vfrc-chat');
+      if (!dialogEl) return;
+      
+      // Créer le message utilisateur
+      const userMsg = document.createElement('div');
+      userMsg.className = 'vfrc-user-response';
+      userMsg.innerHTML = `
+        <div class="vfrc-message" style="
+          background: var(--vfrc-user-response-background, #F3F3F5);
+          color: var(--vfrc-user-response-text, #1E1E1E);
+          padding: 12px 16px;
+          border-radius: 12px;
+          margin: 8px 0;
+          max-width: 80%;
+          margin-left: auto;
+          word-wrap: break-word;
+          font-size: 14px;
+          line-height: 1.4;
+        ">${message}</div>
+      `;
+      
+      // Ajouter le message
+      dialogEl.appendChild(userMsg);
+      
+      // Scroll vers le bas
+      setTimeout(() => {
+        dialogEl.scrollTop = dialogEl.scrollHeight;
+      }, 50);
+    };
+    
     const chatRefs = disableChatInput();
     
     // ---------- CONFIG ----------
@@ -144,6 +185,11 @@ export const UploadToN8nWithLoader = {
     const pathSuccess = p.pathSuccess || 'Default';
     const pathError   = p.pathError || 'Fail';
     
+    // Message à afficher dans le chat quand l'user clique sur Envoyer
+    const sendButtonText = p.sendButtonText || 'Envoyer';
+    const showUserMessageOnSend = p.showUserMessageOnSend !== false; // true par défaut
+    const userMessageText = p.userMessageText || sendButtonText; // Texte affiché dans le chat
+    
     const vfContext = {
       conversation_id: p.conversation_id || null,
       user_id: p.user_id || null,
@@ -191,22 +237,44 @@ export const UploadToN8nWithLoader = {
       return;
     }
     
+    // ═══════════════════════════════════════════════════════════════
+    // 📝 GESTION HEADER & HINT
+    // ═══════════════════════════════════════════════════════════════
     const hasTitle = title && title.trim() !== '';
     const hasSubtitle = subtitle && subtitle.trim() !== '';
     const showHeader = hasTitle || hasSubtitle;
     
-    let requiredDocsInfo;
-    let docsListOBMS, docsListFull;
-    
-    if (isSimpleMode) {
-      requiredDocsInfo = requiredFiles === 1 
-        ? `1 à ${maxFiles} fichiers` 
-        : `${requiredFiles} à ${maxFiles} fichiers`;
+    // Hint configurable : 
+    // - p.hint = false ou "" → pas de hint
+    // - p.hint = "texte" → hint personnalisé
+    // - p.hint non défini → comportement auto (calculé)
+    let hintText = '';
+    if (p.hint === false || p.hint === '') {
+      hintText = ''; // Pas de hint
+    } else if (typeof p.hint === 'string' && p.hint.trim() !== '') {
+      hintText = p.hint; // Hint personnalisé
     } else {
-      docsListOBMS = '• Lettre de mission / Descriptif du poste\n• CV du candidat';
-      docsListFull = '• Lettre de mission / Descriptif du poste\n• CV du candidat\n• Profil AssessFirst du candidat';
-      requiredDocsInfo = `${requiredFiles} documents requis`;
+      // Comportement auto
+      let requiredDocsInfo;
+      let docsListOBMS, docsListFull;
+      
+      if (isSimpleMode) {
+        requiredDocsInfo = requiredFiles === 1 
+          ? `1 à ${maxFiles} fichiers` 
+          : `${requiredFiles} à ${maxFiles} fichiers`;
+      } else {
+        docsListOBMS = '• Lettre de mission / Descriptif du poste\n• CV du candidat';
+        docsListFull = '• Lettre de mission / Descriptif du poste\n• CV du candidat\n• Profil AssessFirst du candidat';
+        requiredDocsInfo = `${requiredFiles} documents requis`;
+      }
+      hintText = requiredDocsInfo;
     }
+    
+    const showHint = hintText && hintText.trim() !== '';
+    
+    // Pour la validation (mode non-simple)
+    let docsListOBMS = '• Lettre de mission / Descriptif du poste\n• CV du candidat';
+    let docsListFull = '• Lettre de mission / Descriptif du poste\n• CV du candidat\n• Profil AssessFirst du candidat';
     
     // ---------- STYLES ULTRA MINIMAUX ----------
     const styles = `
@@ -267,6 +335,11 @@ export const UploadToN8nWithLoader = {
         padding: 20px;
       }
       
+      /* Si pas de header, réduire le padding top */
+      .upl-body.no-header {
+        padding-top: 20px;
+      }
+      
       .upl-zone {
         background: ${colors.bg};
         border-radius: 6px;
@@ -319,6 +392,7 @@ export const UploadToN8nWithLoader = {
         font-size: 13px;
         color: ${colors.textLight};
         font-weight: 400;
+        line-height: 1.5;
       }
       
       .upl-zone-hint {
@@ -618,6 +692,7 @@ export const UploadToN8nWithLoader = {
     styleTag.textContent = styles;
     root.appendChild(styleTag);
     
+    // Header conditionnel
     let headerHTML = '';
     if (showHeader) {
       headerHTML = `<div class="upl-header">`;
@@ -626,15 +701,21 @@ export const UploadToN8nWithLoader = {
       headerHTML += `</div>`;
     }
     
+    // Hint conditionnel
+    const hintHTML = showHint ? `<div class="upl-zone-hint">${hintText}</div>` : '';
+    
+    // Classe body conditionnelle
+    const bodyClass = showHeader ? 'upl-body' : 'upl-body no-header';
+    
     root.innerHTML += `
       <div class="upl-overlay"></div>
       <div class="upl-card">
         ${headerHTML}
-        <div class="upl-body">
+        <div class="${bodyClass}">
           <div class="upl-zone">
             ${icons.upload}
             <div class="upl-zone-text">${description}</div>
-            <div class="upl-zone-hint">${requiredDocsInfo}</div>
+            ${hintHTML}
             <input type="file" accept="${accept}" multiple style="display:none" />
           </div>
           
@@ -648,7 +729,7 @@ export const UploadToN8nWithLoader = {
                   ${b.text || 'Retour'}
                 </button>
               `).join('')}
-              <button class="upl-btn upl-btn-primary send-btn" disabled>Envoyer</button>
+              <button class="upl-btn upl-btn-primary send-btn" disabled>${sendButtonText}</button>
             </div>
           </div>
           
@@ -854,6 +935,11 @@ ${docs}</div>
     
     sendBtn.onclick = async () => {
       if (!selectedFiles.length || !validate()) return;
+      
+      // Afficher le message utilisateur dans le chat
+      if (showUserMessageOnSend) {
+        showUserMessage(userMessageText);
+      }
       
       root.style.pointerEvents = 'none';
       overlay.classList.add('show');

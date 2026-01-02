@@ -1,10 +1,8 @@
-// UploadToN8nWithLoader.js – v5.5 ULTRA MINIMAL
+// UploadToN8nWithLoader.js – v5.6 ULTRA MINIMAL
 // © Corentin – Version ultra-épurée monochrome
 // Compatible mode embedded ET widget
-// v5.2 : Support title vide, HTML dans description, hint configurable
-// v5.3 : Affichage du message utilisateur dans le chat quand on clique sur Envoyer
-// v5.4 : Fix loader opaque + amélioration injection message + option useNativeInteract
 // v5.5 : Loader fond foncé visible + message affiché APRÈS chargement + bloc caché après succès
+// v5.6 : Fix overlay transparent pour que le loader soit bien visible
 //
 export const UploadToN8nWithLoader = {
   name: 'UploadToN8nWithLoader',
@@ -629,6 +627,8 @@ export const UploadToN8nWithLoader = {
         animation: fadeIn 0.2s ease;
         background: #1F2937;
         border-radius: 8px;
+        position: relative;
+        z-index: 20;
       }
       
       .upl-loader.show {
@@ -711,14 +711,15 @@ export const UploadToN8nWithLoader = {
         gap: 8px;
       }
       
-      /* OVERLAY */
+      /* OVERLAY - transparent pour ne pas cacher le loader */
       .upl-overlay {
         display: none;
         position: absolute;
         inset: 0;
-        background: rgba(255, 255, 255, 0.95);
+        background: transparent;
         z-index: 10;
         border-radius: 8px;
+        pointer-events: all;
       }
       
       .upl-overlay.show {

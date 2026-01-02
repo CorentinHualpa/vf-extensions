@@ -1214,29 +1214,26 @@ ${docs}</div>
                     enableChatInput(refs);
                     
                     // ORDRE IMPORTANT : 
-                    // 1. D'abord envoyer le complete avec les données (pour que le JavaScript capture les récupère)
-                    // 2. Ensuite afficher le message utilisateur (pour l'UX)
+                    // 1. D'abord afficher le message utilisateur (injection DOM immédiate)
+                    // 2. Ensuite envoyer le complete avec les données
                     
-                    // 1. Envoyer le complete à Voiceflow IMMÉDIATEMENT
-                    window?.voiceflow?.chat?.interact?.({
-                      type: 'complete',
-                      payload: {
-                        webhookSuccess: true,
-                        webhookResponse: data,
-                        files: selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })),
-                        buttonPath: 'success'
-                      }
-                    });
-                    
-                    // 2. Afficher le message utilisateur APRÈS (juste pour l'affichage visuel)
+                    // 1. Afficher le message utilisateur IMMÉDIATEMENT
                     if (showUserMessageOnSend && !useNativeInteract) {
-                      // Injection DOM seulement (pas de interact type:text qui redéclencherait le flow)
-                      setTimeout(() => {
-                        showUserMessage(confirmationUserMessage);
-                      }, 100);
+                      showUserMessage(confirmationUserMessage);
                     }
-                    // Note: avec useNativeInteract:true, on n'envoie PAS de type:text 
-                    // car ça déclencherait un nouveau tour de conversation
+                    
+                    // 2. Envoyer le complete à Voiceflow (petit délai pour laisser le DOM se mettre à jour)
+                    setTimeout(() => {
+                      window?.voiceflow?.chat?.interact?.({
+                        type: 'complete',
+                        payload: {
+                          webhookSuccess: true,
+                          webhookResponse: data,
+                          files: selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })),
+                          buttonPath: 'success'
+                        }
+                      });
+                    }, 50);
                   };
                   
                 } else {

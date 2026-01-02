@@ -1225,7 +1225,7 @@ ${docs}</div>
                       }
                     }
                     
-                    // Envoyer le complete à Voiceflow
+                    // Envoyer le complete à Voiceflow (délai plus long pour laisser le message s'afficher)
                     setTimeout(() => {
                       window?.voiceflow?.chat?.interact?.({
                         type: 'complete',
@@ -1236,7 +1236,7 @@ ${docs}</div>
                           buttonPath: 'success'
                         }
                       });
-                    }, 200);
+                    }, 500);
                   };
                   
                 } else {

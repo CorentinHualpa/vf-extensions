@@ -1,8 +1,8 @@
-// UploadToN8nWithLoader.js – v5.6 ULTRA MINIMAL
+// UploadToN8nWithLoader.js – v5.7 ULTRA MINIMAL
 // © Corentin – Version ultra-épurée monochrome
 // Compatible mode embedded ET widget
-// v5.5 : Loader fond foncé visible + message affiché APRÈS chargement + bloc caché après succès
 // v5.6 : Fix overlay transparent pour que le loader soit bien visible
+// v5.7 : Écran de confirmation avec bouton "Continuer" après upload
 //
 export const UploadToN8nWithLoader = {
   name: 'UploadToN8nWithLoader',
@@ -243,6 +243,12 @@ export const UploadToN8nWithLoader = {
     // Si true, utilise window.voiceflow.chat.interact (déclenche une réponse du bot)
     // Si false, injecte juste visuellement le message (pas de réponse du bot)
     const useNativeInteract = p.useNativeInteract === true; // false par défaut
+    
+    // Écran de confirmation après upload
+    const showConfirmation = p.showConfirmation === true; // false par défaut
+    const confirmationMessage = p.confirmationMessage || '✅ Documents analysés avec succès';
+    const confirmationButtonText = p.confirmationButtonText || 'Continuer';
+    const confirmationUserMessage = p.confirmationUserMessage || confirmationButtonText; // Message envoyé au chat
     
     const vfContext = {
       conversation_id: p.conversation_id || null,
@@ -725,6 +731,49 @@ export const UploadToN8nWithLoader = {
       .upl-overlay.show {
         display: block;
       }
+      
+      /* CONFIRMATION - Écran après upload réussi */
+      .upl-confirm {
+        display: none;
+        padding: 24px 20px;
+        text-align: center;
+        animation: fadeIn 0.2s ease;
+      }
+      
+      .upl-confirm.show {
+        display: block;
+      }
+      
+      .upl-confirm-icon {
+        width: 48px;
+        height: 48px;
+        margin: 0 auto 12px;
+        color: #10B981;
+      }
+      
+      .upl-confirm-msg {
+        font-size: 14px;
+        font-weight: 500;
+        color: ${colors.text};
+        margin-bottom: 16px;
+        line-height: 1.5;
+      }
+      
+      .upl-confirm-btn {
+        padding: 10px 24px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        border: none;
+        background: ${colors.text};
+        color: ${colors.white};
+        transition: all 0.15s ease;
+      }
+      
+      .upl-confirm-btn:hover {
+        background: #374151;
+      }
     `;
     
     // ---------- ICÔNES SVG MINIMALISTES ----------
@@ -739,6 +788,10 @@ export const UploadToN8nWithLoader = {
       </svg>`,
       x: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
         <path d="M18 6L6 18M6 6l12 12"/>
+      </svg>`,
+      check: `<svg class="upl-confirm-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M9 12l2 2 4-4"/>
       </svg>`
     };
     
@@ -805,6 +858,12 @@ export const UploadToN8nWithLoader = {
           </div>
           <div class="upl-loader-step"></div>
         </div>
+        
+        <div class="upl-confirm">
+          ${icons.check}
+          <div class="upl-confirm-msg">${confirmationMessage}</div>
+          <button class="upl-confirm-btn">${confirmationButtonText}</button>
+        </div>
       </div>
     `;
     element.appendChild(root);
@@ -826,6 +885,8 @@ export const UploadToN8nWithLoader = {
     const overlay = root.querySelector('.upl-overlay');
     const card = root.querySelector('.upl-card');
     const bodyDiv = root.querySelector('.upl-body');
+    const confirmDiv = root.querySelector('.upl-confirm');
+    const confirmBtn = root.querySelector('.upl-confirm-btn');
     
     // ---------- STATE ----------
     let selectedFiles = [];
@@ -1137,34 +1198,77 @@ ${docs}</div>
             setTimeout(() => {
               loader.classList.add('hide');
               setTimeout(() => {
-                // Cacher complètement le composant (ne pas réafficher le bloc upload)
-                root.style.display = 'none';
-                overlay.classList.remove('show');
-                enableChatInput(refs);
+                loader.classList.remove('show', 'hide');
                 
-                // Afficher le message utilisateur APRÈS le chargement complet
-                if (showUserMessageOnSend) {
-                  if (useNativeInteract) {
-                    window?.voiceflow?.chat?.interact?.({
-                      type: 'text',
-                      payload: userMessageText
-                    });
-                  } else {
-                    showUserMessage(userMessageText);
-                  }
-                }
-                
-                setTimeout(() => {
-                  window?.voiceflow?.chat?.interact?.({
-                    type: 'complete',
-                    payload: {
-                      webhookSuccess: true,
-                      webhookResponse: data,
-                      files: selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })),
-                      buttonPath: 'success'
+                if (showConfirmation) {
+                  // Mode confirmation : afficher l'écran avec bouton "Continuer"
+                  bodyDiv.style.display = 'none';
+                  confirmDiv.classList.add('show');
+                  overlay.classList.remove('show');
+                  root.style.pointerEvents = '';
+                  
+                  // Stocker les données pour le clic sur le bouton
+                  confirmBtn.onclick = () => {
+                    // Cacher le composant
+                    root.style.display = 'none';
+                    enableChatInput(refs);
+                    
+                    // Envoyer le message utilisateur dans le chat
+                    if (showUserMessageOnSend) {
+                      if (useNativeInteract) {
+                        window?.voiceflow?.chat?.interact?.({
+                          type: 'text',
+                          payload: confirmationUserMessage
+                        });
+                      } else {
+                        showUserMessage(confirmationUserMessage);
+                      }
                     }
-                  });
-                }, 200);
+                    
+                    // Envoyer le complete à Voiceflow
+                    setTimeout(() => {
+                      window?.voiceflow?.chat?.interact?.({
+                        type: 'complete',
+                        payload: {
+                          webhookSuccess: true,
+                          webhookResponse: data,
+                          files: selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })),
+                          buttonPath: 'success'
+                        }
+                      });
+                    }, 200);
+                  };
+                  
+                } else {
+                  // Mode direct : fermer et envoyer complete immédiatement
+                  root.style.display = 'none';
+                  overlay.classList.remove('show');
+                  enableChatInput(refs);
+                  
+                  // Afficher le message utilisateur APRÈS le chargement complet
+                  if (showUserMessageOnSend) {
+                    if (useNativeInteract) {
+                      window?.voiceflow?.chat?.interact?.({
+                        type: 'text',
+                        payload: userMessageText
+                      });
+                    } else {
+                      showUserMessage(userMessageText);
+                    }
+                  }
+                  
+                  setTimeout(() => {
+                    window?.voiceflow?.chat?.interact?.({
+                      type: 'complete',
+                      payload: {
+                        webhookSuccess: true,
+                        webhookResponse: data,
+                        files: selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })),
+                        buttonPath: 'success'
+                      }
+                    });
+                  }, 200);
+                }
               }, 200);
             }, autoCloseDelayMs);
           });

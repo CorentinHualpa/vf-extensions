@@ -1,9 +1,10 @@
-// UploadToN8nWithLoader.js – v5.4 ULTRA MINIMAL
+// UploadToN8nWithLoader.js – v5.5 ULTRA MINIMAL
 // © Corentin – Version ultra-épurée monochrome
 // Compatible mode embedded ET widget
 // v5.2 : Support title vide, HTML dans description, hint configurable
 // v5.3 : Affichage du message utilisateur dans le chat quand on clique sur Envoyer
 // v5.4 : Fix loader opaque + amélioration injection message + option useNativeInteract
+// v5.5 : Loader fond foncé visible + message affiché APRÈS chargement + bloc caché après succès
 //
 export const UploadToN8nWithLoader = {
   name: 'UploadToN8nWithLoader',
@@ -621,12 +622,13 @@ export const UploadToN8nWithLoader = {
         color: ${colors.textLight};
       }
       
-      /* LOADER - Style linéaire avec fond opaque */
+      /* LOADER - Style avec fond foncé bien visible */
       .upl-loader {
         display: none;
         padding: 24px 20px;
         animation: fadeIn 0.2s ease;
-        background: ${colors.white};
+        background: #1F2937;
+        border-radius: 8px;
       }
       
       .upl-loader.show {
@@ -647,35 +649,35 @@ export const UploadToN8nWithLoader = {
       .upl-loader-title {
         font-size: 13px;
         font-weight: 500;
-        color: ${colors.text};
+        color: #FFFFFF;
       }
       
       .upl-loader-pct {
         font-size: 12px;
         font-weight: 600;
-        color: ${colors.text};
+        color: #FFFFFF;
         font-variant-numeric: tabular-nums;
       }
       
       .upl-loader-bar {
-        height: 4px;
-        background: ${colors.border};
-        border-radius: 2px;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 3px;
         overflow: hidden;
       }
       
       .upl-loader-fill {
         height: 100%;
         width: 0%;
-        background: ${colors.text};
-        border-radius: 2px;
+        background: #10B981;
+        border-radius: 3px;
         transition: width 0.3s ease;
       }
       
       .upl-loader-step {
         margin-top: 10px;
         font-size: 12px;
-        color: ${colors.textLight};
+        color: rgba(255, 255, 255, 0.7);
         min-height: 16px;
       }
       
@@ -992,20 +994,6 @@ ${docs}</div>
     sendBtn.onclick = async () => {
       if (!selectedFiles.length || !validate()) return;
       
-      // Afficher le message utilisateur dans le chat
-      if (showUserMessageOnSend) {
-        if (useNativeInteract) {
-          // Méthode native Voiceflow (déclenche une réponse du bot)
-          window?.voiceflow?.chat?.interact?.({
-            type: 'text',
-            payload: userMessageText
-          });
-        } else {
-          // Injection visuelle (pas de réponse du bot)
-          showUserMessage(userMessageText);
-        }
-      }
-      
       root.style.pointerEvents = 'none';
       overlay.classList.add('show');
       clearValidation();
@@ -1148,11 +1136,23 @@ ${docs}</div>
             setTimeout(() => {
               loader.classList.add('hide');
               setTimeout(() => {
-                loader.classList.remove('show', 'hide');
-                bodyDiv.style.display = '';
+                // Cacher complètement le composant (ne pas réafficher le bloc upload)
+                root.style.display = 'none';
                 overlay.classList.remove('show');
-                root.style.pointerEvents = '';
                 enableChatInput(refs);
+                
+                // Afficher le message utilisateur APRÈS le chargement complet
+                if (showUserMessageOnSend) {
+                  if (useNativeInteract) {
+                    window?.voiceflow?.chat?.interact?.({
+                      type: 'text',
+                      payload: userMessageText
+                    });
+                  } else {
+                    showUserMessage(userMessageText);
+                  }
+                }
+                
                 setTimeout(() => {
                   window?.voiceflow?.chat?.interact?.({
                     type: 'complete',

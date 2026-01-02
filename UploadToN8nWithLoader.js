@@ -1213,30 +1213,30 @@ ${docs}</div>
                     root.style.display = 'none';
                     enableChatInput(refs);
                     
-                    // Envoyer le message utilisateur dans le chat
-                    if (showUserMessageOnSend) {
-                      if (useNativeInteract) {
-                        window?.voiceflow?.chat?.interact?.({
-                          type: 'text',
-                          payload: confirmationUserMessage
-                        });
-                      } else {
-                        showUserMessage(confirmationUserMessage);
-                      }
-                    }
+                    // ORDRE IMPORTANT : 
+                    // 1. D'abord envoyer le complete avec les données (pour que le JavaScript capture les récupère)
+                    // 2. Ensuite afficher le message utilisateur (pour l'UX)
                     
-                    // Envoyer le complete à Voiceflow (délai plus long pour laisser le message s'afficher)
-                    setTimeout(() => {
-                      window?.voiceflow?.chat?.interact?.({
-                        type: 'complete',
-                        payload: {
-                          webhookSuccess: true,
-                          webhookResponse: data,
-                          files: selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })),
-                          buttonPath: 'success'
-                        }
-                      });
-                    }, 500);
+                    // 1. Envoyer le complete à Voiceflow IMMÉDIATEMENT
+                    window?.voiceflow?.chat?.interact?.({
+                      type: 'complete',
+                      payload: {
+                        webhookSuccess: true,
+                        webhookResponse: data,
+                        files: selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })),
+                        buttonPath: 'success'
+                      }
+                    });
+                    
+                    // 2. Afficher le message utilisateur APRÈS (juste pour l'affichage visuel)
+                    if (showUserMessageOnSend && !useNativeInteract) {
+                      // Injection DOM seulement (pas de interact type:text qui redéclencherait le flow)
+                      setTimeout(() => {
+                        showUserMessage(confirmationUserMessage);
+                      }, 100);
+                    }
+                    // Note: avec useNativeInteract:true, on n'envoie PAS de type:text 
+                    // car ça déclencherait un nouveau tour de conversation
                   };
                   
                 } else {

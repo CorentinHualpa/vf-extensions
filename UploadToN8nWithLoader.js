@@ -1,8 +1,9 @@
-// UploadToN8nWithLoader.js – v5.3 ULTRA MINIMAL
+// UploadToN8nWithLoader.js – v5.4 ULTRA MINIMAL
 // © Corentin – Version ultra-épurée monochrome
 // Compatible mode embedded ET widget
 // v5.2 : Support title vide, HTML dans description, hint configurable
 // v5.3 : Affichage du message utilisateur dans le chat quand on clique sur Envoyer
+// v5.4 : Fix loader opaque + amélioration injection message + option useNativeInteract
 //
 export const UploadToN8nWithLoader = {
   name: 'UploadToN8nWithLoader',
@@ -89,40 +90,91 @@ export const UploadToN8nWithLoader = {
     // Fonction pour afficher un message utilisateur dans le chat
     const showUserMessage = (message) => {
       const container = findChatContainer();
-      if (!container?.shadowRoot) return;
-      const shadowRoot = container.shadowRoot;
       
-      // Trouver le conteneur des messages
-      const dialogEl = shadowRoot.querySelector('.vfrc-chat--dialog') ||
-                       shadowRoot.querySelector('[class*="dialog"]') ||
-                       shadowRoot.querySelector('.vfrc-chat');
-      if (!dialogEl) return;
+      // Méthode 1 : Via shadowRoot
+      if (container?.shadowRoot) {
+        const shadowRoot = container.shadowRoot;
+        
+        // Sélecteurs pour trouver le conteneur des messages
+        const selectors = [
+          '.vfrc-chat--dialog',
+          '[class*="Dialog"]',
+          '[class*="dialog"]',
+          '.vfrc-chat',
+          '[class*="Messages"]',
+          '[class*="messages"]',
+          '[class*="Conversation"]',
+          '[class*="conversation"]'
+        ];
+        
+        let dialogEl = null;
+        for (const sel of selectors) {
+          dialogEl = shadowRoot.querySelector(sel);
+          if (dialogEl) break;
+        }
+        
+        if (dialogEl) {
+          const userMsg = createUserMessageElement(message);
+          dialogEl.appendChild(userMsg);
+          setTimeout(() => { dialogEl.scrollTop = dialogEl.scrollHeight; }, 50);
+          console.log('[UploadToN8nWithLoader] User message displayed in shadow DOM');
+          return;
+        }
+      }
       
-      // Créer le message utilisateur
+      // Méthode 2 : Trouver le dialogue dans le DOM principal (mode embedded)
+      const mainSelectors = [
+        '.vfrc-chat--dialog',
+        '[class*="vfrc"][class*="dialog"]',
+        '.vfrc-chat',
+        '#voiceflow-chat-frame [class*="dialog"]',
+        '#voiceflow-chat-frame [class*="messages"]',
+        '[id*="voiceflow"] [class*="dialog"]',
+        '[id*="voiceflow"] [class*="messages"]'
+      ];
+      
+      for (const sel of mainSelectors) {
+        const dialogEl = document.querySelector(sel);
+        if (dialogEl) {
+          const userMsg = createUserMessageElement(message);
+          dialogEl.appendChild(userMsg);
+          setTimeout(() => { dialogEl.scrollTop = dialogEl.scrollHeight; }, 50);
+          console.log('[UploadToN8nWithLoader] User message displayed in main DOM');
+          return;
+        }
+      }
+      
+      console.warn('[UploadToN8nWithLoader] Could not find dialog element for user message');
+    };
+    
+    // Helper pour créer l'élément message utilisateur
+    const createUserMessageElement = (message) => {
       const userMsg = document.createElement('div');
       userMsg.className = 'vfrc-user-response';
-      userMsg.innerHTML = `
-        <div class="vfrc-message" style="
-          background: var(--vfrc-user-response-background, #F3F3F5);
-          color: var(--vfrc-user-response-text, #1E1E1E);
-          padding: 12px 16px;
-          border-radius: 12px;
-          margin: 8px 0;
-          max-width: 80%;
-          margin-left: auto;
-          word-wrap: break-word;
-          font-size: 14px;
-          line-height: 1.4;
-        ">${message}</div>
+      userMsg.style.cssText = `
+        display: flex;
+        justify-content: flex-end;
+        padding: 0 20px;
+        margin: 8px 0;
       `;
       
-      // Ajouter le message
-      dialogEl.appendChild(userMsg);
+      const msgBubble = document.createElement('div');
+      msgBubble.className = 'vfrc-message';
+      msgBubble.style.cssText = `
+        background: #EEEEEE;
+        color: #1E1E1E;
+        padding: 12px 16px;
+        border-radius: 20px;
+        max-width: 80%;
+        word-wrap: break-word;
+        font-size: 14px;
+        line-height: 1.4;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      `;
+      msgBubble.textContent = message;
       
-      // Scroll vers le bas
-      setTimeout(() => {
-        dialogEl.scrollTop = dialogEl.scrollHeight;
-      }, 50);
+      userMsg.appendChild(msgBubble);
+      return userMsg;
     };
     
     const chatRefs = disableChatInput();
@@ -189,6 +241,9 @@ export const UploadToN8nWithLoader = {
     const sendButtonText = p.sendButtonText || 'Envoyer';
     const showUserMessageOnSend = p.showUserMessageOnSend !== false; // true par défaut
     const userMessageText = p.userMessageText || sendButtonText; // Texte affiché dans le chat
+    // Si true, utilise window.voiceflow.chat.interact (déclenche une réponse du bot)
+    // Si false, injecte juste visuellement le message (pas de réponse du bot)
+    const useNativeInteract = p.useNativeInteract === true; // false par défaut
     
     const vfContext = {
       conversation_id: p.conversation_id || null,
@@ -566,11 +621,12 @@ export const UploadToN8nWithLoader = {
         color: ${colors.textLight};
       }
       
-      /* LOADER - Style linéaire */
+      /* LOADER - Style linéaire avec fond opaque */
       .upl-loader {
         display: none;
         padding: 24px 20px;
         animation: fadeIn 0.2s ease;
+        background: ${colors.white};
       }
       
       .upl-loader.show {
@@ -938,7 +994,16 @@ ${docs}</div>
       
       // Afficher le message utilisateur dans le chat
       if (showUserMessageOnSend) {
-        showUserMessage(userMessageText);
+        if (useNativeInteract) {
+          // Méthode native Voiceflow (déclenche une réponse du bot)
+          window?.voiceflow?.chat?.interact?.({
+            type: 'text',
+            payload: userMessageText
+          });
+        } else {
+          // Injection visuelle (pas de réponse du bot)
+          showUserMessage(userMessageText);
+        }
       }
       
       root.style.pointerEvents = 'none';

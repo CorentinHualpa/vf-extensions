@@ -1,8 +1,8 @@
-// UploadToN8nWithLoader.js – v5.7 ULTRA MINIMAL
+// UploadToN8nWithLoader.js – v5.8 ULTRA MINIMAL
 // © Corentin – Version ultra-épurée monochrome
 // Compatible mode embedded ET widget
-// v5.6 : Fix overlay transparent pour que le loader soit bien visible
 // v5.7 : Écran de confirmation avec bouton "Continuer" après upload
+// v5.8 : MutationObserver pour garantir que le message user s'affiche AVANT la réponse agent
 //
 export const UploadToN8nWithLoader = {
   name: 'UploadToN8nWithLoader',
@@ -87,6 +87,92 @@ export const UploadToN8nWithLoader = {
     };
     
     // Fonction pour afficher un message utilisateur dans le chat
+    // Fonction pour insérer le message utilisateur AVANT la prochaine réponse de l'agent
+    // Utilise un MutationObserver pour surveiller quand Voiceflow ajoute sa réponse
+    const showUserMessageBeforeAgentResponse = (message) => {
+      const container = findChatContainer();
+      let dialogEl = null;
+      let shadowRoot = null;
+      
+      // Trouver le conteneur de messages
+      if (container?.shadowRoot) {
+        shadowRoot = container.shadowRoot;
+        const selectors = [
+          '.vfrc-chat--dialog',
+          '[class*="Dialog"]',
+          '[class*="dialog"]',
+          '.vfrc-chat',
+          '[class*="Messages"]',
+          '[class*="messages"]'
+        ];
+        for (const sel of selectors) {
+          dialogEl = shadowRoot.querySelector(sel);
+          if (dialogEl) break;
+        }
+      }
+      
+      if (!dialogEl) {
+        // Fallback : DOM principal
+        const mainSelectors = [
+          '.vfrc-chat--dialog',
+          '[class*="vfrc"][class*="dialog"]',
+          '.vfrc-chat'
+        ];
+        for (const sel of mainSelectors) {
+          dialogEl = document.querySelector(sel);
+          if (dialogEl) break;
+        }
+      }
+      
+      if (!dialogEl) {
+        console.warn('[UploadToN8nWithLoader] Could not find dialog element');
+        return;
+      }
+      
+      // Créer le message utilisateur
+      const userMsg = createUserMessageElement(message);
+      
+      // Mettre en place un MutationObserver pour surveiller les nouveaux messages
+      const observer = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+          for (const node of mutation.addedNodes) {
+            // Vérifier si c'est un message de l'assistant (pas un message utilisateur)
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              const isUserMessage = node.classList?.contains('vfrc-user-response') || 
+                                   node.querySelector?.('.vfrc-user-response');
+              const isSystemMessage = node.classList?.contains('vfrc-system-response') ||
+                                     node.classList?.contains('vfrc-assistant') ||
+                                     node.querySelector?.('[class*="assistant"]') ||
+                                     node.querySelector?.('[class*="system"]') ||
+                                     node.querySelector?.('[class*="Agent"]');
+              
+              if (!isUserMessage || isSystemMessage) {
+                // Insérer notre message AVANT ce nouveau nœud
+                node.parentNode.insertBefore(userMsg, node);
+                observer.disconnect();
+                setTimeout(() => { dialogEl.scrollTop = dialogEl.scrollHeight; }, 50);
+                console.log('[UploadToN8nWithLoader] User message inserted before agent response');
+                return;
+              }
+            }
+          }
+        }
+      });
+      
+      // Observer les changements dans le conteneur de messages
+      observer.observe(dialogEl, { childList: true, subtree: true });
+      
+      // Timeout de sécurité : si pas de réponse après 5s, insérer quand même
+      setTimeout(() => {
+        if (userMsg.parentNode === null) {
+          dialogEl.appendChild(userMsg);
+          observer.disconnect();
+          setTimeout(() => { dialogEl.scrollTop = dialogEl.scrollHeight; }, 50);
+          console.log('[UploadToN8nWithLoader] User message appended (timeout fallback)');
+        }
+      }, 5000);
+    };
+    
     const showUserMessage = (message) => {
       const container = findChatContainer();
       
@@ -1213,27 +1299,21 @@ ${docs}</div>
                     root.style.display = 'none';
                     enableChatInput(refs);
                     
-                    // ORDRE IMPORTANT : 
-                    // 1. D'abord afficher le message utilisateur (injection DOM immédiate)
-                    // 2. Ensuite envoyer le complete avec les données
-                    
-                    // 1. Afficher le message utilisateur IMMÉDIATEMENT
+                    // 1. Mettre en place le MutationObserver pour insérer le message AVANT la réponse agent
                     if (showUserMessageOnSend && !useNativeInteract) {
-                      showUserMessage(confirmationUserMessage);
+                      showUserMessageBeforeAgentResponse(confirmationUserMessage);
                     }
                     
-                    // 2. Envoyer le complete à Voiceflow (petit délai pour laisser le DOM se mettre à jour)
-                    setTimeout(() => {
-                      window?.voiceflow?.chat?.interact?.({
-                        type: 'complete',
-                        payload: {
-                          webhookSuccess: true,
-                          webhookResponse: data,
-                          files: selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })),
-                          buttonPath: 'success'
-                        }
-                      });
-                    }, 50);
+                    // 2. Envoyer le complete à Voiceflow
+                    window?.voiceflow?.chat?.interact?.({
+                      type: 'complete',
+                      payload: {
+                        webhookSuccess: true,
+                        webhookResponse: data,
+                        files: selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })),
+                        buttonPath: 'success'
+                      }
+                    });
                   };
                   
                 } else {

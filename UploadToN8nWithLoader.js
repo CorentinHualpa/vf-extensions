@@ -1,8 +1,7 @@
-// UploadToN8nWithLoader.js – v5.8 ULTRA MINIMAL
-// © Corentin – Version ultra-épurée monochrome
+// UploadToN8nWithLoader.js – v6.0 MINIMAL PROGRESS BAR
+// © Corentin – Version avec barre de progression minimaliste
 // Compatible mode embedded ET widget
-// v5.7 : Écran de confirmation avec bouton "Continuer" après upload
-// v5.8 : MutationObserver pour garantir que le message user s'affiche AVANT la réponse agent
+// v6.0 : Loader simplifié - barre linéaire + pourcentage uniquement
 //
 export const UploadToN8nWithLoader = {
   name: 'UploadToN8nWithLoader',
@@ -86,15 +85,11 @@ export const UploadToN8nWithLoader = {
       return true;
     };
     
-    // Fonction pour afficher un message utilisateur dans le chat
-    // Fonction pour insérer le message utilisateur AVANT la prochaine réponse de l'agent
-    // Utilise un MutationObserver pour surveiller quand Voiceflow ajoute sa réponse
     const showUserMessageBeforeAgentResponse = (message) => {
       const container = findChatContainer();
       let dialogEl = null;
       let shadowRoot = null;
       
-      // Trouver le conteneur de messages
       if (container?.shadowRoot) {
         shadowRoot = container.shadowRoot;
         const selectors = [
@@ -112,7 +107,6 @@ export const UploadToN8nWithLoader = {
       }
       
       if (!dialogEl) {
-        // Fallback : DOM principal
         const mainSelectors = [
           '.vfrc-chat--dialog',
           '[class*="vfrc"][class*="dialog"]',
@@ -129,14 +123,11 @@ export const UploadToN8nWithLoader = {
         return;
       }
       
-      // Créer le message utilisateur
       const userMsg = createUserMessageElement(message);
       
-      // Mettre en place un MutationObserver pour surveiller les nouveaux messages
       const observer = new MutationObserver((mutations) => {
         for (const mutation of mutations) {
           for (const node of mutation.addedNodes) {
-            // Vérifier si c'est un message de l'assistant (pas un message utilisateur)
             if (node.nodeType === Node.ELEMENT_NODE) {
               const isUserMessage = node.classList?.contains('vfrc-user-response') || 
                                    node.querySelector?.('.vfrc-user-response');
@@ -147,7 +138,6 @@ export const UploadToN8nWithLoader = {
                                      node.querySelector?.('[class*="Agent"]');
               
               if (!isUserMessage || isSystemMessage) {
-                // Insérer notre message AVANT ce nouveau nœud
                 node.parentNode.insertBefore(userMsg, node);
                 observer.disconnect();
                 setTimeout(() => { dialogEl.scrollTop = dialogEl.scrollHeight; }, 50);
@@ -159,10 +149,8 @@ export const UploadToN8nWithLoader = {
         }
       });
       
-      // Observer les changements dans le conteneur de messages
       observer.observe(dialogEl, { childList: true, subtree: true });
       
-      // Timeout de sécurité : si pas de réponse après 5s, insérer quand même
       setTimeout(() => {
         if (userMsg.parentNode === null) {
           dialogEl.appendChild(userMsg);
@@ -176,11 +164,8 @@ export const UploadToN8nWithLoader = {
     const showUserMessage = (message) => {
       const container = findChatContainer();
       
-      // Méthode 1 : Via shadowRoot
       if (container?.shadowRoot) {
         const shadowRoot = container.shadowRoot;
-        
-        // Sélecteurs pour trouver le conteneur des messages
         const selectors = [
           '.vfrc-chat--dialog',
           '[class*="Dialog"]',
@@ -207,7 +192,6 @@ export const UploadToN8nWithLoader = {
         }
       }
       
-      // Méthode 2 : Trouver le dialogue dans le DOM principal (mode embedded)
       const mainSelectors = [
         '.vfrc-chat--dialog',
         '[class*="vfrc"][class*="dialog"]',
@@ -232,7 +216,6 @@ export const UploadToN8nWithLoader = {
       console.warn('[UploadToN8nWithLoader] Could not find dialog element for user message');
     };
     
-    // Helper pour créer l'élément message utilisateur
     const createUserMessageElement = (message) => {
       const userMsg = document.createElement('div');
       userMsg.className = 'vfrc-user-response';
@@ -322,19 +305,15 @@ export const UploadToN8nWithLoader = {
     const pathSuccess = p.pathSuccess || 'Default';
     const pathError   = p.pathError || 'Fail';
     
-    // Message à afficher dans le chat quand l'user clique sur Envoyer
     const sendButtonText = p.sendButtonText || 'Envoyer';
-    const showUserMessageOnSend = p.showUserMessageOnSend !== false; // true par défaut
-    const userMessageText = p.userMessageText || sendButtonText; // Texte affiché dans le chat
-    // Si true, utilise window.voiceflow.chat.interact (déclenche une réponse du bot)
-    // Si false, injecte juste visuellement le message (pas de réponse du bot)
-    const useNativeInteract = p.useNativeInteract === true; // false par défaut
+    const showUserMessageOnSend = p.showUserMessageOnSend !== false;
+    const userMessageText = p.userMessageText || sendButtonText;
+    const useNativeInteract = p.useNativeInteract === true;
     
-    // Écran de confirmation après upload
-    const showConfirmation = p.showConfirmation === true; // false par défaut
+    const showConfirmation = p.showConfirmation === true;
     const confirmationMessage = p.confirmationMessage || '✅ Documents analysés avec succès';
     const confirmationButtonText = p.confirmationButtonText || 'Continuer';
-    const confirmationUserMessage = p.confirmationUserMessage || confirmationButtonText; // Message envoyé au chat
+    const confirmationUserMessage = p.confirmationUserMessage || confirmationButtonText;
     
     const vfContext = {
       conversation_id: p.conversation_id || null,
@@ -348,30 +327,17 @@ export const UploadToN8nWithLoader = {
     const autoCloseDelayMs = Number(loaderCfg.autoCloseDelayMs) > 0 ? Number(loaderCfg.autoCloseDelayMs) : 1500;
     
     const defaultAutoSteps = [
-      { progress: 0,  text: 'Préparation...' },
-      { progress: 30, text: 'Envoi...' },
-      { progress: 60, text: 'Traitement...' },
-      { progress: 85, text: 'Finalisation...' },
-      { progress: 100, text: 'Terminé' }
+      { progress: 0,  text: '' },
+      { progress: 30, text: '' },
+      { progress: 60, text: '' },
+      { progress: 85, text: '' },
+      { progress: 100, text: '' }
     ];
     
     const timedPhases = Array.isArray(loaderCfg.phases) ? loaderCfg.phases : [];
     const totalSeconds = Number(loaderCfg.totalSeconds) > 0 ? Number(loaderCfg.totalSeconds) : 120;
     
-    const stepMap = loaderCfg.stepMap || {
-      upload:      { text: 'Téléversement',            progress: 10 },
-      sign_url:    { text: 'Signature URL',            progress: 18 },
-      ocr_annot:   { text: 'OCR',                      progress: 35 },
-      ocr_classic: { text: 'OCR',                      progress: 42 },
-      merge:       { text: 'Fusion',                   progress: 55 },
-      combine:     { text: 'Préparation',              progress: 62 },
-      ai_agent:    { text: 'Analyse',                  progress: 82 },
-      gdoc_prep:   { text: 'Préparation doc',          progress: 88 },
-      gdrive_copy: { text: 'Copie Drive',              progress: 93 },
-      gdoc_update: { text: 'Mise à jour',              progress: 97 }
-    };
-    
-    const loaderMsg = loaderCfg.message || 'Traitement en cours';
+    const stepMap = loaderCfg.stepMap || {};
     
     if (!webhookUrl) {
       const div = document.createElement('div');
@@ -390,27 +356,18 @@ export const UploadToN8nWithLoader = {
     const hasSubtitle = subtitle && subtitle.trim() !== '';
     const showHeader = hasTitle || hasSubtitle;
     
-    // Hint configurable : 
-    // - p.hint = false ou "" → pas de hint
-    // - p.hint = "texte" → hint personnalisé
-    // - p.hint non défini → comportement auto (calculé)
     let hintText = '';
     if (p.hint === false || p.hint === '') {
-      hintText = ''; // Pas de hint
+      hintText = '';
     } else if (typeof p.hint === 'string' && p.hint.trim() !== '') {
-      hintText = p.hint; // Hint personnalisé
+      hintText = p.hint;
     } else {
-      // Comportement auto
       let requiredDocsInfo;
-      let docsListOBMS, docsListFull;
-      
       if (isSimpleMode) {
         requiredDocsInfo = requiredFiles === 1 
           ? `1 à ${maxFiles} fichiers` 
           : `${requiredFiles} à ${maxFiles} fichiers`;
       } else {
-        docsListOBMS = '• Lettre de mission / Descriptif du poste\n• CV du candidat';
-        docsListFull = '• Lettre de mission / Descriptif du poste\n• CV du candidat\n• Profil AssessFirst du candidat';
         requiredDocsInfo = `${requiredFiles} documents requis`;
       }
       hintText = requiredDocsInfo;
@@ -418,7 +375,6 @@ export const UploadToN8nWithLoader = {
     
     const showHint = hintText && hintText.trim() !== '';
     
-    // Pour la validation (mode non-simple)
     let docsListOBMS = '• Lettre de mission / Descriptif du poste\n• CV du candidat';
     let docsListFull = '• Lettre de mission / Descriptif du poste\n• CV du candidat\n• Profil AssessFirst du candidat';
     
@@ -436,8 +392,9 @@ export const UploadToN8nWithLoader = {
         from { opacity: 0; transform: translateY(4px); }
         to { opacity: 1; transform: translateY(0); }
       }
-      @keyframes progress {
-        from { width: 0%; }
+      @keyframes shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
       }
       
       .upl {
@@ -481,7 +438,6 @@ export const UploadToN8nWithLoader = {
         padding: 20px;
       }
       
-      /* Si pas de header, réduire le padding top */
       .upl-body.no-header {
         padding-top: 20px;
       }
@@ -712,15 +668,13 @@ export const UploadToN8nWithLoader = {
         color: ${colors.textLight};
       }
       
-      /* LOADER - Style avec fond foncé bien visible */
+      /* ═══════════════════════════════════════════════════════════════
+         🎯 LOADER MINIMALISTE - Barre + Pourcentage uniquement
+         ═══════════════════════════════════════════════════════════════ */
       .upl-loader {
         display: none;
-        padding: 24px 20px;
-        animation: fadeIn 0.2s ease;
-        background: #1F2937;
-        border-radius: 8px;
-        position: relative;
-        z-index: 20;
+        padding: 32px 24px;
+        animation: fadeIn 0.25s ease;
       }
       
       .upl-loader.show {
@@ -731,46 +685,68 @@ export const UploadToN8nWithLoader = {
         animation: fadeOut 0.2s ease;
       }
       
-      .upl-loader-head {
+      .upl-loader-container {
         display: flex;
-        align-items: baseline;
-        justify-content: space-between;
-        margin-bottom: 12px;
-      }
-      
-      .upl-loader-title {
-        font-size: 13px;
-        font-weight: 500;
-        color: #FFFFFF;
-      }
-      
-      .upl-loader-pct {
-        font-size: 12px;
-        font-weight: 600;
-        color: #FFFFFF;
-        font-variant-numeric: tabular-nums;
+        align-items: center;
+        gap: 16px;
       }
       
       .upl-loader-bar {
-        height: 6px;
-        background: rgba(255, 255, 255, 0.2);
-        border-radius: 3px;
+        flex: 1;
+        height: 8px;
+        background: ${colors.border};
+        border-radius: 4px;
         overflow: hidden;
+        position: relative;
       }
       
       .upl-loader-fill {
         height: 100%;
         width: 0%;
-        background: #10B981;
-        border-radius: 3px;
-        transition: width 0.3s ease;
+        background: ${colors.text};
+        border-radius: 4px;
+        transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
       }
       
-      .upl-loader-step {
-        margin-top: 10px;
-        font-size: 12px;
-        color: rgba(255, 255, 255, 0.7);
-        min-height: 16px;
+      /* Effet shimmer subtil sur la barre */
+      .upl-loader-fill::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(
+          90deg,
+          transparent 0%,
+          rgba(255, 255, 255, 0.3) 50%,
+          transparent 100%
+        );
+        background-size: 200% 100%;
+        animation: shimmer 2s infinite;
+      }
+      
+      .upl-loader-pct {
+        font-size: 15px;
+        font-weight: 600;
+        color: ${colors.text};
+        font-variant-numeric: tabular-nums;
+        min-width: 48px;
+        text-align: right;
+      }
+      
+      /* État complété */
+      .upl-loader.complete .upl-loader-fill {
+        background: ${colors.success};
+      }
+      
+      .upl-loader.complete .upl-loader-fill::after {
+        animation: none;
+      }
+      
+      .upl-loader.complete .upl-loader-pct {
+        color: ${colors.success};
       }
       
       /* VALIDATION */
@@ -803,7 +779,7 @@ export const UploadToN8nWithLoader = {
         gap: 8px;
       }
       
-      /* OVERLAY - transparent pour ne pas cacher le loader */
+      /* OVERLAY */
       .upl-overlay {
         display: none;
         position: absolute;
@@ -818,7 +794,7 @@ export const UploadToN8nWithLoader = {
         display: block;
       }
       
-      /* CONFIRMATION - Écran après upload réussi */
+      /* CONFIRMATION */
       .upl-confirm {
         display: none;
         padding: 24px 20px;
@@ -890,7 +866,6 @@ export const UploadToN8nWithLoader = {
     styleTag.textContent = styles;
     root.appendChild(styleTag);
     
-    // Header conditionnel
     let headerHTML = '';
     if (showHeader) {
       headerHTML = `<div class="upl-header">`;
@@ -899,10 +874,7 @@ export const UploadToN8nWithLoader = {
       headerHTML += `</div>`;
     }
     
-    // Hint conditionnel
     const hintHTML = showHint ? `<div class="upl-zone-hint">${hintText}</div>` : '';
-    
-    // Classe body conditionnelle
     const bodyClass = showHeader ? 'upl-body' : 'upl-body no-header';
     
     root.innerHTML += `
@@ -934,15 +906,14 @@ export const UploadToN8nWithLoader = {
           <div class="upl-msg"></div>
         </div>
         
+        <!-- LOADER MINIMALISTE -->
         <div class="upl-loader">
-          <div class="upl-loader-head">
-            <div class="upl-loader-title"></div>
+          <div class="upl-loader-container">
+            <div class="upl-loader-bar">
+              <div class="upl-loader-fill"></div>
+            </div>
             <div class="upl-loader-pct">0%</div>
           </div>
-          <div class="upl-loader-bar">
-            <div class="upl-loader-fill"></div>
-          </div>
-          <div class="upl-loader-step"></div>
         </div>
         
         <div class="upl-confirm">
@@ -964,12 +935,9 @@ export const UploadToN8nWithLoader = {
     const backButtons = root.querySelectorAll('.back-btn');
     const msgDiv = root.querySelector('.upl-msg');
     const loader = root.querySelector('.upl-loader');
-    const loaderTitle = root.querySelector('.upl-loader-title');
     const loaderPct = root.querySelector('.upl-loader-pct');
     const loaderFill = root.querySelector('.upl-loader-fill');
-    const loaderStep = root.querySelector('.upl-loader-step');
     const overlay = root.querySelector('.upl-overlay');
-    const card = root.querySelector('.upl-card');
     const bodyDiv = root.querySelector('.upl-body');
     const confirmDiv = root.querySelector('.upl-confirm');
     const confirmBtn = root.querySelector('.upl-confirm-btn');
@@ -1080,7 +1048,6 @@ export const UploadToN8nWithLoader = {
       if (selectedFiles.length < requiredFiles) {
         clearValidation();
         const docs = isOBMS ? docsListOBMS : docsListFull;
-        const m = requiredFiles - selectedFiles.length;
         
         const div = document.createElement('div');
         div.className = 'upl-valid';
@@ -1149,11 +1116,11 @@ ${docs}</div>
       backButtons.forEach(b => b.disabled = true);
       
       const startTime = Date.now();
-      const ui = showLoaderUI(loaderMsg);
+      const ui = showLoaderUI();
       
       if (loaderMode === 'auto') ui.auto(defaultAutoSteps);
       else if (loaderMode === 'timed') ui.timed(buildPlan());
-      else { ui.phase('Démarrage...'); ui.set(5); }
+      else { ui.set(5); }
       
       try {
         const resp = await post({
@@ -1177,8 +1144,6 @@ ${docs}</div>
                   const pct = Number.isFinite(st?.percent) ? clamp(st.percent, 0, 100) : undefined;
                   const key = st?.phase;
                   const map = key && stepMap[key] ? stepMap[key] : null;
-                  const text = st?.message || map?.text;
-                  if (text) ui.phase(text);
                   if (pct != null) ui.set(pct);
                   else if (map?.progress != null) ui.soft(map.progress);
                 }
@@ -1190,7 +1155,6 @@ ${docs}</div>
         const elapsed = Date.now() - startTime;
         const remain = minLoadingTimeMs - elapsed;
         if (remain > 0) {
-          ui.phase('Finalisation...');
           ui.to(98, Math.min(remain, 1500));
           await new Promise(r => setTimeout(r, remain));
         }
@@ -1213,9 +1177,8 @@ ${docs}</div>
       }
     };
     
-    // ---------- Loader ----------
-    function showLoaderUI(msg) {
-      loaderTitle.textContent = msg;
+    // ---------- Loader Minimaliste ----------
+    function showLoaderUI() {
       loader.classList.add('show');
       bodyDiv.style.display = 'none';
       
@@ -1235,7 +1198,6 @@ ${docs}</div>
           const go = () => {
             if (i >= steps.length || locked) return;
             const s = steps[i];
-            if (s.text) this.phase(s.text);
             this.to(s.progress, 1800, () => { i++; go(); });
           };
           go();
@@ -1246,7 +1208,6 @@ ${docs}</div>
           const next = () => {
             if (idx >= plan.length || locked) return;
             const p = plan[idx++];
-            this.phase(p.text);
             const t0 = Date.now(), t1 = t0 + p.durationMs;
             clear();
             timedTimer = setInterval(() => {
@@ -1260,7 +1221,6 @@ ${docs}</div>
           next();
         },
         
-        phase(t) { if (t) loaderStep.textContent = t; },
         set(p) { if (!locked) { cur = clamp(p, 0, 100); paint(); } },
         soft(p) { if (!locked) { cur += (clamp(p, 0, 100) - cur) * 0.5; paint(); } },
         
@@ -1280,31 +1240,26 @@ ${docs}</div>
           locked = true;
           clear();
           this.to(100, 400, () => {
-            this.phase('Terminé');
+            loader.classList.add('complete');
             setTimeout(() => {
               loader.classList.add('hide');
               setTimeout(() => {
-                loader.classList.remove('show', 'hide');
+                loader.classList.remove('show', 'hide', 'complete');
                 
                 if (showConfirmation) {
-                  // Mode confirmation : afficher l'écran avec bouton "Continuer"
                   bodyDiv.style.display = 'none';
                   confirmDiv.classList.add('show');
                   overlay.classList.remove('show');
                   root.style.pointerEvents = '';
                   
-                  // Stocker les données pour le clic sur le bouton
                   confirmBtn.onclick = () => {
-                    // Cacher le composant
                     root.style.display = 'none';
                     enableChatInput(refs);
                     
-                    // 1. Mettre en place le MutationObserver pour insérer le message AVANT la réponse agent
                     if (showUserMessageOnSend && !useNativeInteract) {
                       showUserMessageBeforeAgentResponse(confirmationUserMessage);
                     }
                     
-                    // 2. Envoyer le complete à Voiceflow
                     window?.voiceflow?.chat?.interact?.({
                       type: 'complete',
                       payload: {
@@ -1317,12 +1272,10 @@ ${docs}</div>
                   };
                   
                 } else {
-                  // Mode direct : fermer et envoyer complete immédiatement
                   root.style.display = 'none';
                   overlay.classList.remove('show');
                   enableChatInput(refs);
                   
-                  // Afficher le message utilisateur APRÈS le chargement complet
                   if (showUserMessageOnSend) {
                     if (useNativeInteract) {
                       window?.voiceflow?.chat?.interact?.({
@@ -1359,7 +1312,7 @@ ${docs}</div>
       const weightsSum = timedPhases.reduce((s, ph) => s + (Number(ph.weight) || 0), 0) || timedPhases.length;
       const alloc = timedPhases.map((ph, i) => {
         const sec = haveSeconds ? Number(ph.seconds) : (Number(ph.weight) || 1) / weightsSum * total;
-        return { key: ph.key, text: ph.label || stepMap[ph.key]?.text || `Étape ${i + 1}`, seconds: sec };
+        return { key: ph.key, seconds: sec };
       });
       const startP = 5, endP = 98;
       const totalMs = alloc.reduce((s, a) => s + a.seconds * 1000, 0);
@@ -1369,11 +1322,11 @@ ${docs}</div>
         const pEnd = i === alloc.length - 1 ? endP : startP + (endP - startP) * ((acc + a.seconds * 1000) / totalMs);
         acc += a.seconds * 1000;
         last = pEnd;
-        return { text: a.text, durationMs: Math.max(500, a.seconds * 1000), progressStart: pStart, progressEnd: pEnd };
+        return { durationMs: Math.max(500, a.seconds * 1000), progressStart: pStart, progressEnd: pEnd };
       });
       if (!plan.length) {
         return defaultAutoSteps.map((s, i, arr) => ({
-          text: s.text, durationMs: i === 0 ? 1000 : 1500,
+          durationMs: i === 0 ? 1000 : 1500,
           progressStart: i ? arr[i - 1].progress : 0, progressEnd: s.progress
         }));
       }

@@ -1,7 +1,8 @@
-// UploadToN8nWithLoader.js – v6.0 MINIMAL PROGRESS BAR
+// UploadToN8nWithLoader.js – v6.1 MINIMAL PROGRESS BAR + AUTO-UNLOCK
 // © Corentin – Version avec barre de progression minimaliste
 // Compatible mode embedded ET widget
 // v6.0 : Loader simplifié - barre linéaire + pourcentage uniquement
+// v6.1 : Auto-unlock quand une autre action est déclenchée (boutons externes)
 //
 export const UploadToN8nWithLoader = {
   name: 'UploadToN8nWithLoader',
@@ -219,6 +220,7 @@ export const UploadToN8nWithLoader = {
     const createUserMessageElement = (message) => {
       const userMsg = document.createElement('div');
       userMsg.className = 'vfrc-user-response';
+      userMsg.dataset.uploadExtension = 'true'; // Marqueur pour l'auto-unlock
       userMsg.style.cssText = `
         display: flex;
         justify-content: flex-end;
@@ -246,6 +248,94 @@ export const UploadToN8nWithLoader = {
     };
     
     const chatRefs = disableChatInput();
+    
+    // ---------- AUTO-UNLOCK : Détecte si une autre action est déclenchée ----------
+    let isComponentActive = true;
+    let cleanupObserver = null;
+    
+    const setupAutoUnlock = () => {
+      const container = findChatContainer();
+      if (!container?.shadowRoot) return null;
+      
+      const shadowRoot = container.shadowRoot;
+      const selectors = [
+        '.vfrc-chat--dialog',
+        '[class*="Dialog"]',
+        '[class*="dialog"]',
+        '.vfrc-chat',
+        '[class*="Messages"]',
+        '[class*="messages"]'
+      ];
+      
+      let dialogEl = null;
+      for (const sel of selectors) {
+        dialogEl = shadowRoot.querySelector(sel);
+        if (dialogEl) break;
+      }
+      
+      if (!dialogEl) return null;
+      
+      const observer = new MutationObserver((mutations) => {
+        if (!isComponentActive) return;
+        
+        for (const mutation of mutations) {
+          for (const node of mutation.addedNodes) {
+            if (node.nodeType !== Node.ELEMENT_NODE) continue;
+            
+            // Ignorer les messages créés par notre extension
+            if (node.dataset?.uploadExtension === 'true') continue;
+            
+            // Détecter une nouvelle réponse système/agent ou une nouvelle extension
+            const isSystemResponse = 
+              node.classList?.contains('vfrc-system-response') ||
+              node.classList?.contains('vfrc-assistant') ||
+              node.querySelector?.('[class*="assistant"]') ||
+              node.querySelector?.('[class*="system"]') ||
+              node.querySelector?.('[class*="Agent"]') ||
+              node.querySelector?.('[class*="extension"]') ||
+              node.querySelector?.('.upl'); // Autre instance d'upload
+            
+            if (isSystemResponse) {
+              console.log('[UploadToN8nWithLoader] Another action detected, auto-unlocking...');
+              autoUnlock();
+              return;
+            }
+          }
+        }
+      });
+      
+      observer.observe(dialogEl, { childList: true, subtree: true });
+      
+      return () => {
+        observer.disconnect();
+      };
+    };
+    
+    const autoUnlock = () => {
+      if (!isComponentActive) return;
+      isComponentActive = false;
+      
+      // Nettoyer l'observer
+      if (cleanupObserver) {
+        cleanupObserver();
+        cleanupObserver = null;
+      }
+      
+      // Réactiver le chat
+      enableChatInput(chatRefs);
+      
+      // Masquer le composant sans envoyer de complete
+      root.style.display = 'none';
+      
+      // Arrêter le timer si en cours
+      if (timedTimer) {
+        clearInterval(timedTimer);
+        timedTimer = null;
+      }
+    };
+    
+    // Démarrer la surveillance
+    cleanupObserver = setupAutoUnlock();
     
     // ---------- CONFIG ----------
     const p = trace?.payload || {};
@@ -1065,6 +1155,11 @@ ${docs}</div>
         bodyDiv.appendChild(div);
         
         div.querySelector('[data-a="back"]').onclick = () => {
+          isComponentActive = false;
+          if (cleanupObserver) {
+            cleanupObserver();
+            cleanupObserver = null;
+          }
           enableChatInput(chatRefs);
           window?.voiceflow?.chat?.interact?.({
             type: 'complete',
@@ -1098,6 +1193,11 @@ ${docs}</div>
     
     backButtons.forEach(b => {
       b.onclick = () => {
+        isComponentActive = false;
+        if (cleanupObserver) {
+          cleanupObserver();
+          cleanupObserver = null;
+        }
         enableChatInput(chatRefs);
         window?.voiceflow?.chat?.interact?.({
           type: 'complete',
@@ -1162,6 +1262,11 @@ ${docs}</div>
         ui.done(data, chatRefs);
         
       } catch (err) {
+        isComponentActive = false;
+        if (cleanupObserver) {
+          cleanupObserver();
+          cleanupObserver = null;
+        }
         loader.classList.remove('show');
         bodyDiv.style.display = '';
         showMsg(String(err?.message || err), 'err');
@@ -1238,6 +1343,11 @@ ${docs}</div>
         
         done(data, refs) {
           locked = true;
+          isComponentActive = false; // Désactiver l'auto-unlock
+          if (cleanupObserver) {
+            cleanupObserver();
+            cleanupObserver = null;
+          }
           clear();
           this.to(100, 400, () => {
             loader.classList.add('complete');
@@ -1373,7 +1483,11 @@ ${docs}</div>
       throw new Error('Timeout');
     }
     
-    return () => { if (timedTimer) clearInterval(timedTimer); };
+    return () => { 
+      if (timedTimer) clearInterval(timedTimer); 
+      if (cleanupObserver) cleanupObserver();
+      isComponentActive = false;
+    };
   }
 };
 

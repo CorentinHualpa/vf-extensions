@@ -1,8 +1,9 @@
-// UploadToN8nWithLoader.js – v6.1 MINIMAL PROGRESS BAR + AUTO-UNLOCK
+// UploadToN8nWithLoader.js – v6.2 MINIMAL PROGRESS BAR + AUTO-UNLOCK
 // © Corentin – Version avec barre de progression minimaliste
 // Compatible mode embedded ET widget
 // v6.0 : Loader simplifié - barre linéaire + pourcentage uniquement
 // v6.1 : Auto-unlock quand une autre action est déclenchée (boutons externes)
+// v6.2 : Fix affichage message utilisateur après confirmation (appendChild au lieu de insertBefore)
 //
 export const UploadToN8nWithLoader = {
   name: 'UploadToN8nWithLoader',
@@ -1363,22 +1364,27 @@ ${docs}</div>
                   root.style.pointerEvents = '';
                   
                   confirmBtn.onclick = () => {
+                    // 1. D'abord afficher le message utilisateur à la fin du chat
+                    if (showUserMessageOnSend && !useNativeInteract) {
+                      showUserMessage(confirmationUserMessage);
+                    }
+                    
+                    // 2. Puis cacher le composant
                     root.style.display = 'none';
                     enableChatInput(refs);
                     
-                    if (showUserMessageOnSend && !useNativeInteract) {
-                      showUserMessageBeforeAgentResponse(confirmationUserMessage);
-                    }
-                    
-                    window?.voiceflow?.chat?.interact?.({
-                      type: 'complete',
-                      payload: {
-                        webhookSuccess: true,
-                        webhookResponse: data,
-                        files: selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })),
-                        buttonPath: 'success'
-                      }
-                    });
+                    // 3. Envoyer le complete à Voiceflow (petit délai pour laisser le message s'afficher)
+                    setTimeout(() => {
+                      window?.voiceflow?.chat?.interact?.({
+                        type: 'complete',
+                        payload: {
+                          webhookSuccess: true,
+                          webhookResponse: data,
+                          files: selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })),
+                          buttonPath: 'success'
+                        }
+                      });
+                    }, 50);
                   };
                   
                 } else {

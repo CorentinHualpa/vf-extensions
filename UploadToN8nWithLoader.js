@@ -1,9 +1,10 @@
-// UploadToN8nWithLoader.js – v6.2 MINIMAL PROGRESS BAR + AUTO-UNLOCK
+// UploadToN8nWithLoader.js – v6.3 MINIMAL PROGRESS BAR + AUTO-UNLOCK
 // © Corentin – Version avec barre de progression minimaliste
 // Compatible mode embedded ET widget
 // v6.0 : Loader simplifié - barre linéaire + pourcentage uniquement
 // v6.1 : Auto-unlock quand une autre action est déclenchée (boutons externes)
-// v6.2 : Fix affichage message utilisateur après confirmation (appendChild au lieu de insertBefore)
+// v6.2 : Fix affichage message utilisateur après confirmation
+// v6.3 : Fix ordre des messages - user message AVANT réponse agent (insertBefore)
 //
 export const UploadToN8nWithLoader = {
   name: 'UploadToN8nWithLoader',
@@ -87,13 +88,16 @@ export const UploadToN8nWithLoader = {
       return true;
     };
     
-    const showUserMessageBeforeAgentResponse = (message) => {
+    // Fonction pour insérer le message utilisateur AVANT la prochaine réponse de l'agent
+    // Setup un MutationObserver qui attend que Voiceflow ajoute la réponse agent
+    // puis insère notre message juste avant
+    const insertUserMessageBeforeNextAgentResponse = (message) => {
       const container = findChatContainer();
       let dialogEl = null;
-      let shadowRoot = null;
       
+      // Trouver le conteneur de messages
       if (container?.shadowRoot) {
-        shadowRoot = container.shadowRoot;
+        const shadowRoot = container.shadowRoot;
         const selectors = [
           '.vfrc-chat--dialog',
           '[class*="Dialog"]',
@@ -125,42 +129,72 @@ export const UploadToN8nWithLoader = {
         return;
       }
       
+      // Créer le message utilisateur (mais ne pas l'insérer encore)
       const userMsg = createUserMessageElement(message);
+      let inserted = false;
       
+      // Observer les nouveaux nœuds ajoutés au chat
       const observer = new MutationObserver((mutations) => {
+        if (inserted) return;
+        
         for (const mutation of mutations) {
+          // On ne regarde que les ajouts directs au dialog (childList)
+          if (mutation.type !== 'childList') continue;
+          
           for (const node of mutation.addedNodes) {
-            if (node.nodeType === Node.ELEMENT_NODE) {
-              const isUserMessage = node.classList?.contains('vfrc-user-response') || 
-                                   node.querySelector?.('.vfrc-user-response');
-              const isSystemMessage = node.classList?.contains('vfrc-system-response') ||
-                                     node.classList?.contains('vfrc-assistant') ||
-                                     node.querySelector?.('[class*="assistant"]') ||
-                                     node.querySelector?.('[class*="system"]') ||
-                                     node.querySelector?.('[class*="Agent"]');
+            if (node.nodeType !== Node.ELEMENT_NODE) continue;
+            if (inserted) return;
+            
+            // Ignorer nos propres messages
+            if (node.dataset?.uploadExtension === 'true') continue;
+            
+            // Détecter si c'est une réponse système/agent (pas un message user)
+            const classList = node.classList || [];
+            const isAgentResponse = 
+              classList.contains('vfrc-system-response') ||
+              classList.contains('vfrc-assistant') ||
+              classList.contains('vfrc-message--assistant') ||
+              node.querySelector?.('[class*="system"]') ||
+              node.querySelector?.('[class*="assistant"]') ||
+              node.querySelector?.('[class*="Agent"]');
+            
+            const isUserResponse = 
+              classList.contains('vfrc-user-response') ||
+              node.querySelector?.('.vfrc-user-response');
+            
+            // Si c'est une réponse agent, insérer notre message AVANT
+            if (isAgentResponse && !isUserResponse) {
+              inserted = true;
+              node.parentNode.insertBefore(userMsg, node);
+              observer.disconnect();
               
-              if (!isUserMessage || isSystemMessage) {
-                node.parentNode.insertBefore(userMsg, node);
-                observer.disconnect();
-                setTimeout(() => { dialogEl.scrollTop = dialogEl.scrollHeight; }, 50);
-                console.log('[UploadToN8nWithLoader] User message inserted before agent response');
-                return;
-              }
+              // Scroll vers le bas
+              setTimeout(() => {
+                dialogEl.scrollTop = dialogEl.scrollHeight;
+              }, 50);
+              
+              console.log('[UploadToN8nWithLoader] User message inserted before agent response');
+              return;
             }
           }
         }
       });
       
-      observer.observe(dialogEl, { childList: true, subtree: true });
+      // Observer uniquement les enfants directs (pas subtree pour éviter les faux positifs)
+      observer.observe(dialogEl, { childList: true, subtree: false });
       
+      // Timeout de sécurité : si pas de réponse après 3s, ajouter à la fin quand même
       setTimeout(() => {
-        if (userMsg.parentNode === null) {
+        if (!inserted) {
+          inserted = true;
           dialogEl.appendChild(userMsg);
           observer.disconnect();
-          setTimeout(() => { dialogEl.scrollTop = dialogEl.scrollHeight; }, 50);
+          setTimeout(() => {
+            dialogEl.scrollTop = dialogEl.scrollHeight;
+          }, 50);
           console.log('[UploadToN8nWithLoader] User message appended (timeout fallback)');
         }
-      }, 5000);
+      }, 3000);
     };
     
     const showUserMessage = (message) => {
@@ -1364,27 +1398,26 @@ ${docs}</div>
                   root.style.pointerEvents = '';
                   
                   confirmBtn.onclick = () => {
-                    // 1. D'abord afficher le message utilisateur à la fin du chat
-                    if (showUserMessageOnSend && !useNativeInteract) {
-                      showUserMessage(confirmationUserMessage);
-                    }
-                    
-                    // 2. Puis cacher le composant
                     root.style.display = 'none';
                     enableChatInput(refs);
                     
-                    // 3. Envoyer le complete à Voiceflow (petit délai pour laisser le message s'afficher)
-                    setTimeout(() => {
-                      window?.voiceflow?.chat?.interact?.({
-                        type: 'complete',
-                        payload: {
-                          webhookSuccess: true,
-                          webhookResponse: data,
-                          files: selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })),
-                          buttonPath: 'success'
-                        }
-                      });
-                    }, 50);
+                    // 1. Setup l'observer AVANT d'envoyer le complete
+                    // L'observer va insérer le message user AVANT la réponse de l'agent
+                    if (showUserMessageOnSend && !useNativeInteract) {
+                      insertUserMessageBeforeNextAgentResponse(confirmationUserMessage);
+                    }
+                    
+                    // 2. Envoyer le complete - l'agent va répondre
+                    // L'observer captera la réponse et insérera notre message avant
+                    window?.voiceflow?.chat?.interact?.({
+                      type: 'complete',
+                      payload: {
+                        webhookSuccess: true,
+                        webhookResponse: data,
+                        files: selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })),
+                        buttonPath: 'success'
+                      }
+                    });
                   };
                   
                 } else {

@@ -1,10 +1,9 @@
-// UploadToN8nWithLoader.js – v6.3 MINIMAL PROGRESS BAR + AUTO-UNLOCK
-// © Corentin – Version avec barre de progression minimaliste
+// UploadToN8nWithLoader.js – v7.0 SIMPLIFIED
+// © Corentin – Version simplifiée sans écran de confirmation
 // Compatible mode embedded ET widget
-// v6.0 : Loader simplifié - barre linéaire + pourcentage uniquement
-// v6.1 : Auto-unlock quand une autre action est déclenchée (boutons externes)
-// v6.2 : Fix affichage message utilisateur après confirmation
-// v6.3 : Fix ordre des messages - user message AVANT réponse agent (insertBefore)
+// v7.0 : Suppression écran confirmation, passage direct après réponse n8n
+//        Fix loader qui ne peut plus redescendre (cur ne diminue jamais)
+//        Auto-unlock si autre action déclenchée
 //
 export const UploadToN8nWithLoader = {
   name: 'UploadToN8nWithLoader',
@@ -88,205 +87,12 @@ export const UploadToN8nWithLoader = {
       return true;
     };
     
-    // Fonction pour insérer le message utilisateur AVANT la prochaine réponse de l'agent
-    // Setup un MutationObserver qui attend que Voiceflow ajoute la réponse agent
-    // puis insère notre message juste avant
-    const insertUserMessageBeforeNextAgentResponse = (message) => {
-      const container = findChatContainer();
-      let dialogEl = null;
-      
-      // Trouver le conteneur de messages
-      if (container?.shadowRoot) {
-        const shadowRoot = container.shadowRoot;
-        const selectors = [
-          '.vfrc-chat--dialog',
-          '[class*="Dialog"]',
-          '[class*="dialog"]',
-          '.vfrc-chat',
-          '[class*="Messages"]',
-          '[class*="messages"]'
-        ];
-        for (const sel of selectors) {
-          dialogEl = shadowRoot.querySelector(sel);
-          if (dialogEl) break;
-        }
-      }
-      
-      if (!dialogEl) {
-        const mainSelectors = [
-          '.vfrc-chat--dialog',
-          '[class*="vfrc"][class*="dialog"]',
-          '.vfrc-chat'
-        ];
-        for (const sel of mainSelectors) {
-          dialogEl = document.querySelector(sel);
-          if (dialogEl) break;
-        }
-      }
-      
-      if (!dialogEl) {
-        console.warn('[UploadToN8nWithLoader] Could not find dialog element');
-        return;
-      }
-      
-      // Créer le message utilisateur (mais ne pas l'insérer encore)
-      const userMsg = createUserMessageElement(message);
-      let inserted = false;
-      
-      // Observer les nouveaux nœuds ajoutés au chat
-      const observer = new MutationObserver((mutations) => {
-        if (inserted) return;
-        
-        for (const mutation of mutations) {
-          // On ne regarde que les ajouts directs au dialog (childList)
-          if (mutation.type !== 'childList') continue;
-          
-          for (const node of mutation.addedNodes) {
-            if (node.nodeType !== Node.ELEMENT_NODE) continue;
-            if (inserted) return;
-            
-            // Ignorer nos propres messages
-            if (node.dataset?.uploadExtension === 'true') continue;
-            
-            // Détecter si c'est une réponse système/agent (pas un message user)
-            const classList = node.classList || [];
-            const isAgentResponse = 
-              classList.contains('vfrc-system-response') ||
-              classList.contains('vfrc-assistant') ||
-              classList.contains('vfrc-message--assistant') ||
-              node.querySelector?.('[class*="system"]') ||
-              node.querySelector?.('[class*="assistant"]') ||
-              node.querySelector?.('[class*="Agent"]');
-            
-            const isUserResponse = 
-              classList.contains('vfrc-user-response') ||
-              node.querySelector?.('.vfrc-user-response');
-            
-            // Si c'est une réponse agent, insérer notre message AVANT
-            if (isAgentResponse && !isUserResponse) {
-              inserted = true;
-              node.parentNode.insertBefore(userMsg, node);
-              observer.disconnect();
-              
-              // Scroll vers le bas
-              setTimeout(() => {
-                dialogEl.scrollTop = dialogEl.scrollHeight;
-              }, 50);
-              
-              console.log('[UploadToN8nWithLoader] User message inserted before agent response');
-              return;
-            }
-          }
-        }
-      });
-      
-      // Observer uniquement les enfants directs (pas subtree pour éviter les faux positifs)
-      observer.observe(dialogEl, { childList: true, subtree: false });
-      
-      // Timeout de sécurité : si pas de réponse après 3s, ajouter à la fin quand même
-      setTimeout(() => {
-        if (!inserted) {
-          inserted = true;
-          dialogEl.appendChild(userMsg);
-          observer.disconnect();
-          setTimeout(() => {
-            dialogEl.scrollTop = dialogEl.scrollHeight;
-          }, 50);
-          console.log('[UploadToN8nWithLoader] User message appended (timeout fallback)');
-        }
-      }, 3000);
-    };
-    
-    const showUserMessage = (message) => {
-      const container = findChatContainer();
-      
-      if (container?.shadowRoot) {
-        const shadowRoot = container.shadowRoot;
-        const selectors = [
-          '.vfrc-chat--dialog',
-          '[class*="Dialog"]',
-          '[class*="dialog"]',
-          '.vfrc-chat',
-          '[class*="Messages"]',
-          '[class*="messages"]',
-          '[class*="Conversation"]',
-          '[class*="conversation"]'
-        ];
-        
-        let dialogEl = null;
-        for (const sel of selectors) {
-          dialogEl = shadowRoot.querySelector(sel);
-          if (dialogEl) break;
-        }
-        
-        if (dialogEl) {
-          const userMsg = createUserMessageElement(message);
-          dialogEl.appendChild(userMsg);
-          setTimeout(() => { dialogEl.scrollTop = dialogEl.scrollHeight; }, 50);
-          console.log('[UploadToN8nWithLoader] User message displayed in shadow DOM');
-          return;
-        }
-      }
-      
-      const mainSelectors = [
-        '.vfrc-chat--dialog',
-        '[class*="vfrc"][class*="dialog"]',
-        '.vfrc-chat',
-        '#voiceflow-chat-frame [class*="dialog"]',
-        '#voiceflow-chat-frame [class*="messages"]',
-        '[id*="voiceflow"] [class*="dialog"]',
-        '[id*="voiceflow"] [class*="messages"]'
-      ];
-      
-      for (const sel of mainSelectors) {
-        const dialogEl = document.querySelector(sel);
-        if (dialogEl) {
-          const userMsg = createUserMessageElement(message);
-          dialogEl.appendChild(userMsg);
-          setTimeout(() => { dialogEl.scrollTop = dialogEl.scrollHeight; }, 50);
-          console.log('[UploadToN8nWithLoader] User message displayed in main DOM');
-          return;
-        }
-      }
-      
-      console.warn('[UploadToN8nWithLoader] Could not find dialog element for user message');
-    };
-    
-    const createUserMessageElement = (message) => {
-      const userMsg = document.createElement('div');
-      userMsg.className = 'vfrc-user-response';
-      userMsg.dataset.uploadExtension = 'true'; // Marqueur pour l'auto-unlock
-      userMsg.style.cssText = `
-        display: flex;
-        justify-content: flex-end;
-        padding: 0 20px;
-        margin: 8px 0;
-      `;
-      
-      const msgBubble = document.createElement('div');
-      msgBubble.className = 'vfrc-message';
-      msgBubble.style.cssText = `
-        background: #EEEEEE;
-        color: #1E1E1E;
-        padding: 12px 16px;
-        border-radius: 20px;
-        max-width: 80%;
-        word-wrap: break-word;
-        font-size: 14px;
-        line-height: 1.4;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      `;
-      msgBubble.textContent = message;
-      
-      userMsg.appendChild(msgBubble);
-      return userMsg;
-    };
-    
     const chatRefs = disableChatInput();
     
     // ---------- AUTO-UNLOCK : Détecte si une autre action est déclenchée ----------
     let isComponentActive = true;
     let cleanupObserver = null;
+    let timedTimer = null;
     
     const setupAutoUnlock = () => {
       const container = findChatContainer();
@@ -316,11 +122,8 @@ export const UploadToN8nWithLoader = {
         for (const mutation of mutations) {
           for (const node of mutation.addedNodes) {
             if (node.nodeType !== Node.ELEMENT_NODE) continue;
-            
-            // Ignorer les messages créés par notre extension
             if (node.dataset?.uploadExtension === 'true') continue;
             
-            // Détecter une nouvelle réponse système/agent ou une nouvelle extension
             const isSystemResponse = 
               node.classList?.contains('vfrc-system-response') ||
               node.classList?.contains('vfrc-assistant') ||
@@ -328,7 +131,7 @@ export const UploadToN8nWithLoader = {
               node.querySelector?.('[class*="system"]') ||
               node.querySelector?.('[class*="Agent"]') ||
               node.querySelector?.('[class*="extension"]') ||
-              node.querySelector?.('.upl'); // Autre instance d'upload
+              node.querySelector?.('.upl');
             
             if (isSystemResponse) {
               console.log('[UploadToN8nWithLoader] Another action detected, auto-unlocking...');
@@ -340,36 +143,27 @@ export const UploadToN8nWithLoader = {
       });
       
       observer.observe(dialogEl, { childList: true, subtree: true });
-      
-      return () => {
-        observer.disconnect();
-      };
+      return () => observer.disconnect();
     };
     
     const autoUnlock = () => {
       if (!isComponentActive) return;
       isComponentActive = false;
       
-      // Nettoyer l'observer
       if (cleanupObserver) {
         cleanupObserver();
         cleanupObserver = null;
       }
       
-      // Réactiver le chat
       enableChatInput(chatRefs);
-      
-      // Masquer le composant sans envoyer de complete
       root.style.display = 'none';
       
-      // Arrêter le timer si en cours
       if (timedTimer) {
         clearInterval(timedTimer);
         timedTimer = null;
       }
     };
     
-    // Démarrer la surveillance
     cleanupObserver = setupAutoUnlock();
     
     // ---------- CONFIG ----------
@@ -431,14 +225,6 @@ export const UploadToN8nWithLoader = {
     const pathError   = p.pathError || 'Fail';
     
     const sendButtonText = p.sendButtonText || 'Envoyer';
-    const showUserMessageOnSend = p.showUserMessageOnSend !== false;
-    const userMessageText = p.userMessageText || sendButtonText;
-    const useNativeInteract = p.useNativeInteract === true;
-    
-    const showConfirmation = p.showConfirmation === true;
-    const confirmationMessage = p.confirmationMessage || '✅ Documents analysés avec succès';
-    const confirmationButtonText = p.confirmationButtonText || 'Continuer';
-    const confirmationUserMessage = p.confirmationUserMessage || confirmationButtonText;
     
     const vfContext = {
       conversation_id: p.conversation_id || null,
@@ -449,14 +235,14 @@ export const UploadToN8nWithLoader = {
     const loaderCfg = p.loader || {};
     const loaderMode = (loaderCfg.mode || 'auto').toLowerCase();
     const minLoadingTimeMs = Number(loaderCfg.minLoadingTimeMs) > 0 ? Number(loaderCfg.minLoadingTimeMs) : 0;
-    const autoCloseDelayMs = Number(loaderCfg.autoCloseDelayMs) > 0 ? Number(loaderCfg.autoCloseDelayMs) : 1500;
+    const autoCloseDelayMs = Number(loaderCfg.autoCloseDelayMs) > 0 ? Number(loaderCfg.autoCloseDelayMs) : 800;
     
     const defaultAutoSteps = [
-      { progress: 0,  text: '' },
-      { progress: 30, text: '' },
-      { progress: 60, text: '' },
-      { progress: 85, text: '' },
-      { progress: 100, text: '' }
+      { progress: 0 },
+      { progress: 30 },
+      { progress: 60 },
+      { progress: 85 },
+      { progress: 100 }
     ];
     
     const timedPhases = Array.isArray(loaderCfg.phases) ? loaderCfg.phases : [];
@@ -918,49 +704,6 @@ export const UploadToN8nWithLoader = {
       .upl-overlay.show {
         display: block;
       }
-      
-      /* CONFIRMATION */
-      .upl-confirm {
-        display: none;
-        padding: 24px 20px;
-        text-align: center;
-        animation: fadeIn 0.2s ease;
-      }
-      
-      .upl-confirm.show {
-        display: block;
-      }
-      
-      .upl-confirm-icon {
-        width: 48px;
-        height: 48px;
-        margin: 0 auto 12px;
-        color: #10B981;
-      }
-      
-      .upl-confirm-msg {
-        font-size: 14px;
-        font-weight: 500;
-        color: ${colors.text};
-        margin-bottom: 16px;
-        line-height: 1.5;
-      }
-      
-      .upl-confirm-btn {
-        padding: 10px 24px;
-        border-radius: 6px;
-        font-size: 14px;
-        font-weight: 500;
-        cursor: pointer;
-        border: none;
-        background: ${colors.text};
-        color: ${colors.white};
-        transition: all 0.15s ease;
-      }
-      
-      .upl-confirm-btn:hover {
-        background: #374151;
-      }
     `;
     
     // ---------- ICÔNES SVG MINIMALISTES ----------
@@ -975,10 +718,6 @@ export const UploadToN8nWithLoader = {
       </svg>`,
       x: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
         <path d="M18 6L6 18M6 6l12 12"/>
-      </svg>`,
-      check: `<svg class="upl-confirm-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10"/>
-        <path d="M9 12l2 2 4-4"/>
       </svg>`
     };
     
@@ -1040,12 +779,6 @@ export const UploadToN8nWithLoader = {
             <div class="upl-loader-pct">0%</div>
           </div>
         </div>
-        
-        <div class="upl-confirm">
-          ${icons.check}
-          <div class="upl-confirm-msg">${confirmationMessage}</div>
-          <button class="upl-confirm-btn">${confirmationButtonText}</button>
-        </div>
       </div>
     `;
     element.appendChild(root);
@@ -1064,12 +797,9 @@ export const UploadToN8nWithLoader = {
     const loaderFill = root.querySelector('.upl-loader-fill');
     const overlay = root.querySelector('.upl-overlay');
     const bodyDiv = root.querySelector('.upl-body');
-    const confirmDiv = root.querySelector('.upl-confirm');
-    const confirmBtn = root.querySelector('.upl-confirm-btn');
     
     // ---------- STATE ----------
     let selectedFiles = [];
-    let timedTimer = null;
     
     // ---------- Helpers ----------
     const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -1280,7 +1010,7 @@ ${docs}</div>
                   const key = st?.phase;
                   const map = key && stepMap[key] ? stepMap[key] : null;
                   if (pct != null) ui.set(pct);
-                  else if (map?.progress != null) ui.soft(map.progress);
+                  else if (map?.progress != null) ui.set(map.progress);
                 }
               }
             });
@@ -1322,7 +1052,8 @@ ${docs}</div>
       loader.classList.add('show');
       bodyDiv.style.display = 'none';
       
-      let cur = 0, locked = false;
+      let cur = 0;
+      let locked = false;
       
       const paint = () => {
         loaderFill.style.width = `${cur}%`;
@@ -1330,7 +1061,12 @@ ${docs}</div>
       };
       paint();
       
-      const clear = () => { if (timedTimer) { clearInterval(timedTimer); timedTimer = null; } };
+      const clear = () => { 
+        if (timedTimer) { 
+          clearInterval(timedTimer); 
+          timedTimer = null; 
+        } 
+      };
       
       return {
         auto(steps) {
@@ -1351,25 +1087,53 @@ ${docs}</div>
             const t0 = Date.now(), t1 = t0 + p.durationMs;
             clear();
             timedTimer = setInterval(() => {
+              if (locked) { clear(); return; }
               const now = Date.now();
               const r = clamp((now - t0) / p.durationMs, 0, 1);
-              cur = p.progressStart + (p.progressEnd - p.progressStart) * r;
-              paint();
-              if (now >= t1) { clear(); cur = p.progressEnd; paint(); next(); }
+              const newVal = p.progressStart + (p.progressEnd - p.progressStart) * r;
+              // FIX: Ne jamais faire descendre la barre
+              if (newVal > cur) {
+                cur = newVal;
+                paint();
+              }
+              if (now >= t1) { 
+                clear(); 
+                cur = Math.max(cur, p.progressEnd); 
+                paint(); 
+                next(); 
+              }
             }, 80);
           };
           next();
         },
         
-        set(p) { if (!locked) { cur = clamp(p, 0, 100); paint(); } },
-        soft(p) { if (!locked) { cur += (clamp(p, 0, 100) - cur) * 0.5; paint(); } },
+        // FIX: set() ne peut que faire monter la barre, jamais descendre
+        set(p) { 
+          if (!locked && p > cur) { 
+            cur = clamp(p, 0, 100); 
+            paint(); 
+          } 
+        },
         
+        // FIX: to() ne peut que faire monter la barre
         to(target, ms = 1200, cb) {
-          const s = cur, e = clamp(target, 0, 100), t0 = performance.now();
+          const targetClamped = clamp(target, 0, 100);
+          // Si la cible est inférieure à cur, on skip l'animation
+          if (targetClamped <= cur) {
+            if (cb) cb();
+            return;
+          }
+          const s = cur;
+          const e = targetClamped;
+          const t0 = performance.now();
           const step = t => {
+            if (locked) { if (cb) cb(); return; }
             const k = clamp((t - t0) / ms, 0, 1);
-            cur = s + (e - s) * k;
-            paint();
+            const newVal = s + (e - s) * k;
+            if (newVal > cur) {
+              cur = newVal;
+              paint();
+            }
             if (k < 1) requestAnimationFrame(step);
             else if (cb) cb();
           };
@@ -1378,76 +1142,34 @@ ${docs}</div>
         
         done(data, refs) {
           locked = true;
-          isComponentActive = false; // Désactiver l'auto-unlock
+          isComponentActive = false;
           if (cleanupObserver) {
             cleanupObserver();
             cleanupObserver = null;
           }
           clear();
+          
+          // Toujours terminer à 100%
           this.to(100, 400, () => {
             loader.classList.add('complete');
             setTimeout(() => {
               loader.classList.add('hide');
               setTimeout(() => {
                 loader.classList.remove('show', 'hide', 'complete');
+                root.style.display = 'none';
+                overlay.classList.remove('show');
+                enableChatInput(refs);
                 
-                if (showConfirmation) {
-                  bodyDiv.style.display = 'none';
-                  confirmDiv.classList.add('show');
-                  overlay.classList.remove('show');
-                  root.style.pointerEvents = '';
-                  
-                  confirmBtn.onclick = () => {
-                    root.style.display = 'none';
-                    enableChatInput(refs);
-                    
-                    // 1. Setup l'observer AVANT d'envoyer le complete
-                    // L'observer va insérer le message user AVANT la réponse de l'agent
-                    if (showUserMessageOnSend && !useNativeInteract) {
-                      insertUserMessageBeforeNextAgentResponse(confirmationUserMessage);
-                    }
-                    
-                    // 2. Envoyer le complete - l'agent va répondre
-                    // L'observer captera la réponse et insérera notre message avant
-                    window?.voiceflow?.chat?.interact?.({
-                      type: 'complete',
-                      payload: {
-                        webhookSuccess: true,
-                        webhookResponse: data,
-                        files: selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })),
-                        buttonPath: 'success'
-                      }
-                    });
-                  };
-                  
-                } else {
-                  root.style.display = 'none';
-                  overlay.classList.remove('show');
-                  enableChatInput(refs);
-                  
-                  if (showUserMessageOnSend) {
-                    if (useNativeInteract) {
-                      window?.voiceflow?.chat?.interact?.({
-                        type: 'text',
-                        payload: userMessageText
-                      });
-                    } else {
-                      showUserMessage(userMessageText);
-                    }
+                // Envoyer directement le complete sans écran de confirmation
+                window?.voiceflow?.chat?.interact?.({
+                  type: 'complete',
+                  payload: {
+                    webhookSuccess: true,
+                    webhookResponse: data,
+                    files: selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })),
+                    buttonPath: 'success'
                   }
-                  
-                  setTimeout(() => {
-                    window?.voiceflow?.chat?.interact?.({
-                      type: 'complete',
-                      payload: {
-                        webhookSuccess: true,
-                        webhookResponse: data,
-                        files: selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })),
-                        buttonPath: 'success'
-                      }
-                    });
-                  }, 200);
-                }
+                });
               }, 200);
             }, autoCloseDelayMs);
           });

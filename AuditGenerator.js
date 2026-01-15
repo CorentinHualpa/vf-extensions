@@ -755,6 +755,22 @@ export const AuditGenerator = {
     function showResult(isSuccess, url) {
       resultDiv.classList.add('show');
       
+      // ============================================================
+      // CORRECTION v1.2 : Libérer le chat dès l'affichage du résultat
+      // Le chat n'attend plus le clic sur le bouton
+      // ============================================================
+      enableChatInput(chatRefs);
+      
+      // Envoyer le complete à Voiceflow immédiatement
+      window?.voiceflow?.chat?.interact?.({
+        type: 'complete',
+        payload: {
+          success: isSuccess,
+          pdfUrl: isSuccess ? url : null,
+          buttonPath: isSuccess ? pathSuccess : pathError
+        }
+      });
+      
       if (isSuccess) {
         resultIcon.className = `${instanceId}-result-icon success`;
         resultIcon.innerHTML = icons.check;
@@ -767,17 +783,6 @@ export const AuditGenerator = {
           if (url) {
             window.open(url, '_blank');
           }
-          
-          // Envoyer le complete à Voiceflow
-          enableChatInput(chatRefs);
-          window?.voiceflow?.chat?.interact?.({
-            type: 'complete',
-            payload: {
-              success: true,
-              pdfUrl: url,
-              buttonPath: pathSuccess
-            }
-          });
         };
       } else {
         resultIcon.className = `${instanceId}-result-icon error`;
@@ -787,11 +792,12 @@ export const AuditGenerator = {
         resultBtn.innerHTML = `${icons.retry} Réessayer`;
         
         resultBtn.onclick = () => {
-          enableChatInput(chatRefs);
+          // Relancer le flow en cas d'erreur
           window?.voiceflow?.chat?.interact?.({
             type: 'complete',
             payload: {
               success: false,
+              retry: true,
               buttonPath: pathError
             }
           });

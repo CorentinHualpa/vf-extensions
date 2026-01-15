@@ -1,6 +1,7 @@
-// AuditGenerator.js – v1.0 FUTURISTIC EDITION
+// AuditGenerator.js – v1.1 FUTURISTIC EDITION
 // © Corentin – Extension Voiceflow pour génération d'audit
 // Loader automatique qui envoie les données et affiche la progression
+// v1.1 - Ajout support exportUrl pour compatibilité Gamma API
 //
 export const AuditGenerator = {
   name: 'AuditGenerator',
@@ -862,8 +863,16 @@ export const AuditGenerator = {
         const resp = await postData();
         const data = resp?.data;
         
-        // Extraire l'URL du PDF depuis la réponse
-        const url = data?.pdfUrl || data?.url || data?.link || null;
+        // ============================================================
+        // CORRECTION v1.1 : Support multiple formats de réponse
+        // Supporte : pdfUrl, exportUrl, url, link
+        // Compatibilité directe avec Gamma API (exportUrl)
+        // ============================================================
+        const url = data?.pdfUrl || data?.exportUrl || data?.url || data?.link || null;
+        
+        // Log pour debug
+        console.log('[AuditGenerator] Réponse webhook:', data);
+        console.log('[AuditGenerator] URL PDF extraite:', url);
         
         ui.complete(true, url);
         

@@ -1,7 +1,8 @@
-// AuditGenerator.js – v1.1 FUTURISTIC EDITION
+// AuditGenerator.js – v1.2 FUTURISTIC EDITION
 // © Corentin – Extension Voiceflow pour génération d'audit
 // Loader automatique qui envoie les données et affiche la progression
 // v1.1 - Ajout support exportUrl pour compatibilité Gamma API
+// v1.2 - Ajout support langue + meilleur logging erreurs
 //
 export const AuditGenerator = {
   name: 'AuditGenerator',
@@ -87,6 +88,9 @@ export const AuditGenerator = {
     // ---------- CONFIG ----------
     const p = trace?.payload || {};
     
+    // Log payload pour debug
+    console.log('[AuditGenerator] Payload reçu:', p);
+    
     // Couleur principale configurable
     const primaryColor = p.primaryColor || '#8B5CF6';
     
@@ -143,6 +147,14 @@ export const AuditGenerator = {
     // Données à envoyer
     const auditInfos = p.auditInfos || '';
     const nbCards = p.nbCards || '';
+    const langue = p.langue || 'fr';  // ✅ AJOUTÉ v1.2
+    
+    // Log données pour debug
+    console.log('[AuditGenerator] Données extraites:', { 
+      auditInfosLength: auditInfos.length, 
+      nbCards, 
+      langue 
+    });
     
     // Webhook config
     const webhook = p.webhook || {};
@@ -151,6 +163,13 @@ export const AuditGenerator = {
     const webhookHeaders = webhook.headers || { 'Content-Type': 'application/json' };
     const webhookTimeoutMs = Number.isFinite(webhook.timeoutMs) ? webhook.timeoutMs : 120000;
     const webhookRetries = Number.isFinite(webhook.retries) ? webhook.retries : 1;
+    
+    // Log webhook config pour debug
+    console.log('[AuditGenerator] Webhook config:', { 
+      url: webhookUrl, 
+      method: webhookMethod, 
+      timeoutMs: webhookTimeoutMs 
+    });
     
     // Loader config
     const loaderCfg = p.loader || {};
@@ -168,6 +187,7 @@ export const AuditGenerator = {
     const pathError = p.pathError || 'Fail';
     
     if (!webhookUrl) {
+      console.error('[AuditGenerator] Configuration manquante : webhook.url');
       const div = document.createElement('div');
       div.innerHTML = `<div style="padding:16px;font-size:13px;color:${colors.error}">
         Configuration manquante : webhook.url
@@ -831,12 +851,22 @@ export const AuditGenerator = {
       let err;
       for (let i = 0; i <= webhookRetries; i++) {
         try {
+          console.log(`[AuditGenerator] Tentative ${i + 1}/${webhookRetries + 1} - Envoi vers ${webhookUrl}`);
+          
           const ctrl = new AbortController();
           const to = setTimeout(() => ctrl.abort(), webhookTimeoutMs);
           
+          // ✅ v1.2 - Ajout de langue dans le body
           const body = JSON.stringify({
             auditInfos: auditInfos,
-            nbCards: nbCards
+            nbCards: nbCards,
+            langue: langue
+          });
+          
+          console.log('[AuditGenerator] Body envoyé:', { 
+            auditInfosLength: auditInfos.length, 
+            nbCards, 
+            langue 
           });
           
           const r = await fetch(webhookUrl, { 
@@ -847,13 +877,25 @@ export const AuditGenerator = {
           });
           clearTimeout(to);
           
-          if (!r.ok) throw new Error(`Erreur ${r.status}`);
+          console.log('[AuditGenerator] Réponse HTTP:', r.status, r.statusText);
+          
+          if (!r.ok) {
+            const errorBody = await r.text().catch(() => 'No body');
+            console.error('[AuditGenerator] Erreur HTTP:', r.status, errorBody);
+            throw new Error(`Erreur ${r.status}: ${errorBody}`);
+          }
           
           const data = await r.json().catch(() => null);
+          console.log('[AuditGenerator] Réponse JSON:', data);
+          
           return { ok: true, data };
         } catch (e) {
+          console.error(`[AuditGenerator] Erreur tentative ${i + 1}:`, e.message);
           err = e;
-          if (i < webhookRetries) await new Promise(r => setTimeout(r, 900));
+          if (i < webhookRetries) {
+            console.log('[AuditGenerator] Retry dans 900ms...');
+            await new Promise(r => setTimeout(r, 900));
+          }
         }
       }
       throw err || new Error('Échec de la requête');
@@ -861,6 +903,7 @@ export const AuditGenerator = {
     
     // ---------- START ----------
     async function start() {
+      console.log('[AuditGenerator] Démarrage...');
       const ui = showLoaderUI();
       const plan = buildPlan();
       ui.timed(plan);
@@ -876,14 +919,17 @@ export const AuditGenerator = {
         // ============================================================
         const url = data?.pdfUrl || data?.exportUrl || data?.url || data?.link || null;
         
-        // Log pour debug
         console.log('[AuditGenerator] Réponse webhook:', data);
         console.log('[AuditGenerator] URL PDF extraite:', url);
+        
+        if (!url) {
+          console.warn('[AuditGenerator] Aucune URL trouvée dans la réponse');
+        }
         
         ui.complete(true, url);
         
       } catch (err) {
-        console.error('[AuditGenerator] Error:', err);
+        console.error('[AuditGenerator] Erreur finale:', err);
         ui.error();
       }
     }

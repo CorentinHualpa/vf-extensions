@@ -1,8 +1,9 @@
-// AuditGenerator.js – v1.2 FUTURISTIC EDITION
+// AuditGenerator.js – v1.3 FUTURISTIC EDITION
 // © Corentin – Extension Voiceflow pour génération d'audit
 // Loader automatique qui envoie les données et affiche la progression
 // v1.1 - Ajout support exportUrl pour compatibilité Gamma API
 // v1.2 - Ajout support langue + meilleur logging erreurs
+// v1.3 - Ajout support user_email pour envoi email
 //
 export const AuditGenerator = {
   name: 'AuditGenerator',
@@ -147,13 +148,15 @@ export const AuditGenerator = {
     // Données à envoyer
     const auditInfos = p.auditInfos || '';
     const nbCards = p.nbCards || '';
-    const langue = p.langue || 'fr';  // ✅ AJOUTÉ v1.2
+    const langue = p.langue || 'fr';
+    const userEmail = p.user_email || '';  // ✅ AJOUTÉ v1.3
     
     // Log données pour debug
     console.log('[AuditGenerator] Données extraites:', { 
       auditInfosLength: auditInfos.length, 
       nbCards, 
-      langue 
+      langue,
+      userEmail
     });
     
     // Webhook config
@@ -856,17 +859,19 @@ export const AuditGenerator = {
           const ctrl = new AbortController();
           const to = setTimeout(() => ctrl.abort(), webhookTimeoutMs);
           
-          // ✅ v1.2 - Ajout de langue dans le body
+          // ✅ v1.3 - Ajout de user_email dans le body
           const body = JSON.stringify({
             auditInfos: auditInfos,
             nbCards: nbCards,
-            langue: langue
+            langue: langue,
+            user_email: userEmail
           });
           
           console.log('[AuditGenerator] Body envoyé:', { 
             auditInfosLength: auditInfos.length, 
             nbCards, 
-            langue 
+            langue,
+            userEmail
           });
           
           const r = await fetch(webhookUrl, { 

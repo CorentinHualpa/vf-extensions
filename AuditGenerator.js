@@ -1,9 +1,10 @@
-// AuditGenerator.js – v1.3 FUTURISTIC EDITION
+// AuditGenerator.js – v1.4 FUTURISTIC EDITION
 // © Corentin – Extension Voiceflow pour génération d'audit
 // Loader automatique qui envoie les données et affiche la progression
 // v1.1 - Ajout support exportUrl pour compatibilité Gamma API
 // v1.2 - Ajout support langue + meilleur logging erreurs
 // v1.3 - Ajout support user_email pour envoi email
+// v1.4 - Ajout support conversationHistory (vf_memory) pour agent IA n8n
 //
 export const AuditGenerator = {
   name: 'AuditGenerator',
@@ -149,14 +150,16 @@ export const AuditGenerator = {
     const auditInfos = p.auditInfos || '';
     const nbCards = p.nbCards || '';
     const langue = p.langue || 'fr';
-    const userEmail = p.user_email || '';  // ✅ AJOUTÉ v1.3
+    const userEmail = p.user_email || '';
+    const conversationHistory = p.conversationHistory || '';  // ✅ AJOUTÉ v1.4
     
     // Log données pour debug
     console.log('[AuditGenerator] Données extraites:', { 
       auditInfosLength: auditInfos.length, 
       nbCards, 
       langue,
-      userEmail
+      userEmail,
+      conversationHistoryLength: conversationHistory.length  // ✅ AJOUTÉ v1.4
     });
     
     // Webhook config
@@ -859,19 +862,21 @@ export const AuditGenerator = {
           const ctrl = new AbortController();
           const to = setTimeout(() => ctrl.abort(), webhookTimeoutMs);
           
-          // ✅ v1.3 - Ajout de user_email dans le body
+          // ✅ v1.4 - Ajout de conversationHistory dans le body
           const body = JSON.stringify({
             auditInfos: auditInfos,
             nbCards: nbCards,
             langue: langue,
-            user_email: userEmail
+            user_email: userEmail,
+            conversationHistory: conversationHistory  // ✅ AJOUTÉ v1.4
           });
           
           console.log('[AuditGenerator] Body envoyé:', { 
             auditInfosLength: auditInfos.length, 
             nbCards, 
             langue,
-            userEmail
+            userEmail,
+            conversationHistoryLength: conversationHistory.length  // ✅ AJOUTÉ v1.4
           });
           
           const r = await fetch(webhookUrl, { 

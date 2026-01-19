@@ -1,10 +1,10 @@
-// AuditGenerator.js – v1.4 FUTURISTIC EDITION
+// AuditGenerator.js – v2.0 FUTURISTIC EDITION
 // © Corentin – Extension Voiceflow pour génération d'audit
-// Loader automatique qui envoie les données et affiche la progression
 // v1.1 - Ajout support exportUrl pour compatibilité Gamma API
-// v1.2 - Ajout support langue + meilleur logging erreurs
-// v1.3 - Ajout support user_email pour envoi email
-// v1.4 - Ajout support conversationHistory (vf_memory) pour agent IA n8n
+// v1.2 - Libération du chat dès affichage résultat
+// v1.3 - Ajout support langue + meilleur logging erreurs
+// v1.4 - Ajout support conversationHistory
+// v2.0 - Affichage dynamique des phases avec labels traduits
 //
 export const AuditGenerator = {
   name: 'AuditGenerator',
@@ -90,7 +90,6 @@ export const AuditGenerator = {
     // ---------- CONFIG ----------
     const p = trace?.payload || {};
     
-    // Log payload pour debug
     console.log('[AuditGenerator] Payload reçu:', p);
     
     // Couleur principale configurable
@@ -140,7 +139,7 @@ export const AuditGenerator = {
       error: '#EF4444',
     };
     
-    // Textes multilingues
+    // Textes
     const loadingText = p.loadingText || 'Génération en cours...';
     const successText = p.successText || '✅ Audit généré avec succès !';
     const errorText = p.errorText || '❌ Erreur lors de la génération';
@@ -151,43 +150,53 @@ export const AuditGenerator = {
     const nbCards = p.nbCards || '';
     const langue = p.langue || 'fr';
     const userEmail = p.user_email || '';
-    const conversationHistory = p.conversationHistory || '';  // ✅ AJOUTÉ v1.4
-    
-    // Log données pour debug
-    console.log('[AuditGenerator] Données extraites:', { 
-      auditInfosLength: auditInfos.length, 
-      nbCards, 
-      langue,
-      userEmail,
-      conversationHistoryLength: conversationHistory.length  // ✅ AJOUTÉ v1.4
-    });
+    const conversationHistory = p.conversationHistory || '';
     
     // Webhook config
     const webhook = p.webhook || {};
     const webhookUrl = webhook.url;
     const webhookMethod = (webhook.method || 'POST').toUpperCase();
     const webhookHeaders = webhook.headers || { 'Content-Type': 'application/json' };
-    const webhookTimeoutMs = Number.isFinite(webhook.timeoutMs) ? webhook.timeoutMs : 120000;
+    const webhookTimeoutMs = Number.isFinite(webhook.timeoutMs) ? webhook.timeoutMs : 180000;
     const webhookRetries = Number.isFinite(webhook.retries) ? webhook.retries : 1;
-    
-    // Log webhook config pour debug
-    console.log('[AuditGenerator] Webhook config:', { 
-      url: webhookUrl, 
-      method: webhookMethod, 
-      timeoutMs: webhookTimeoutMs 
-    });
     
     // Loader config
     const loaderCfg = p.loader || {};
-    const totalSeconds = Number(loaderCfg.totalSeconds) > 0 ? Number(loaderCfg.totalSeconds) : 30;
-    const autoCloseDelayMs = Number(loaderCfg.autoCloseDelayMs) > 0 ? Number(loaderCfg.autoCloseDelayMs) : 1000;
+    const totalSeconds = Number(loaderCfg.totalSeconds) > 0 ? Number(loaderCfg.totalSeconds) : 120;
+    const autoCloseDelayMs = Number(loaderCfg.autoCloseDelayMs) > 0 ? Number(loaderCfg.autoCloseDelayMs) : 800;
     
-    const timedPhases = Array.isArray(loaderCfg.phases) ? loaderCfg.phases : [
-      { key: 'init', seconds: 2 },
-      { key: 'analyze', seconds: 8 },
-      { key: 'generate', seconds: 15 },
-      { key: 'finalize', seconds: 5 }
+    // ========================================
+    // v2.0 - PHASES AVEC LABELS DYNAMIQUES
+    // ========================================
+    const defaultPhases = [
+      { key: 'init', seconds: 3, label: '📥 Réception des données...' },
+      { key: 'extract', seconds: 5, label: '🔍 Extraction des informations...' },
+      { key: 'analyze', seconds: 8, label: '🧠 Analyse de ton profil...' },
+      { key: 'scoring', seconds: 7, label: '📊 Calcul des scores...' },
+      { key: 'ai_write', seconds: 15, label: '✍️ Rédaction par l\'IA...' },
+      { key: 'recommendations', seconds: 10, label: '💡 Génération des recommandations...' },
+      { key: 'design', seconds: 8, label: '🎨 Création du design PDF...' },
+      { key: 'gamma_gen', seconds: 25, label: '📑 Génération du document...' },
+      { key: 'gamma_wait', seconds: 20, label: '⏳ Finalisation du PDF...' },
+      { key: 'export', seconds: 10, label: '📤 Export et préparation...' },
+      { key: 'email', seconds: 5, label: '📧 Envoi par email...' },
+      { key: 'complete', seconds: 4, label: '✅ Presque terminé...' }
     ];
+    
+    // Récupérer les phases depuis le payload ou utiliser les défauts
+    const configPhases = Array.isArray(loaderCfg.phases) ? loaderCfg.phases : defaultPhases;
+    const phaseLabels = Array.isArray(loaderCfg.phaseLabels) ? loaderCfg.phaseLabels : [];
+    
+    // Merger les labels si fournis
+    const timedPhases = configPhases.map((phase, idx) => {
+      const labelObj = phaseLabels.find(l => l.key === phase.key) || phaseLabels[idx];
+      return {
+        ...phase,
+        label: labelObj?.label || phase.label || `Phase ${idx + 1}...`
+      };
+    });
+    
+    console.log('[AuditGenerator] Phases configurées:', timedPhases.length);
     
     const pathSuccess = p.pathSuccess || 'Default';
     const pathError = p.pathError || 'Fail';
@@ -222,11 +231,6 @@ export const AuditGenerator = {
         to { transform: rotate(360deg); }
       }
       
-      @keyframes ${instanceId}_pulse {
-        0%, 100% { opacity: 1; transform: scale(1); }
-        50% { opacity: 0.7; transform: scale(0.98); }
-      }
-      
       @keyframes ${instanceId}_shimmer {
         0% { background-position: -200% 0; }
         100% { background-position: 200% 0; }
@@ -257,6 +261,11 @@ export const AuditGenerator = {
         0%, 100% { transform: translateY(0) rotate(0deg); }
         25% { transform: translateY(-3px) rotate(-5deg); }
         75% { transform: translateY(-3px) rotate(5deg); }
+      }
+      
+      @keyframes ${instanceId}_textChange {
+        0% { opacity: 0; transform: translateY(-10px); }
+        100% { opacity: 1; transform: translateY(0); }
       }
       
       .${instanceId} {
@@ -293,7 +302,7 @@ export const AuditGenerator = {
       
       /* LOADER */
       .${instanceId}-loader {
-        padding: 40px 32px;
+        padding: 32px 24px;
         animation: ${instanceId}_fadeIn 0.3s ease;
       }
       
@@ -305,14 +314,14 @@ export const AuditGenerator = {
         display: flex;
         flex-direction: column;
         align-items: center;
-        margin-bottom: 28px;
+        margin-bottom: 24px;
       }
       
       .${instanceId}-loader-orb {
-        width: 88px;
-        height: 88px;
+        width: 72px;
+        height: 72px;
         position: relative;
-        margin-bottom: 20px;
+        margin-bottom: 16px;
       }
       
       .${instanceId}-loader-orb-ring {
@@ -335,7 +344,7 @@ export const AuditGenerator = {
       
       .${instanceId}-loader-orb-core {
         position: absolute;
-        inset: 14px;
+        inset: 12px;
         background: linear-gradient(135deg, rgba(${colors.primaryRgb}, 0.15) 0%, rgba(${colors.primaryRgb}, 0.05) 100%);
         border-radius: 50%;
         display: flex;
@@ -344,29 +353,41 @@ export const AuditGenerator = {
       }
       
       .${instanceId}-loader-orb-icon {
-        width: 32px;
-        height: 32px;
+        width: 28px;
+        height: 28px;
         color: ${colors.primary};
         animation: ${instanceId}_iconFloat 2s ease-in-out infinite;
       }
       
-      .${instanceId}-loader-text {
+      /* v2.0 - Phase label dynamique */
+      .${instanceId}-loader-phase {
         font-size: 15px;
-        font-weight: 500;
-        color: ${colors.text};
-        margin-bottom: 8px;
+        font-weight: 600;
+        color: ${colors.primary};
+        margin-bottom: 6px;
         text-align: center;
+        min-height: 24px;
+        animation: ${instanceId}_textChange 0.3s ease;
+      }
+      
+      /* Info message (email) */
+      .${instanceId}-loader-info {
+        font-size: 12px;
+        color: ${colors.textMuted};
+        margin-bottom: 20px;
+        text-align: center;
+        line-height: 1.4;
       }
       
       .${instanceId}-loader-dots {
         display: flex;
-        gap: 6px;
-        margin-bottom: 24px;
+        gap: 5px;
+        margin-bottom: 20px;
       }
       
       .${instanceId}-loader-dot {
-        width: 8px;
-        height: 8px;
+        width: 6px;
+        height: 6px;
         background: ${colors.primary};
         border-radius: 50%;
         animation: ${instanceId}_dotBounce 0.6s ease-in-out infinite;
@@ -389,14 +410,14 @@ export const AuditGenerator = {
       .${instanceId}-loader-bar-container {
         display: flex;
         align-items: center;
-        gap: 16px;
+        gap: 12px;
       }
       
       .${instanceId}-loader-bar {
         flex: 1;
-        height: 8px;
+        height: 6px;
         background: ${colors.bgSecondary};
-        border-radius: 4px;
+        border-radius: 3px;
         overflow: hidden;
         position: relative;
       }
@@ -405,7 +426,7 @@ export const AuditGenerator = {
         height: 100%;
         width: 0%;
         background: linear-gradient(90deg, ${colors.primary}, ${colors.primaryLight});
-        border-radius: 4px;
+        border-radius: 3px;
         transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         position: relative;
         animation: ${instanceId}_progressGlow 2s ease-in-out infinite;
@@ -424,13 +445,20 @@ export const AuditGenerator = {
       }
       
       .${instanceId}-loader-pct {
-        font-size: 20px;
+        font-size: 16px;
         font-weight: 600;
         color: ${colors.primary};
         font-variant-numeric: tabular-nums;
-        min-width: 60px;
+        min-width: 48px;
         text-align: right;
-        text-shadow: 0 0 20px rgba(${colors.primaryRgb}, 0.3);
+      }
+      
+      /* v2.0 - Phase counter */
+      .${instanceId}-loader-counter {
+        font-size: 11px;
+        color: ${colors.textMuted};
+        text-align: center;
+        margin-top: 12px;
       }
       
       /* SUCCESS STATE */
@@ -462,7 +490,6 @@ export const AuditGenerator = {
       
       .${instanceId}-loader.complete .${instanceId}-loader-pct {
         color: ${colors.success};
-        text-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
       }
       
       .${instanceId}-loader.complete .${instanceId}-loader-dot {
@@ -470,10 +497,14 @@ export const AuditGenerator = {
         animation: none;
       }
       
+      .${instanceId}-loader.complete .${instanceId}-loader-phase {
+        color: ${colors.success};
+      }
+      
       /* RESULT SCREEN */
       .${instanceId}-result {
         display: none;
-        padding: 40px 32px;
+        padding: 32px 24px;
         text-align: center;
         animation: ${instanceId}_fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
       }
@@ -483,9 +514,9 @@ export const AuditGenerator = {
       }
       
       .${instanceId}-result-icon {
-        width: 80px;
-        height: 80px;
-        margin: 0 auto 20px;
+        width: 72px;
+        height: 72px;
+        margin: 0 auto 16px;
         border-radius: 50%;
         display: flex;
         align-items: center;
@@ -519,8 +550,8 @@ export const AuditGenerator = {
       }
       
       .${instanceId}-result-icon svg {
-        width: 36px;
-        height: 36px;
+        width: 32px;
+        height: 32px;
       }
       
       .${instanceId}-result-icon.success svg {
@@ -538,10 +569,10 @@ export const AuditGenerator = {
       }
       
       .${instanceId}-result-text {
-        font-size: 16px;
+        font-size: 15px;
         font-weight: 500;
         color: ${colors.text};
-        margin-bottom: 24px;
+        margin-bottom: 20px;
         line-height: 1.5;
       }
       
@@ -549,7 +580,7 @@ export const AuditGenerator = {
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        padding: 14px 28px;
+        padding: 12px 24px;
         border: none;
         border-radius: 10px;
         font-size: 14px;
@@ -576,8 +607,8 @@ export const AuditGenerator = {
       }
       
       .${instanceId}-result-btn svg {
-        width: 18px;
-        height: 18px;
+        width: 16px;
+        height: 16px;
       }
     `;
     
@@ -609,6 +640,11 @@ export const AuditGenerator = {
       </svg>`
     };
     
+    // Extraire le message d'info (2ème ligne du loadingText)
+    const loadingLines = loadingText.split('\n');
+    const mainLoadingText = loadingLines[0] || loadingText;
+    const infoText = loadingLines[1] || '';
+    
     // ---------- UI ----------
     const root = document.createElement('div');
     root.className = instanceId;
@@ -629,7 +665,8 @@ export const AuditGenerator = {
                 <div class="${instanceId}-loader-orb-icon">${icons.document}</div>
               </div>
             </div>
-            <div class="${instanceId}-loader-text">${loadingText}</div>
+            <div class="${instanceId}-loader-phase">${timedPhases[0]?.label || mainLoadingText}</div>
+            ${infoText ? `<div class="${instanceId}-loader-info">${infoText}</div>` : ''}
             <div class="${instanceId}-loader-dots">
               <div class="${instanceId}-loader-dot"></div>
               <div class="${instanceId}-loader-dot"></div>
@@ -643,6 +680,7 @@ export const AuditGenerator = {
               </div>
               <div class="${instanceId}-loader-pct">0%</div>
             </div>
+            <div class="${instanceId}-loader-counter">Étape 1/${timedPhases.length}</div>
           </div>
         </div>
         
@@ -658,7 +696,8 @@ export const AuditGenerator = {
     
     // ---------- DOM refs ----------
     const loader = root.querySelector(`.${instanceId}-loader`);
-    const loaderText = root.querySelector(`.${instanceId}-loader-text`);
+    const loaderPhase = root.querySelector(`.${instanceId}-loader-phase`);
+    const loaderCounter = root.querySelector(`.${instanceId}-loader-counter`);
     const loaderPct = root.querySelector(`.${instanceId}-loader-pct`);
     const loaderFill = root.querySelector(`.${instanceId}-loader-fill`);
     const resultDiv = root.querySelector(`.${instanceId}-result`);
@@ -677,12 +716,31 @@ export const AuditGenerator = {
     function showLoaderUI() {
       let cur = 0;
       let locked = false;
+      let currentPhaseIdx = 0;
       
       const paint = () => {
         loaderFill.style.width = `${cur}%`;
         loaderPct.textContent = `${Math.round(cur)}%`;
       };
       paint();
+      
+      const updatePhase = (idx) => {
+        if (idx >= 0 && idx < timedPhases.length && idx !== currentPhaseIdx) {
+          currentPhaseIdx = idx;
+          const phase = timedPhases[idx];
+          
+          // Animation de changement de texte
+          loaderPhase.style.animation = 'none';
+          loaderPhase.offsetHeight; // Trigger reflow
+          loaderPhase.style.animation = `${instanceId}_textChange 0.3s ease`;
+          loaderPhase.textContent = phase.label;
+          
+          // Mise à jour du compteur
+          loaderCounter.textContent = `Étape ${idx + 1}/${timedPhases.length}`;
+          
+          console.log(`[AuditGenerator] Phase ${idx + 1}/${timedPhases.length}: ${phase.label}`);
+        }
+      };
       
       const clear = () => { 
         if (timedTimer) { 
@@ -696,6 +754,10 @@ export const AuditGenerator = {
           let idx = 0;
           const next = () => {
             if (idx >= plan.length || locked) return;
+            
+            // Mise à jour de la phase affichée
+            updatePhase(idx);
+            
             const p = plan[idx++];
             const t0 = Date.now(), t1 = t0 + p.durationMs;
             clear();
@@ -754,6 +816,10 @@ export const AuditGenerator = {
           clear();
           pdfUrl = url;
           
+          // Afficher la dernière phase
+          loaderPhase.textContent = '✅ Terminé !';
+          loaderCounter.textContent = `Étape ${timedPhases.length}/${timedPhases.length}`;
+          
           this.to(100, 400, () => {
             loader.classList.add('complete');
             setTimeout(() => {
@@ -769,6 +835,7 @@ export const AuditGenerator = {
         error() {
           locked = true;
           clear();
+          loaderPhase.textContent = '❌ Erreur';
           loader.classList.add('hide');
           setTimeout(() => {
             loader.style.display = 'none';
@@ -781,13 +848,10 @@ export const AuditGenerator = {
     function showResult(isSuccess, url) {
       resultDiv.classList.add('show');
       
-      // ============================================================
-      // CORRECTION v1.2 : Libérer le chat dès l'affichage du résultat
-      // Le chat n'attend plus le clic sur le bouton
-      // ============================================================
+      // Libérer le chat immédiatement
       enableChatInput(chatRefs);
       
-      // Envoyer le complete à Voiceflow immédiatement
+      // Envoyer le complete à Voiceflow
       window?.voiceflow?.chat?.interact?.({
         type: 'complete',
         payload: {
@@ -805,7 +869,6 @@ export const AuditGenerator = {
         resultBtn.innerHTML = `${icons.external} ${buttonText}`;
         
         resultBtn.onclick = () => {
-          // Ouvrir le PDF dans un nouvel onglet
           if (url) {
             window.open(url, '_blank');
           }
@@ -818,7 +881,6 @@ export const AuditGenerator = {
         resultBtn.innerHTML = `${icons.retry} Réessayer`;
         
         resultBtn.onclick = () => {
-          // Relancer le flow en cas d'erreur
           window?.voiceflow?.chat?.interact?.({
             type: 'complete',
             payload: {
@@ -837,9 +899,9 @@ export const AuditGenerator = {
       const weightsSum = timedPhases.reduce((s, ph) => s + (Number(ph.weight) || 0), 0) || timedPhases.length;
       const alloc = timedPhases.map((ph) => {
         const sec = haveSeconds ? Number(ph.seconds) : (Number(ph.weight) || 1) / weightsSum * total;
-        return { key: ph.key, seconds: sec };
+        return { key: ph.key, seconds: sec, label: ph.label };
       });
-      const startP = 5, endP = 95;
+      const startP = 2, endP = 95;
       const totalMs = alloc.reduce((s, a) => s + a.seconds * 1000, 0);
       let acc = 0, last = startP;
       const plan = alloc.map((a, i) => {
@@ -847,7 +909,12 @@ export const AuditGenerator = {
         const pEnd = i === alloc.length - 1 ? endP : startP + (endP - startP) * ((acc + a.seconds * 1000) / totalMs);
         acc += a.seconds * 1000;
         last = pEnd;
-        return { durationMs: Math.max(500, a.seconds * 1000), progressStart: pStart, progressEnd: pEnd };
+        return { 
+          durationMs: Math.max(500, a.seconds * 1000), 
+          progressStart: pStart, 
+          progressEnd: pEnd,
+          label: a.label
+        };
       });
       return plan;
     }
@@ -857,26 +924,17 @@ export const AuditGenerator = {
       let err;
       for (let i = 0; i <= webhookRetries; i++) {
         try {
-          console.log(`[AuditGenerator] Tentative ${i + 1}/${webhookRetries + 1} - Envoi vers ${webhookUrl}`);
+          console.log(`[AuditGenerator] Tentative ${i + 1}/${webhookRetries + 1}`);
           
           const ctrl = new AbortController();
           const to = setTimeout(() => ctrl.abort(), webhookTimeoutMs);
           
-          // ✅ v1.4 - Ajout de conversationHistory dans le body
           const body = JSON.stringify({
             auditInfos: auditInfos,
             nbCards: nbCards,
             langue: langue,
             user_email: userEmail,
-            conversationHistory: conversationHistory  // ✅ AJOUTÉ v1.4
-          });
-          
-          console.log('[AuditGenerator] Body envoyé:', { 
-            auditInfosLength: auditInfos.length, 
-            nbCards, 
-            langue,
-            userEmail,
-            conversationHistoryLength: conversationHistory.length  // ✅ AJOUTÉ v1.4
+            conversationHistory: conversationHistory
           });
           
           const r = await fetch(webhookUrl, { 
@@ -887,23 +945,21 @@ export const AuditGenerator = {
           });
           clearTimeout(to);
           
-          console.log('[AuditGenerator] Réponse HTTP:', r.status, r.statusText);
+          console.log('[AuditGenerator] HTTP:', r.status);
           
           if (!r.ok) {
-            const errorBody = await r.text().catch(() => 'No body');
-            console.error('[AuditGenerator] Erreur HTTP:', r.status, errorBody);
+            const errorBody = await r.text().catch(() => '');
             throw new Error(`Erreur ${r.status}: ${errorBody}`);
           }
           
           const data = await r.json().catch(() => null);
-          console.log('[AuditGenerator] Réponse JSON:', data);
+          console.log('[AuditGenerator] Response:', data);
           
           return { ok: true, data };
         } catch (e) {
-          console.error(`[AuditGenerator] Erreur tentative ${i + 1}:`, e.message);
+          console.error(`[AuditGenerator] Erreur:`, e.message);
           err = e;
           if (i < webhookRetries) {
-            console.log('[AuditGenerator] Retry dans 900ms...');
             await new Promise(r => setTimeout(r, 900));
           }
         }
@@ -913,7 +969,9 @@ export const AuditGenerator = {
     
     // ---------- START ----------
     async function start() {
-      console.log('[AuditGenerator] Démarrage...');
+      console.log('[AuditGenerator] Démarrage v2.0');
+      console.log('[AuditGenerator] Phases:', timedPhases.length);
+      
       const ui = showLoaderUI();
       const plan = buildPlan();
       ui.timed(plan);
@@ -922,19 +980,10 @@ export const AuditGenerator = {
         const resp = await postData();
         const data = resp?.data;
         
-        // ============================================================
-        // CORRECTION v1.1 : Support multiple formats de réponse
-        // Supporte : pdfUrl, exportUrl, url, link
-        // Compatibilité directe avec Gamma API (exportUrl)
-        // ============================================================
+        // Support multiple formats
         const url = data?.pdfUrl || data?.exportUrl || data?.url || data?.link || null;
         
-        console.log('[AuditGenerator] Réponse webhook:', data);
-        console.log('[AuditGenerator] URL PDF extraite:', url);
-        
-        if (!url) {
-          console.warn('[AuditGenerator] Aucune URL trouvée dans la réponse');
-        }
+        console.log('[AuditGenerator] PDF URL:', url);
         
         ui.complete(true, url);
         

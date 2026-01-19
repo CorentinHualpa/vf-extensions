@@ -1,10 +1,6 @@
-// AuditGenerator.js – v2.0 FUTURISTIC EDITION
+// AuditGenerator.js – v2.1 FIXED
 // © Corentin – Extension Voiceflow pour génération d'audit
-// v1.1 - Ajout support exportUrl pour compatibilité Gamma API
-// v1.2 - Libération du chat dès affichage résultat
-// v1.3 - Ajout support langue + meilleur logging erreurs
-// v1.4 - Ajout support conversationHistory
-// v2.0 - Affichage dynamique des phases avec labels traduits
+// v2.1 FIXED - Correction affichage phases + meilleure gestion erreurs
 //
 export const AuditGenerator = {
   name: 'AuditGenerator',
@@ -90,7 +86,7 @@ export const AuditGenerator = {
     // ---------- CONFIG ----------
     const p = trace?.payload || {};
     
-    console.log('[AuditGenerator] Payload reçu:', p);
+    console.log('[AuditGenerator v2.1] Payload reçu:', JSON.stringify(p, null, 2));
     
     // Couleur principale configurable
     const primaryColor = p.primaryColor || '#8B5CF6';
@@ -166,7 +162,7 @@ export const AuditGenerator = {
     const autoCloseDelayMs = Number(loaderCfg.autoCloseDelayMs) > 0 ? Number(loaderCfg.autoCloseDelayMs) : 800;
     
     // ========================================
-    // v2.0 - PHASES AVEC LABELS DYNAMIQUES
+    // v2.1 FIXED - PHASES AVEC LABELS DYNAMIQUES
     // ========================================
     const defaultPhases = [
       { key: 'init', seconds: 3, label: '📥 Réception des données...' },
@@ -183,20 +179,51 @@ export const AuditGenerator = {
       { key: 'complete', seconds: 4, label: '✅ Presque terminé...' }
     ];
     
-    // Récupérer les phases depuis le payload ou utiliser les défauts
-    const configPhases = Array.isArray(loaderCfg.phases) ? loaderCfg.phases : defaultPhases;
+    // Récupérer les phases et labels depuis le payload
+    const configPhases = Array.isArray(loaderCfg.phases) ? loaderCfg.phases : [];
     const phaseLabels = Array.isArray(loaderCfg.phaseLabels) ? loaderCfg.phaseLabels : [];
     
-    // Merger les labels si fournis
-    const timedPhases = configPhases.map((phase, idx) => {
-      const labelObj = phaseLabels.find(l => l.key === phase.key) || phaseLabels[idx];
-      return {
-        ...phase,
-        label: labelObj?.label || phase.label || `Phase ${idx + 1}...`
-      };
-    });
+    console.log('[AuditGenerator v2.1] configPhases:', configPhases.length, configPhases);
+    console.log('[AuditGenerator v2.1] phaseLabels:', phaseLabels.length, phaseLabels);
     
-    console.log('[AuditGenerator] Phases configurées:', timedPhases.length);
+    // FIX v2.1: Meilleur merge des phases avec labels
+    let timedPhases = [];
+    
+    if (configPhases.length > 0) {
+      // Si des phases sont configurées dans le payload
+      timedPhases = configPhases.map((phase, idx) => {
+        // Chercher le label correspondant par key
+        let labelText = phase.label; // D'abord utiliser le label de la phase si présent
+        
+        if (!labelText && phaseLabels.length > 0) {
+          // Chercher dans phaseLabels par key
+          const labelObj = phaseLabels.find(l => l.key === phase.key);
+          if (labelObj) {
+            labelText = labelObj.label;
+          } else if (phaseLabels[idx]) {
+            // Sinon utiliser l'index
+            labelText = phaseLabels[idx].label;
+          }
+        }
+        
+        // Fallback sur les phases par défaut
+        if (!labelText) {
+          const defaultPhase = defaultPhases.find(d => d.key === phase.key);
+          labelText = defaultPhase?.label || `Phase ${idx + 1}...`;
+        }
+        
+        return {
+          key: phase.key || `phase_${idx}`,
+          seconds: Number(phase.seconds) || 10,
+          label: labelText
+        };
+      });
+    } else {
+      // Utiliser les phases par défaut
+      timedPhases = defaultPhases;
+    }
+    
+    console.log('[AuditGenerator v2.1] timedPhases FINAL:', timedPhases);
     
     const pathSuccess = p.pathSuccess || 'Default';
     const pathError = p.pathError || 'Fail';
@@ -359,7 +386,7 @@ export const AuditGenerator = {
         animation: ${instanceId}_iconFloat 2s ease-in-out infinite;
       }
       
-      /* v2.0 - Phase label dynamique */
+      /* v2.1 - Phase label dynamique */
       .${instanceId}-loader-phase {
         font-size: 15px;
         font-weight: 600;
@@ -367,6 +394,10 @@ export const AuditGenerator = {
         margin-bottom: 6px;
         text-align: center;
         min-height: 24px;
+        transition: opacity 0.15s ease;
+      }
+      
+      .${instanceId}-loader-phase.changing {
         animation: ${instanceId}_textChange 0.3s ease;
       }
       
@@ -453,7 +484,7 @@ export const AuditGenerator = {
         text-align: right;
       }
       
-      /* v2.0 - Phase counter */
+      /* v2.1 - Phase counter */
       .${instanceId}-loader-counter {
         font-size: 11px;
         color: ${colors.textMuted};
@@ -610,6 +641,19 @@ export const AuditGenerator = {
         width: 16px;
         height: 16px;
       }
+      
+      /* ERROR DETAILS */
+      .${instanceId}-result-error-details {
+        font-size: 11px;
+        color: ${colors.textMuted};
+        margin-top: 12px;
+        padding: 8px;
+        background: rgba(239, 68, 68, 0.05);
+        border-radius: 6px;
+        word-break: break-word;
+        max-height: 60px;
+        overflow-y: auto;
+      }
     `;
     
     // ---------- ICONS ----------
@@ -645,6 +689,9 @@ export const AuditGenerator = {
     const mainLoadingText = loadingLines[0] || loadingText;
     const infoText = loadingLines[1] || '';
     
+    // Première phase à afficher
+    const firstPhaseLabel = timedPhases[0]?.label || mainLoadingText;
+    
     // ---------- UI ----------
     const root = document.createElement('div');
     root.className = instanceId;
@@ -665,7 +712,7 @@ export const AuditGenerator = {
                 <div class="${instanceId}-loader-orb-icon">${icons.document}</div>
               </div>
             </div>
-            <div class="${instanceId}-loader-phase">${timedPhases[0]?.label || mainLoadingText}</div>
+            <div class="${instanceId}-loader-phase">${firstPhaseLabel}</div>
             ${infoText ? `<div class="${instanceId}-loader-info">${infoText}</div>` : ''}
             <div class="${instanceId}-loader-dots">
               <div class="${instanceId}-loader-dot"></div>
@@ -689,6 +736,7 @@ export const AuditGenerator = {
           <div class="${instanceId}-result-icon"></div>
           <div class="${instanceId}-result-text"></div>
           <button class="${instanceId}-result-btn"></button>
+          <div class="${instanceId}-result-error-details" style="display:none;"></div>
         </div>
       </div>
     `;
@@ -704,10 +752,12 @@ export const AuditGenerator = {
     const resultIcon = root.querySelector(`.${instanceId}-result-icon`);
     const resultText = root.querySelector(`.${instanceId}-result-text`);
     const resultBtn = root.querySelector(`.${instanceId}-result-btn`);
+    const resultErrorDetails = root.querySelector(`.${instanceId}-result-error-details`);
     
     // ---------- STATE ----------
     let timedTimer = null;
     let pdfUrl = null;
+    let lastErrorMessage = null;
     
     // ---------- Helpers ----------
     const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -716,7 +766,7 @@ export const AuditGenerator = {
     function showLoaderUI() {
       let cur = 0;
       let locked = false;
-      let currentPhaseIdx = 0;
+      let currentPhaseIdx = -1;
       
       const paint = () => {
         loaderFill.style.width = `${cur}%`;
@@ -730,15 +780,15 @@ export const AuditGenerator = {
           const phase = timedPhases[idx];
           
           // Animation de changement de texte
-          loaderPhase.style.animation = 'none';
-          loaderPhase.offsetHeight; // Trigger reflow
-          loaderPhase.style.animation = `${instanceId}_textChange 0.3s ease`;
+          loaderPhase.classList.remove('changing');
+          void loaderPhase.offsetWidth; // Force reflow
+          loaderPhase.classList.add('changing');
           loaderPhase.textContent = phase.label;
           
           // Mise à jour du compteur
           loaderCounter.textContent = `Étape ${idx + 1}/${timedPhases.length}`;
           
-          console.log(`[AuditGenerator] Phase ${idx + 1}/${timedPhases.length}: ${phase.label}`);
+          console.log(`[AuditGenerator v2.1] Phase ${idx + 1}/${timedPhases.length}: ${phase.label}`);
         }
       };
       
@@ -832,9 +882,10 @@ export const AuditGenerator = {
           });
         },
         
-        error() {
+        error(errorMsg) {
           locked = true;
           clear();
+          lastErrorMessage = errorMsg;
           loaderPhase.textContent = '❌ Erreur';
           loader.classList.add('hide');
           setTimeout(() => {
@@ -857,6 +908,7 @@ export const AuditGenerator = {
         payload: {
           success: isSuccess,
           pdfUrl: isSuccess ? url : null,
+          error: !isSuccess ? lastErrorMessage : null,
           buttonPath: isSuccess ? pathSuccess : pathError
         }
       });
@@ -867,6 +919,7 @@ export const AuditGenerator = {
         resultText.textContent = successText;
         resultBtn.className = `${instanceId}-result-btn success`;
         resultBtn.innerHTML = `${icons.external} ${buttonText}`;
+        resultErrorDetails.style.display = 'none';
         
         resultBtn.onclick = () => {
           if (url) {
@@ -879,6 +932,12 @@ export const AuditGenerator = {
         resultText.textContent = errorText;
         resultBtn.className = `${instanceId}-result-btn error`;
         resultBtn.innerHTML = `${icons.retry} Réessayer`;
+        
+        // Afficher les détails de l'erreur si disponibles
+        if (lastErrorMessage) {
+          resultErrorDetails.textContent = lastErrorMessage;
+          resultErrorDetails.style.display = 'block';
+        }
         
         resultBtn.onclick = () => {
           window?.voiceflow?.chat?.interact?.({
@@ -916,6 +975,8 @@ export const AuditGenerator = {
           label: a.label
         };
       });
+      
+      console.log('[AuditGenerator v2.1] Plan généré:', plan.length, 'phases');
       return plan;
     }
     
@@ -924,7 +985,7 @@ export const AuditGenerator = {
       let err;
       for (let i = 0; i <= webhookRetries; i++) {
         try {
-          console.log(`[AuditGenerator] Tentative ${i + 1}/${webhookRetries + 1}`);
+          console.log(`[AuditGenerator v2.1] Tentative ${i + 1}/${webhookRetries + 1}`);
           
           const ctrl = new AbortController();
           const to = setTimeout(() => ctrl.abort(), webhookTimeoutMs);
@@ -937,6 +998,8 @@ export const AuditGenerator = {
             conversationHistory: conversationHistory
           });
           
+          console.log('[AuditGenerator v2.1] Envoi body length:', body.length);
+          
           const r = await fetch(webhookUrl, { 
             method: webhookMethod, 
             headers: webhookHeaders, 
@@ -945,32 +1008,67 @@ export const AuditGenerator = {
           });
           clearTimeout(to);
           
-          console.log('[AuditGenerator] HTTP:', r.status);
+          console.log('[AuditGenerator v2.1] HTTP Status:', r.status);
           
+          // FIX v2.1: Meilleure gestion des erreurs HTTP
           if (!r.ok) {
             const errorBody = await r.text().catch(() => '');
-            throw new Error(`Erreur ${r.status}: ${errorBody}`);
+            console.error('[AuditGenerator v2.1] Erreur HTTP:', r.status, errorBody);
+            throw new Error(`HTTP ${r.status}: ${errorBody.substring(0, 200)}`);
           }
           
-          const data = await r.json().catch(() => null);
-          console.log('[AuditGenerator] Response:', data);
+          // FIX v2.1: Vérifier si la réponse est vide
+          const responseText = await r.text();
+          console.log('[AuditGenerator v2.1] Response text length:', responseText.length);
+          
+          if (!responseText || responseText.trim() === '') {
+            console.error('[AuditGenerator v2.1] Réponse vide du serveur');
+            throw new Error('Réponse vide du serveur - vérifiez la configuration n8n');
+          }
+          
+          // FIX v2.1: Parser le JSON avec gestion d'erreur
+          let data;
+          try {
+            data = JSON.parse(responseText);
+          } catch (parseErr) {
+            console.error('[AuditGenerator v2.1] Erreur parsing JSON:', parseErr, 'Response:', responseText.substring(0, 500));
+            throw new Error(`Réponse JSON invalide: ${responseText.substring(0, 100)}...`);
+          }
+          
+          console.log('[AuditGenerator v2.1] Response data:', data);
+          
+          // FIX v2.1: Vérifier si la réponse contient une erreur n8n
+          if (data.error || data.errorMessage) {
+            const errMsg = data.errorMessage || data.error || 'Erreur n8n';
+            console.error('[AuditGenerator v2.1] Erreur n8n:', errMsg);
+            throw new Error(errMsg);
+          }
+          
+          // FIX v2.1: Vérifier le status dans la réponse
+          if (data.status === 'error' || data.status === 'fail' || data.status === 'failed') {
+            const errMsg = data.message || data.error || 'Erreur workflow';
+            console.error('[AuditGenerator v2.1] Status erreur:', errMsg);
+            throw new Error(errMsg);
+          }
           
           return { ok: true, data };
         } catch (e) {
-          console.error(`[AuditGenerator] Erreur:`, e.message);
+          console.error(`[AuditGenerator v2.1] Erreur tentative ${i + 1}:`, e.message);
           err = e;
           if (i < webhookRetries) {
-            await new Promise(r => setTimeout(r, 900));
+            console.log('[AuditGenerator v2.1] Attente avant retry...');
+            await new Promise(r => setTimeout(r, 2000));
           }
         }
       }
-      throw err || new Error('Échec de la requête');
+      throw err || new Error('Échec de la requête après plusieurs tentatives');
     }
     
     // ---------- START ----------
     async function start() {
-      console.log('[AuditGenerator] Démarrage v2.0');
-      console.log('[AuditGenerator] Phases:', timedPhases.length);
+      console.log('[AuditGenerator v2.1] ========== DÉMARRAGE ==========');
+      console.log('[AuditGenerator v2.1] Nombre de phases:', timedPhases.length);
+      console.log('[AuditGenerator v2.1] Webhook URL:', webhookUrl);
       
       const ui = showLoaderUI();
       const plan = buildPlan();
@@ -980,16 +1078,27 @@ export const AuditGenerator = {
         const resp = await postData();
         const data = resp?.data;
         
-        // Support multiple formats
-        const url = data?.pdfUrl || data?.exportUrl || data?.url || data?.link || null;
+        // Support multiple formats de réponse
+        const url = data?.pdfUrl || data?.exportUrl || data?.gammaUrl || data?.url || data?.link || null;
         
-        console.log('[AuditGenerator] PDF URL:', url);
+        console.log('[AuditGenerator v2.1] PDF URL trouvé:', url);
         
-        ui.complete(true, url);
+        if (!url) {
+          console.warn('[AuditGenerator v2.1] Aucune URL PDF dans la réponse:', data);
+          // On considère quand même comme succès si le status est ok
+          if (data?.status === 'success') {
+            ui.complete(true, null);
+          } else {
+            ui.error('URL du PDF non trouvée dans la réponse');
+          }
+        } else {
+          ui.complete(true, url);
+        }
         
       } catch (err) {
-        console.error('[AuditGenerator] Erreur finale:', err);
-        ui.error();
+        console.error('[AuditGenerator v2.1] ========== ERREUR FINALE ==========');
+        console.error('[AuditGenerator v2.1]', err.message);
+        ui.error(err.message);
       }
     }
     

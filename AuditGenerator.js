@@ -1,6 +1,6 @@
-// AuditGenerator.js – v3.1 ASYNC
+// AuditGenerator.js – v3.2 POLLING
 // © Corentin – Extension Voiceflow pour génération d'audit
-// v3.1 - Largeur fixe + message de fin amélioré
+// v3.2 - Génération job_id + Polling status + Affichage lien PDF
 //
 export const AuditGenerator = {
   name: 'AuditGenerator',
@@ -86,7 +86,13 @@ export const AuditGenerator = {
     // ---------- CONFIG ----------
     const p = trace?.payload || {};
     
-    console.log('[AuditGenerator v3.1 ASYNC] Payload reçu:', JSON.stringify(p, null, 2));
+    console.log('[AuditGenerator v3.2 POLLING] Payload reçu:', JSON.stringify(p, null, 2));
+    
+    // ========================================
+    // GÉNÉRATION DU JOB_ID UNIQUE
+    // ========================================
+    const job_id = `audit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    console.log('[AuditGenerator v3.2] Job ID généré:', job_id);
     
     // Couleur principale configurable
     const primaryColor = p.primaryColor || '#8B5CF6';
@@ -137,9 +143,10 @@ export const AuditGenerator = {
     
     // Textes
     const loadingText = p.loadingText || 'Génération en cours...';
-    const successText = p.successText || '✅ Préparation terminée !';
-    const successSubtext = p.successSubtext || 'Tu recevras ton audit par email dans quelques instants';
+    const successText = p.successText || '✅ Ton audit est prêt !';
+    const successSubtext = p.successSubtext || 'Clique sur le bouton pour le consulter';
     const errorText = p.errorText || '❌ Erreur lors de la génération';
+    const buttonText = p.buttonText || '📄 Voir mon audit';
     
     // Données à envoyer
     const auditInfos = p.auditInfos || '';
@@ -155,14 +162,23 @@ export const AuditGenerator = {
     const webhookHeaders = webhook.headers || { 'Content-Type': 'application/json' };
     
     // ========================================
-    // v3.1 - SIMULATION CONFIG
+    // POLLING CONFIG
+    // ========================================
+    const polling = p.polling || {};
+    const pollingUrl = polling.url; // URL du webhook status
+    const pollingIntervalMs = Number(polling.intervalMs) || 10000; // 10 secondes
+    const pollingMaxAttempts = Number(polling.maxAttempts) || 30; // 5 minutes max
+    
+    // ========================================
+    // LOADER CONFIG
     // ========================================
     const loaderCfg = p.loader || {};
-    // Durée totale de la simulation en secondes (minimum 120s = 2min)
     const totalSeconds = Math.max(120, Number(loaderCfg.totalSeconds) || 120);
     const autoCloseDelayMs = Number(loaderCfg.autoCloseDelayMs) > 0 ? Number(loaderCfg.autoCloseDelayMs) : 800;
     
-    console.log('[AuditGenerator v3.1] Durée simulation:', totalSeconds, 'secondes');
+    console.log('[AuditGenerator v3.2] Durée simulation:', totalSeconds, 'secondes');
+    console.log('[AuditGenerator v3.2] Polling URL:', pollingUrl);
+    console.log('[AuditGenerator v3.2] Polling interval:', pollingIntervalMs, 'ms');
     
     // Phases par défaut
     const defaultPhases = [
@@ -223,7 +239,7 @@ export const AuditGenerator = {
       seconds: Math.max(1, Math.round(phase.seconds * scaleFactor))
     }));
     
-    console.log('[AuditGenerator v3.1] timedPhases FINAL:', timedPhases);
+    console.log('[AuditGenerator v3.2] timedPhases FINAL:', timedPhases);
     
     const pathSuccess = p.pathSuccess || 'Default';
     const pathError = p.pathError || 'Fail';
@@ -293,6 +309,11 @@ export const AuditGenerator = {
       @keyframes ${instanceId}_textChange {
         0% { opacity: 0; transform: translateY(-10px); }
         100% { opacity: 1; transform: translateY(0); }
+      }
+      
+      @keyframes ${instanceId}_pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.6; }
       }
       
       .${instanceId} {
@@ -497,6 +518,15 @@ export const AuditGenerator = {
         margin-top: 12px;
       }
       
+      /* WAITING STATE (après 100%, en attente polling) */
+      .${instanceId}-loader.waiting .${instanceId}-loader-phase {
+        animation: ${instanceId}_pulse 1.5s ease-in-out infinite;
+      }
+      
+      .${instanceId}-loader.waiting .${instanceId}-loader-fill {
+        width: 100% !important;
+      }
+      
       /* SUCCESS STATE */
       .${instanceId}-loader.complete .${instanceId}-loader-orb-ring::before {
         animation: none;
@@ -535,6 +565,7 @@ export const AuditGenerator = {
       
       .${instanceId}-loader.complete .${instanceId}-loader-phase {
         color: ${colors.success};
+        animation: none;
       }
       
       /* RESULT SCREEN */
@@ -617,14 +648,49 @@ export const AuditGenerator = {
         color: ${colors.textMuted};
         line-height: 1.4;
         max-width: 280px;
-        margin: 0 auto;
+        margin: 0 auto 20px;
+      }
+      
+      .${instanceId}-result-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 24px;
+        border: none;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+      }
+      
+      .${instanceId}-result-btn.success {
+        background: linear-gradient(135deg, ${colors.success} 0%, #059669 100%);
+        color: white;
+        box-shadow: 0 4px 16px -4px rgba(16, 185, 129, 0.5);
+      }
+      
+      .${instanceId}-result-btn.success:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px -4px rgba(16, 185, 129, 0.6);
+      }
+      
+      .${instanceId}-result-btn.error {
+        background: linear-gradient(135deg, ${colors.error} 0%, #DC2626 100%);
+        color: white;
+        box-shadow: 0 4px 16px -4px rgba(239, 68, 68, 0.5);
+      }
+      
+      .${instanceId}-result-btn svg {
+        width: 16px;
+        height: 16px;
       }
       
       .${instanceId}-result-email {
         font-size: 12px;
-        color: ${colors.primary};
-        margin-top: 12px;
-        font-weight: 500;
+        color: ${colors.textMuted};
+        margin-top: 16px;
       }
     `;
     
@@ -640,14 +706,19 @@ export const AuditGenerator = {
       check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="20 6 9 17 4 12"/>
       </svg>`,
-      email: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-        <polyline points="22,6 12,13 2,6"/>
+      external: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
+        <polyline points="15 3 21 3 21 9"/>
+        <line x1="10" y1="14" x2="21" y2="3"/>
       </svg>`,
       error: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="10"/>
         <line x1="15" y1="9" x2="9" y2="15"/>
         <line x1="9" y1="9" x2="15" y2="15"/>
+      </svg>`,
+      retry: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 4 23 10 17 10"/>
+        <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
       </svg>`
     };
     
@@ -703,6 +774,7 @@ export const AuditGenerator = {
           <div class="${instanceId}-result-icon"></div>
           <div class="${instanceId}-result-text"></div>
           <div class="${instanceId}-result-subtext"></div>
+          <a class="${instanceId}-result-btn" target="_blank"></a>
           <div class="${instanceId}-result-email"></div>
         </div>
       </div>
@@ -719,21 +791,25 @@ export const AuditGenerator = {
     const resultIcon = root.querySelector(`.${instanceId}-result-icon`);
     const resultText = root.querySelector(`.${instanceId}-result-text`);
     const resultSubtext = root.querySelector(`.${instanceId}-result-subtext`);
+    const resultBtn = root.querySelector(`.${instanceId}-result-btn`);
     const resultEmail = root.querySelector(`.${instanceId}-result-email`);
     
     // ---------- STATE ----------
     let timedTimer = null;
-    let webhookSent = false;
-    let webhookError = null;
+    let pollingTimer = null;
+    let pollingAttempts = 0;
+    let isComplete = false;
+    let pdfUrl = null;
     
     // ---------- Helpers ----------
     const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
     
     // ---------- Send Webhook (Fire & Forget) ----------
     function sendWebhook() {
-      console.log('[AuditGenerator v3.1] Envoi webhook (fire & forget)...');
+      console.log('[AuditGenerator v3.2] Envoi webhook avec job_id:', job_id);
       
       const body = JSON.stringify({
+        job_id: job_id,  // ← IMPORTANT: on envoie le job_id
         auditInfos: auditInfos,
         nbCards: nbCards,
         langue: langue,
@@ -741,7 +817,7 @@ export const AuditGenerator = {
         conversationHistory: conversationHistory
       });
       
-      console.log('[AuditGenerator v3.1] Body length:', body.length);
+      console.log('[AuditGenerator v3.2] Body length:', body.length);
       
       fetch(webhookUrl, { 
         method: webhookMethod, 
@@ -749,14 +825,58 @@ export const AuditGenerator = {
         body: body
       })
       .then(response => {
-        console.log('[AuditGenerator v3.1] Webhook réponse status:', response.status);
-        webhookSent = true;
+        console.log('[AuditGenerator v3.2] Webhook réponse status:', response.status);
       })
       .catch(error => {
-        console.error('[AuditGenerator v3.1] Webhook erreur:', error.message);
-        webhookError = error.message;
-        // On ne bloque pas la simulation, le workflow continue en arrière-plan
+        console.error('[AuditGenerator v3.2] Webhook erreur:', error.message);
       });
+    }
+    
+    // ---------- Polling Status ----------
+    function startPolling() {
+      if (!pollingUrl) {
+        console.log('[AuditGenerator v3.2] Pas de polling URL, mode simulation seule');
+        return;
+      }
+      
+      console.log('[AuditGenerator v3.2] Démarrage polling...');
+      
+      pollingTimer = setInterval(async () => {
+        pollingAttempts++;
+        console.log(`[AuditGenerator v3.2] Polling attempt ${pollingAttempts}/${pollingMaxAttempts}`);
+        
+        if (pollingAttempts > pollingMaxAttempts) {
+          console.log('[AuditGenerator v3.2] Max polling attempts atteint');
+          clearInterval(pollingTimer);
+          // On affiche quand même un succès avec message email
+          showSuccessWithoutPdf();
+          return;
+        }
+        
+        try {
+          const response = await fetch(`${pollingUrl}?job_id=${encodeURIComponent(job_id)}`);
+          const data = await response.json();
+          
+          console.log('[AuditGenerator v3.2] Polling response:', data);
+          
+          if (data.status === 'completed' && data.pdfUrl) {
+            console.log('[AuditGenerator v3.2] PDF prêt !', data.pdfUrl);
+            clearInterval(pollingTimer);
+            pdfUrl = data.pdfUrl;
+            isComplete = true;
+            showSuccess(data.pdfUrl);
+          } else if (data.status === 'error') {
+            console.error('[AuditGenerator v3.2] Erreur workflow:', data.error);
+            clearInterval(pollingTimer);
+            showError(data.error || 'Erreur lors de la génération');
+          }
+          // Si status === 'processing', on continue de poll
+          
+        } catch (error) {
+          console.error('[AuditGenerator v3.2] Polling error:', error.message);
+          // On continue de poll malgré l'erreur
+        }
+      }, pollingIntervalMs);
     }
     
     // ---------- Simulation Loader ----------
@@ -781,7 +901,7 @@ export const AuditGenerator = {
           
           loaderCounter.textContent = `Étape ${idx + 1}/${timedPhases.length}`;
           
-          console.log(`[AuditGenerator v3.1] Phase ${idx + 1}/${timedPhases.length}: ${phase.label}`);
+          console.log(`[AuditGenerator v3.2] Phase ${idx + 1}/${timedPhases.length}: ${phase.label}`);
         }
       };
       
@@ -807,6 +927,12 @@ export const AuditGenerator = {
       paint();
       
       timedTimer = setInterval(() => {
+        // Si déjà terminé par polling, on stoppe
+        if (isComplete) {
+          clearInterval(timedTimer);
+          return;
+        }
+        
         const elapsed = Date.now() - startTime;
         
         // Trouver la phase actuelle
@@ -838,17 +964,23 @@ export const AuditGenerator = {
           currentProgress = 100;
           paint();
           
-          // Afficher le succès
-          setTimeout(() => {
-            showSuccess();
-          }, autoCloseDelayMs);
+          // Si pas encore de réponse du polling, passer en mode "waiting"
+          if (!isComplete) {
+            console.log('[AuditGenerator v3.2] Simulation terminée, en attente du polling...');
+            loader.classList.add('waiting');
+            loaderPhase.textContent = '⏳ Finalisation en cours...';
+            loaderCounter.textContent = 'Veuillez patienter...';
+          }
         }
       }, 50);
     }
     
-    function showSuccess() {
+    function showSuccess(url) {
+      if (timedTimer) clearInterval(timedTimer);
+      
       loaderPhase.textContent = '✅ Terminé !';
       loaderCounter.textContent = `Étape ${timedPhases.length}/${timedPhases.length}`;
+      loader.classList.remove('waiting');
       loader.classList.add('complete');
       
       setTimeout(() => {
@@ -861,6 +993,45 @@ export const AuditGenerator = {
           resultIcon.innerHTML = icons.check;
           resultText.textContent = successText;
           resultSubtext.textContent = successSubtext;
+          resultBtn.className = `${instanceId}-result-btn success`;
+          resultBtn.innerHTML = `${icons.external} ${buttonText}`;
+          resultBtn.href = url;
+          resultEmail.textContent = userEmail ? `📧 Également envoyé à ${userEmail}` : '';
+          
+          enableChatInput(chatRefs);
+          
+          window?.voiceflow?.chat?.interact?.({
+            type: 'complete',
+            payload: {
+              success: true,
+              pdfUrl: url,
+              buttonPath: pathSuccess
+            }
+          });
+          
+        }, 200);
+      }, autoCloseDelayMs);
+    }
+    
+    function showSuccessWithoutPdf() {
+      if (timedTimer) clearInterval(timedTimer);
+      
+      loaderPhase.textContent = '✅ Terminé !';
+      loaderCounter.textContent = `Étape ${timedPhases.length}/${timedPhases.length}`;
+      loader.classList.remove('waiting');
+      loader.classList.add('complete');
+      
+      setTimeout(() => {
+        loader.classList.add('hide');
+        setTimeout(() => {
+          loader.style.display = 'none';
+          
+          resultDiv.classList.add('show');
+          resultIcon.className = `${instanceId}-result-icon success`;
+          resultIcon.innerHTML = icons.check;
+          resultText.textContent = '✅ Préparation terminée !';
+          resultSubtext.textContent = 'Tu recevras ton audit par email dans quelques instants';
+          resultBtn.style.display = 'none'; // Pas de bouton si pas de PDF
           resultEmail.textContent = userEmail ? `📧 ${userEmail}` : '';
           
           enableChatInput(chatRefs);
@@ -877,21 +1048,59 @@ export const AuditGenerator = {
       }, autoCloseDelayMs);
     }
     
-    // ---------- START ----------
-    console.log('[AuditGenerator v3.1 ASYNC] ========== DÉMARRAGE ==========');
-    console.log('[AuditGenerator v3.1] Mode: Fire & Forget + Simulation');
-    console.log('[AuditGenerator v3.1] Durée totale:', totalSeconds, 'secondes');
-    console.log('[AuditGenerator v3.1] Nombre de phases:', timedPhases.length);
-    console.log('[AuditGenerator v3.1] Webhook URL:', webhookUrl);
+    function showError(errorMessage) {
+      if (timedTimer) clearInterval(timedTimer);
+      if (pollingTimer) clearInterval(pollingTimer);
+      
+      loader.classList.add('hide');
+      setTimeout(() => {
+        loader.style.display = 'none';
+        
+        resultDiv.classList.add('show');
+        resultIcon.className = `${instanceId}-result-icon error`;
+        resultIcon.innerHTML = icons.error;
+        resultText.textContent = errorText;
+        resultSubtext.textContent = errorMessage;
+        resultBtn.className = `${instanceId}-result-btn error`;
+        resultBtn.innerHTML = `${icons.retry} Réessayer`;
+        resultBtn.href = '#';
+        resultBtn.onclick = (e) => {
+          e.preventDefault();
+          window?.voiceflow?.chat?.interact?.({
+            type: 'complete',
+            payload: {
+              success: false,
+              retry: true,
+              buttonPath: pathError
+            }
+          });
+        };
+        resultEmail.textContent = '';
+        
+        enableChatInput(chatRefs);
+        
+      }, 200);
+    }
     
-    // 1. Envoyer le webhook immédiatement (fire & forget)
+    // ---------- START ----------
+    console.log('[AuditGenerator v3.2 POLLING] ========== DÉMARRAGE ==========');
+    console.log('[AuditGenerator v3.2] Job ID:', job_id);
+    console.log('[AuditGenerator v3.2] Durée simulation:', totalSeconds, 'secondes');
+    console.log('[AuditGenerator v3.2] Polling URL:', pollingUrl);
+    console.log('[AuditGenerator v3.2] Webhook URL:', webhookUrl);
+    
+    // 1. Envoyer le webhook avec job_id
     sendWebhook();
     
-    // 2. Lancer la simulation
+    // 2. Démarrer le polling (si configuré)
+    startPolling();
+    
+    // 3. Lancer la simulation visuelle
     runSimulation();
     
     return () => { 
       if (timedTimer) clearInterval(timedTimer);
+      if (pollingTimer) clearInterval(pollingTimer);
     };
   }
 };

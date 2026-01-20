@@ -1,6 +1,6 @@
-// AuditGenerator.js – v3.0 ASYNC
+// AuditGenerator.js – v3.1 ASYNC
 // © Corentin – Extension Voiceflow pour génération d'audit
-// v3.0 - Mode asynchrone : envoie à n8n et simule les étapes
+// v3.1 - Largeur fixe + message de fin amélioré
 //
 export const AuditGenerator = {
   name: 'AuditGenerator',
@@ -86,7 +86,7 @@ export const AuditGenerator = {
     // ---------- CONFIG ----------
     const p = trace?.payload || {};
     
-    console.log('[AuditGenerator v3.0 ASYNC] Payload reçu:', JSON.stringify(p, null, 2));
+    console.log('[AuditGenerator v3.1 ASYNC] Payload reçu:', JSON.stringify(p, null, 2));
     
     // Couleur principale configurable
     const primaryColor = p.primaryColor || '#8B5CF6';
@@ -137,7 +137,8 @@ export const AuditGenerator = {
     
     // Textes
     const loadingText = p.loadingText || 'Génération en cours...';
-    const successText = p.successText || '✅ Audit envoyé par email !';
+    const successText = p.successText || '✅ Préparation terminée !';
+    const successSubtext = p.successSubtext || 'Tu recevras ton audit par email dans quelques instants';
     const errorText = p.errorText || '❌ Erreur lors de la génération';
     
     // Données à envoyer
@@ -154,14 +155,14 @@ export const AuditGenerator = {
     const webhookHeaders = webhook.headers || { 'Content-Type': 'application/json' };
     
     // ========================================
-    // v3.0 - SIMULATION CONFIG
+    // v3.1 - SIMULATION CONFIG
     // ========================================
     const loaderCfg = p.loader || {};
     // Durée totale de la simulation en secondes (minimum 120s = 2min)
     const totalSeconds = Math.max(120, Number(loaderCfg.totalSeconds) || 120);
     const autoCloseDelayMs = Number(loaderCfg.autoCloseDelayMs) > 0 ? Number(loaderCfg.autoCloseDelayMs) : 800;
     
-    console.log('[AuditGenerator v3.0] Durée simulation:', totalSeconds, 'secondes');
+    console.log('[AuditGenerator v3.1] Durée simulation:', totalSeconds, 'secondes');
     
     // Phases par défaut
     const defaultPhases = [
@@ -175,7 +176,7 @@ export const AuditGenerator = {
       { key: 'gamma_gen', seconds: 25, label: '📑 Génération du document...' },
       { key: 'gamma_wait', seconds: 20, label: '⏳ Finalisation du PDF...' },
       { key: 'export', seconds: 10, label: '📤 Export et préparation...' },
-      { key: 'email', seconds: 5, label: '📧 Envoi par email...' },
+      { key: 'email', seconds: 5, label: '📧 Préparation de l\'envoi...' },
       { key: 'complete', seconds: 4, label: '✅ Presque terminé...' }
     ];
     
@@ -222,7 +223,7 @@ export const AuditGenerator = {
       seconds: Math.max(1, Math.round(phase.seconds * scaleFactor))
     }));
     
-    console.log('[AuditGenerator v3.0] timedPhases FINAL:', timedPhases);
+    console.log('[AuditGenerator v3.1] timedPhases FINAL:', timedPhases);
     
     const pathSuccess = p.pathSuccess || 'Default';
     const pathError = p.pathError || 'Fail';
@@ -314,6 +315,9 @@ export const AuditGenerator = {
         overflow: hidden;
         position: relative;
         box-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+        min-width: 320px;
+        max-width: 320px;
+        width: 320px;
       }
       
       .${instanceId}-card::before {
@@ -386,13 +390,17 @@ export const AuditGenerator = {
       }
       
       .${instanceId}-loader-phase {
-        font-size: 15px;
+        font-size: 14px;
         font-weight: 600;
         color: ${colors.primary};
         margin-bottom: 6px;
         text-align: center;
         min-height: 24px;
         transition: opacity 0.15s ease;
+        max-width: 280px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       
       .${instanceId}-loader-phase.changing {
@@ -405,6 +413,7 @@ export const AuditGenerator = {
         margin-bottom: 20px;
         text-align: center;
         line-height: 1.4;
+        max-width: 280px;
       }
       
       .${instanceId}-loader-dots {
@@ -597,7 +606,7 @@ export const AuditGenerator = {
       
       .${instanceId}-result-text {
         font-size: 15px;
-        font-weight: 500;
+        font-weight: 600;
         color: ${colors.text};
         margin-bottom: 8px;
         line-height: 1.5;
@@ -607,6 +616,15 @@ export const AuditGenerator = {
         font-size: 13px;
         color: ${colors.textMuted};
         line-height: 1.4;
+        max-width: 280px;
+        margin: 0 auto;
+      }
+      
+      .${instanceId}-result-email {
+        font-size: 12px;
+        color: ${colors.primary};
+        margin-top: 12px;
+        font-weight: 500;
       }
     `;
     
@@ -685,6 +703,7 @@ export const AuditGenerator = {
           <div class="${instanceId}-result-icon"></div>
           <div class="${instanceId}-result-text"></div>
           <div class="${instanceId}-result-subtext"></div>
+          <div class="${instanceId}-result-email"></div>
         </div>
       </div>
     `;
@@ -700,6 +719,7 @@ export const AuditGenerator = {
     const resultIcon = root.querySelector(`.${instanceId}-result-icon`);
     const resultText = root.querySelector(`.${instanceId}-result-text`);
     const resultSubtext = root.querySelector(`.${instanceId}-result-subtext`);
+    const resultEmail = root.querySelector(`.${instanceId}-result-email`);
     
     // ---------- STATE ----------
     let timedTimer = null;
@@ -711,7 +731,7 @@ export const AuditGenerator = {
     
     // ---------- Send Webhook (Fire & Forget) ----------
     function sendWebhook() {
-      console.log('[AuditGenerator v3.0] Envoi webhook (fire & forget)...');
+      console.log('[AuditGenerator v3.1] Envoi webhook (fire & forget)...');
       
       const body = JSON.stringify({
         auditInfos: auditInfos,
@@ -721,7 +741,7 @@ export const AuditGenerator = {
         conversationHistory: conversationHistory
       });
       
-      console.log('[AuditGenerator v3.0] Body length:', body.length);
+      console.log('[AuditGenerator v3.1] Body length:', body.length);
       
       fetch(webhookUrl, { 
         method: webhookMethod, 
@@ -729,11 +749,11 @@ export const AuditGenerator = {
         body: body
       })
       .then(response => {
-        console.log('[AuditGenerator v3.0] Webhook réponse status:', response.status);
+        console.log('[AuditGenerator v3.1] Webhook réponse status:', response.status);
         webhookSent = true;
       })
       .catch(error => {
-        console.error('[AuditGenerator v3.0] Webhook erreur:', error.message);
+        console.error('[AuditGenerator v3.1] Webhook erreur:', error.message);
         webhookError = error.message;
         // On ne bloque pas la simulation, le workflow continue en arrière-plan
       });
@@ -761,7 +781,7 @@ export const AuditGenerator = {
           
           loaderCounter.textContent = `Étape ${idx + 1}/${timedPhases.length}`;
           
-          console.log(`[AuditGenerator v3.0] Phase ${idx + 1}/${timedPhases.length}: ${phase.label}`);
+          console.log(`[AuditGenerator v3.1] Phase ${idx + 1}/${timedPhases.length}: ${phase.label}`);
         }
       };
       
@@ -840,7 +860,8 @@ export const AuditGenerator = {
           resultIcon.className = `${instanceId}-result-icon success`;
           resultIcon.innerHTML = icons.check;
           resultText.textContent = successText;
-          resultSubtext.textContent = userEmail ? `📧 Envoyé à ${userEmail}` : '';
+          resultSubtext.textContent = successSubtext;
+          resultEmail.textContent = userEmail ? `📧 ${userEmail}` : '';
           
           enableChatInput(chatRefs);
           
@@ -857,11 +878,11 @@ export const AuditGenerator = {
     }
     
     // ---------- START ----------
-    console.log('[AuditGenerator v3.0 ASYNC] ========== DÉMARRAGE ==========');
-    console.log('[AuditGenerator v3.0] Mode: Fire & Forget + Simulation');
-    console.log('[AuditGenerator v3.0] Durée totale:', totalSeconds, 'secondes');
-    console.log('[AuditGenerator v3.0] Nombre de phases:', timedPhases.length);
-    console.log('[AuditGenerator v3.0] Webhook URL:', webhookUrl);
+    console.log('[AuditGenerator v3.1 ASYNC] ========== DÉMARRAGE ==========');
+    console.log('[AuditGenerator v3.1] Mode: Fire & Forget + Simulation');
+    console.log('[AuditGenerator v3.1] Durée totale:', totalSeconds, 'secondes');
+    console.log('[AuditGenerator v3.1] Nombre de phases:', timedPhases.length);
+    console.log('[AuditGenerator v3.1] Webhook URL:', webhookUrl);
     
     // 1. Envoyer le webhook immédiatement (fire & forget)
     sendWebhook();

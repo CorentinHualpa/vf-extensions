@@ -1,9 +1,10 @@
 /**
  *  ╔═══════════════════════════════════════════════════════════╗
  *  ║  Carousel – Voiceflow Response Extension                  ║
- *  ║  VERSION 4.5 - FIX WIDGET MODE                            ║
+ *  ║  VERSION 4.6 - SUPPORT 4 CARDS PER VIEW                  ║
  *  ║                                                           ║
  *  ║  • Choix automatique showcase (1-2 items) / gallery (3+) ║
+ *  ║  • Support 2, 3 ou 4 cartes côte à côte (gallery)       ║
  *  ║  • Thème clair ou sombre configurable                    ║
  *  ║  • Détection widget Voiceflow (1 carte forcée)           ║
  *  ║  • Affichage mobile optimisé (1 carte en plein écran)    ║
@@ -38,12 +39,8 @@ export const CarouselExtension = {
       }
       
       // ✅ DÉTECTION WIDGET VOICEFLOW
-      // Le widget a une largeur fixe, détectons-le
       const isInWidget = () => {
-        // Méthode 1: Vérifier si on est dans un iframe (widget)
         if (window.self !== window.top) return true;
-        
-        // Méthode 2: Vérifier la largeur du container parent
         const parentWidth = element.parentElement?.offsetWidth || window.innerWidth;
         return parentWidth < 500;
       };
@@ -60,19 +57,23 @@ export const CarouselExtension = {
         } else if (items.length <= 2) {
           mode = 'showcase';
           slidesPerView = 1;
-        } else if (items.length <= 4) {
+        } else if (items.length <= 3) {
           mode = 'gallery';
           slidesPerView = 2;
-        } else {
+        } else if (items.length <= 5) {
           mode = 'gallery';
           slidesPerView = 3;
+        } else {
+          mode = 'gallery';
+          slidesPerView = 4;
         }
       }
       
       // Validation du mode
       const validModes = ['showcase', 'gallery'];
       mode = validModes.includes(mode) ? mode : 'showcase';
-      slidesPerView = mode === 'gallery' ? Math.min(3, Math.max(2, slidesPerView)) : 1;
+      // ✅ v4.6: max 4 cartes (était 3 en v4.5)
+      slidesPerView = mode === 'gallery' ? Math.min(4, Math.max(2, slidesPerView)) : 1;
       
       // ✅ FORCER showcase dans le widget, peu importe le payload
       if (isInWidget()) {
@@ -423,9 +424,9 @@ export const CarouselExtension = {
   max-width: 100% !important;
 }
 /* ═══════════════════════════════════════════════════════════ */
-/* ✅ CARTES - MODE GALLERY (2-3 cartes côte à côte)          */
+/* ✅ CARTES - MODE GALLERY (2, 3 ou 4 cartes côte à côte)   */
 /* ═══════════════════════════════════════════════════════════ */
-/* 2 cartes: (100% - gap) / 2 */
+/* 2 cartes: (100% - 1*gap) / 2 */
 .vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="2"] .vf-carousel-card {
   flex: 0 0 calc((100% - 16px) / 2) !important;
   min-width: calc((100% - 16px) / 2) !important;
@@ -436,6 +437,12 @@ export const CarouselExtension = {
   flex: 0 0 calc((100% - 32px) / 3) !important;
   min-width: calc((100% - 32px) / 3) !important;
   max-width: calc((100% - 32px) / 3) !important;
+}
+/* ✅ v4.6: 4 cartes: (100% - 3*gap) / 4 */
+.vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="4"] .vf-carousel-card {
+  flex: 0 0 calc((100% - 48px) / 4) !important;
+  min-width: calc((100% - 48px) / 4) !important;
+  max-width: calc((100% - 48px) / 4) !important;
 }
 
 /* ═══════════════════════════════════════════════════════════ */
@@ -451,11 +458,11 @@ export const CarouselExtension = {
 /* ✅ CORRECTION MOBILE - TOUJOURS 1 CARTE EN PLEIN ÉCRAN      */
 /* ═══════════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
-  /* Force 1 carte en plein écran sur mobile, quelle que soit la config */
   .vf-carousel-container[data-display-mode="showcase"] .vf-carousel-card,
   .vf-carousel-container[data-display-mode="gallery"] .vf-carousel-card,
   .vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="2"] .vf-carousel-card,
   .vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="3"] .vf-carousel-card,
+  .vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="4"] .vf-carousel-card,
   .vf-carousel-card {
     flex: 0 0 100% !important;
     min-width: 100% !important;
@@ -523,9 +530,17 @@ export const CarouselExtension = {
 .vf-carousel-container[data-display-mode="showcase"] .vf-carousel-image-container {
   padding-bottom: 50%;
 }
-/* Mode gallery: image 45% */
-.vf-carousel-container[data-display-mode="gallery"] .vf-carousel-image-container {
+/* Mode gallery 2 cartes: image 45% */
+.vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="2"] .vf-carousel-image-container {
   padding-bottom: 45%;
+}
+/* Mode gallery 3 cartes: image 45% */
+.vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="3"] .vf-carousel-image-container {
+  padding-bottom: 45%;
+}
+/* ✅ v4.6: Mode gallery 4 cartes: image plus compacte 40% */
+.vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="4"] .vf-carousel-image-container {
+  padding-bottom: 40%;
 }
 
 /* Widget mode: image 55% */
@@ -574,11 +589,23 @@ export const CarouselExtension = {
   z-index: 2;
   background: rgba(255, 255, 255, 0.98);
 }
-/* Mode gallery: contenu plus compact */
-.vf-carousel-container[data-display-mode="gallery"] .vf-carousel-content {
+/* Mode gallery 2 cartes: contenu normal */
+.vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="2"] .vf-carousel-content {
   padding: 16px;
   min-height: 130px;
   gap: 10px;
+}
+/* Mode gallery 3 cartes: contenu compact */
+.vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="3"] .vf-carousel-content {
+  padding: 14px;
+  min-height: 120px;
+  gap: 8px;
+}
+/* ✅ v4.6: Mode gallery 4 cartes: contenu très compact */
+.vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="4"] .vf-carousel-content {
+  padding: 12px;
+  min-height: 110px;
+  gap: 8px;
 }
 
 /* Widget mode: contenu adapté */
@@ -608,8 +635,16 @@ export const CarouselExtension = {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.vf-carousel-container[data-display-mode="gallery"] .vf-carousel-card-title {
+.vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="2"] .vf-carousel-card-title {
   font-size: 15px;
+}
+.vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="3"] .vf-carousel-card-title {
+  font-size: 14px;
+}
+/* ✅ v4.6: Titre encore plus compact pour 4 cartes */
+.vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="4"] .vf-carousel-card-title {
+  font-size: 13px;
+  -webkit-line-clamp: 1;
 }
 
 .vf-carousel-container[data-in-widget="true"] .vf-carousel-card-title {
@@ -640,10 +675,21 @@ export const CarouselExtension = {
   -webkit-line-clamp: 5;
   font-size: 14px;
 }
-/* Gallery: 3 lignes */
-.vf-carousel-container[data-display-mode="gallery"] .vf-carousel-description {
+/* Gallery 2 cartes: 3 lignes */
+.vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="2"] .vf-carousel-description {
   -webkit-line-clamp: 3;
   font-size: 12px;
+}
+/* Gallery 3 cartes: 3 lignes */
+.vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="3"] .vf-carousel-description {
+  -webkit-line-clamp: 3;
+  font-size: 12px;
+}
+/* ✅ v4.6: Gallery 4 cartes: 2 lignes, police réduite */
+.vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="4"] .vf-carousel-description {
+  -webkit-line-clamp: 2;
+  font-size: 11px;
+  line-height: 1.4;
 }
 
 /* Widget mode: 4 lignes */
@@ -702,6 +748,14 @@ export const CarouselExtension = {
   transform: translateY(0);
 }
 
+/* ✅ v4.6: Bouton compact pour 4 cartes */
+.vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="4"] .vf-carousel-button {
+  padding: 10px 12px;
+  font-size: 11px;
+  min-height: 38px;
+  letter-spacing: 0.3px;
+}
+
 .vf-carousel-container[data-in-widget="true"] .vf-carousel-button {
   padding: 12px 16px;
   font-size: 12px;
@@ -745,7 +799,8 @@ export const CarouselExtension = {
 /* Masquer si pas nécessaire */
 .vf-carousel-container[data-display-mode="showcase"][data-items-count="1"] .vf-carousel-controls,
 .vf-carousel-container[data-display-mode="gallery"][data-items-count="2"][data-cards-per-view="2"] .vf-carousel-controls,
-.vf-carousel-container[data-display-mode="gallery"][data-items-count="3"][data-cards-per-view="3"] .vf-carousel-controls {
+.vf-carousel-container[data-display-mode="gallery"][data-items-count="3"][data-cards-per-view="3"] .vf-carousel-controls,
+.vf-carousel-container[data-display-mode="gallery"][data-items-count="4"][data-cards-per-view="4"] .vf-carousel-controls {
   display: none;
 }
 
@@ -920,7 +975,6 @@ export const CarouselExtension = {
       const isMobile = () => window.innerWidth <= 768;
       
       const getSlidesPerView = () => {
-        // Dans le widget ou sur mobile, toujours 1 carte
         if (isInWidget() || isMobile()) return 1;
         return slidesPerView;
       };
@@ -941,10 +995,6 @@ export const CarouselExtension = {
           track.style.transform = `translateX(${translateX}%)`;
         }
         
-        const totalDots = isInWidget() || isMobile() || mode === 'showcase' 
-          ? items.length 
-          : Math.ceil(items.length / currentSlidesPerView);
-          
         container.querySelectorAll('.vf-carousel-dot').forEach((dot, index) => {
           dot.classList.toggle('active', index === currentIndex);
         });
@@ -975,7 +1025,6 @@ export const CarouselExtension = {
       
       // Autoplay
       const startAutoplay = () => {
-        // Ne démarre QUE si autoplay est explicitement true
         const currentSlidesPerView = getSlidesPerView();
         if (autoplay === true && items.length > currentSlidesPerView) {
           autoplayInterval = setInterval(nextSlide, autoplayDelay);
@@ -1135,16 +1184,14 @@ export const CarouselExtension = {
       controls.appendChild(nextBtn);
       container.appendChild(controls);
       
-      // Gestion du redimensionnement (desktop ↔ mobile ↔ widget)
+      // Gestion du redimensionnement
       let resizeTimeout;
       window.addEventListener('resize', () => {
         clearTimeout(resizeTimeout);
         resizeTimeout = setTimeout(() => {
-          // Reset à l'index 0 si on change de mode
           currentIndex = 0;
           updateCarouselPosition();
           
-          // Recalcul des dots si nécessaire
           const newTotalDots = calculateDots();
           if (newTotalDots !== dotsContainer.children.length) {
             dotsContainer.innerHTML = '';
@@ -1232,7 +1279,6 @@ export const CarouselExtension = {
       // Initialisation
       updateCarouselPosition();
       
-      // NE démarre l'autoplay QUE si explicitement demandé
       if (autoplay === true) {
         setTimeout(startAutoplay, 1000);
         console.log('✅ Carousel avec autoplay activé');
@@ -1242,7 +1288,7 @@ export const CarouselExtension = {
       
       element.appendChild(container);
       
-      console.log(`✅ Carousel v4.5 ${mode.toUpperCase()} - Thème: ${theme.toUpperCase()} (ID: ${uniqueId}) - ${items.length} items - Widget: ${isInWidget()} - Mobile: ${isMobile()} - Autoplay: ${autoplay}`);
+      console.log(`✅ Carousel v4.6 ${mode.toUpperCase()} - Thème: ${theme.toUpperCase()} (ID: ${uniqueId}) - ${items.length} items - ${slidesPerView} cardsPerView - Widget: ${isInWidget()} - Mobile: ${isMobile()} - Autoplay: ${autoplay}`);
       
       // Cleanup
       return () => {

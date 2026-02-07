@@ -1,12 +1,7 @@
 /**
  *  ╔═══════════════════════════════════════════════════════════╗
  *  ║  Calendly – Voiceflow Response Extension                  ║
- *  ║  VERSION 3.0 - ANIMATED LOADER + FULL WIDTH              ║
- *  ║                                                           ║
- *  ║  • Barre de chargement animée pendant le load             ║
- *  ║  • Pleine largeur dans le chat Voiceflow                 ║
- *  ║  • Prefill propre (name, email, phone, customAnswers)    ║
- *  ║  • Capture événement RDV + API Calendly                  ║
+ *  ║  VERSION 3.1 - LOADER FIRST, THEN CALENDLY               ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 export const CalendlyExtension = {
@@ -19,23 +14,15 @@ export const CalendlyExtension = {
   },
   render: ({ trace, element }) => {
     let config = trace.payload || {};
-
-    // Cas Custom Action
     if (config.body) {
       try {
-        config = typeof config.body === 'string'
-          ? JSON.parse(config.body)
-          : config.body;
-      } catch (e) {
-        console.error('[Calendly] Erreur parsing body:', e);
-      }
+        config = typeof config.body === 'string' ? JSON.parse(config.body) : config.body;
+      } catch (e) { console.error('[Calendly] parse error:', e); }
     }
 
-    // Lecture des paramètres
     const {
       url,
       height = 580,
-      backgroundColor = '#ffffff',
       calendlyToken = '',
       prefillName = '',
       prefillEmail = '',
@@ -46,325 +33,165 @@ export const CalendlyExtension = {
     } = config;
 
     if (!url) {
-      element.innerHTML = `
-        <div style="padding:20px;color:#c62828;background:#ffebee;border-radius:8px;">
-          ❌ Erreur: URL Calendly manquante
-        </div>`;
+      element.innerHTML = '<div style="padding:20px;color:#c62828;background:#ffebee;border-radius:8px;">❌ URL Calendly manquante</div>';
       return;
     }
 
-    console.log('[Calendly v3] === CONFIG ===', config);
-
-    // ---------------------------
-    //  STYLE
-    // ---------------------------
-    const styleId = 'vf-calendly-ext-v3-styles';
+    // ── STYLES ──
+    const styleId = 'vf-cal-v31';
     if (!document.getElementById(styleId)) {
-      const styleEl = document.createElement('style');
-      styleEl.id = styleId;
-      styleEl.textContent = `
-/* ═══════════════════════════════════════ */
-/* PLEINE LARGEUR VOICEFLOW               */
-/* ═══════════════════════════════════════ */
+      const s = document.createElement('style');
+      s.id = styleId;
+      s.textContent = `
 .vfrc-message--extension-Calendly,
 .vfrc-message--extension-Calendly .vfrc-bubble,
 .vfrc-message--extension-Calendly .vfrc-bubble-content,
 .vfrc-message--extension-Calendly .vfrc-message-content,
 .vfrc-message.vfrc-message--extension-Calendly {
-  width: 100% !important;
-  max-width: 100% !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  box-sizing: border-box !important;
+  width: 100% !important; max-width: 100% !important;
+  margin: 0 !important; padding: 0 !important;
+}
+.vf-cal-root {
+  width: 100%; border-radius: 16px; overflow: hidden;
+  background: #fff; position: relative;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  border: 1px solid rgba(0,0,0,0.06);
+  animation: vfCalIn 0.3s ease-out;
+}
+@keyframes vfCalIn {
+  from { opacity:0; transform:translateY(6px); }
+  to { opacity:1; transform:translateY(0); }
 }
 
-/* ═══════════════════════════════════════ */
-/* CONTAINER PRINCIPAL                     */
-/* ═══════════════════════════════════════ */
-.vf-calendly-wrap {
-  width: 100%;
-  position: relative;
-  border-radius: 16px;
-  overflow: hidden;
-  background: #ffffff;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  animation: vfCalFadeIn 0.4s ease-out;
-}
-
-@keyframes vfCalFadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-/* ═══════════════════════════════════════ */
-/* LOADER OVERLAY                          */
-/* ═══════════════════════════════════════ */
+/* ── LOADER : on top ── */
 .vf-cal-loader {
-  position: absolute;
-  inset: 0;
-  z-index: 20;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: #ffffff;
-  gap: 24px;
-  transition: opacity 0.5s ease, visibility 0.5s ease;
+  position: absolute; inset: 0; z-index: 50;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  background: #ffffff; gap: 20px;
+  transition: opacity 0.6s ease, visibility 0.6s ease;
+}
+.vf-cal-loader.out {
+  opacity: 0; visibility: hidden; pointer-events: none;
 }
 
-.vf-cal-loader.hidden {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
+/* Animated calendar icon */
+.vf-cal-ico { width:52px; height:52px; position:relative; }
+.vf-cal-ico-clip {
+  width:4px; height:10px; background:#bbb; border-radius:2px;
+  position:absolute; top:0;
+}
+.vf-cal-ico-clip:first-child { left:13px; }
+.vf-cal-ico-clip:last-child { right:13px; }
+.vf-cal-ico-body {
+  width:52px; height:48px; position:absolute; bottom:0;
+  background:#f8f9fa; border:2px solid #e0e0e0; border-radius:10px;
+  overflow:hidden;
+}
+.vf-cal-ico-hd { height:14px; background: var(--brand); }
+.vf-cal-ico-grid {
+  display:grid; grid-template-columns:repeat(3,1fr);
+  gap:5px; padding:7px 9px 0;
+}
+.vf-cal-ico-dot {
+  width:7px; height:7px; border-radius:50%; background:#d5d5d5;
+  animation: dotPop 1.4s ease-in-out infinite;
+}
+.vf-cal-ico-dot:nth-child(1){animation-delay:0s}
+.vf-cal-ico-dot:nth-child(2){animation-delay:.15s}
+.vf-cal-ico-dot:nth-child(3){animation-delay:.3s}
+.vf-cal-ico-dot:nth-child(4){animation-delay:.1s}
+.vf-cal-ico-dot:nth-child(5){animation-delay:.25s}
+.vf-cal-ico-dot:nth-child(6){animation-delay:.4s}
+@keyframes dotPop {
+  0%,100% { background:#d5d5d5; transform:scale(1); }
+  50% { background:var(--brand); transform:scale(1.4); }
 }
 
-/* Icône calendrier animée */
-.vf-cal-icon {
-  width: 56px;
-  height: 56px;
-  position: relative;
+.vf-cal-txt {
+  font-family:'Inter',-apple-system,sans-serif;
+  font-size:14px; font-weight:500; color:#757575;
 }
 
-.vf-cal-icon-body {
-  width: 56px;
-  height: 52px;
-  background: #f8f9fa;
-  border: 2px solid #e0e0e0;
-  border-radius: 12px;
-  position: absolute;
-  bottom: 0;
-  overflow: hidden;
+/* Progress bar */
+.vf-cal-bar-wrap {
+  width:180px; height:4px; background:#eee; border-radius:4px; overflow:hidden;
+}
+.vf-cal-bar {
+  height:100%; width:0%; border-radius:4px;
+  background: linear-gradient(90deg, var(--brand), #ff6090);
 }
 
-.vf-cal-icon-header {
-  height: 16px;
-  background: var(--vf-cal-brand, ${brandColor});
-  width: 100%;
-}
-
-.vf-cal-icon-dots {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
-  padding: 8px 10px 0;
-}
-
-.vf-cal-icon-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #d0d0d0;
-  animation: vfCalDotPulse 1.5s ease-in-out infinite;
-}
-
-.vf-cal-icon-dot:nth-child(1) { animation-delay: 0s; }
-.vf-cal-icon-dot:nth-child(2) { animation-delay: 0.2s; }
-.vf-cal-icon-dot:nth-child(3) { animation-delay: 0.4s; }
-.vf-cal-icon-dot:nth-child(4) { animation-delay: 0.15s; }
-.vf-cal-icon-dot:nth-child(5) { animation-delay: 0.35s; }
-.vf-cal-icon-dot:nth-child(6) { animation-delay: 0.55s; }
-
-@keyframes vfCalDotPulse {
-  0%, 100% { background: #d0d0d0; transform: scale(1); }
-  50% { background: var(--vf-cal-brand, ${brandColor}); transform: scale(1.3); }
-}
-
-/* Clips du haut du calendrier */
-.vf-cal-icon-clip {
-  width: 4px;
-  height: 12px;
-  background: #bdbdbd;
-  border-radius: 2px;
-  position: absolute;
-  top: 0;
-}
-.vf-cal-icon-clip:first-of-type { left: 14px; }
-.vf-cal-icon-clip:last-of-type { right: 14px; }
-
-/* Texte loader */
-.vf-cal-loader-text {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 14px;
-  font-weight: 500;
-  color: #757575;
-  letter-spacing: -0.01em;
-}
-
-/* Barre de progression */
-.vf-cal-progress-wrap {
-  width: 200px;
-  height: 4px;
-  background: #f0f0f0;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.vf-cal-progress-bar {
-  height: 100%;
-  width: 0%;
-  background: linear-gradient(90deg, var(--vf-cal-brand, ${brandColor}), #ff6090);
-  border-radius: 4px;
-  transition: width 0.3s ease;
-  animation: vfCalProgress 4s ease-in-out forwards;
-}
-
-@keyframes vfCalProgress {
-  0%   { width: 0%; }
-  15%  { width: 15%; }
-  40%  { width: 40%; }
-  60%  { width: 55%; }
-  80%  { width: 70%; }
-  90%  { width: 82%; }
-  100% { width: 90%; }
-}
-
-/* ═══════════════════════════════════════ */
-/* WIDGET CALENDLY                         */
-/* ═══════════════════════════════════════ */
+/* ── WIDGET : behind loader ── */
 .vf-cal-widget {
-  width: 100%;
-  opacity: 0;
-  transition: opacity 0.4s ease;
+  width:100%; position:relative; z-index:10;
 }
-
-.vf-cal-widget.loaded {
-  opacity: 1;
-}
-
-.vf-cal-widget .calendly-inline-widget {
-  width: 100% !important;
-  min-width: 100% !important;
-}
-
+.vf-cal-widget .calendly-inline-widget,
 .vf-cal-widget .calendly-inline-widget iframe {
-  width: 100% !important;
-  min-width: 100% !important;
-  border: none !important;
+  width:100% !important; min-width:100% !important; border:none !important;
 }
       `;
-      document.head.appendChild(styleEl);
+      document.head.appendChild(s);
     }
 
-    // ---------------------------
-    //  HTML STRUCTURE
-    // ---------------------------
-    const container = document.createElement('div');
-    container.className = 'vf-calendly-wrap';
-    container.style.setProperty('--vf-cal-brand', brandColor);
-    container.style.height = `${height}px`;
+    // ── BUILD DOM ──
+    const root = document.createElement('div');
+    root.className = 'vf-cal-root';
+    root.style.setProperty('--brand', brandColor);
+    root.style.height = height + 'px';
 
     // Loader
-    container.innerHTML = `
-      <div class="vf-cal-loader">
-        <div class="vf-cal-icon">
-          <div class="vf-cal-icon-clip"></div>
-          <div class="vf-cal-icon-clip"></div>
-          <div class="vf-cal-icon-body">
-            <div class="vf-cal-icon-header"></div>
-            <div class="vf-cal-icon-dots">
-              <div class="vf-cal-icon-dot"></div>
-              <div class="vf-cal-icon-dot"></div>
-              <div class="vf-cal-icon-dot"></div>
-              <div class="vf-cal-icon-dot"></div>
-              <div class="vf-cal-icon-dot"></div>
-              <div class="vf-cal-icon-dot"></div>
-            </div>
+    const loader = document.createElement('div');
+    loader.className = 'vf-cal-loader';
+    loader.innerHTML = `
+      <div class="vf-cal-ico">
+        <div class="vf-cal-ico-clip"></div>
+        <div class="vf-cal-ico-clip"></div>
+        <div class="vf-cal-ico-body">
+          <div class="vf-cal-ico-hd"></div>
+          <div class="vf-cal-ico-grid">
+            <div class="vf-cal-ico-dot"></div><div class="vf-cal-ico-dot"></div><div class="vf-cal-ico-dot"></div>
+            <div class="vf-cal-ico-dot"></div><div class="vf-cal-ico-dot"></div><div class="vf-cal-ico-dot"></div>
           </div>
         </div>
-        <span class="vf-cal-loader-text">${loaderText}</span>
-        <div class="vf-cal-progress-wrap">
-          <div class="vf-cal-progress-bar"></div>
-        </div>
       </div>
+      <span class="vf-cal-txt">${loaderText}</span>
+      <div class="vf-cal-bar-wrap"><div class="vf-cal-bar"></div></div>
     `;
+    root.appendChild(loader);
 
-    // Widget container
-    const widgetEl = document.createElement('div');
-    widgetEl.className = 'vf-cal-widget';
-    widgetEl.style.height = `${height}px`;
-    container.appendChild(widgetEl);
+    // Widget (vide pour l'instant)
+    const widget = document.createElement('div');
+    widget.className = 'vf-cal-widget';
+    widget.style.height = height + 'px';
+    root.appendChild(widget);
 
-    element.appendChild(container);
+    element.appendChild(root);
 
-    // ---------------------------
-    //  REVEAL FUNCTION
-    // ---------------------------
-    const revealCalendly = () => {
-      const loader = container.querySelector('.vf-cal-loader');
-      const progressBar = container.querySelector('.vf-cal-progress-bar');
+    // ── PROGRESS BAR ANIMATION (JS pour contrôle précis) ──
+    const bar = loader.querySelector('.vf-cal-bar');
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+      if (progress < 30) progress += 3;
+      else if (progress < 60) progress += 2;
+      else if (progress < 85) progress += 0.5;
+      else if (progress < 92) progress += 0.2;
+      // Plafonne à 92% — le 100% viendra quand Calendly est prêt
+      bar.style.width = Math.min(progress, 92) + '%';
+    }, 100);
 
-      // Terminer la barre à 100%
-      if (progressBar) {
-        progressBar.style.animation = 'none';
-        progressBar.style.width = '100%';
-      }
-
-      // Petit délai pour que le 100% soit visible
+    // ── REVEAL ──
+    const reveal = () => {
+      clearInterval(progressInterval);
+      bar.style.transition = 'width 0.3s ease';
+      bar.style.width = '100%';
       setTimeout(() => {
-        if (loader) loader.classList.add('hidden');
-        widgetEl.classList.add('loaded');
-        console.log('[Calendly v3] ✅ Widget révélé');
-      }, 400);
+        loader.classList.add('out');
+        console.log('[Calendly v3.1] ✅ Revealed');
+      }, 500);
     };
 
-    // ---------------------------
-    //  INIT WIDGET
-    // ---------------------------
-    const initWidget = () => {
-      if (!window.Calendly || !window.Calendly.initInlineWidget) {
-        return setTimeout(initWidget, 100);
-      }
-
-      // Préfill
-      const prefillObj = {};
-      if (prefillName)  prefillObj.name  = prefillName;
-      if (prefillEmail) prefillObj.email = prefillEmail;
-      if (prefillPhone) prefillObj.phone_number = prefillPhone;
-
-      if (customAnswers && typeof customAnswers === 'object') {
-        prefillObj.customAnswers = {};
-        Object.keys(customAnswers).forEach(key => {
-          const val = customAnswers[key];
-          if (val && String(val).trim() !== '') {
-            prefillObj.customAnswers[key] = String(val);
-          }
-        });
-      }
-
-      console.log('[Calendly v3] PREFILL :', prefillObj);
-
-      window.Calendly.initInlineWidget({
-        url: url,
-        parentElement: widgetEl,
-        prefill: prefillObj
-      });
-
-      // Détecter quand l'iframe est chargée
-      const checkIframe = setInterval(() => {
-        const iframe = widgetEl.querySelector('iframe');
-        if (iframe) {
-          clearInterval(checkIframe);
-
-          iframe.addEventListener('load', () => {
-            console.log('[Calendly v3] iframe loaded');
-            revealCalendly();
-          });
-
-          // Fallback : reveal après 6s max
-          setTimeout(() => {
-            if (!widgetEl.classList.contains('loaded')) {
-              console.log('[Calendly v3] Fallback reveal (timeout)');
-              revealCalendly();
-            }
-          }, 6000);
-        }
-      }, 150);
-    };
-
-    // ---------------------------
-    //  LOAD SCRIPTS
-    // ---------------------------
+    // ── LOAD CSS + JS CALENDLY ──
     if (!document.querySelector('link[href*="calendly.com/assets/external/widget.css"]')) {
       const link = document.createElement('link');
       link.rel = 'stylesheet';
@@ -372,70 +199,82 @@ export const CalendlyExtension = {
       document.head.appendChild(link);
     }
 
-    if (!document.querySelector('script[src*="calendly.com/assets/external/widget.js"]')) {
-      const script = document.createElement('script');
-      script.src = 'https://assets.calendly.com/assets/external/widget.js';
-      script.async = true;
-      script.onload = initWidget;
-      script.onerror = () => {
-        console.warn("[Calendly v3] Impossible de charger le script");
-        const loader = container.querySelector('.vf-cal-loader');
-        if (loader) {
+    const startCalendly = () => {
+      if (!window.Calendly || !window.Calendly.initInlineWidget) {
+        return setTimeout(startCalendly, 100);
+      }
+
+      const prefillObj = {};
+      if (prefillName) prefillObj.name = prefillName;
+      if (prefillEmail) prefillObj.email = prefillEmail;
+      if (prefillPhone) prefillObj.phone_number = prefillPhone;
+      if (customAnswers && typeof customAnswers === 'object') {
+        prefillObj.customAnswers = {};
+        Object.keys(customAnswers).forEach(k => {
+          const v = customAnswers[k];
+          if (v && String(v).trim()) prefillObj.customAnswers[k] = String(v);
+        });
+      }
+
+      window.Calendly.initInlineWidget({
+        url: url,
+        parentElement: widget,
+        prefill: prefillObj
+      });
+
+      // Detect iframe load
+      const poll = setInterval(() => {
+        const iframe = widget.querySelector('iframe');
+        if (iframe) {
+          clearInterval(poll);
+          iframe.addEventListener('load', () => reveal());
+          // Fallback
+          setTimeout(() => {
+            if (!loader.classList.contains('out')) reveal();
+          }, 8000);
+        }
+      }, 150);
+    };
+
+    // Charger le script Calendly, MAIS ne pas init immédiatement
+    // On attend un mini délai pour que le loader soit bien visible
+    const loadAndInit = () => {
+      if (!document.querySelector('script[src*="calendly.com/assets/external/widget.js"]')) {
+        const script = document.createElement('script');
+        script.src = 'https://assets.calendly.com/assets/external/widget.js';
+        script.async = true;
+        script.onload = () => startCalendly();
+        script.onerror = () => {
+          clearInterval(progressInterval);
           loader.innerHTML = `
-            <div style="color:#c62828;padding:20px;text-align:center;">
-              ❌ Impossible de charger l'agenda.<br>
-              <a href="${url}" target="_blank" style="color:#E91E63;margin-top:8px;display:inline-block;">
-                Ouvrir Calendly directement →
+            <div style="color:#c62828;padding:20px;text-align:center;font-family:Inter,sans-serif;">
+              ❌ Impossible de charger l'agenda<br>
+              <a href="${url}" target="_blank" style="color:${brandColor};margin-top:8px;display:inline-block;">
+                Ouvrir Calendly →
               </a>
             </div>`;
-        }
-      };
-      document.head.appendChild(script);
-    } else {
-      initWidget();
-    }
-
-    // ---------------------------
-    //  EVENT CAPTURE
-    // ---------------------------
-    const parseEventUuid = (eventUri) => {
-      const match = eventUri?.match(/scheduled_events\/([^\/]+)/);
-      return match ? match[1] : null;
+        };
+        document.head.appendChild(script);
+      } else {
+        startCalendly();
+      }
     };
 
-    const extractImportantInfo = (details) => {
-      const result = { reason: "", phone: "", website: "" };
-      if (details.questions_and_answers) {
-        for (const qa of details.questions_and_answers) {
-          if (!qa?.question) continue;
-          const q = qa.question.toLowerCase();
-          const a = qa.answer || "";
-          if (q.includes("web") || q.includes("site")) result.website = a;
-          if (q.includes("pourquoi") || q.includes("motif") || q.includes("raison")) result.reason = a;
-          if (q.includes("téléphone") || q.includes("mobile")) result.phone = a;
-        }
-      }
-      if (details.invitee?.text_reminder_number) {
-        result.phone = details.invitee.text_reminder_number;
-      }
-      return result;
-    };
+    // Délai de 800ms pour que le loader + barre soient bien visibles
+    setTimeout(loadAndInit, 800);
 
+    // ── EVENT CAPTURE ──
     const calendlyListener = async (e) => {
       if (!e.data?.event || !e.data.event.startsWith("calendly")) return;
-
-      console.log("[Calendly v3] EVT:", e.data.event, e.data);
       const details = e.data.payload || {};
 
       if (e.data.event === "calendly.event_scheduled") {
-        console.log("[Calendly v3] ✅ RDV confirmé");
-
-        const eventUri   = details.event?.uri || details.uri;
+        console.log("[Calendly v3.1] ✅ RDV confirmé");
+        const eventUri = details.event?.uri || details.uri;
         const inviteeUri = details.invitee?.uri;
-        const eventUuid  = parseEventUuid(eventUri);
-        const importantInfo = extractImportantInfo(details);
+        const parseUuid = (uri) => uri?.match(/scheduled_events\/([^\/]+)/)?.[1] || null;
 
-        const finalPayload = {
+        const payload = {
           event: "scheduled",
           eventUri,
           inviteeUri,
@@ -445,57 +284,29 @@ export const CalendlyExtension = {
           inviteeQuestions: details.questions_and_answers || [],
           startTime: details.event?.start_time || "",
           endTime: details.event?.end_time || "",
-          reason: importantInfo.reason,
-          phone: importantInfo.phone,
-          website: importantInfo.website
         };
 
-        // API Calendly si token
-        if (calendlyToken) {
-          if (inviteeUri) {
-            try {
-              const res = await fetch(inviteeUri, {
-                headers: { Authorization: `Bearer ${calendlyToken}` }
-              });
-              if (res.ok) {
-                const data = await res.json();
-                finalPayload.inviteeEmail = data.resource.email || finalPayload.inviteeEmail;
-                finalPayload.inviteeName  = data.resource.name  || finalPayload.inviteeName;
-              }
-            } catch (err) {
-              console.error("[Calendly v3] Erreur API invité :", err);
-            }
-          }
-
-          if (eventUuid) {
-            try {
-              const resEvent = await fetch(`https://api.calendly.com/scheduled_events/${eventUuid}`, {
-                headers: { Authorization: `Bearer ${calendlyToken}` }
-              });
-              if (resEvent.ok) {
-                const data = await resEvent.json();
-                finalPayload.startTime = data.resource.start_time || finalPayload.startTime;
-                finalPayload.endTime   = data.resource.end_time   || finalPayload.endTime;
-              }
-            } catch (err) {
-              console.error("[Calendly v3] Erreur API event :", err);
-            }
-          }
+        if (calendlyToken && inviteeUri) {
+          try {
+            const r = await fetch(inviteeUri, { headers: { Authorization: `Bearer ${calendlyToken}` } });
+            if (r.ok) { const d = await r.json(); payload.inviteeEmail = d.resource.email || payload.inviteeEmail; payload.inviteeName = d.resource.name || payload.inviteeName; }
+          } catch (err) { console.error("[Calendly] API err:", err); }
         }
 
-        window.voiceflow.calendlyEventData = finalPayload;
-        window.voiceflow.chat.interact({
-          type: "complete",
-          payload: finalPayload
-        });
+        if (calendlyToken && parseUuid(eventUri)) {
+          try {
+            const r = await fetch(`https://api.calendly.com/scheduled_events/${parseUuid(eventUri)}`, { headers: { Authorization: `Bearer ${calendlyToken}` } });
+            if (r.ok) { const d = await r.json(); payload.startTime = d.resource.start_time || payload.startTime; payload.endTime = d.resource.end_time || payload.endTime; }
+          } catch (err) { console.error("[Calendly] API err:", err); }
+        }
+
+        window.voiceflow.calendlyEventData = payload;
+        window.voiceflow.chat.interact({ type: "complete", payload });
       }
     };
 
     window.addEventListener("message", calendlyListener);
-
-    return () => {
-      window.removeEventListener("message", calendlyListener);
-    };
+    return () => window.removeEventListener("message", calendlyListener);
   }
 };
 

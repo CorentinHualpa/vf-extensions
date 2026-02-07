@@ -1,6 +1,7 @@
 /**
- *  Calendly – Voiceflow Extension v3.2
- *  DEBUG VERSION — Logs extensifs + loader simplifié
+ *  Calendly – Voiceflow Extension v3.3
+ *  Style inline dans le container (comme LoaderExtension)
+ *  Loader visible → swap vers Calendly
  */
 export const CalendlyExtension = {
   name: 'Calendly',
@@ -11,26 +12,13 @@ export const CalendlyExtension = {
       || (trace.type === 'custom_action' && trace.payload?.action === 'ext_calendly');
   },
   render: ({ trace, element }) => {
-    console.log('[CAL-DEBUG] ====== RENDER START ======');
-    console.log('[CAL-DEBUG] element:', element);
-    console.log('[CAL-DEBUG] element.tagName:', element?.tagName);
-    console.log('[CAL-DEBUG] element.className:', element?.className);
-    console.log('[CAL-DEBUG] element.parentElement:', element?.parentElement);
-    console.log('[CAL-DEBUG] element.parentElement.className:', element?.parentElement?.className);
-    console.log('[CAL-DEBUG] element computed style:', element ? window.getComputedStyle(element).display : 'N/A');
-    console.log('[CAL-DEBUG] element offsetWidth:', element?.offsetWidth);
-    console.log('[CAL-DEBUG] element offsetHeight:', element?.offsetHeight);
-    console.log('[CAL-DEBUG] trace.type:', trace.type);
-    console.log('[CAL-DEBUG] trace.payload:', JSON.stringify(trace.payload));
+    console.log('[CAL] render start');
 
     let config = trace.payload || {};
     if (config.body) {
       try {
         config = typeof config.body === 'string' ? JSON.parse(config.body) : config.body;
-        console.log('[CAL-DEBUG] Parsed body config:', JSON.stringify(config));
-      } catch (e) {
-        console.error('[CAL-DEBUG] Parse error:', e);
-      }
+      } catch (e) { console.error('[CAL] parse error:', e); }
     }
 
     const {
@@ -45,228 +33,226 @@ export const CalendlyExtension = {
       brandColor = '#E91E63'
     } = config;
 
-    console.log('[CAL-DEBUG] url:', url);
-    console.log('[CAL-DEBUG] height:', height);
-
     if (!url) {
-      element.innerHTML = '<div style="padding:20px;color:red;">❌ URL manquante</div>';
+      element.innerHTML = '<div style="padding:20px;color:red;">❌ URL Calendly manquante</div>';
       return;
     }
 
-    // ── STYLES ──
-    const styleId = 'vf-cal-v32';
-    if (!document.getElementById(styleId)) {
-      const s = document.createElement('style');
-      s.id = styleId;
-      s.textContent = `
-/* Pleine largeur */
-.vfrc-message--extension-Calendly,
-.vfrc-message--extension-Calendly .vfrc-bubble,
-.vfrc-message--extension-Calendly .vfrc-bubble-content,
-.vfrc-message--extension-Calendly .vfrc-message-content,
-.vfrc-message.vfrc-message--extension-Calendly {
-  width: 100% !important; max-width: 100% !important;
-  margin: 0 !important; padding: 0 !important;
-}
+    // ── CONTAINER UNIQUE ──
+    const container = document.createElement('div');
+    container.classList.add('cal-ext-root');
 
-/* Container racine */
-.vf-cal-root {
-  width: 100%;
-  position: relative;
-  border-radius: 16px;
-  overflow: hidden;
-  background: #fff;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-  border: 1px solid rgba(0,0,0,0.06);
+    // ── STYLE INLINE (dans le container, pas dans <head>) ──
+    const styleEl = document.createElement('style');
+    styleEl.textContent = `
+.cal-ext-root {
+  width: 100% !important;
+  max-width: 100% !important;
+  position: relative !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  background: #ffffff !important;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08) !important;
+  border: 1px solid rgba(0,0,0,0.06) !important;
+  height: ${height}px !important;
+  box-sizing: border-box !important;
 }
 
 /* ═══ LOADER ═══ */
-.vf-cal-loader-screen {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 20px;
-  background: #ffffff;
-  transition: opacity 0.5s ease, max-height 0.5s ease;
-  overflow: hidden;
+.cal-ext-loader {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 100 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 20px !important;
+  background: #ffffff !important;
+  transition: opacity 0.6s ease !important;
 }
-.vf-cal-loader-screen.hiding {
-  opacity: 0;
-  max-height: 0 !important;
-  padding: 0 !important;
-}
-
-/* Icone calendrier */
-.vf-cal-anim {
-  width: 56px; height: 56px; position: relative;
-}
-.vf-cal-anim-clip {
-  width: 4px; height: 10px; background: #bbb;
-  border-radius: 2px; position: absolute; top: 0;
-}
-.vf-cal-anim-clip.left { left: 14px; }
-.vf-cal-anim-clip.right { right: 14px; }
-.vf-cal-anim-body {
-  width: 56px; height: 50px; position: absolute; bottom: 0;
-  background: #f8f9fa; border: 2px solid #e0e0e0;
-  border-radius: 10px; overflow: hidden;
-}
-.vf-cal-anim-hd {
-  height: 15px; background: var(--vf-brand, #E91E63);
-}
-.vf-cal-anim-dots {
-  display: grid; grid-template-columns: repeat(3,1fr);
-  gap: 5px; padding: 8px 10px 0;
-}
-.vf-cal-anim-dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: #d5d5d5;
-  animation: vfDotBounce 1.4s ease-in-out infinite;
-}
-.vf-cal-anim-dot:nth-child(1) { animation-delay: 0s; }
-.vf-cal-anim-dot:nth-child(2) { animation-delay: 0.15s; }
-.vf-cal-anim-dot:nth-child(3) { animation-delay: 0.3s; }
-.vf-cal-anim-dot:nth-child(4) { animation-delay: 0.1s; }
-.vf-cal-anim-dot:nth-child(5) { animation-delay: 0.25s; }
-.vf-cal-anim-dot:nth-child(6) { animation-delay: 0.4s; }
-@keyframes vfDotBounce {
-  0%,100% { background: #d5d5d5; transform: scale(1); }
-  50% { background: var(--vf-brand, #E91E63); transform: scale(1.35); }
+.cal-ext-loader.fade-out {
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
-.vf-cal-loader-txt {
-  font-family: 'Inter', -apple-system, sans-serif;
-  font-size: 14px; font-weight: 500; color: #757575;
+/* Icône calendrier animée */
+.cal-ext-icon {
+  width: 56px !important;
+  height: 56px !important;
+  position: relative !important;
+  display: block !important;
+}
+.cal-ext-clip {
+  width: 4px !important;
+  height: 10px !important;
+  background: #bbb !important;
+  border-radius: 2px !important;
+  position: absolute !important;
+  top: 0 !important;
+  display: block !important;
+}
+.cal-ext-clip-l { left: 14px !important; }
+.cal-ext-clip-r { right: 14px !important; }
+.cal-ext-body {
+  width: 56px !important;
+  height: 50px !important;
+  position: absolute !important;
+  bottom: 0 !important;
+  background: #f8f9fa !important;
+  border: 2px solid #e0e0e0 !important;
+  border-radius: 10px !important;
+  overflow: hidden !important;
+  display: block !important;
+}
+.cal-ext-hd {
+  height: 15px !important;
+  background: ${brandColor} !important;
+  display: block !important;
+  width: 100% !important;
+}
+.cal-ext-dots {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 5px !important;
+  padding: 8px 10px 0 !important;
+}
+.cal-ext-dot {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+  background: #d5d5d5 !important;
+  display: block !important;
+  animation: calDotPop 1.4s ease-in-out infinite !important;
+}
+.cal-ext-dot:nth-child(1) { animation-delay: 0s !important; }
+.cal-ext-dot:nth-child(2) { animation-delay: 0.15s !important; }
+.cal-ext-dot:nth-child(3) { animation-delay: 0.3s !important; }
+.cal-ext-dot:nth-child(4) { animation-delay: 0.1s !important; }
+.cal-ext-dot:nth-child(5) { animation-delay: 0.25s !important; }
+.cal-ext-dot:nth-child(6) { animation-delay: 0.4s !important; }
+@keyframes calDotPop {
+  0%, 100% { background: #d5d5d5; transform: scale(1); }
+  50% { background: ${brandColor}; transform: scale(1.4); }
 }
 
-/* Progress bar */
-.vf-cal-pbar-bg {
-  width: 200px; height: 4px; background: #eee;
-  border-radius: 4px; overflow: hidden;
-}
-.vf-cal-pbar {
-  height: 100%; width: 0%; border-radius: 4px;
-  background: linear-gradient(90deg, var(--vf-brand, #E91E63), #ff6090);
-  transition: width 0.15s linear;
+/* Texte */
+.cal-ext-txt {
+  font-family: 'Inter', -apple-system, sans-serif !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  color: #757575 !important;
+  display: block !important;
+  text-align: center !important;
 }
 
-/* ═══ WIDGET ═══ */
-.vf-cal-widget-area {
-  width: 100%; display: none;
+/* Barre de progression */
+.cal-ext-bar-bg {
+  width: 200px !important;
+  height: 4px !important;
+  background: #eee !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  display: block !important;
 }
-.vf-cal-widget-area.visible {
-  display: block;
+.cal-ext-bar {
+  height: 100% !important;
+  width: 0% !important;
+  border-radius: 4px !important;
+  background: linear-gradient(90deg, ${brandColor}, #ff6090) !important;
+  transition: width 0.15s linear !important;
+  display: block !important;
 }
-.vf-cal-widget-area .calendly-inline-widget,
-.vf-cal-widget-area .calendly-inline-widget iframe {
-  width: 100% !important; min-width: 100% !important; border: none !important;
-}
-      `;
-      document.head.appendChild(s);
-      console.log('[CAL-DEBUG] Styles injected');
-    }
 
-    // ── DOM ──
-    const root = document.createElement('div');
-    root.className = 'vf-cal-root';
-    root.style.setProperty('--vf-brand', brandColor);
+/* ═══ WIDGET CALENDLY ═══ */
+.cal-ext-widget {
+  width: 100% !important;
+  height: 100% !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  z-index: 10 !important;
+}
+.cal-ext-widget .calendly-inline-widget {
+  width: 100% !important;
+  min-width: 100% !important;
+  height: 100% !important;
+}
+.cal-ext-widget .calendly-inline-widget iframe {
+  width: 100% !important;
+  min-width: 100% !important;
+  border: none !important;
+}
+    `;
+    container.appendChild(styleEl);
 
-    // Loader (PAS en position absolute — en flow normal)
-    const loaderScreen = document.createElement('div');
-    loaderScreen.className = 'vf-cal-loader-screen';
-    loaderScreen.style.height = height + 'px';
-    loaderScreen.innerHTML = `
-      <div class="vf-cal-anim">
-        <div class="vf-cal-anim-clip left"></div>
-        <div class="vf-cal-anim-clip right"></div>
-        <div class="vf-cal-anim-body">
-          <div class="vf-cal-anim-hd"></div>
-          <div class="vf-cal-anim-dots">
-            <div class="vf-cal-anim-dot"></div><div class="vf-cal-anim-dot"></div><div class="vf-cal-anim-dot"></div>
-            <div class="vf-cal-anim-dot"></div><div class="vf-cal-anim-dot"></div><div class="vf-cal-anim-dot"></div>
+    // ── LOADER HTML ──
+    const loader = document.createElement('div');
+    loader.className = 'cal-ext-loader';
+    loader.innerHTML = `
+      <div class="cal-ext-icon">
+        <div class="cal-ext-clip cal-ext-clip-l"></div>
+        <div class="cal-ext-clip cal-ext-clip-r"></div>
+        <div class="cal-ext-body">
+          <div class="cal-ext-hd"></div>
+          <div class="cal-ext-dots">
+            <div class="cal-ext-dot"></div><div class="cal-ext-dot"></div><div class="cal-ext-dot"></div>
+            <div class="cal-ext-dot"></div><div class="cal-ext-dot"></div><div class="cal-ext-dot"></div>
           </div>
         </div>
       </div>
-      <span class="vf-cal-loader-txt">${loaderText}</span>
-      <div class="vf-cal-pbar-bg"><div class="vf-cal-pbar"></div></div>
+      <span class="cal-ext-txt">${loaderText}</span>
+      <div class="cal-ext-bar-bg"><div class="cal-ext-bar"></div></div>
     `;
-    root.appendChild(loaderScreen);
+    container.appendChild(loader);
 
-    // Widget (hidden initially)
-    const widgetArea = document.createElement('div');
-    widgetArea.className = 'vf-cal-widget-area';
-    widgetArea.style.height = height + 'px';
-    root.appendChild(widgetArea);
+    // ── WIDGET (derrière le loader, z-index inférieur) ──
+    const widget = document.createElement('div');
+    widget.className = 'cal-ext-widget';
+    container.appendChild(widget);
 
-    element.appendChild(root);
+    // ── INJECT ──
+    element.appendChild(container);
 
-    console.log('[CAL-DEBUG] DOM built. root:', root);
-    console.log('[CAL-DEBUG] root.offsetWidth:', root.offsetWidth);
-    console.log('[CAL-DEBUG] root.offsetHeight:', root.offsetHeight);
-    console.log('[CAL-DEBUG] loaderScreen.offsetWidth:', loaderScreen.offsetWidth);
-    console.log('[CAL-DEBUG] loaderScreen.offsetHeight:', loaderScreen.offsetHeight);
+    console.log('[CAL] DOM injected, container:', container.offsetWidth, 'x', container.offsetHeight);
+    console.log('[CAL] loader:', loader.offsetWidth, 'x', loader.offsetHeight);
 
-    // Vérifier après un tick que le loader est visible
-    requestAnimationFrame(() => {
-      console.log('[CAL-DEBUG] [RAF] root.offsetWidth:', root.offsetWidth);
-      console.log('[CAL-DEBUG] [RAF] root.offsetHeight:', root.offsetHeight);
-      console.log('[CAL-DEBUG] [RAF] loaderScreen.offsetWidth:', loaderScreen.offsetWidth);
-      console.log('[CAL-DEBUG] [RAF] loaderScreen.offsetHeight:', loaderScreen.offsetHeight);
-      console.log('[CAL-DEBUG] [RAF] loaderScreen computed display:', window.getComputedStyle(loaderScreen).display);
-      console.log('[CAL-DEBUG] [RAF] loaderScreen computed visibility:', window.getComputedStyle(loaderScreen).visibility);
-      console.log('[CAL-DEBUG] [RAF] loaderScreen computed opacity:', window.getComputedStyle(loaderScreen).opacity);
-      console.log('[CAL-DEBUG] [RAF] root parent chain:');
-      let el = root;
-      for (let i = 0; i < 8 && el; i++) {
-        const cs = window.getComputedStyle(el);
-        console.log(`[CAL-DEBUG]   [${i}] ${el.tagName}.${el.className} | display:${cs.display} | width:${cs.width} | height:${cs.height} | overflow:${cs.overflow} | visibility:${cs.visibility} | opacity:${cs.opacity}`);
-        el = el.parentElement;
-      }
-    });
-
-    // ── PROGRESS BAR (JS) ──
-    const bar = loaderScreen.querySelector('.vf-cal-pbar');
+    // ── PROGRESS BAR ──
+    const bar = loader.querySelector('.cal-ext-bar');
     let pct = 0;
     const pInterval = setInterval(() => {
       if (pct < 25) pct += 2.5;
       else if (pct < 50) pct += 1.5;
       else if (pct < 75) pct += 0.8;
       else if (pct < 90) pct += 0.3;
-      bar.style.width = Math.min(pct, 92) + '%';
+      if (bar) bar.style.width = Math.min(pct, 92) + '%';
     }, 100);
-
-    console.log('[CAL-DEBUG] Progress bar started');
 
     // ── REVEAL ──
     const reveal = () => {
-      console.log('[CAL-DEBUG] === REVEAL called ===');
+      console.log('[CAL] REVEAL');
       clearInterval(pInterval);
-      bar.style.width = '100%';
+      if (bar) bar.style.width = '100%';
       setTimeout(() => {
-        loaderScreen.classList.add('hiding');
-        widgetArea.classList.add('visible');
-        console.log('[CAL-DEBUG] Loader hidden, widget visible');
+        loader.classList.add('fade-out');
+        console.log('[CAL] Loader faded out');
       }, 500);
     };
 
-    // ── LOAD CALENDLY ──
+    // ── LOAD + INIT CALENDLY ──
+    // CSS Calendly
     if (!document.querySelector('link[href*="calendly.com/assets/external/widget.css"]')) {
       const link = document.createElement('link');
       link.rel = 'stylesheet';
       link.href = 'https://assets.calendly.com/assets/external/widget.css';
       document.head.appendChild(link);
-      console.log('[CAL-DEBUG] Calendly CSS added');
     }
 
     const startCalendly = () => {
-      console.log('[CAL-DEBUG] startCalendly called');
-      console.log('[CAL-DEBUG] window.Calendly exists:', !!window.Calendly);
-      console.log('[CAL-DEBUG] initInlineWidget exists:', !!window.Calendly?.initInlineWidget);
-
       if (!window.Calendly || !window.Calendly.initInlineWidget) {
-        console.log('[CAL-DEBUG] Calendly not ready, retrying in 200ms...');
         return setTimeout(startCalendly, 200);
       }
 
@@ -282,34 +268,27 @@ export const CalendlyExtension = {
         });
       }
 
-      console.log('[CAL-DEBUG] Calling initInlineWidget with url:', url);
-      console.log('[CAL-DEBUG] widgetArea dimensions:', widgetArea.offsetWidth, 'x', widgetArea.offsetHeight);
-
+      console.log('[CAL] initInlineWidget...');
       window.Calendly.initInlineWidget({
         url: url,
-        parentElement: widgetArea,
+        parentElement: widget,
         prefill: prefillObj
       });
 
-      console.log('[CAL-DEBUG] initInlineWidget called, polling for iframe...');
-
+      // Detect iframe load
       const poll = setInterval(() => {
-        const iframe = widgetArea.querySelector('iframe');
-        console.log('[CAL-DEBUG] Polling... iframe found:', !!iframe);
+        const iframe = widget.querySelector('iframe');
         if (iframe) {
           clearInterval(poll);
-          console.log('[CAL-DEBUG] iframe found! src:', iframe.src);
-          console.log('[CAL-DEBUG] iframe dimensions:', iframe.offsetWidth, 'x', iframe.offsetHeight);
-
+          console.log('[CAL] iframe found');
           iframe.addEventListener('load', () => {
-            console.log('[CAL-DEBUG] iframe LOAD event fired!');
+            console.log('[CAL] iframe loaded');
             reveal();
           });
-
-          // Fallback
+          // Fallback 8s
           setTimeout(() => {
-            if (!loaderScreen.classList.contains('hiding')) {
-              console.log('[CAL-DEBUG] FALLBACK reveal (8s timeout)');
+            if (!loader.classList.contains('fade-out')) {
+              console.log('[CAL] fallback reveal');
               reveal();
             }
           }, 8000);
@@ -317,37 +296,37 @@ export const CalendlyExtension = {
       }, 200);
     };
 
-    // Délai pour que le loader soit bien visible
-    console.log('[CAL-DEBUG] Scheduling Calendly load in 1000ms...');
+    // Délai 800ms pour voir le loader
     setTimeout(() => {
-      console.log('[CAL-DEBUG] Loading Calendly script now...');
+      console.log('[CAL] Loading script...');
       if (!document.querySelector('script[src*="calendly.com/assets/external/widget.js"]')) {
         const script = document.createElement('script');
         script.src = 'https://assets.calendly.com/assets/external/widget.js';
         script.async = true;
         script.onload = () => {
-          console.log('[CAL-DEBUG] Calendly script LOADED');
+          console.log('[CAL] Script loaded');
           startCalendly();
         };
-        script.onerror = (err) => {
-          console.error('[CAL-DEBUG] Calendly script FAILED to load:', err);
+        script.onerror = () => {
           clearInterval(pInterval);
-          loaderScreen.innerHTML = '<div style="color:red;padding:20px;text-align:center;">❌ Erreur chargement</div>';
+          loader.innerHTML = `<div style="color:#c62828;padding:20px;text-align:center;font-family:Inter,sans-serif;">
+            ❌ Impossible de charger l'agenda<br>
+            <a href="${url}" target="_blank" style="color:${brandColor};margin-top:8px;display:inline-block;">Ouvrir Calendly →</a>
+          </div>`;
         };
         document.head.appendChild(script);
       } else {
-        console.log('[CAL-DEBUG] Calendly script already in DOM');
         startCalendly();
       }
-    }, 1000);
+    }, 800);
 
     // ── EVENT CAPTURE ──
     const calendlyListener = async (e) => {
       if (!e.data?.event || !e.data.event.startsWith("calendly")) return;
-      console.log("[CAL-DEBUG] Calendly event:", e.data.event);
       const details = e.data.payload || {};
 
       if (e.data.event === "calendly.event_scheduled") {
+        console.log("[CAL] ✅ RDV confirmé");
         const eventUri = details.event?.uri || details.uri;
         const inviteeUri = details.invitee?.uri;
         const parseUuid = (uri) => uri?.match(/scheduled_events\/([^\/]+)/)?.[1] || null;

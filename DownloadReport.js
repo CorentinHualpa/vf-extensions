@@ -1488,7 +1488,7 @@ const generatePDF = async () => {
             }
             
             // Sauvegarder la position de départ
-            const boxStartY = yPosition;
+            let boxStartY = yPosition;
             const originalYPosition = yPosition;
             
             // Ajouter un peu d'espace avant l'encadré

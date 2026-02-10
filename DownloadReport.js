@@ -1,6 +1,6 @@
 /**
  *  ╔═══════════════════════════════════════════════════════════╗
- *  ║  DownloadReport – ChatInnov Edition Multilingue           ║
+ *  ║  DownloadReport – v2.1 – Icônes SVG + Accent Color       ║
  *  ║                                                           ║
  *  ║  • Support JSON et TEXT                                   ║
  *  ║  • Téléchargement : HTML / PDF / Markdown / DOCX         ║
@@ -8,6 +8,7 @@
  *  ║  • Support FR/EN                                         ║
  *  ║  • Sauts de page sur <hr> pour tous les formats         ║
  *  ║  • Gestion améliorée des emojis dans PDF                ║
+ *  ║  • Icônes SVG + accentColor configurable                ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 
@@ -24,12 +25,12 @@ export const DownloadReport = {
         fr: {
           copy: {
             buttonTitle: 'Copier texte',
-            formatOption: 'Formaté',
+            formatOption: 'Texte formaté',
             formatTooltip: 'Copier le texte formaté (sans HTML)',
-            rawOption: 'Brut',
+            rawOption: 'Code HTML',
             rawTooltip: 'Copier le code HTML brut',
-            toastFormatted: 'Texte formaté copié',
-            toastRaw: 'HTML brut copié',
+            toastFormatted: 'Texte formaté copié ✓',
+            toastRaw: 'HTML brut copié ✓',
             toastError: 'Erreur lors de la copie'
           },
           download: {
@@ -50,12 +51,12 @@ export const DownloadReport = {
         en: {
           copy: {
             buttonTitle: 'Copy text',
-            formatOption: 'Formatted',
+            formatOption: 'Formatted text',
             formatTooltip: 'Copy formatted text (without HTML)',
-            rawOption: 'Raw',
+            rawOption: 'HTML code',
             rawTooltip: 'Copy raw HTML code',
-            toastFormatted: 'Formatted text copied',
-            toastRaw: 'Raw HTML copied',
+            toastFormatted: 'Formatted text copied ✓',
+            toastRaw: 'Raw HTML copied ✓',
             toastError: 'Copy error'
           },
           download: {
@@ -83,13 +84,12 @@ export const DownloadReport = {
         url_logo: 'https://i.imgur.com/qWcV9Z9.png',
         presentation_text: "L'IA GENERATIVE AU SERVICE DE L'INTELLIGENCE DES MARCHÉS ET DE L'INNOVATION À IMPACT",
         accentColor: '#666666',
-        downloadIconText: '📥',
-        copyIconText: '📋',
-        copiedIcon: '✅',
         formats: ['html', 'pdf', 'md', 'docx'],
         showCopyButton: true,
         showDownloadButton: true,
-        langue: 'fr'
+        langue: 'fr',
+        // Style des boutons
+        iconStyle: 'pill'  // 'pill' (défaut) | 'minimal' | 'rounded'
       };
 
       // Parser le payload
@@ -99,27 +99,26 @@ export const DownloadReport = {
         try {
           let cleanPayload = trace.payload.trim();
           
-          // Si c'est du JSON (commence par {)
           if (cleanPayload.startsWith('{')) {
             try {
               const parsed = JSON.parse(cleanPayload);
               config = { ...defaultConfig, ...parsed };
             } catch (e) {
               console.log('Tentative de nettoyage du JSON...');
-              
-              // Parsing manuel en cas d'échec
               const marketTitleMatch = cleanPayload.match(/"marketTitle"\s*:\s*"([^"]+)"/);
               const fileNameMatch = cleanPayload.match(/"fileName"\s*:\s*"([^"]+)"/);
               const urlLogoMatch = cleanPayload.match(/"url_logo"\s*:\s*"([^"]+)"/);
               const presentationMatch = cleanPayload.match(/"presentation_text"\s*:\s*"([^"]+)"/);
               const contentMatch = cleanPayload.match(/"content"\s*:\s*"([\s\S]*?)"\s*,\s*"[^"]+"\s*:/);
               const langueMatch = cleanPayload.match(/"langue"\s*:\s*"([^"]+)"/);
+              const accentMatch = cleanPayload.match(/"accentColor"\s*:\s*"([^"]+)"/);
               
               if (marketTitleMatch) config.marketTitle = marketTitleMatch[1];
               if (fileNameMatch) config.fileName = fileNameMatch[1];
               if (urlLogoMatch) config.url_logo = urlLogoMatch[1];
               if (presentationMatch) config.presentation_text = presentationMatch[1];
               if (langueMatch) config.langue = langueMatch[1];
+              if (accentMatch) config.accentColor = accentMatch[1];
               if (contentMatch) {
                 config.content = contentMatch[1]
                   .replace(/\\n/g, '\n')
@@ -128,39 +127,24 @@ export const DownloadReport = {
               }
             }
           } else {
-            // MODE TEXT avec options
             const parts = cleanPayload.split('###OPTIONS###');
-            
-            // Le contenu est la première partie
             config.content = parts[0].trim();
-            
-            // IMPORTANT : S'assurer que la partie OPTIONS n'apparaît pas dans le contenu
             if (config.content.includes('###OPTIONS###')) {
               config.content = config.content.split('###OPTIONS###')[0].trim();
             }
-            
-            // Parser les options si présentes
             if (parts[1]) {
               const optionsText = parts[1].trim();
               const lines = optionsText.split('\n');
-              
               lines.forEach(line => {
                 const trimmedLine = line.trim();
                 if (trimmedLine && trimmedLine.includes('=')) {
                   const [key, ...valueParts] = trimmedLine.split('=');
                   const value = valueParts.join('=').trim();
                   const cleanKey = key.trim();
-                  
-                  // Conversion des types
-                  if (value === 'true') {
-                    config[cleanKey] = true;
-                  } else if (value === 'false') {
-                    config[cleanKey] = false;
-                  } else if (cleanKey === 'formats' && value.includes(',')) {
-                    config[cleanKey] = value.split(',').map(f => f.trim());
-                  } else {
-                    config[cleanKey] = value;
-                  }
+                  if (value === 'true') config[cleanKey] = true;
+                  else if (value === 'false') config[cleanKey] = false;
+                  else if (cleanKey === 'formats' && value.includes(',')) config[cleanKey] = value.split(',').map(f => f.trim());
+                  else config[cleanKey] = value;
                 }
               });
             }
@@ -173,222 +157,73 @@ export const DownloadReport = {
         config = { ...defaultConfig, ...trace.payload };
       }
 
+      // ─── Utilitaire couleur ───
+      const hexToRgb = (hex) => {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+          r: parseInt(result[1], 16),
+          g: parseInt(result[2], 16),
+          b: parseInt(result[3], 16)
+        } : { r: 102, g: 102, b: 102 };
+      };
+
+      const accent = config.accentColor || '#666666';
+      const accentRgb = hexToRgb(accent);
+
+      // ─── Icônes SVG (16×16, stroke = currentColor) ───
+      const SVG_COPY = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
+      const SVG_CHECK = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+      const SVG_DOWNLOAD = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
+      const SVG_SPINNER = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg>`;
+
+      // Icônes pour les formats de menu
+      const SVG_FORMAT_TEXT = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>`;
+      const SVG_FORMAT_CODE = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>`;
+      const SVG_HTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>`;
+      const SVG_PDF = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`;
+      const SVG_MD = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3h16a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M7 15V9l3 3 3-3v6"/><path d="M17 9v6l-2-2"/></svg>`;
+      const SVG_DOCX = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>`;
+
+      const formatSvgIcons = { html: SVG_HTML, pdf: SVG_PDF, md: SVG_MD, docx: SVG_DOCX };
+      const formatLabels = { html: 'HTML', pdf: 'PDF', md: 'Markdown', docx: 'Word' };
+
       // Fonction pour nettoyer les caractères mal encodés
       const cleanContent = (text) => {
         return text
-          // Remplacer les caractères mal encodés
-          .replace(/ðŸ"·/g, '🔷')
-          .replace(/ðŸ"¹/g, '🔹')
-          .replace(/â€™/g, "'")
-          .replace(/â€"/g, "–")
-          .replace(/â€œ/g, '"')
-          .replace(/â€/g, '"')
-          .replace(/â€¦/g, '...')
-          .replace(/â€¢/g, '•')
-          .replace(/â€"/g, '—')
-          .replace(/Ã©/g, 'é')
-          .replace(/Ã¨/g, 'è')
-          .replace(/Ã /g, 'à')
-          .replace(/Ã§/g, 'ç')
-          .replace(/Ã¢/g, 'â')
-          .replace(/Ãª/g, 'ê')
-          .replace(/Ã®/g, 'î')
-          .replace(/Ã´/g, 'ô')
-          .replace(/Ã»/g, 'û')
-          .replace(/Ã‰/g, 'É')
-          .replace(/Ãˆ/g, 'È')
-          .replace(/Ã€/g, 'À')
-          .replace(/Ã‡/g, 'Ç')
-          .replace(/Ã‚/g, 'Â')
-          .replace(/ÃŠ/g, 'Ê')
-          .replace(/ÃŽ/g, 'Î')
-          .replace(/Ã"/g, 'Ô')
-          .replace(/Ã›/g, 'Û');
+          .replace(/ðŸ"·/g, '🔷').replace(/ðŸ"¹/g, '🔹')
+          .replace(/â€™/g, "'").replace(/â€"/g, "–").replace(/â€œ/g, '"')
+          .replace(/â€/g, '"').replace(/â€¦/g, '...').replace(/â€¢/g, '•').replace(/â€"/g, '—')
+          .replace(/Ã©/g, 'é').replace(/Ã¨/g, 'è').replace(/Ã /g, 'à').replace(/Ã§/g, 'ç')
+          .replace(/Ã¢/g, 'â').replace(/Ãª/g, 'ê').replace(/Ã®/g, 'î').replace(/Ã´/g, 'ô')
+          .replace(/Ã»/g, 'û').replace(/Ã‰/g, 'É').replace(/Ãˆ/g, 'È').replace(/Ã€/g, 'À')
+          .replace(/Ã‡/g, 'Ç').replace(/Ã‚/g, 'Â').replace(/ÃŠ/g, 'Ê').replace(/ÃŽ/g, 'Î')
+          .replace(/Ã"/g, 'Ô').replace(/Ã›/g, 'Û');
       };
 
-      // Nettoyer le contenu
       config.content = cleanContent(config.content);
 
-      // Vérifier si on a du contenu
       if (!config.content || config.content.trim() === '') {
         console.warn('DownloadReport: Aucun contenu fourni');
         return;
       }
-
-      // Vérifier si au moins un bouton doit être affiché
       if (!config.showCopyButton && !config.showDownloadButton) {
         console.warn('DownloadReport: Aucun bouton à afficher');
         return;
       }
 
-      // Sélectionner la bonne langue
       const lang = config.langue === 'en' ? 'en' : 'fr';
       const t = translations[lang];
 
-      // Container principal pour les boutons
+      // ─── Container principal ───
       const container = document.createElement('div');
-      container.className = 'report-actions-container';
+      container.className = 'dr-actions';
       
-      // Styles minimalistes unifiés
       const styleEl = document.createElement('style');
       styleEl.textContent = `
-        /* Container principal pour les actions */
-        .report-actions-container {
-          display: inline-flex !important;
-          gap: 8px !important;
-          align-items: center !important;
-          margin: -0.75rem 0 0.5rem 0 !important;
-          justify-content: flex-end !important;
-          width: 100% !important;
-        }
-
-        /* Wrapper commun pour les boutons */
-        .action-button-wrapper {
-          position: relative !important;
-          display: inline-flex !important;
-          align-items: center !important;
-        }
-
-        /* Style commun pour tous les boutons */
-        .action-button {
-          background: transparent !important;
-          color: ${config.accentColor} !important;
-          border: 1px solid transparent !important;
-          padding: 4px 8px !important;
-          border-radius: 6px !important;
-          font-size: 16px !important;
-          cursor: pointer !important;
-          display: inline-flex !important;
-          align-items: center !important;
-          justify-content: center !important;
-          transition: all 0.2s ease !important;
-          min-width: 32px !important;
-          height: 32px !important;
-        }
-
-        .action-button:hover {
-          background: rgba(0, 0, 0, 0.05) !important;
-          border-color: rgba(0, 0, 0, 0.1) !important;
-        }
-
-        /* État copié */
-        .action-button.copied {
-          color: #4CAF50 !important;
-        }
-
-        /* Icône des boutons */
-        .action-button-icon {
-          font-size: 16px !important;
-          line-height: 1 !important;
-          opacity: 0.7 !important;
-          transition: all 0.2s ease !important;
-        }
-
-        .action-button:hover .action-button-icon {
-          opacity: 1 !important;
-        }
-
-        /* Menu déroulant commun */
-        .action-menu {
-          position: absolute !important;
-          bottom: calc(100% + 2px) !important;
-          right: 0 !important;
-          background: white !important;
-          border: 1px solid #e0e0e0 !important;
-          border-radius: 6px !important;
-          box-shadow: 0 -2px 8px rgba(0,0,0,0.1) !important;
-          padding: 2px !important;
-          z-index: 1000 !important;
-          opacity: 0 !important;
-          visibility: hidden !important;
-          transition: all 0.15s ease !important;
-          min-width: auto !important;
-        }
-
-        /* Si le menu risque de sortir en haut de l'écran, le placer en bas */
-        .action-menu.menu-below {
-          bottom: auto !important;
-          top: calc(100% + 2px) !important;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
-        }
-
-        .action-menu.show {
-          opacity: 1 !important;
-          visibility: visible !important;
-        }
-
-        /* Options du menu */
-        .action-menu-option {
-          display: flex !important;
-          align-items: center !important;
-          gap: 6px !important;
-          padding: 6px 12px !important;
-          border: none !important;
-          background: none !important;
-          color: #333 !important;
-          font-size: 12px !important;
-          cursor: pointer !important;
-          border-radius: 4px !important;
-          transition: all 0.1s ease !important;
-          width: 100% !important;
-          text-align: left !important;
-          white-space: nowrap !important;
-        }
-
-        .action-menu-option:hover {
-          background: #f0f0f0 !important;
-        }
-
-        .action-menu-option-icon {
-          opacity: 0.8 !important;
-          font-size: 14px !important;
-        }
-
-        /* Séparateur dans les menus */
-        .action-menu-option + .action-menu-option {
-          border-top: 1px solid #f0f0f0 !important;
-        }
-
-        /* État de génération */
-        .action-button.generating {
-          opacity: 0.6 !important;
-          cursor: wait !important;
-        }
-
-        .action-button.generating .action-button-icon {
-          animation: spin 1s linear infinite !important;
-        }
-
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-
-        /* Toast de notification unifié */
-        .action-toast {
-          position: fixed !important;
-          bottom: 20px !important;
-          right: 20px !important;
-          background: rgba(0,0,0,0.8) !important;
-          color: white !important;
-          padding: 8px 16px !important;
-          border-radius: 6px !important;
-          font-size: 13px !important;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.2) !important;
-          z-index: 10000 !important;
-          opacity: 0 !important;
-          transform: translateY(10px) !important;
-          transition: all 0.2s ease !important;
-          pointer-events: none !important;
-        }
-
-        .action-toast.show {
-          opacity: 1 !important;
-          transform: translateY(0) !important;
-        }
-
-        /* Masquer le background gris du message Voiceflow */
-        .vfrc-message--extension-DownloadReport {
+        /* ── Reset du message VF ── */
+        .vfrc-message--extension-DownloadReport,
+        .vfrc-message--extension-DownloadReport .vfrc-bubble,
+        .vfrc-message--extension-DownloadReport .vfrc-bubble-content {
           background: transparent !important;
           padding: 0 !important;
           margin: 0 !important;
@@ -396,53 +231,343 @@ export const DownloadReport = {
           box-shadow: none !important;
         }
 
-        /* Animation d'entrée */
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
+        /* ── Actions bar ── */
+        .dr-actions {
+          display: flex !important;
+          gap: 6px !important;
+          align-items: center !important;
+          margin: -2px 0 4px 0 !important;
+          padding: 0 !important;
         }
 
-        .action-button {
-          animation: fadeIn 0.3s ease-out !important;
+        /* ── Wrapper bouton ── */
+        .dr-btn-wrap {
+          position: relative !important;
+          display: inline-flex !important;
         }
 
-        /* Responsive */
+        /* ── Bouton principal (pill) ── */
+        .dr-btn {
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          gap: 5px !important;
+          height: 28px !important;
+          padding: 0 10px !important;
+          border-radius: 14px !important;
+          border: 1px solid rgba(${accentRgb.r}, ${accentRgb.g}, ${accentRgb.b}, 0.25) !important;
+          background: rgba(${accentRgb.r}, ${accentRgb.g}, ${accentRgb.b}, 0.06) !important;
+          color: ${accent} !important;
+          cursor: pointer !important;
+          font-size: 11px !important;
+          font-weight: 500 !important;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+          transition: all 0.15s ease !important;
+          white-space: nowrap !important;
+          line-height: 1 !important;
+        }
+
+        .dr-btn:hover {
+          background: rgba(${accentRgb.r}, ${accentRgb.g}, ${accentRgb.b}, 0.12) !important;
+          border-color: rgba(${accentRgb.r}, ${accentRgb.g}, ${accentRgb.b}, 0.4) !important;
+        }
+
+        .dr-btn:active {
+          transform: scale(0.97) !important;
+        }
+
+        .dr-btn svg {
+          flex-shrink: 0 !important;
+        }
+
+        .dr-btn-label {
+          font-size: 11px !important;
+        }
+
+        /* ── État copié ── */
+        .dr-btn.dr-copied {
+          color: #16a34a !important;
+          border-color: rgba(22, 163, 74, 0.3) !important;
+          background: rgba(22, 163, 74, 0.08) !important;
+        }
+
+        /* ── État en cours ── */
+        .dr-btn.dr-loading {
+          opacity: 0.6 !important;
+          cursor: wait !important;
+          pointer-events: none !important;
+        }
+
+        .dr-btn.dr-loading svg {
+          animation: dr-spin 0.8s linear infinite !important;
+        }
+
+        @keyframes dr-spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
+        /* ── Menu dropdown ── */
+        .dr-menu {
+          position: absolute !important;
+          bottom: calc(100% + 4px) !important;
+          left: 0 !important;
+          background: #fff !important;
+          border: 1px solid #e5e7eb !important;
+          border-radius: 8px !important;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04) !important;
+          padding: 4px !important;
+          z-index: 9999 !important;
+          min-width: 140px !important;
+          opacity: 0 !important;
+          visibility: hidden !important;
+          transform: translateY(4px) !important;
+          transition: all 0.12s ease !important;
+        }
+
+        .dr-menu.dr-menu-below {
+          bottom: auto !important;
+          top: calc(100% + 4px) !important;
+          transform: translateY(-4px) !important;
+        }
+
+        .dr-menu.dr-show {
+          opacity: 1 !important;
+          visibility: visible !important;
+          transform: translateY(0) !important;
+        }
+
+        /* ── Option de menu ── */
+        .dr-menu-opt {
+          display: flex !important;
+          align-items: center !important;
+          gap: 8px !important;
+          width: 100% !important;
+          padding: 7px 10px !important;
+          border: none !important;
+          background: none !important;
+          color: #374151 !important;
+          font-size: 12px !important;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+          cursor: pointer !important;
+          border-radius: 5px !important;
+          transition: background 0.1s ease !important;
+          text-align: left !important;
+          white-space: nowrap !important;
+          line-height: 1 !important;
+        }
+
+        .dr-menu-opt:hover {
+          background: rgba(${accentRgb.r}, ${accentRgb.g}, ${accentRgb.b}, 0.08) !important;
+          color: ${accent} !important;
+        }
+
+        .dr-menu-opt svg {
+          opacity: 0.6 !important;
+          flex-shrink: 0 !important;
+        }
+
+        .dr-menu-opt:hover svg {
+          opacity: 1 !important;
+          color: ${accent} !important;
+        }
+
+        /* ── Séparateur ── */
+        .dr-menu-opt + .dr-menu-opt {
+          border-top: 1px solid #f3f4f6 !important;
+        }
+
+        /* ── Toast ── */
+        .dr-toast {
+          position: fixed !important;
+          bottom: 20px !important;
+          right: 20px !important;
+          background: #1f2937 !important;
+          color: #fff !important;
+          padding: 8px 14px !important;
+          border-radius: 8px !important;
+          font-size: 12px !important;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+          z-index: 99999 !important;
+          opacity: 0 !important;
+          transform: translateY(8px) !important;
+          transition: all 0.2s ease !important;
+          pointer-events: none !important;
+        }
+
+        .dr-toast.dr-toast-show {
+          opacity: 1 !important;
+          transform: translateY(0) !important;
+        }
+
+        /* ── Responsive ── */
         @media (max-width: 480px) {
-          .action-button {
-            padding: 6px !important;
-            min-width: 28px !important;
-            height: 28px !important;
+          .dr-btn {
+            height: 26px !important;
+            padding: 0 8px !important;
+            font-size: 10px !important;
           }
-          
-          .action-button-icon {
-            font-size: 14px !important;
+          .dr-btn svg {
+            width: 13px !important;
+            height: 13px !important;
           }
         }
       `;
-
       container.appendChild(styleEl);
 
-      // Toast de notification partagé
-      let toast = document.querySelector('.action-toast');
+      // ─── Toast partagé ───
+      let toast = document.querySelector('.dr-toast');
       if (!toast) {
         toast = document.createElement('div');
-        toast.className = 'action-toast';
+        toast.className = 'dr-toast';
         document.body.appendChild(toast);
       }
 
-      // Fonction pour afficher le toast
       const showToast = (message) => {
         toast.textContent = message;
-        toast.classList.add('show');
-        
-        setTimeout(() => {
-          toast.classList.remove('show');
-        }, 1500);
+        toast.classList.add('dr-toast-show');
+        setTimeout(() => toast.classList.remove('dr-toast-show'), 1800);
       };
 
-      // Variables pour gérer l'état des menus
-      let copyMenuVisible = false;
-      let downloadMenuVisible = false;
+      // ─── Variables d'état des menus ───
+      let copyMenuOpen = false;
+      let dlMenuOpen = false;
+
+      const closeAllMenus = () => {
+        container.querySelectorAll('.dr-menu').forEach(m => m.classList.remove('dr-show'));
+        copyMenuOpen = false;
+        dlMenuOpen = false;
+      };
+
+      const checkMenuPosition = (menu, button) => {
+        const rect = button.getBoundingClientRect();
+        if (rect.top < 160) menu.classList.add('dr-menu-below');
+        else menu.classList.remove('dr-menu-below');
+      };
+
+      // ═══════════════════════════════
+      //  BOUTON COPIER
+      // ═══════════════════════════════
+      if (config.showCopyButton) {
+        const wrap = document.createElement('div');
+        wrap.className = 'dr-btn-wrap';
+
+        const btn = document.createElement('button');
+        btn.className = 'dr-btn';
+        btn.title = t.copy.buttonTitle;
+        btn.innerHTML = `${SVG_COPY}<span class="dr-btn-label">${lang === 'fr' ? 'Copier' : 'Copy'}</span>`;
+
+        const menu = document.createElement('div');
+        menu.className = 'dr-menu';
+
+        // Option "formaté"
+        const optFormatted = document.createElement('button');
+        optFormatted.className = 'dr-menu-opt';
+        optFormatted.title = t.copy.formatTooltip;
+        optFormatted.innerHTML = `${SVG_FORMAT_TEXT}<span>${t.copy.formatOption}</span>`;
+
+        // Option "brut"
+        const optRaw = document.createElement('button');
+        optRaw.className = 'dr-menu-opt';
+        optRaw.title = t.copy.rawTooltip;
+        optRaw.innerHTML = `${SVG_FORMAT_CODE}<span>${t.copy.rawOption}</span>`;
+
+        menu.appendChild(optFormatted);
+        menu.appendChild(optRaw);
+
+        const doCopy = async (format) => {
+          try {
+            let text = '';
+            if (format === 'formatted') {
+              const tmp = document.createElement('div');
+              tmp.innerHTML = config.content;
+              text = tmp.textContent || tmp.innerText || '';
+            } else {
+              text = config.content;
+            }
+            await navigator.clipboard.writeText(text);
+
+            btn.classList.add('dr-copied');
+            btn.innerHTML = `${SVG_CHECK}<span class="dr-btn-label">${lang === 'fr' ? 'Copié' : 'Copied'}</span>`;
+            showToast(format === 'formatted' ? t.copy.toastFormatted : t.copy.toastRaw);
+
+            setTimeout(() => {
+              btn.classList.remove('dr-copied');
+              btn.innerHTML = `${SVG_COPY}<span class="dr-btn-label">${lang === 'fr' ? 'Copier' : 'Copy'}</span>`;
+            }, 2000);
+          } catch (err) {
+            console.error('Copie échouée:', err);
+            showToast(t.copy.toastError);
+          }
+        };
+
+        btn.addEventListener('click', (e) => {
+          e.preventDefault(); e.stopPropagation();
+          if (copyMenuOpen) { closeAllMenus(); return; }
+          closeAllMenus();
+          checkMenuPosition(menu, btn);
+          menu.classList.add('dr-show');
+          copyMenuOpen = true;
+        });
+
+        optFormatted.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); closeAllMenus(); doCopy('formatted'); });
+        optRaw.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); closeAllMenus(); doCopy('raw'); });
+
+        wrap.appendChild(btn);
+        wrap.appendChild(menu);
+        container.appendChild(wrap);
+      }
+
+      // ═══════════════════════════════
+      //  BOUTON TÉLÉCHARGER
+      // ═══════════════════════════════
+      if (config.showDownloadButton) {
+        const wrap = document.createElement('div');
+        wrap.className = 'dr-btn-wrap';
+
+        const btn = document.createElement('button');
+        btn.className = 'dr-btn';
+        btn.title = t.download.buttonTitle;
+        btn.innerHTML = `${SVG_DOWNLOAD}<span class="dr-btn-label">${lang === 'fr' ? 'Télécharger' : 'Download'}</span>`;
+
+        const menu = document.createElement('div');
+        menu.className = 'dr-menu';
+
+        config.formats.forEach(fmt => {
+          const opt = document.createElement('button');
+          opt.className = 'dr-menu-opt';
+          opt.innerHTML = `${formatSvgIcons[fmt] || SVG_HTML}<span>${formatLabels[fmt] || fmt.toUpperCase()}</span>`;
+          opt.addEventListener('click', (e) => {
+            e.preventDefault(); e.stopPropagation();
+            closeAllMenus();
+            downloadReport(fmt, btn);
+          });
+          menu.appendChild(opt);
+        });
+
+        btn.addEventListener('click', (e) => {
+          e.preventDefault(); e.stopPropagation();
+          if (dlMenuOpen) { closeAllMenus(); return; }
+          closeAllMenus();
+          checkMenuPosition(menu, btn);
+          menu.classList.add('dr-show');
+          dlMenuOpen = true;
+        });
+
+        wrap.appendChild(btn);
+        wrap.appendChild(menu);
+        container.appendChild(wrap);
+      }
+
+      // Fermer les menus au clic extérieur
+      document.addEventListener('click', (e) => {
+        if (!container.contains(e.target)) closeAllMenus();
+      });
+
+      // ═══════════════════════════════════════════
+      //  FONCTIONS DE GÉNÉRATION (inchangées)
+      // ═══════════════════════════════════════════
 
       // Fonction pour charger une image en base64
       const loadImageAsBase64 = async (url) => {
@@ -456,28 +581,9 @@ export const DownloadReport = {
             reader.readAsDataURL(blob);
           });
         } catch (error) {
-          console.error('Erreur de chargement de l\'image:', error);
+          console.error('Erreur de chargement image:', error);
           return null;
         }
-      };
-
-      // Fonction pour extraire les images du HTML
-      const extractImagesFromHTML = (html) => {
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = html;
-        const images = [];
-        const imgElements = tempDiv.querySelectorAll('img');
-        
-        imgElements.forEach((img, index) => {
-          images.push({
-            src: img.src,
-            alt: img.alt || `Image ${index + 1}`,
-            width: img.width || 200,
-            height: img.height || 150
-          });
-        });
-        
-        return images;
       };
 
       // Fonction pour convertir un tableau HTML en Markdown
@@ -485,22 +591,16 @@ export const DownloadReport = {
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = tableHtml;
         const table = tempDiv.querySelector('table');
-        
         if (!table) return tableHtml;
         
         let markdown = '\n\n';
-        
         const caption = table.querySelector('caption');
-        if (caption) {
-          markdown += `**${caption.textContent.trim()}**\n\n`;
-        }
+        if (caption) markdown += `**${caption.textContent.trim()}**\n\n`;
         
         const headers = Array.from(table.querySelectorAll('thead th, tbody tr:first-child th')).map(th => th.textContent.trim());
         if (headers.length === 0) {
           const firstRow = table.querySelector('tr');
-          if (firstRow) {
-            headers.push(...Array.from(firstRow.querySelectorAll('td, th')).map(cell => cell.textContent.trim()));
-          }
+          if (firstRow) headers.push(...Array.from(firstRow.querySelectorAll('td, th')).map(cell => cell.textContent.trim()));
         }
         
         if (headers.length > 0) {
@@ -511,36 +611,22 @@ export const DownloadReport = {
         const rows = table.querySelectorAll('tbody tr');
         rows.forEach(row => {
           const cells = Array.from(row.querySelectorAll('td'));
-          if (cells.length > 0) {
-            markdown += '| ' + cells.map(cell => cell.textContent.trim()).join(' | ') + ' |\n';
-          }
+          if (cells.length > 0) markdown += '| ' + cells.map(cell => cell.textContent.trim()).join(' | ') + ' |\n';
         });
         
         const footer = table.querySelector('tfoot');
-        if (footer) {
-          markdown += `\n*${footer.textContent.trim()}*\n`;
-        }
+        if (footer) markdown += `\n*${footer.textContent.trim()}*\n`;
         
         return markdown + '\n';
       };
 
-      // Fonction pour générer le HTML avec sauts de page
+      // ─── Génération HTML ───
       const generateHTML = () => {
         const date = new Date();
-        const dateStr = date.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US', {
-          day: '2-digit',
-          month: 'long',
-          year: 'numeric'
-        });
-        const timeStr = date.toLocaleTimeString(lang === 'fr' ? 'fr-FR' : 'en-US', {
-          hour: '2-digit',
-          minute: '2-digit'
-        });
+        const dateStr = date.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US', { day: '2-digit', month: 'long', year: 'numeric' });
+        const timeStr = date.toLocaleTimeString(lang === 'fr' ? 'fr-FR' : 'en-US', { hour: '2-digit', minute: '2-digit' });
         
         let htmlContent = config.content;
-        
-        // Traiter les sauts de page pour HTML
-        // Injecter un style pour forcer le saut de page après chaque <hr>
         htmlContent = htmlContent.replace(/<hr[^>]*>/gi, '<hr style="page-break-after: always; margin: 0;">');
         
         if (!htmlContent.includes('<')) {
@@ -549,25 +635,11 @@ export const DownloadReport = {
             .map(line => {
               line = line.trim();
               if (!line) return '';
-              
-              if (line.startsWith('🔷')) {
-                return `<h2><span class="no-gradient">🔷</span> ${line.substring(2).trim()}</h2>`;
-              }
-              if (line.startsWith('🔹')) {
-                return `<h3><span class="no-gradient">🔹</span> ${line.substring(2).trim()}</h3>`;
-              }
-              
-              if (/^\d+\./.test(line) && line.length < 100) {
-                return `<h4>${line}</h4>`;
-              }
-              
-              if (line.startsWith('•') || line.startsWith('-')) {
-                return `<li>${line.substring(1).trim()}</li>`;
-              }
-              
-              line = line.replace(/([A-Za-z]+)\s*–\s*([^(]+)\s*\(([^)]+)\)/g, 
-                '<a href="$3" target="_blank">$1 – $2</a>');
-              
+              if (line.startsWith('🔷')) return `<h2><span class="no-gradient">🔷</span> ${line.substring(2).trim()}</h2>`;
+              if (line.startsWith('🔹')) return `<h3><span class="no-gradient">🔹</span> ${line.substring(2).trim()}</h3>`;
+              if (/^\d+\./.test(line) && line.length < 100) return `<h4>${line}</h4>`;
+              if (line.startsWith('•') || line.startsWith('-')) return `<li>${line.substring(1).trim()}</li>`;
+              line = line.replace(/([A-Za-z]+)\s*–\s*([^(]+)\s*\(([^)]+)\)/g, '<a href="$3" target="_blank">$1 – $2</a>');
               return `<p>${line}</p>`;
             })
             .join('\n')
@@ -575,356 +647,91 @@ export const DownloadReport = {
             .replace(/<\/li>\n(?!<li>)/g, '</li></ul>\n');
         }
         
-        // Convertir les divs avec bordures en tableaux pour Word
         htmlContent = htmlContent.replace(
           /<div style="border: 2px solid[^>]+>([\s\S]*?)<\/div>/gi,
-          function(match, content) {
-            return `
-              <table style="width: 100%; margin: 20px 0; border: none;">
-                <tr>
-                  <td style="background: #f0f4ff; padding: 20px; border: 2px solid #7c3aed; border-radius: 8px;">
-                    ${content}
-                  </td>
-                </tr>
-              </table>
-            `;
-          }
+          (match, content) => `<table style="width:100%;margin:20px 0;border:none;"><tr><td style="background:#f0f4ff;padding:20px;border:2px solid #7c3aed;border-radius:8px;">${content}</td></tr></table>`
         );
         
-        const html = `<!DOCTYPE html>
+        return `<!DOCTYPE html>
 <html lang="${lang}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="ProgId" content="Word.Document">
-  <title>${config.marketTitle} - ChatInnov</title>
+  <title>${config.marketTitle}</title>
   <style>
-    /* Base styles avec fond blanc */
-    html, body {
-      background: white;
-      background-color: white;
-      margin: 0;
-      padding: 0;
-    }
-    
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
-      line-height: 1.6;
-      color: #333;
-      margin: 20px;
-      padding: 0;
-    }
-    
-    /* Forcer le fond blanc sur les éléments de structure */
-    .page-header, .main-content, .page-footer {
-      background: white;
-    }
-    
-    .page-header {
-      margin-bottom: 30px;
-      padding-bottom: 15px;
-      border-bottom: 2px solid #7c3aed;
-    }
-    
-    .header-table {
-      width: 100%;
-      border: none;
-      background: white;
-    }
-    
-    .header-table td {
-      border: none;
-      padding: 5px;
-      vertical-align: middle;
-      background: white;
-    }
-    
-    .logo-cell {
-      width: 120px;
-      text-align: left;
-    }
-    
-    .title-cell {
-      text-align: center;
-      padding: 0 20px;
-    }
-    
-    .tagline-cell {
-      width: 200px;
-      text-align: right;
-    }
-    
-    h1 {
-      color: #1a1a1a;
-      font-size: 22px;
-      font-weight: bold;
-      margin: 5px 0;
-    }
-    
-    .date-info {
-      color: #666;
-      font-size: 12px;
-      margin-top: 5px;
-    }
-    
-    .tagline-text {
-      color: #7c3aed;
-      font-size: 10px;
-      font-weight: bold;
-      text-transform: uppercase;
-      line-height: 1.2;
-    }
-    
-    .main-content h2 {
-      color: #1a1a1a;
-      font-size: 20px;
-      font-weight: bold;
-      margin: 25px 0 15px 0;
-      padding-bottom: 5px;
-      border-bottom: 1px solid #7c3aed;
-    }
-    
-    .main-content h3 {
-      color: #333;
-      font-size: 18px;
-      font-weight: bold;
-      margin: 20px 0 10px 0;
-    }
-    
-    .main-content h4 {
-      color: #555;
-      font-size: 16px;
-      font-weight: bold;
-      margin: 15px 0 10px 0;
-    }
-    
-    .main-content p {
-      margin-bottom: 12px;
-      text-align: justify;
-      color: #333;
-    }
-    
-    .main-content ul {
-      margin: 10px 0;
-      padding-left: 25px;
-    }
-    
-    .main-content li {
-      margin-bottom: 5px;
-      color: #333;
-    }
-    
-    .main-content a {
-      color: #7c3aed;
-      text-decoration: none;
-    }
-    
-    /* Styles des tableaux - conservés pour la beauté */
-    .main-content table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 20px 0;
-      background: white;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      border-radius: 8px;
-      overflow: hidden;
-    }
-    
-    .main-content caption {
-      background: #f8f9fa;
-      padding: 16px;
-      font-weight: bold;
-      color: #333;
-      text-align: center;
-      border-bottom: 2px solid #7c3aed;
-      font-size: 14px;
-    }
-    
-    .main-content th {
-      background: #7c3aed;
-      color: white;
-      padding: 12px;
-      text-align: left;
-      font-weight: bold;
-      font-size: 13px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    
-    .main-content td {
-      padding: 12px;
-      border-bottom: 1px solid #eee;
-      color: #333;
-      background: white;
-    }
-    
-    .main-content tbody tr:hover {
-      background: #f8f9fa;
-    }
-    
-    .main-content tbody tr:last-child td {
-      border-bottom: none;
-    }
-    
-    .main-content tfoot {
-      background: #f8f9fa;
-      font-style: italic;
-      font-size: 12px;
-      color: #666;
-    }
-    
-    .main-content tfoot td {
-      padding: 12px;
-      background: #f8f9fa;
-    }
-    
-    /* Encadrés avec fond coloré */
-    .main-content table[style*="border: none"] td[style*="background: #f0f4ff"] {
-      background: #f0f4ff !important;
-    }
-    
-    .page-footer {
-      margin-top: 40px;
-      padding-top: 15px;
-      border-top: 2px solid #7c3aed;
-      background: white;
-    }
-    
-    .footer-table {
-      width: 100%;
-      border: none;
-      background: white;
-    }
-    
-    .footer-table td {
-      border: none;
-      padding: 5px;
-      vertical-align: middle;
-      text-align: center;
-      background: white;
-    }
-    
-    .footer-text {
-      color: #666;
-      font-size: 11px;
-      margin-top: 5px;
-    }
-    
-    .no-gradient {
-      color: #7c3aed;
-      font-weight: normal;
-    }
-    
-    /* Styles pour sauts de page */
-    hr[style*="page-break-after: always"] {
-      page-break-after: always;
-      break-after: page;
-      border: none;
-      margin: 0;
-      padding: 0;
-      height: 0;
-      visibility: hidden;
-    }
-    
-    /* Pour Word - forcer le saut de page */
-    hr[style*="page-break-after: always"] + * {
-      page-break-before: always;
-      break-before: page;
-    }
-    
-    /* Styles pour Word */
-    @media print {
-      body {
-        background: white;
-        color: #333;
-      }
-      
-      .main-content table {
-        box-shadow: none;
-      }
-      
-      hr[style*="page-break-after: always"] {
-        page-break-after: always;
-        break-after: page;
-      }
-      
-      hr[style*="page-break-after: always"] + * {
-        page-break-before: always;
-        break-before: page;
-      }
-    }
-    
-    /* Fix pour Word - forcer le fond blanc sur le body et html */
-    @page {
-      background: white;
-    }
+    html, body { background: white; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; line-height: 1.6; color: #333; margin: 20px; }
+    .page-header { margin-bottom: 30px; padding-bottom: 15px; border-bottom: 2px solid ${accent}; }
+    .header-table { width: 100%; border: none; background: white; }
+    .header-table td { border: none; padding: 5px; vertical-align: middle; background: white; }
+    .logo-cell { width: 120px; text-align: left; }
+    .title-cell { text-align: center; padding: 0 20px; }
+    .tagline-cell { width: 200px; text-align: right; }
+    h1 { color: #1a1a1a; font-size: 22px; font-weight: bold; margin: 5px 0; }
+    .date-info { color: #666; font-size: 12px; margin-top: 5px; }
+    .tagline-text { color: ${accent}; font-size: 10px; font-weight: bold; text-transform: uppercase; line-height: 1.2; }
+    .main-content h2 { color: #1a1a1a; font-size: 20px; font-weight: bold; margin: 25px 0 15px; padding-bottom: 5px; border-bottom: 1px solid ${accent}; }
+    .main-content h3 { color: #333; font-size: 18px; font-weight: bold; margin: 20px 0 10px; }
+    .main-content h4 { color: #555; font-size: 16px; font-weight: bold; margin: 15px 0 10px; }
+    .main-content p { margin-bottom: 12px; text-align: justify; color: #333; }
+    .main-content ul { margin: 10px 0; padding-left: 25px; }
+    .main-content li { margin-bottom: 5px; color: #333; }
+    .main-content a { color: ${accent}; text-decoration: none; }
+    .main-content table { width: 100%; border-collapse: collapse; margin: 20px 0; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; }
+    .main-content caption { background: #f8f9fa; padding: 16px; font-weight: bold; color: #333; text-align: center; border-bottom: 2px solid ${accent}; font-size: 14px; }
+    .main-content th { background: ${accent}; color: white; padding: 12px; text-align: left; font-weight: bold; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .main-content td { padding: 12px; border-bottom: 1px solid #eee; color: #333; background: white; }
+    .main-content tbody tr:hover { background: #f8f9fa; }
+    .main-content tfoot { background: #f8f9fa; font-style: italic; font-size: 12px; color: #666; }
+    .main-content tfoot td { padding: 12px; background: #f8f9fa; }
+    .page-footer { margin-top: 40px; padding-top: 15px; border-top: 2px solid ${accent}; background: white; }
+    .footer-table { width: 100%; border: none; background: white; }
+    .footer-table td { border: none; padding: 5px; vertical-align: middle; text-align: center; background: white; }
+    .footer-text { color: #666; font-size: 11px; margin-top: 5px; }
+    .no-gradient { color: ${accent}; font-weight: normal; }
+    hr[style*="page-break-after: always"] { page-break-after: always; break-after: page; border: none; margin: 0; padding: 0; height: 0; visibility: hidden; }
+    @media print { body { background: white; color: #333; } .main-content table { box-shadow: none; } hr[style*="page-break-after: always"] { page-break-after: always; break-after: page; } }
+    @page { background: white; }
   </style>
 </head>
-<body bgcolor="white" style="background-color: white;">
-  <!-- Header avec tableau pour meilleure compatibilité Word -->
+<body bgcolor="white" style="background-color:white;">
   <div class="page-header">
     <table class="header-table" cellpadding="0" cellspacing="0">
       <tr>
-        <td class="logo-cell">
-          <img src="${config.url_logo}" alt="ChatInnov" width="100" height="35" style="display: block;">
-        </td>
+        <td class="logo-cell"><img src="${config.url_logo}" alt="Logo" width="100" height="35" style="display:block;"></td>
         <td class="title-cell">
           <h1>${config.marketTitle}</h1>
-          <div class="date-info">
-            <strong>${t.report.generationDate} :</strong> ${dateStr} ${t.report.at} ${timeStr}
-          </div>
+          <div class="date-info"><strong>${t.report.generationDate} :</strong> ${dateStr} ${t.report.at} ${timeStr}</div>
         </td>
-        <td class="tagline-cell">
-          <div class="tagline-text">${config.presentation_text}</div>
-        </td>
+        <td class="tagline-cell"><div class="tagline-text">${config.presentation_text}</div></td>
       </tr>
     </table>
   </div>
-  
-  <!-- Contenu principal -->
-  <div class="main-content">
-    ${htmlContent}
-  </div>
-  
-  <!-- Footer avec tableau -->
+  <div class="main-content">${htmlContent}</div>
   <div class="page-footer">
     <table class="footer-table" cellpadding="0" cellspacing="0">
-      <tr>
-        <td>
-          <img src="${config.url_logo}" alt="ChatInnov" width="80" height="28" style="display: block; margin: 0 auto;">
-          <div class="footer-text">${t.report.generatedBy}</div>
-        </td>
-      </tr>
+      <tr><td>
+        <img src="${config.url_logo}" alt="Logo" width="80" height="28" style="display:block;margin:0 auto;">
+        <div class="footer-text">${t.report.generatedBy}</div>
+      </td></tr>
     </table>
   </div>
 </body>
 </html>`;
-        
-        return html;
       };
 
-      // Fonction pour générer le Markdown
+      // ─── Génération Markdown ───
       const generateMarkdown = () => {
         const date = new Date();
-        const dateStr = date.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US') + 
-                       ' ' + t.report.at + ' ' + 
-                       date.toLocaleTimeString(lang === 'fr' ? 'fr-FR' : 'en-US');
+        const dateStr = date.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US') + ' ' + t.report.at + ' ' + date.toLocaleTimeString(lang === 'fr' ? 'fr-FR' : 'en-US');
         
-        let md = `# ${config.marketTitle}\n\n`;
-        md += `> ${config.presentation_text}\n\n`;
-        md += `**${t.report.generationDate} :** ${dateStr}\n\n`;
-        md += `---\n\n`;
-        
+        let md = `# ${config.marketTitle}\n\n> ${config.presentation_text}\n\n**${t.report.generationDate} :** ${dateStr}\n\n---\n\n`;
         let content = config.content;
-        
-        // Traiter les sauts de page pour Markdown (utiliser --- pour séparer)
         content = content.replace(/<hr[^>]*>/gi, '\n\n---\n\n');
         
         if (content.includes('<')) {
-          content = content.replace(/<table[^>]*>.*?<\/table>/gis, (match) => {
-            return tableToMarkdown(match);
-          });
-          
+          content = content.replace(/<table[^>]*>.*?<\/table>/gis, (match) => tableToMarkdown(match));
           content = content
             .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n')
             .replace(/<h2[^>]*>.*?🔷.*?<\/span>\s*(.*?)<\/h2>/gi, '## 🔷 $1\n\n')
@@ -934,9 +741,7 @@ export const DownloadReport = {
             .replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**')
             .replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*')
             .replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*')
-            .replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, (match, url, text) => {
-              return `${text} (${url})`;
-            })
+            .replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '$2 ($1)')
             .replace(/<br[^>]*>/gi, '\n')
             .replace(/<p[^>]*>(.*?)<\/p>/gi, '$1\n\n')
             .replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1\n')
@@ -944,971 +749,428 @@ export const DownloadReport = {
             .replace(/<ol[^>]*>|<\/ol>/gi, '')
             .replace(/<span[^>]*class="no-gradient"[^>]*>(.*?)<\/span>/gi, '$1')
             .replace(/<img[^>]*src="([^"]*)"[^>]*alt="([^"]*)"[^>]*>/gi, '![$2]($1)\n\n')
-            .replace(/<div[^>]*style[^>]*>.*?<\/div>/gis, function(match) {
-              const content = match.replace(/<[^>]+>/g, '');
-              return `\n> ${content}\n\n`;
-            })
+            .replace(/<div[^>]*style[^>]*>.*?<\/div>/gis, (match) => { const c = match.replace(/<[^>]+>/g, ''); return `\n> ${c}\n\n`; })
             .replace(/<[^>]+>/g, '');
         } else {
           const lines = content.split('\n');
-          let inTable = false;
-          let tableData = [];
-          let processedContent = [];
-          
-          lines.forEach((line, index) => {
-            if (line.includes('\t') && !inTable) {
-              inTable = true;
-              tableData = [];
-            }
-            
-            if (inTable) {
-              if (line.includes('\t')) {
-                tableData.push(line.split('\t').map(cell => cell.trim()));
-              } else if (line.trim() === '' || !line.includes('\t')) {
-                if (tableData.length > 0) {
-                  processedContent.push('| ' + tableData[0].join(' | ') + ' |');
-                  processedContent.push('| ' + tableData[0].map(() => '---').join(' | ') + ' |');
-                  
-                  for (let i = 1; i < tableData.length; i++) {
-                    processedContent.push('| ' + tableData[i].join(' | ') + ' |');
-                  }
-                  processedContent.push('');
-                }
-                inTable = false;
-                if (line.trim() !== '') {
-                  processedContent.push(line);
-                }
-              }
-            } else {
-              line = line.trim();
-              if (!line) {
-                processedContent.push('');
-              } else if (line.startsWith('🔷')) {
-                processedContent.push(`## ${line}\n`);
-              } else if (line.startsWith('🔹')) {
-                processedContent.push(`### ${line}\n`);
-              } else if (/^\d+\./.test(line) && line.length < 100) {
-                processedContent.push(`#### ${line}\n`);
-              } else if (line.startsWith('•') || line.startsWith('-')) {
-                processedContent.push(`- ${line.substring(1).trim()}`);
-              } else {
-                line = line.replace(/([A-Za-z]+)\s*–\s*([^(]+)\s*\(([^)]+)\)/g, '$1 – $2 ($3)');
-                processedContent.push(line);
-              }
-            }
+          let processed = [];
+          lines.forEach(line => {
+            line = line.trim();
+            if (!line) { processed.push(''); return; }
+            if (line.startsWith('🔷')) processed.push(`## ${line}\n`);
+            else if (line.startsWith('🔹')) processed.push(`### ${line}\n`);
+            else if (/^\d+\./.test(line) && line.length < 100) processed.push(`#### ${line}\n`);
+            else if (line.startsWith('•') || line.startsWith('-')) processed.push(`- ${line.substring(1).trim()}`);
+            else processed.push(line);
           });
-          
-          content = processedContent.join('\n');
+          content = processed.join('\n');
         }
         
-        md += content;
-        md += `\n\n---\n\n*${t.report.generatedByShort}*`;
-        
+        md += content + `\n\n---\n\n*${t.report.generatedByShort}*`;
         return md;
       };
 
-// Fonction améliorée pour générer le PDF avec meilleure gestion des emojis et des encadrés
-const generatePDF = async () => {
-  if (!window.jspdf) {
-    const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-    document.head.appendChild(script);
-    await new Promise(resolve => script.onload = resolve);
-  }
+      // ─── Génération PDF ───
+      const generatePDF = async () => {
+        if (!window.jspdf) {
+          const script = document.createElement('script');
+          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+          document.head.appendChild(script);
+          await new Promise(resolve => script.onload = resolve);
+        }
 
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({
-    unit: 'mm',
-    format: 'a4',
-    orientation: 'portrait'
-  });
-  
-  doc.setFont('helvetica');
-  
-  let yPosition = 20;
-  const pageHeight = doc.internal.pageSize.height;
-  const pageWidth = doc.internal.pageSize.width;
-  const margin = 20;
-  const lineHeight = 7;
-  const maxWidth = pageWidth - 2 * margin;
-  
-  // Charger le logo
-  const logoBase64 = await loadImageAsBase64(config.url_logo);
-  
-  // Fonction pour ajouter l'en-tête sur chaque page
-  const addHeader = () => {
-    // Header avec logo
-    doc.setFillColor(255, 255, 255);
-    doc.rect(0, 0, pageWidth, 30, 'F');
-    
-    if (logoBase64) {
-      doc.addImage(logoBase64, 'PNG', margin, 10, 30, 10);
-    }
-    
-    // Tagline
-    doc.setFontSize(8);
-    doc.setTextColor(124, 58, 237);
-    const taglineLines = doc.splitTextToSize(config.presentation_text, maxWidth - 40);
-    taglineLines.forEach((line, index) => {
-      doc.text(line, pageWidth - margin, 15 + (index * 4), { align: 'right' });
-    });
-  };
-  
-  // Ajouter l'en-tête sur la première page
-  addHeader();
-  
-  // Bannière héros sur la première page uniquement
-  doc.setFillColor(124, 58, 237);
-  doc.rect(0, 30, pageWidth, 40, 'F');
-  
-  // Titre
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(18);
-  const titleLines = doc.splitTextToSize(config.marketTitle, maxWidth);
-  titleLines.forEach((line, index) => {
-    doc.text(line, margin, 45 + (index * 8));
-  });
-  
-  // Date
-  doc.setFontSize(10);
-  const date = new Date();
-  const dateStr = date.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US') + 
-                 ' ' + t.report.at + ' ' + 
-                 date.toLocaleTimeString(lang === 'fr' ? 'fr-FR' : 'en-US');
-  doc.text(dateStr, margin, 62);
-  
-  yPosition = 85;
-  
-  // Contenu principal
-  doc.setTextColor(0, 0, 0);
-  doc.setFontSize(11);
-  
-  // Parser le HTML et éviter les doublons
-  const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = config.content;
-  
-  // Créer un Set pour stocker le contenu déjà traité et éviter les doublons
-  const processedContent = new Set();
-  
-  // Fonction pour nettoyer et remplacer les emojis
-  const cleanTextForPDF = (text) => {
-    return text
-      .replace(/🔷/g, '>')
-      .replace(/🔹/g, '•')
-      .replace(/✓/g, '[OK]')
-      .replace(/✔/g, '[OK]')
-      .replace(/✅/g, '[OK]')
-      .replace(/❌/g, '[X]')
-      .replace(/⚠️/g, '[!]')
-      .replace(/📌/g, '[*]')
-      .replace(/🎯/g, '[o]')
-      .replace(/💡/g, '[i]')
-      .replace(/📥/g, '[v]')
-      .replace(/📋/g, '[=]')
-      .replace(/🌐/g, '[W]')
-      .replace(/📄/g, '[D]')
-      .replace(/📝/g, '[T]')
-      .replace(/📃/g, '[P]')
-      .replace(/⏳/g, '...')
-      .replace(/•/g, '•')
-      .replace(/–/g, '-')
-      .replace(/—/g, '--')
-      .replace(/'/g, "'")
-      .replace(/'/g, "'")
-      .replace(/"/g, '"')
-      .replace(/"/g, '"')
-      .replace(/…/g, '...');
-  };
-  
-  const processNode = async (node, isInsideBox = false) => {
-    if (node.nodeType === Node.TEXT_NODE) {
-      const text = node.textContent.trim();
-      if (text && !processedContent.has(text)) {
-        processedContent.add(text);
-        return cleanTextForPDF(text);
-      }
-      return '';
-    }
-    
-    if (node.nodeType === Node.ELEMENT_NODE) {
-      const tagName = node.tagName.toLowerCase();
-      
-      // Gestion spéciale pour les <hr> - saut de page
-      if (tagName === 'hr') {
-        doc.addPage();
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+        doc.setFont('helvetica');
+        
+        let yPosition = 20;
+        const pageHeight = doc.internal.pageSize.height;
+        const pageWidth = doc.internal.pageSize.width;
+        const margin = 20;
+        const lineHeight = 7;
+        const maxWidth = pageWidth - 2 * margin;
+        
+        const logoBase64 = await loadImageAsBase64(config.url_logo);
+        
+        const addHeader = () => {
+          doc.setFillColor(255, 255, 255);
+          doc.rect(0, 0, pageWidth, 30, 'F');
+          if (logoBase64) doc.addImage(logoBase64, 'PNG', margin, 10, 30, 10);
+          doc.setFontSize(8);
+          doc.setTextColor(accentRgb.r, accentRgb.g, accentRgb.b);
+          const taglineLines = doc.splitTextToSize(config.presentation_text, maxWidth - 40);
+          taglineLines.forEach((line, i) => doc.text(line, pageWidth - margin, 15 + (i * 4), { align: 'right' }));
+        };
+        
         addHeader();
-        yPosition = 40; // Position après l'en-tête
-        return;
-      }
-      
-      // Extraire le texte en gérant les spans avec emojis
-      let textContent = '';
-      
-      // Si c'est un h2 ou h3 avec span.no-gradient, extraire correctement
-      if ((tagName === 'h2' || tagName === 'h3') && node.querySelector('span.no-gradient')) {
-        const span = node.querySelector('span.no-gradient');
-        const emoji = span ? span.textContent : '';
-        const remainingText = node.textContent.replace(emoji, '').trim();
-        textContent = cleanTextForPDF(emoji) + ' ' + remainingText;
-      } else {
-        textContent = node.textContent.trim();
-      }
-      
-      // Vérifier si ce contenu a déjà été traité (sauf si on est dans une box)
-      if (!isInsideBox && processedContent.has(textContent)) {
-        return '';
-      }
-      
-      if (!isInsideBox) {
-        processedContent.add(textContent);
-      }
-      
-      // Nettoyer le texte pour le PDF
-      const cleanText = cleanTextForPDF(textContent);
-      
-      switch (tagName) {
-        case 'h2':
-          if (yPosition > pageHeight - margin - 20) {
-            doc.addPage();
-            addHeader();
-            yPosition = 40;
+        
+        doc.setFillColor(accentRgb.r, accentRgb.g, accentRgb.b);
+        doc.rect(0, 30, pageWidth, 40, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(18);
+        const titleLines = doc.splitTextToSize(config.marketTitle, maxWidth);
+        titleLines.forEach((line, i) => doc.text(line, margin, 45 + (i * 8)));
+        doc.setFontSize(10);
+        const date = new Date();
+        const dateStr = date.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US') + ' ' + t.report.at + ' ' + date.toLocaleTimeString(lang === 'fr' ? 'fr-FR' : 'en-US');
+        doc.text(dateStr, margin, 62);
+        
+        yPosition = 85;
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(11);
+        
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = config.content;
+        const processedContent = new Set();
+        
+        const cleanTextForPDF = (text) => {
+          return text
+            .replace(/🔷/g, '>').replace(/🔹/g, '•')
+            .replace(/✓/g, '[OK]').replace(/✔/g, '[OK]').replace(/✅/g, '[OK]')
+            .replace(/❌/g, '[X]').replace(/⚠️/g, '[!]').replace(/📌/g, '[*]')
+            .replace(/🎯/g, '[o]').replace(/💡/g, '[i]').replace(/📥/g, '[v]')
+            .replace(/📋/g, '[=]').replace(/🌐/g, '[W]').replace(/📄/g, '[D]')
+            .replace(/📝/g, '[T]').replace(/📃/g, '[P]').replace(/⏳/g, '...')
+            .replace(/•/g, '•').replace(/–/g, '-').replace(/—/g, '--')
+            .replace(/'/g, "'").replace(/'/g, "'").replace(/"/g, '"')
+            .replace(/"/g, '"').replace(/…/g, '...');
+        };
+        
+        const processNode = async (node, isInsideBox = false) => {
+          if (node.nodeType === Node.TEXT_NODE) {
+            const text = node.textContent.trim();
+            if (text && !processedContent.has(text)) {
+              processedContent.add(text);
+              return cleanTextForPDF(text);
+            }
+            return '';
           }
-          doc.setFontSize(14);
-          doc.setFont(undefined, 'bold');
-          doc.setTextColor(26, 26, 26);
           
-          const h2Lines = doc.splitTextToSize(cleanText, maxWidth);
-          h2Lines.forEach(line => {
-            doc.text(line, margin, yPosition);
-            yPosition += lineHeight + 2;
-          });
-          
-          doc.setDrawColor(124, 58, 237);
-          doc.setLineWidth(0.5);
-          doc.line(margin, yPosition - 2, margin + 40, yPosition - 2);
-          yPosition += 5;
-          doc.setFont(undefined, 'normal');
-          doc.setTextColor(0, 0, 0);
-          doc.setFontSize(11);
-          break;
-          
-        case 'h3':
-          if (yPosition > pageHeight - margin - 15) {
-            doc.addPage();
-            addHeader();
-            yPosition = 40;
-          }
-          doc.setFontSize(12);
-          doc.setFont(undefined, 'bold');
-          doc.setTextColor(51, 51, 51);
-          
-          const h3Lines = doc.splitTextToSize(cleanText, maxWidth - (isInsideBox ? 10 : 0));
-          h3Lines.forEach(line => {
-            doc.text(line, margin + (isInsideBox ? 5 : 0), yPosition);
-            yPosition += lineHeight + 1;
-          });
-          
-          yPosition += 3;
-          doc.setFont(undefined, 'normal');
-          doc.setTextColor(0, 0, 0);
-          doc.setFontSize(11);
-          break;
-          
-        case 'h4':
-          if (yPosition > pageHeight - margin - 12) {
-            doc.addPage();
-            addHeader();
-            yPosition = 40;
-          }
-          doc.setFontSize(11);
-          doc.setFont(undefined, 'bold');
-          doc.setTextColor(85, 85, 85);
-          
-          const h4Lines = doc.splitTextToSize(cleanText, maxWidth);
-          h4Lines.forEach(line => {
-            doc.text(line, margin, yPosition);
-            yPosition += lineHeight;
-          });
-          
-          yPosition += 2;
-          doc.setFont(undefined, 'normal');
-          doc.setTextColor(0, 0, 0);
-          break;
-          
-        case 'p':
-          if (yPosition > pageHeight - margin - 10) {
-            doc.addPage();
-            addHeader();
-            yPosition = 40;
-          }
-          // S'assurer que la couleur du texte est noire
-          doc.setTextColor(0, 0, 0);
-          const pLines = doc.splitTextToSize(cleanText, maxWidth - (isInsideBox ? 10 : 0));
-          pLines.forEach(line => {
-            doc.text(line, margin + (isInsideBox ? 5 : 0), yPosition);
-            yPosition += lineHeight;
-          });
-          yPosition += 3;
-          break;
-          
-        case 'ul':
-        case 'ol':
-          const listItems = node.querySelectorAll('li');
-          listItems.forEach((li, index) => {
-            if (yPosition > pageHeight - margin - 10) {
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            const tagName = node.tagName.toLowerCase();
+            
+            if (tagName === 'hr') {
               doc.addPage();
               addHeader();
               yPosition = 40;
+              return;
             }
             
-            const bullet = tagName === 'ul' ? '• ' : `${index + 1}. `;
-            
-            // Vérifier s'il y a des liens dans l'élément de liste
-            const links = li.querySelectorAll('a');
-            if (links.length > 0) {
-              // Extraire le texte avant le lien
-              let currentX = margin + (isInsideBox ? 5 : 0);
-              let textBeforeLink = '';
-              let linkProcessed = false;
-              
-              // Parcourir les noeuds enfants
-              li.childNodes.forEach(childNode => {
-                if (childNode.nodeType === Node.TEXT_NODE) {
-                  textBeforeLink += childNode.textContent;
-                } else if (childNode.nodeType === Node.ELEMENT_NODE && childNode.tagName.toLowerCase() === 'a') {
-                  // D'abord, écrire le texte avant le lien avec le bullet
-                  if (!linkProcessed) {
-                    const beforeText = bullet + cleanTextForPDF(textBeforeLink.trim());
-                    if (beforeText.length > bullet.length) {
-                      doc.setTextColor(0, 0, 0);
-                      doc.text(beforeText, currentX, yPosition);
-                      currentX += doc.getTextWidth(beforeText) + 2;
-                    } else {
-                      doc.text(bullet, currentX, yPosition);
-                      currentX += doc.getTextWidth(bullet);
-                    }
-                    linkProcessed = true;
-                  }
-                  
-                  // Ensuite, ajouter le lien
-                  const linkText = childNode.textContent;
-                  const linkHref = childNode.href;
-                  doc.setTextColor(124, 58, 237);
-                  doc.textWithLink(linkText, currentX, yPosition, { url: linkHref });
-                  currentX += doc.getTextWidth(linkText);
-                  doc.setTextColor(0, 0, 0);
-                  
-                  textBeforeLink = '';
-                }
-              });
-              
-              yPosition += lineHeight;
+            let textContent = '';
+            if ((tagName === 'h2' || tagName === 'h3') && node.querySelector('span.no-gradient')) {
+              const span = node.querySelector('span.no-gradient');
+              const emoji = span ? span.textContent : '';
+              const remainingText = node.textContent.replace(emoji, '').trim();
+              textContent = cleanTextForPDF(emoji) + ' ' + remainingText;
             } else {
-              // Pas de lien, traiter normalement
-              doc.setTextColor(0, 0, 0);
-              const liText = cleanTextForPDF(li.textContent.trim());
-              const liLines = doc.splitTextToSize(bullet + liText, maxWidth - 10 - (isInsideBox ? 10 : 0));
-              liLines.forEach((line, lineIndex) => {
-                doc.text(line, margin + (lineIndex === 0 ? 0 : 10) + (isInsideBox ? 5 : 0), yPosition);
-                yPosition += lineHeight;
-              });
-            }
-          });
-          yPosition += 3;
-          break;
-          
-        case 'a':
-          // Ne pas traiter les liens ici s'ils sont dans une liste
-          if (node.parentElement && ['li', 'ul', 'ol'].includes(node.parentElement.tagName.toLowerCase())) {
-            return;
-          }
-          
-          // Traitement des liens autonomes
-          const href = node.href;
-          const linkText = cleanTextForPDF(node.textContent);
-          
-          if (href && linkText) {
-            doc.setTextColor(124, 58, 237);
-            doc.textWithLink(linkText, margin + (isInsideBox ? 5 : 0), yPosition, { url: href });
-            doc.setTextColor(0, 0, 0);
-            
-            const linkLines = doc.splitTextToSize(linkText, maxWidth - (isInsideBox ? 10 : 0));
-            yPosition += linkLines.length * lineHeight;
-          }
-          break;
-          
-        case 'table':
-          // Calculer d'abord la hauteur totale du tableau
-          const caption = node.querySelector('caption');
-          const headers = Array.from(node.querySelectorAll('thead th, tbody tr:first-child th'));
-          const rows = Array.from(node.querySelectorAll('tbody tr'));
-          const footer = node.querySelector('tfoot');
-          
-          let tableHeight = 0;
-          if (caption) {
-            const captionLines = doc.splitTextToSize(cleanTextForPDF(caption.textContent.trim()), maxWidth);
-            tableHeight += captionLines.length * 6 + 2;
-          }
-          if (headers.length > 0) {
-            tableHeight += 13; // Header height
-            tableHeight += rows.length * 6; // Rows height
-          }
-          if (footer) {
-            tableHeight += 10;
-          }
-          tableHeight += 10; // Marges
-          
-          // Vérifier si le tableau tient sur la page actuelle
-          if (yPosition + tableHeight > pageHeight - margin) {
-            doc.addPage();
-            addHeader();
-            yPosition = 40;
-          }
-          
-          // Maintenant dessiner le tableau
-          if (caption) {
-            doc.setFont(undefined, 'bold');
-            doc.setFontSize(10);
-            const captionText = cleanTextForPDF(caption.textContent.trim());
-            const captionLines = doc.splitTextToSize(captionText, maxWidth);
-            captionLines.forEach(line => {
-              doc.text(line, margin, yPosition);
-              yPosition += 6;
-            });
-            doc.setFont(undefined, 'normal');
-            doc.setFontSize(11);
-            yPosition += 2;
-          }
-          
-          if (headers.length > 0) {
-            const colCount = headers.length;
-            const colWidth = maxWidth / colCount;
-            
-            // Headers
-            doc.setFillColor(124, 58, 237);
-            doc.rect(margin, yPosition - 5, maxWidth, 8, 'F');
-            doc.setTextColor(255, 255, 255);
-            doc.setFont(undefined, 'bold');
-            doc.setFontSize(9);
-            
-            headers.forEach((header, index) => {
-              const headerText = cleanTextForPDF(header.textContent.trim()).substring(0, Math.floor(colWidth / 2));
-              doc.text(headerText, margin + (index * colWidth) + 2, yPosition);
-            });
-            
-            yPosition += 10;
-            doc.setTextColor(0, 0, 0);
-            doc.setFont(undefined, 'normal');
-            
-            // Rows
-            rows.forEach((row, rowIndex) => {
-              const cells = row.querySelectorAll('td');
-              if (cells.length > 0) {
-                if (rowIndex % 2 === 0) {
-                  doc.setFillColor(248, 249, 250);
-                  doc.rect(margin, yPosition - 4, maxWidth, 6, 'F');
-                }
-                
-                cells.forEach((cell, cellIndex) => {
-                  const cellText = cleanTextForPDF(cell.textContent.trim()).substring(0, Math.floor(colWidth / 2));
-                  doc.text(cellText, margin + (cellIndex * colWidth) + 2, yPosition);
-                });
-                
-                yPosition += 6;
-              }
-            });
-            
-            // Footer
-            if (footer) {
-              doc.setFillColor(248, 249, 250);
-              doc.rect(margin, yPosition - 4, maxWidth, 8, 'F');
-              doc.setFont(undefined, 'italic');
-              doc.setFontSize(9);
-              doc.setTextColor(100);
-              const footerText = cleanTextForPDF(footer.textContent.trim());
-              doc.text(footerText, margin + 2, yPosition + 2);
-              yPosition += 10;
-              doc.setFont(undefined, 'normal');
-              doc.setFontSize(11);
-              doc.setTextColor(0);
-            }
-          }
-          
-          yPosition += 5;
-          break;
-          
-        case 'img':
-          // Traitement des images
-          const imgSrc = node.src;
-          const imgAlt = node.alt || 'Image';
-          
-          if (imgSrc && !processedContent.has(imgSrc)) {
-            processedContent.add(imgSrc);
-            try {
-              const imgBase64 = await loadImageAsBase64(imgSrc);
-              if (imgBase64) {
-                if (yPosition > pageHeight - margin - 60) {
-                  doc.addPage();
-                  addHeader();
-                  yPosition = 40;
-                }
-                
-                const imgWidth = 80;
-                const imgHeight = 60;
-                const centerX = (pageWidth - imgWidth) / 2;
-                
-                doc.addImage(imgBase64, 'JPEG', centerX, yPosition, imgWidth, imgHeight);
-                yPosition += imgHeight + 5;
-                
-                // Légende de l'image
-                if (imgAlt) {
-                  doc.setFontSize(9);
-                  doc.setTextColor(100);
-                  doc.setFont(undefined, 'italic');
-                  doc.text(imgAlt, pageWidth / 2, yPosition, { align: 'center' });
-                  yPosition += 8;
-                  doc.setFont(undefined, 'normal');
-                  doc.setTextColor(0);
-                  doc.setFontSize(11);
-                }
-              }
-            } catch (error) {
-              console.error('Erreur lors du chargement de l\'image:', error);
-            }
-          }
-          break;
-          
-        case 'div':
-          // Traiter les divs avec bordures spéciales (les encadrés)
-          if (node.style && node.style.border && node.style.border.includes('solid')) {
-            if (yPosition > pageHeight - margin - 20) {
-              doc.addPage();
-              addHeader();
-              yPosition = 40;
+              textContent = node.textContent.trim();
             }
             
-            // Sauvegarder la position de départ
-            let boxStartY = yPosition;
-            const originalYPosition = yPosition;
+            if (!isInsideBox && processedContent.has(textContent)) return '';
+            if (!isInsideBox) processedContent.add(textContent);
             
-            // Ajouter un peu d'espace avant l'encadré
-            yPosition += 5;
+            const cleanText = cleanTextForPDF(textContent);
             
-            // Premier passage : calculer la hauteur nécessaire sans vraiment dessiner
-            let tempYPosition = yPosition;
-            const calculateHeight = async (node) => {
-              for (const child of node.children) {
-                if (child.nodeType === Node.ELEMENT_NODE) {
-                  const tagName = child.tagName.toLowerCase();
-                  const textContent = child.textContent.trim();
-                  const cleanText = cleanTextForPDF(textContent);
-                  
-                  switch (tagName) {
-                    case 'h3':
-                      const h3Lines = doc.splitTextToSize(cleanText, maxWidth - 10);
-                      tempYPosition += h3Lines.length * (lineHeight + 1) + 3;
-                      break;
-                    case 'ul':
-                    case 'ol':
-                      const listItems = child.querySelectorAll('li');
-                      listItems.forEach(li => {
-                        const liText = cleanTextForPDF(li.textContent.trim());
-                        const bullet = tagName === 'ul' ? '• ' : '1. ';
-                        const liLines = doc.splitTextToSize(bullet + liText, maxWidth - 20);
-                        tempYPosition += liLines.length * lineHeight;
-                      });
-                      tempYPosition += 3;
-                      break;
-                    case 'p':
-                      const pLines = doc.splitTextToSize(cleanText, maxWidth - 10);
-                      tempYPosition += pLines.length * lineHeight + 3;
-                      break;
-                    default:
-                      if (child.children.length > 0) {
-                        await calculateHeight(child);
-                      } else if (textContent) {
-                        const lines = doc.splitTextToSize(cleanText, maxWidth - 10);
-                        tempYPosition += lines.length * lineHeight;
+            switch (tagName) {
+              case 'h2':
+                if (yPosition > pageHeight - margin - 20) { doc.addPage(); addHeader(); yPosition = 40; }
+                doc.setFontSize(14);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(26, 26, 26);
+                doc.splitTextToSize(cleanText, maxWidth).forEach(line => { doc.text(line, margin, yPosition); yPosition += lineHeight + 2; });
+                doc.setDrawColor(accentRgb.r, accentRgb.g, accentRgb.b);
+                doc.setLineWidth(0.5);
+                doc.line(margin, yPosition - 2, margin + 40, yPosition - 2);
+                yPosition += 5;
+                doc.setFont(undefined, 'normal');
+                doc.setTextColor(0, 0, 0);
+                doc.setFontSize(11);
+                break;
+                
+              case 'h3':
+                if (yPosition > pageHeight - margin - 15) { doc.addPage(); addHeader(); yPosition = 40; }
+                doc.setFontSize(12);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(51, 51, 51);
+                doc.splitTextToSize(cleanText, maxWidth - (isInsideBox ? 10 : 0)).forEach(line => { doc.text(line, margin + (isInsideBox ? 5 : 0), yPosition); yPosition += lineHeight + 1; });
+                yPosition += 3;
+                doc.setFont(undefined, 'normal');
+                doc.setTextColor(0, 0, 0);
+                doc.setFontSize(11);
+                break;
+                
+              case 'h4':
+                if (yPosition > pageHeight - margin - 12) { doc.addPage(); addHeader(); yPosition = 40; }
+                doc.setFontSize(11);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(85, 85, 85);
+                doc.splitTextToSize(cleanText, maxWidth).forEach(line => { doc.text(line, margin, yPosition); yPosition += lineHeight; });
+                yPosition += 2;
+                doc.setFont(undefined, 'normal');
+                doc.setTextColor(0, 0, 0);
+                break;
+                
+              case 'p':
+                if (yPosition > pageHeight - margin - 10) { doc.addPage(); addHeader(); yPosition = 40; }
+                doc.setTextColor(0, 0, 0);
+                doc.splitTextToSize(cleanText, maxWidth - (isInsideBox ? 10 : 0)).forEach(line => { doc.text(line, margin + (isInsideBox ? 5 : 0), yPosition); yPosition += lineHeight; });
+                yPosition += 3;
+                break;
+                
+              case 'ul':
+              case 'ol':
+                const listItems = node.querySelectorAll('li');
+                listItems.forEach((li, index) => {
+                  if (yPosition > pageHeight - margin - 10) { doc.addPage(); addHeader(); yPosition = 40; }
+                  const bullet = tagName === 'ul' ? '• ' : `${index + 1}. `;
+                  const links = li.querySelectorAll('a');
+                  if (links.length > 0) {
+                    let currentX = margin + (isInsideBox ? 5 : 0);
+                    let textBeforeLink = '';
+                    let linkProcessed = false;
+                    li.childNodes.forEach(childNode => {
+                      if (childNode.nodeType === Node.TEXT_NODE) {
+                        textBeforeLink += childNode.textContent;
+                      } else if (childNode.nodeType === Node.ELEMENT_NODE && childNode.tagName.toLowerCase() === 'a') {
+                        if (!linkProcessed) {
+                          const beforeText = bullet + cleanTextForPDF(textBeforeLink.trim());
+                          if (beforeText.length > bullet.length) { doc.setTextColor(0, 0, 0); doc.text(beforeText, currentX, yPosition); currentX += doc.getTextWidth(beforeText) + 2; }
+                          else { doc.text(bullet, currentX, yPosition); currentX += doc.getTextWidth(bullet); }
+                          linkProcessed = true;
+                        }
+                        const linkText = childNode.textContent;
+                        doc.setTextColor(accentRgb.r, accentRgb.g, accentRgb.b);
+                        doc.textWithLink(linkText, currentX, yPosition, { url: childNode.href });
+                        currentX += doc.getTextWidth(linkText);
+                        doc.setTextColor(0, 0, 0);
+                        textBeforeLink = '';
                       }
+                    });
+                    yPosition += lineHeight;
+                  } else {
+                    doc.setTextColor(0, 0, 0);
+                    const liText = cleanTextForPDF(li.textContent.trim());
+                    doc.splitTextToSize(bullet + liText, maxWidth - 10 - (isInsideBox ? 10 : 0)).forEach((line, li) => { doc.text(line, margin + (li === 0 ? 0 : 10) + (isInsideBox ? 5 : 0), yPosition); yPosition += lineHeight; });
+                  }
+                });
+                yPosition += 3;
+                break;
+                
+              case 'a':
+                if (node.parentElement && ['li', 'ul', 'ol'].includes(node.parentElement.tagName.toLowerCase())) return;
+                const href = node.href;
+                const linkText = cleanTextForPDF(node.textContent);
+                if (href && linkText) {
+                  doc.setTextColor(accentRgb.r, accentRgb.g, accentRgb.b);
+                  doc.textWithLink(linkText, margin + (isInsideBox ? 5 : 0), yPosition, { url: href });
+                  doc.setTextColor(0, 0, 0);
+                  yPosition += doc.splitTextToSize(linkText, maxWidth - (isInsideBox ? 10 : 0)).length * lineHeight;
+                }
+                break;
+                
+              case 'table':
+                const tCaption = node.querySelector('caption');
+                const tHeaders = Array.from(node.querySelectorAll('thead th, tbody tr:first-child th'));
+                const tRows = Array.from(node.querySelectorAll('tbody tr'));
+                const tFooter = node.querySelector('tfoot');
+                
+                let tableHeight = 10;
+                if (tCaption) tableHeight += doc.splitTextToSize(cleanTextForPDF(tCaption.textContent.trim()), maxWidth).length * 6 + 2;
+                if (tHeaders.length > 0) { tableHeight += 13; tableHeight += tRows.length * 6; }
+                if (tFooter) tableHeight += 10;
+                
+                if (yPosition + tableHeight > pageHeight - margin) { doc.addPage(); addHeader(); yPosition = 40; }
+                
+                if (tCaption) {
+                  doc.setFont(undefined, 'bold'); doc.setFontSize(10);
+                  doc.splitTextToSize(cleanTextForPDF(tCaption.textContent.trim()), maxWidth).forEach(line => { doc.text(line, margin, yPosition); yPosition += 6; });
+                  doc.setFont(undefined, 'normal'); doc.setFontSize(11); yPosition += 2;
+                }
+                
+                if (tHeaders.length > 0) {
+                  const colCount = tHeaders.length;
+                  const colWidth = maxWidth / colCount;
+                  
+                  doc.setFillColor(accentRgb.r, accentRgb.g, accentRgb.b);
+                  doc.rect(margin, yPosition - 5, maxWidth, 8, 'F');
+                  doc.setTextColor(255, 255, 255);
+                  doc.setFont(undefined, 'bold'); doc.setFontSize(9);
+                  tHeaders.forEach((header, i) => doc.text(cleanTextForPDF(header.textContent.trim()).substring(0, Math.floor(colWidth / 2)), margin + (i * colWidth) + 2, yPosition));
+                  yPosition += 10;
+                  doc.setTextColor(0, 0, 0); doc.setFont(undefined, 'normal');
+                  
+                  tRows.forEach((row, ri) => {
+                    const cells = row.querySelectorAll('td');
+                    if (cells.length > 0) {
+                      if (ri % 2 === 0) { doc.setFillColor(248, 249, 250); doc.rect(margin, yPosition - 4, maxWidth, 6, 'F'); }
+                      cells.forEach((cell, ci) => doc.text(cleanTextForPDF(cell.textContent.trim()).substring(0, Math.floor(colWidth / 2)), margin + (ci * colWidth) + 2, yPosition));
+                      yPosition += 6;
+                    }
+                  });
+                  
+                  if (tFooter) {
+                    doc.setFillColor(248, 249, 250); doc.rect(margin, yPosition - 4, maxWidth, 8, 'F');
+                    doc.setFont(undefined, 'italic'); doc.setFontSize(9); doc.setTextColor(100);
+                    doc.text(cleanTextForPDF(tFooter.textContent.trim()), margin + 2, yPosition + 2);
+                    yPosition += 10;
+                    doc.setFont(undefined, 'normal'); doc.setFontSize(11); doc.setTextColor(0);
                   }
                 }
-              }
-            };
-            
-            await calculateHeight(node);
-            
-            // Calculer la hauteur totale de l'encadré avec un padding plus réduit
-            const boxHeight = tempYPosition - yPosition + 5; // Réduit de 10 à 5
-            
-            // Vérifier si l'encadré entier tient sur la page actuelle
-            if (boxStartY + boxHeight > pageHeight - margin) {
-              doc.addPage();
-              addHeader();
-              yPosition = 40;
-              boxStartY = 40;
-            } else {
-              // Restaurer la position originale
-              yPosition = originalYPosition;
-            }
-            
-            // Dessiner l'encadré avec la hauteur calculée
-            doc.setFillColor(227, 242, 253); // Fond bleu clair
-            doc.setDrawColor(25, 118, 210); // Bordure bleue
-            doc.setLineWidth(0.5);
-            doc.roundedRect(margin, yPosition, maxWidth, boxHeight, 3, 3, 'FD');
-            
-            // Maintenant, dessiner le contenu par-dessus l'encadré
-            yPosition += 5;
-            
-            // S'assurer que la couleur du texte est noire
-            doc.setTextColor(0, 0, 0);
-            doc.setFontSize(11);
-            doc.setFont(undefined, 'normal');
-            
-            // Dessiner réellement le contenu
-            for (const child of node.children) {
-              await processNode(child, true);
-            }
-            
-            // S'assurer qu'on se positionne après l'encadré
-            yPosition = boxStartY + boxHeight + 5;
-            
-          } else {
-            // Traiter les enfants normalement
-            for (const child of node.children) {
-              await processNode(child, isInsideBox);
+                yPosition += 5;
+                break;
+                
+              case 'img':
+                const imgSrc = node.src;
+                if (imgSrc && !processedContent.has(imgSrc)) {
+                  processedContent.add(imgSrc);
+                  try {
+                    const imgBase64 = await loadImageAsBase64(imgSrc);
+                    if (imgBase64) {
+                      if (yPosition > pageHeight - margin - 60) { doc.addPage(); addHeader(); yPosition = 40; }
+                      const imgW = 80, imgH = 60, cx = (pageWidth - imgW) / 2;
+                      doc.addImage(imgBase64, 'JPEG', cx, yPosition, imgW, imgH);
+                      yPosition += imgH + 5;
+                      if (node.alt) {
+                        doc.setFontSize(9); doc.setTextColor(100); doc.setFont(undefined, 'italic');
+                        doc.text(node.alt, pageWidth / 2, yPosition, { align: 'center' });
+                        yPosition += 8;
+                        doc.setFont(undefined, 'normal'); doc.setTextColor(0); doc.setFontSize(11);
+                      }
+                    }
+                  } catch (e) { console.error('Erreur image PDF:', e); }
+                }
+                break;
+                
+              case 'div':
+                if (node.style && node.style.border && node.style.border.includes('solid')) {
+                  if (yPosition > pageHeight - margin - 20) { doc.addPage(); addHeader(); yPosition = 40; }
+                  let boxStartY = yPosition;
+                  const originalY = yPosition;
+                  yPosition += 5;
+                  
+                  let tempY = yPosition;
+                  const calcH = async (n) => {
+                    for (const child of n.children) {
+                      if (child.nodeType === Node.ELEMENT_NODE) {
+                        const tag = child.tagName.toLowerCase();
+                        const ct = child.textContent.trim();
+                        const cl = cleanTextForPDF(ct);
+                        switch (tag) {
+                          case 'h3': tempY += doc.splitTextToSize(cl, maxWidth - 10).length * (lineHeight + 1) + 3; break;
+                          case 'ul': case 'ol':
+                            child.querySelectorAll('li').forEach(li => { tempY += doc.splitTextToSize('• ' + cleanTextForPDF(li.textContent.trim()), maxWidth - 20).length * lineHeight; });
+                            tempY += 3; break;
+                          case 'p': tempY += doc.splitTextToSize(cl, maxWidth - 10).length * lineHeight + 3; break;
+                          default: if (child.children.length > 0) await calcH(child); else if (ct) tempY += doc.splitTextToSize(cl, maxWidth - 10).length * lineHeight;
+                        }
+                      }
+                    }
+                  };
+                  await calcH(node);
+                  
+                  const boxH = tempY - yPosition + 5;
+                  if (boxStartY + boxH > pageHeight - margin) { doc.addPage(); addHeader(); yPosition = 40; boxStartY = 40; }
+                  else yPosition = originalY;
+                  
+                  doc.setFillColor(227, 242, 253); doc.setDrawColor(25, 118, 210); doc.setLineWidth(0.5);
+                  doc.roundedRect(margin, yPosition, maxWidth, boxH, 3, 3, 'FD');
+                  yPosition += 5;
+                  doc.setTextColor(0, 0, 0); doc.setFontSize(11); doc.setFont(undefined, 'normal');
+                  
+                  for (const child of node.children) await processNode(child, true);
+                  yPosition = boxStartY + boxH + 5;
+                } else {
+                  for (const child of node.children) await processNode(child, isInsideBox);
+                }
+                break;
+                
+              case 'strong': case 'b':
+                if (isInsideBox) { doc.setFont(undefined, 'bold'); doc.setTextColor(0, 0, 0); }
+                if (node.childNodes.length > 0) { for (const child of node.childNodes) await processNode(child, isInsideBox); }
+                if (isInsideBox) doc.setFont(undefined, 'normal');
+                break;
+                
+              default:
+                if (node.children.length > 0) { for (const child of node.children) await processNode(child, isInsideBox); }
+                else if (textContent && tagName !== 'br') {
+                  if (yPosition > pageHeight - margin - 10) { doc.addPage(); addHeader(); yPosition = 40; }
+                  doc.setTextColor(0, 0, 0);
+                  doc.splitTextToSize(cleanText, maxWidth - (isInsideBox ? 10 : 0)).forEach(line => { doc.text(line, margin + (isInsideBox ? 5 : 0), yPosition); yPosition += lineHeight; });
+                }
             }
           }
-          break;
-          
-        case 'strong':
-        case 'b':
-          // Pour les éléments en gras dans les encadrés
-          if (isInsideBox) {
-            doc.setFont(undefined, 'bold');
-            doc.setTextColor(0, 0, 0); // S'assurer que c'est noir
-          }
-          // Traiter le contenu
-          if (node.childNodes.length > 0) {
-            for (const child of node.childNodes) {
-              await processNode(child, isInsideBox);
-            }
-          } else if (textContent) {
-            const lines = doc.splitTextToSize(cleanText, maxWidth - (isInsideBox ? 10 : 0));
-            lines.forEach(line => {
-              doc.text(line, margin + (isInsideBox ? 5 : 0), yPosition);
-              yPosition += lineHeight;
-            });
-          }
-          if (isInsideBox) {
-            doc.setFont(undefined, 'normal');
-          }
-          break;
-          
-        default:
-          // Pour les autres éléments, traiter les enfants
-          if (node.children.length > 0) {
-            for (const child of node.children) {
-              await processNode(child, isInsideBox);
-            }
-          } else if (textContent && tagName !== 'br') {
-            // Si pas d'enfants mais du texte, l'afficher
-            if (yPosition > pageHeight - margin - 10) {
-              doc.addPage();
-              addHeader();
-              yPosition = 40;
-            }
-            // S'assurer que la couleur du texte est noire
-            doc.setTextColor(0, 0, 0);
-            const lines = doc.splitTextToSize(cleanText, maxWidth - (isInsideBox ? 10 : 0));
-            lines.forEach(line => {
-              doc.text(line, margin + (isInsideBox ? 5 : 0), yPosition);
-              yPosition += lineHeight;
-            });
-          }
-      }
-    }
-  };
-  
-  // Traiter tous les noeuds enfants
-  for (const child of tempDiv.children) {
-    await processNode(child);
-  }
-  
-  // Footer
-  const totalPages = doc.internal.getNumberOfPages();
-  for (let i = 1; i <= totalPages; i++) {
-    doc.setPage(i);
-    doc.setFontSize(9);
-    doc.setTextColor(150);
-    doc.text(t.report.generatedBy, pageWidth / 2, pageHeight - 10, { align: 'center' });
-    doc.text(`${i} / ${totalPages}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
-  }
-  
-  return doc;
-};
+        };
+        
+        for (const child of tempDiv.children) await processNode(child);
+        
+        const totalPages = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= totalPages; i++) {
+          doc.setPage(i);
+          doc.setFontSize(9); doc.setTextColor(150);
+          doc.text(t.report.generatedBy, pageWidth / 2, pageHeight - 10, { align: 'center' });
+          doc.text(`${i} / ${totalPages}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
+        }
+        
+        return doc;
+      };
 
-
-
-
-      
-      
-      // Fonction pour générer le DOCX (version simplifiée - HTML avec extension .doc)
+      // ─── Génération DOCX ───
       const generateDOCX = async () => {
         const html = generateHTML();
-        const blob = new Blob([html], { type: 'application/msword' });
-        return blob;
+        return new Blob([html], { type: 'application/msword' });
       };
 
-      // Fonction pour vérifier la position du menu
-      const checkMenuPosition = (menu, button) => {
-        const buttonRect = button.getBoundingClientRect();
-        const menuHeight = 150; // Hauteur estimée du menu
+      // ─── Download handler ───
+      const downloadReport = async (format, btn) => {
+        const originalHTML = btn.innerHTML;
+        btn.classList.add('dr-loading');
+        btn.innerHTML = `${SVG_SPINNER}<span class="dr-btn-label">${lang === 'fr' ? 'Génération...' : 'Generating...'}</span>`;
         
-        // Si le menu risque de sortir en haut de l'écran
-        if (buttonRect.top < menuHeight) {
-          menu.classList.add('menu-below');
-        } else {
-          menu.classList.remove('menu-below');
+        try {
+          const date = new Date().toISOString().slice(0, 10);
+          const fileName = `${config.fileName}_${date}`;
+          
+          switch (format) {
+            case 'html':
+              const htmlBlob = new Blob([generateHTML()], { type: 'text/html;charset=utf-8' });
+              const htmlUrl = URL.createObjectURL(htmlBlob);
+              window.open(htmlUrl, '_blank');
+              setTimeout(() => URL.revokeObjectURL(htmlUrl), 1000);
+              showToast(t.download.toastHTML);
+              break;
+            case 'md':
+              const mdBlob = new Blob([generateMarkdown()], { type: 'text/markdown;charset=utf-8' });
+              const mdUrl = URL.createObjectURL(mdBlob);
+              const mdLink = document.createElement('a');
+              mdLink.href = mdUrl; mdLink.download = `${fileName}.md`; mdLink.click();
+              URL.revokeObjectURL(mdUrl);
+              showToast(t.download.toastMarkdown);
+              break;
+            case 'pdf':
+              const pdf = await generatePDF();
+              pdf.save(`${fileName}.pdf`);
+              showToast(t.download.toastPDF);
+              break;
+            case 'docx':
+              const docxBlob = await generateDOCX();
+              const docxUrl = URL.createObjectURL(docxBlob);
+              const docxLink = document.createElement('a');
+              docxLink.href = docxUrl; docxLink.download = `${fileName}.doc`; docxLink.click();
+              URL.revokeObjectURL(docxUrl);
+              showToast(t.download.toastDOCX);
+              break;
+          }
+          console.log(`✅ Rapport ${format.toUpperCase()} généré : ${fileName}`);
+        } catch (error) {
+          console.error('❌ Erreur de génération:', error);
+          showToast(t.download.toastError);
+        } finally {
+          btn.classList.remove('dr-loading');
+          btn.innerHTML = originalHTML;
         }
       };
 
-      // BOUTON COPIER
-      if (config.showCopyButton) {
-        const copyWrapper = document.createElement('div');
-        copyWrapper.className = 'action-button-wrapper';
-
-        const copyButton = document.createElement('button');
-        copyButton.className = 'action-button';
-        copyButton.innerHTML = `<span class="action-button-icon">${config.copyIconText}</span>`;
-        copyButton.title = t.copy.buttonTitle;
-
-        const copyMenu = document.createElement('div');
-        copyMenu.className = 'action-menu';
-        
-        const htmlOption = document.createElement('button');
-        htmlOption.className = 'action-menu-option';
-        htmlOption.innerHTML = `
-          <span class="action-menu-option-icon">🎨</span>
-          <span>${t.copy.formatOption}</span>
-        `;
-        htmlOption.title = t.copy.formatTooltip;
-        
-        const textOption = document.createElement('button');
-        textOption.className = 'action-menu-option';
-        textOption.innerHTML = `
-          <span class="action-menu-option-icon">📝</span>
-          <span>${t.copy.rawOption}</span>
-        `;
-        textOption.title = t.copy.rawTooltip;
-        
-        copyMenu.appendChild(htmlOption);
-        copyMenu.appendChild(textOption);
-
-        const copyContent = async (format = 'formatted') => {
-          try {
-            let textToCopy = '';
-            
-            if (format === 'formatted') {
-              // Formaté = texte sans HTML
-              const tempDiv = document.createElement('div');
-              tempDiv.innerHTML = config.content;
-              textToCopy = tempDiv.textContent || tempDiv.innerText || '';
-            } else {
-              // Brut = HTML avec toutes les balises
-              textToCopy = config.content;
-            }
-            
-            await navigator.clipboard.writeText(textToCopy);
-            
-            copyButton.classList.add('copied');
-            copyButton.querySelector('.action-button-icon').textContent = config.copiedIcon;
-            
-            showToast(format === 'formatted' ? t.copy.toastFormatted : t.copy.toastRaw);
-            
-            setTimeout(() => {
-              copyButton.classList.remove('copied');
-              copyButton.querySelector('.action-button-icon').textContent = config.copyIconText;
-            }, 2000);
-            
-          } catch (err) {
-            console.error('Erreur de copie:', err);
-            showToast(t.copy.toastError);
-          }
-        };
-
-        copyButton.addEventListener('click', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          
-          if (!copyMenuVisible) {
-            checkMenuPosition(copyMenu, copyButton);
-            copyMenu.classList.add('show');
-            copyMenuVisible = true;
-            const downloadMenu = container.querySelector('.download-menu');
-            if (downloadMenu) downloadMenu.classList.remove('show');
-            downloadMenuVisible = false;
-          } else {
-            copyMenu.classList.remove('show');
-            copyMenuVisible = false;
-          }
-        });
-
-        htmlOption.addEventListener('click', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          copyContent('formatted');
-          copyMenu.classList.remove('show');
-          copyMenuVisible = false;
-        });
-
-        textOption.addEventListener('click', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          copyContent('raw');
-          copyMenu.classList.remove('show');
-          copyMenuVisible = false;
-        });
-
-        copyWrapper.appendChild(copyButton);
-        copyWrapper.appendChild(copyMenu);
-        container.appendChild(copyWrapper);
-      }
-
-      // BOUTON TÉLÉCHARGER
-      if (config.showDownloadButton) {
-        const downloadWrapper = document.createElement('div');
-        downloadWrapper.className = 'action-button-wrapper';
-
-        const downloadButton = document.createElement('button');
-        downloadButton.className = 'action-button';
-        downloadButton.innerHTML = `<span class="action-button-icon">${config.downloadIconText}</span>`;
-        downloadButton.title = t.download.buttonTitle;
-
-        const downloadMenu = document.createElement('div');
-        downloadMenu.className = 'action-menu download-menu';
-
-        const formatIcons = {
-          html: '🌐',
-          pdf: '📄',
-          md: '📝',
-          docx: '📃'
-        };
-
-        const formatLabels = {
-          html: 'HTML',
-          pdf: 'PDF',
-          md: 'Markdown',
-          docx: 'Word'
-        };
-
-        config.formats.forEach(format => {
-          const option = document.createElement('button');
-          option.className = 'action-menu-option';
-          option.innerHTML = `
-            <span class="action-menu-option-icon">${formatIcons[format]}</span>
-            <span>${formatLabels[format]}</span>
-          `;
-          option.addEventListener('click', () => downloadReport(format));
-          downloadMenu.appendChild(option);
-        });
-
-        const downloadReport = async (format) => {
-          downloadButton.classList.add('generating');
-          downloadButton.querySelector('.action-button-icon').textContent = '⏳';
-          downloadMenu.classList.remove('show');
-          downloadMenuVisible = false;
-          
-          try {
-            const date = new Date().toISOString().slice(0, 10);
-            const fileName = `${config.fileName}_${date}`;
-            
-            switch(format) {
-              case 'html':
-                const htmlContent = generateHTML();
-                const htmlBlob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-                const htmlUrl = URL.createObjectURL(htmlBlob);
-                window.open(htmlUrl, '_blank');
-                setTimeout(() => {
-                  URL.revokeObjectURL(htmlUrl);
-                }, 1000);
-                showToast(t.download.toastHTML);
-                break;
-                
-              case 'md':
-                const mdContent = generateMarkdown();
-                const mdBlob = new Blob([mdContent], { type: 'text/markdown;charset=utf-8' });
-                const mdUrl = URL.createObjectURL(mdBlob);
-                const mdLink = document.createElement('a');
-                mdLink.href = mdUrl;
-                mdLink.download = `${fileName}.md`;
-                mdLink.click();
-                URL.revokeObjectURL(mdUrl);
-                showToast(t.download.toastMarkdown);
-                break;
-                
-              case 'pdf':
-                const pdf = await generatePDF();
-                pdf.save(`${fileName}.pdf`);
-                showToast(t.download.toastPDF);
-                break;
-                
-              case 'docx':
-                const docxBlob = await generateDOCX();
-                const docxUrl = URL.createObjectURL(docxBlob);
-                const docxLink = document.createElement('a');
-                docxLink.href = docxUrl;
-                docxLink.download = `${fileName}.doc`; // Utiliser .doc au lieu de .docx
-                docxLink.click();
-                URL.revokeObjectURL(docxUrl);
-                showToast(t.download.toastDOCX);
-                break;
-            }
-            
-            console.log(`✅ Rapport ${format.toUpperCase()} généré : ${fileName}`);
-            
-          } catch (error) {
-            console.error('❌ Erreur de génération:', error);
-            showToast(t.download.toastError);
-          } finally {
-            downloadButton.classList.remove('generating');
-            downloadButton.querySelector('.action-button-icon').textContent = config.downloadIconText;
-          }
-        };
-
-        downloadButton.addEventListener('click', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          
-          if (!downloadMenuVisible) {
-            checkMenuPosition(downloadMenu, downloadButton);
-            downloadMenu.classList.add('show');
-            downloadMenuVisible = true;
-            const copyMenu = container.querySelector('.action-menu:not(.download-menu)');
-            if (copyMenu) copyMenu.classList.remove('show');
-            copyMenuVisible = false;
-          } else {
-            downloadMenu.classList.remove('show');
-            downloadMenuVisible = false;
-          }
-        });
-
-        downloadWrapper.appendChild(downloadButton);
-        downloadWrapper.appendChild(downloadMenu);
-        container.appendChild(downloadWrapper);
-      }
-
-      // Événement global pour fermer les menus
-      document.addEventListener('click', (e) => {
-        if (!container.contains(e.target)) {
-          container.querySelectorAll('.action-menu').forEach(menu => {
-            menu.classList.remove('show');
-          });
-          copyMenuVisible = false;
-          downloadMenuVisible = false;
-        }
-      });
-
+      // ─── Montage final ───
       element.appendChild(container);
       
       setTimeout(() => {
@@ -1922,7 +1184,7 @@ const generatePDF = async () => {
         }
       }, 0);
       
-      console.log('✅ DownloadReport multilingue prêt avec sauts de page et emojis corrigés');
+      console.log('✅ DownloadReport v2.1 – SVG icons + accent color ready');
       
     } catch (error) {
       console.error('❌ DownloadReport Error:', error);

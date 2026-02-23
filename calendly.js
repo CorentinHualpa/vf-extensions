@@ -203,6 +203,15 @@ export const CalendlyExtension = {
     widget.className = 'cal-ext-widget';
     container.appendChild(widget);
 
+    // ── FORCE WIDTH SUR ELEMENT ET SON PARENT ──
+    // Sans ça, margin: 0 auto n'a rien à centrer
+    element.style.display = 'block';
+    element.style.width = '100%';
+    if (element.parentElement) {
+      element.parentElement.style.display = 'block';
+      element.parentElement.style.width = '100%';
+    }
+
     // ── INJECT ──
     element.appendChild(container);
 

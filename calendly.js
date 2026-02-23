@@ -228,38 +228,35 @@ export const CalendlyExtension = {
     // ── INJECT ──
     element.appendChild(container);
 
-    // ── FIX WIDTH : forcer après injection dans le DOM ──
-    // requestAnimationFrame garantit que le layout est calculé
-    requestAnimationFrame(() => {
-      const actualWidth = container.offsetWidth;
-      console.log(`[CAL] container post-inject: ${actualWidth} x ${container.offsetHeight}`);
-
-      if (actualWidth < 50) {
-        // Le container est toujours trop étroit — forcer en JS avec le parent chat bubble
-        let parent = container.parentElement;
-        let found = false;
-        for (let i = 0; i < 10; i++) {
-          if (!parent) break;
-          const pw = parent.offsetWidth;
-          console.log(`[CAL] checking ancestor[${i}]: width=${pw}`);
-          if (pw > 100) {
-            // On a trouvé un ancêtre avec une vraie largeur, forcer le container
-            container.style.width = pw + 'px';
-            container.style.minWidth = pw + 'px';
-            console.log(`[CAL] width forcé à ${pw}px via ancestor[${i}]`);
-            found = true;
-            break;
-          }
-          parent = parent.parentElement;
-        }
-        if (!found) {
-          // Fallback : utiliser la largeur du chat widget ou une valeur sûre
-          const fallbackWidth = Math.min(window.innerWidth - 40, 500);
-          container.style.width = fallbackWidth + 'px';
-          container.style.minWidth = fallbackWidth + 'px';
-          console.log(`[CAL] width fallback: ${fallbackWidth}px`);
-        }
+    // ── FIX WIDTH : forcer la largeur maximale disponible ──
+    const applyMaxWidth = () => {
+      // Chercher le conteneur de messages du chat (le plus large ancêtre < body)
+      let maxWidth = 0;
+      let el = container.parentElement;
+      for (let i = 0; i < 15; i++) {
+        if (!el || el === document.body) break;
+        const w = el.offsetWidth;
+        if (w > maxWidth) maxWidth = w;
+        el = el.parentElement;
       }
+      // Fallback sur la fenêtre si rien trouvé
+      if (maxWidth < 100) maxWidth = Math.min(window.innerWidth - 32, 600);
+      // Appliquer sur le container ET son parent direct pour casser le layout VF
+      container.style.width = maxWidth + 'px';
+      container.style.minWidth = maxWidth + 'px';
+      container.style.maxWidth = maxWidth + 'px';
+      // Forcer aussi l'élément parent direct (bubble VF)
+      if (container.parentElement) {
+        container.parentElement.style.width = maxWidth + 'px';
+        container.parentElement.style.maxWidth = maxWidth + 'px';
+      }
+      console.log(`[CAL] width appliquée: ${maxWidth}px`);
+    };
+
+    requestAnimationFrame(() => {
+      applyMaxWidth();
+      // Double RAF pour s'assurer que le layout est recalculé
+      requestAnimationFrame(applyMaxWidth);
     });
 
     // ── PROGRESS BAR ──

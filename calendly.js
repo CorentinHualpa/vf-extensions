@@ -1,6 +1,8 @@
 /**
- *  Calendly – Voiceflow Extension v3.4
- *  Fix: container width forcé en JS (résout le bug "2px width")
+ *  Calendly – Voiceflow Extension v3.5
+ *  - Fix largeur : utilise element.closest() sur les containers VF connus
+ *  - Hide event type details + GDPR banner par défaut
+ *  - Prefill nom / email / téléphone
  */
 export const CalendlyExtension = {
   name: 'Calendly',
@@ -12,12 +14,14 @@ export const CalendlyExtension = {
   },
   render: ({ trace, element }) => {
     console.log('[CAL] render start');
+
     let config = trace.payload || {};
     if (config.body) {
       try {
         config = typeof config.body === 'string' ? JSON.parse(config.body) : config.body;
       } catch (e) { console.error('[CAL] parse error:', e); }
     }
+
     const {
       url,
       height = 580,
@@ -26,8 +30,10 @@ export const CalendlyExtension = {
       prefillEmail = '',
       prefillPhone = '',
       customAnswers = {},
-      loaderText = 'Chargement de l\'agenda...',
-      brandColor = '#E91E63'
+      loaderText = "Chargement de l'agenda...",
+      brandColor = '#E91E63',
+      hideEventTypeDetails = true,
+      hideGdprBanner = true,
     } = config;
 
     if (!url) {
@@ -35,37 +41,27 @@ export const CalendlyExtension = {
       return;
     }
 
-    // ── FORCER LA LARGEUR DU CONTAINER PARENT ──
-    // Le bug v3.3 : element.offsetWidth = 2px car VF ne donne pas de width au parent
-    // Fix : on remonte dans le DOM pour trouver le bon conteneur et forcer sa largeur
-    const forceParentWidth = () => {
-      let el = element;
-      for (let i = 0; i < 8; i++) {
-        if (!el) break;
-        const w = el.offsetWidth;
-        console.log(`[CAL] parent[${i}] width=${w}, tag=${el.tagName}, class=${el.className}`);
-        if (w > 50) break; // On a trouvé un ancêtre avec une vraie largeur
-        if (el.style) {
-          el.style.width = '100%';
-          el.style.minWidth = '320px';
-          el.style.display = 'block';
-        }
-        el = el.parentElement;
-      }
-    };
-    forceParentWidth();
+    // ── CONSTRUIRE L'URL FINALE AVEC PARAMS ──
+    let finalUrl = url;
+    try {
+      const u = new URL(url);
+      if (hideEventTypeDetails) u.searchParams.set('hide_event_type_details', '1');
+      if (hideGdprBanner)       u.searchParams.set('hide_gdpr_banner', '1');
+      finalUrl = u.toString();
+    } catch (e) {
+      // URL invalide, on garde telle quelle
+      finalUrl = url;
+    }
+    console.log('[CAL] finalUrl:', finalUrl);
 
-    // ── CONTAINER UNIQUE ──
+    // ── CONTAINER ──
     const container = document.createElement('div');
     container.classList.add('cal-ext-root');
 
-    // ── STYLE INLINE ──
+    // ── STYLE ──
     const styleEl = document.createElement('style');
     styleEl.textContent = `
 .cal-ext-root {
-  width: 100% !important;
-  min-width: 320px !important;
-  max-width: 100% !important;
   display: block !important;
   position: relative !important;
   border-radius: 16px !important;
@@ -75,14 +71,11 @@ export const CalendlyExtension = {
   border: 1px solid rgba(0,0,0,0.06) !important;
   height: ${height}px !important;
   box-sizing: border-box !important;
+  /* width sera appliquée en JS */
 }
-/* ═══ LOADER ═══ */
 .cal-ext-loader {
   position: absolute !important;
-  top: 0 !important;
-  left: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
+  inset: 0 !important;
   z-index: 100 !important;
   display: flex !important;
   flex-direction: column !important;
@@ -100,7 +93,6 @@ export const CalendlyExtension = {
   width: 56px !important;
   height: 56px !important;
   position: relative !important;
-  display: block !important;
 }
 .cal-ext-clip {
   width: 4px !important;
@@ -109,7 +101,6 @@ export const CalendlyExtension = {
   border-radius: 2px !important;
   position: absolute !important;
   top: 0 !important;
-  display: block !important;
 }
 .cal-ext-clip-l { left: 14px !important; }
 .cal-ext-clip-r { right: 14px !important; }
@@ -122,12 +113,10 @@ export const CalendlyExtension = {
   border: 2px solid #e0e0e0 !important;
   border-radius: 10px !important;
   overflow: hidden !important;
-  display: block !important;
 }
 .cal-ext-hd {
   height: 15px !important;
   background: ${brandColor} !important;
-  display: block !important;
   width: 100% !important;
 }
 .cal-ext-dots {
@@ -141,7 +130,6 @@ export const CalendlyExtension = {
   height: 8px !important;
   border-radius: 50% !important;
   background: #d5d5d5 !important;
-  display: block !important;
   animation: calDotPop 1.4s ease-in-out infinite !important;
 }
 .cal-ext-dot:nth-child(1) { animation-delay: 0s !important; }
@@ -155,11 +143,10 @@ export const CalendlyExtension = {
   50% { background: ${brandColor}; transform: scale(1.4); }
 }
 .cal-ext-txt {
-  font-family: 'Inter', -apple-system, sans-serif !important;
+  font-family: -apple-system, sans-serif !important;
   font-size: 14px !important;
   font-weight: 500 !important;
   color: #757575 !important;
-  display: block !important;
   text-align: center !important;
 }
 .cal-ext-bar-bg {
@@ -168,7 +155,6 @@ export const CalendlyExtension = {
   background: #eee !important;
   border-radius: 4px !important;
   overflow: hidden !important;
-  display: block !important;
 }
 .cal-ext-bar {
   height: 100% !important;
@@ -176,31 +162,22 @@ export const CalendlyExtension = {
   border-radius: 4px !important;
   background: linear-gradient(90deg, ${brandColor}, #ff6090) !important;
   transition: width 0.15s linear !important;
-  display: block !important;
 }
-/* ═══ WIDGET CALENDLY ═══ */
 .cal-ext-widget {
-  width: 100% !important;
-  height: 100% !important;
   position: absolute !important;
-  top: 0 !important;
-  left: 0 !important;
+  inset: 0 !important;
   z-index: 10 !important;
 }
-.cal-ext-widget .calendly-inline-widget {
-  width: 100% !important;
-  min-width: 100% !important;
-  height: 100% !important;
-}
+.cal-ext-widget .calendly-inline-widget,
 .cal-ext-widget .calendly-inline-widget iframe {
   width: 100% !important;
-  min-width: 100% !important;
+  height: 100% !important;
   border: none !important;
 }
     `;
     container.appendChild(styleEl);
 
-    // ── LOADER HTML ──
+    // ── LOADER ──
     const loader = document.createElement('div');
     loader.className = 'cal-ext-loader';
     loader.innerHTML = `
@@ -228,66 +205,104 @@ export const CalendlyExtension = {
     // ── INJECT ──
     element.appendChild(container);
 
-    // ── FIX WIDTH : cibler le dialogue VF et s'y adapter ──
-    const applyFitWidth = () => {
-      // 1. Chercher le conteneur de dialogue VF par sélecteurs connus
-      const dialogueSelectors = [
+    // ──────────────────────────────────────────────────────────────
+    // FIX WIDTH DÉFINITIF
+    // Stratégie : utiliser element.closest() pour trouver le bon
+    // conteneur VF, puis mesurer sa largeur réelle avec getBoundingClientRect
+    // ──────────────────────────────────────────────────────────────
+    const applyWidth = () => {
+      // Sélecteurs VF connus (du plus précis au plus large)
+      const selectors = [
+        '[class*="vfrc-system-response--container"]',
+        '[class*="vfrc-message--container"]',
         '[class*="vfrc-chat--dialogue"]',
+        '[class*="vfrc-chat-window"]',
         '[class*="vfrc-chat"]',
         '[class*="vfrc-widget"]',
-        '[class*="c-chat"]',
       ];
+
       let refEl = null;
-      for (const sel of dialogueSelectors) {
-        const found = document.querySelector(sel);
-        if (found && found.offsetWidth > 100) { refEl = found; break; }
+
+      // 1. Essayer element.closest() — le plus fiable
+      for (const sel of selectors) {
+        try {
+          const found = element.closest(sel);
+          if (found) {
+            const rect = found.getBoundingClientRect();
+            if (rect.width > 100) {
+              refEl = found;
+              console.log(`[CAL] closest(${sel}) → ${rect.width}px`);
+              break;
+            }
+          }
+        } catch(e) {}
       }
 
-      // 2. Si pas trouvé par classe, remonter le DOM depuis element
+      // 2. Fallback : querySelector global
+      if (!refEl) {
+        for (const sel of selectors) {
+          const found = document.querySelector(sel);
+          if (found) {
+            const rect = found.getBoundingClientRect();
+            if (rect.width > 100) {
+              refEl = found;
+              console.log(`[CAL] querySelector(${sel}) → ${rect.width}px`);
+              break;
+            }
+          }
+        }
+      }
+
+      // 3. Fallback : remonter le DOM manuellement
       if (!refEl) {
         let el = element.parentElement;
         for (let i = 0; i < 15; i++) {
           if (!el || el === document.body) break;
-          if (el.offsetWidth > 100) { refEl = el; break; }
+          const rect = el.getBoundingClientRect();
+          if (rect.width > 100) {
+            refEl = el;
+            console.log(`[CAL] ancestor fallback[${i}] → ${rect.width}px`);
+            break;
+          }
           el = el.parentElement;
         }
       }
 
       if (!refEl) {
-        console.log('[CAL] no ref found, skip width fix');
+        console.log('[CAL] aucun ref trouvé, skip');
         return;
       }
 
-      const refWidth = refEl.offsetWidth;
-      // Padding : 24px left/right de la bubble VF = 48px total, + 2px border
-      const PADDING = 50;
-      const finalWidth = Math.max(refWidth - PADDING, 280);
-      console.log(`[CAL] refEl width=${refWidth} → container=${finalWidth}px`);
+      const refRect = refEl.getBoundingClientRect();
+      const refStyle = window.getComputedStyle(refEl);
+      const paddingH = parseFloat(refStyle.paddingLeft || 0) + parseFloat(refStyle.paddingRight || 0);
 
-      container.style.width = finalWidth + 'px';
-      container.style.minWidth = finalWidth + 'px';
-      container.style.maxWidth = finalWidth + 'px';
+      // Largeur utilisable = largeur du container - ses paddings - 4px de sécurité
+      const usableWidth = Math.max(refRect.width - paddingH - 4, 280);
+      console.log(`[CAL] refWidth=${refRect.width} paddingH=${paddingH} → usable=${usableWidth}px`);
 
-      // Forcer l'iframe aussi si elle existe déjà
+      container.style.width = usableWidth + 'px';
+      container.style.minWidth = usableWidth + 'px';
+      container.style.maxWidth = usableWidth + 'px';
+
       const iframe = widget.querySelector('iframe');
       if (iframe) {
-        iframe.style.width = finalWidth + 'px';
-        iframe.style.minWidth = finalWidth + 'px';
+        iframe.style.width = usableWidth + 'px';
+        iframe.style.minWidth = usableWidth + 'px';
       }
     };
 
-    // Appliquer immédiatement + après layout
+    // Appliquer en RAF (layout calculé) + double RAF (rendu finalisé)
     requestAnimationFrame(() => {
-      applyFitWidth();
-      requestAnimationFrame(applyFitWidth);
+      applyWidth();
+      requestAnimationFrame(applyWidth);
     });
 
-    // ResizeObserver : se réadapter si la fenêtre change de taille
+    // ResizeObserver pour s'adapter aux changements de taille
     if (window.ResizeObserver) {
-      const ro = new ResizeObserver(() => applyFitWidth());
-      ro.observe(document.body);
-      // Nettoyer après 30s (le calendrier est affiché, plus besoin)
-      setTimeout(() => ro.disconnect(), 30000);
+      const ro = new ResizeObserver(() => applyWidth());
+      ro.observe(document.documentElement);
+      setTimeout(() => ro.disconnect(), 60000);
     }
 
     // ── PROGRESS BAR ──
@@ -306,10 +321,7 @@ export const CalendlyExtension = {
       console.log('[CAL] REVEAL');
       clearInterval(pInterval);
       if (bar) bar.style.width = '100%';
-      setTimeout(() => {
-        loader.classList.add('fade-out');
-        console.log('[CAL] Loader faded out');
-      }, 500);
+      setTimeout(() => loader.classList.add('fade-out'), 500);
     };
 
     // ── CSS CALENDLY ──
@@ -321,11 +333,12 @@ export const CalendlyExtension = {
     }
 
     const startCalendly = () => {
-      if (!window.Calendly || !window.Calendly.initInlineWidget) {
+      if (!window.Calendly?.initInlineWidget) {
         return setTimeout(startCalendly, 200);
       }
+
       const prefillObj = {};
-      if (prefillName) prefillObj.name = prefillName;
+      if (prefillName)  prefillObj.name = prefillName;
       if (prefillEmail) prefillObj.email = prefillEmail;
       if (prefillPhone) prefillObj.phone_number = prefillPhone;
       if (customAnswers && typeof customAnswers === 'object') {
@@ -335,42 +348,38 @@ export const CalendlyExtension = {
           if (v && String(v).trim()) prefillObj.customAnswers[k] = String(v);
         });
       }
+
       console.log('[CAL] initInlineWidget...');
       window.Calendly.initInlineWidget({
-        url: url,
+        url: finalUrl,
         parentElement: widget,
-        prefill: prefillObj
+        prefill: prefillObj,
       });
 
-      // Detect iframe load
+      // Detecter l'iframe
       const poll = setInterval(() => {
         const iframe = widget.querySelector('iframe');
-        if (iframe) {
-          clearInterval(poll);
-          console.log('[CAL] iframe found');
+        if (!iframe) return;
+        clearInterval(poll);
+        console.log('[CAL] iframe found');
 
-          // ── FIX SUPPLÉMENTAIRE : forcer la width de l'iframe aussi ──
-          requestAnimationFrame(() => {
-            const cw = container.offsetWidth;
-            if (cw > 50) {
-              iframe.style.width = cw + 'px';
-              iframe.style.minWidth = cw + 'px';
-              console.log(`[CAL] iframe width forcé: ${cw}px`);
-            }
-          });
+        // Forcer la width sur l'iframe après layout
+        requestAnimationFrame(() => {
+          applyWidth();
+        });
 
-          iframe.addEventListener('load', () => {
-            console.log('[CAL] iframe loaded');
+        iframe.addEventListener('load', () => {
+          console.log('[CAL] iframe loaded');
+          reveal();
+        });
+
+        // Fallback 8s
+        setTimeout(() => {
+          if (!loader.classList.contains('fade-out')) {
+            console.log('[CAL] fallback reveal');
             reveal();
-          });
-          // Fallback 8s
-          setTimeout(() => {
-            if (!loader.classList.contains('fade-out')) {
-              console.log('[CAL] fallback reveal');
-              reveal();
-            }
-          }, 8000);
-        }
+          }
+        }, 8000);
       }, 200);
     };
 
@@ -387,9 +396,9 @@ export const CalendlyExtension = {
         };
         script.onerror = () => {
           clearInterval(pInterval);
-          loader.innerHTML = `<div style="color:#c62828;padding:20px;text-align:center;font-family:Inter,sans-serif;">
+          loader.innerHTML = `<div style="color:#c62828;padding:20px;text-align:center;font-family:sans-serif;">
             ❌ Impossible de charger l'agenda<br>
-            <a href="${url}" target="_blank" style="color:${brandColor};margin-top:8px;display:inline-block;">Ouvrir Calendly →</a>
+            <a href="${finalUrl}" target="_blank" style="color:${brandColor};margin-top:8px;display:inline-block;">Ouvrir Calendly →</a>
           </div>`;
         };
         document.head.appendChild(script);
@@ -400,40 +409,59 @@ export const CalendlyExtension = {
 
     // ── EVENT CAPTURE ──
     const calendlyListener = async (e) => {
-      if (!e.data?.event || !e.data.event.startsWith("calendly")) return;
+      if (!e.data?.event?.startsWith('calendly')) return;
       const details = e.data.payload || {};
-      if (e.data.event === "calendly.event_scheduled") {
-        console.log("[CAL] ✅ RDV confirmé");
-        const eventUri = details.event?.uri || details.uri;
+
+      if (e.data.event === 'calendly.event_scheduled') {
+        console.log('[CAL] ✅ RDV confirmé');
+        const eventUri   = details.event?.uri || details.uri;
         const inviteeUri = details.invitee?.uri;
-        const parseUuid = (uri) => uri?.match(/scheduled_events\/([^\/]+)/)?.[1] || null;
+        const parseUuid  = (uri) => uri?.match(/scheduled_events\/([^/]+)/)?.[1] || null;
+
         const payload = {
-          event: "scheduled", eventUri, inviteeUri,
-          eventName: details.event_type?.name || "",
-          inviteeEmail: details.invitee?.email || "",
-          inviteeName: details.invitee?.name || "",
+          event: 'scheduled',
+          eventUri,
+          inviteeUri,
+          eventName:       details.event_type?.name || '',
+          inviteeEmail:    details.invitee?.email || '',
+          inviteeName:     details.invitee?.name || '',
           inviteeQuestions: details.questions_and_answers || [],
-          startTime: details.event?.start_time || "",
-          endTime: details.event?.end_time || "",
+          startTime:       details.event?.start_time || '',
+          endTime:         details.event?.end_time || '',
         };
+
         if (calendlyToken && inviteeUri) {
           try {
             const r = await fetch(inviteeUri, { headers: { Authorization: `Bearer ${calendlyToken}` } });
-            if (r.ok) { const d = await r.json(); payload.inviteeEmail = d.resource.email || payload.inviteeEmail; payload.inviteeName = d.resource.name || payload.inviteeName; }
-          } catch (err) { /* */ }
+            if (r.ok) {
+              const d = await r.json();
+              payload.inviteeEmail = d.resource?.email || payload.inviteeEmail;
+              payload.inviteeName  = d.resource?.name  || payload.inviteeName;
+            }
+          } catch (err) { /* silencieux */ }
         }
+
         if (calendlyToken && parseUuid(eventUri)) {
           try {
-            const r = await fetch(`https://api.calendly.com/scheduled_events/${parseUuid(eventUri)}`, { headers: { Authorization: `Bearer ${calendlyToken}` } });
-            if (r.ok) { const d = await r.json(); payload.startTime = d.resource.start_time || payload.startTime; payload.endTime = d.resource.end_time || payload.endTime; }
-          } catch (err) { /* */ }
+            const r = await fetch(`https://api.calendly.com/scheduled_events/${parseUuid(eventUri)}`, {
+              headers: { Authorization: `Bearer ${calendlyToken}` }
+            });
+            if (r.ok) {
+              const d = await r.json();
+              payload.startTime = d.resource?.start_time || payload.startTime;
+              payload.endTime   = d.resource?.end_time   || payload.endTime;
+            }
+          } catch (err) { /* silencieux */ }
         }
+
         window.voiceflow.calendlyEventData = payload;
-        window.voiceflow.chat.interact({ type: "complete", payload });
+        window.voiceflow.chat.interact({ type: 'complete', payload });
       }
     };
-    window.addEventListener("message", calendlyListener);
-    return () => window.removeEventListener("message", calendlyListener);
+
+    window.addEventListener('message', calendlyListener);
+    return () => window.removeEventListener('message', calendlyListener);
   }
 };
+
 export default CalendlyExtension;

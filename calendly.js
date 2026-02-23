@@ -412,6 +412,16 @@ export const CalendlyExtension = {
       if (!e.data?.event?.startsWith('calendly')) return;
       const details = e.data.payload || {};
 
+      // Adapter la hauteur dynamiquement selon le contenu Calendly
+      if (e.data.event === 'calendly.page_height') {
+        const newHeight = e.data.payload?.height;
+        if (newHeight && newHeight > 100) {
+          container.style.height = newHeight + 'px';
+          console.log(`[CAL] height adapté: ${newHeight}px`);
+        }
+        return;
+      }
+
       if (e.data.event === 'calendly.event_scheduled') {
         console.log('[CAL] ✅ RDV confirmé');
         const eventUri   = details.event?.uri || details.uri;

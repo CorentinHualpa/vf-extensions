@@ -228,35 +228,42 @@ export const CalendlyExtension = {
     // ── INJECT ──
     element.appendChild(container);
 
-    // ── FIX WIDTH : forcer la largeur maximale disponible ──
-    const applyMaxWidth = () => {
-      // Chercher le conteneur de messages du chat (le plus large ancêtre < body)
-      let maxWidth = 0;
-      let el = container.parentElement;
-      for (let i = 0; i < 15; i++) {
-        if (!el || el === document.body) break;
-        const w = el.offsetWidth;
-        if (w > maxWidth) maxWidth = w;
-        el = el.parentElement;
+    // ── FIX WIDTH : s'adapter au container VF disponible ──
+    const applyFitWidth = () => {
+      // Stratégie : trouver la largeur du chat messages area
+      // On remonte jusqu'au premier ancêtre qui a une largeur > 100px
+      // puis on soustrait le padding pour ne pas déborder
+      let targetWidth = element.offsetWidth;
+      console.log(`[CAL] element.offsetWidth = ${targetWidth}`);
+
+      if (targetWidth < 100) {
+        // Remonter jusqu'au premier ancêtre avec une vraie largeur
+        let el = element.parentElement;
+        for (let i = 0; i < 12; i++) {
+          if (!el || el === document.body) break;
+          const w = el.offsetWidth;
+          console.log(`[CAL] ancestor[${i}] width=${w}`);
+          if (w > 100) {
+            targetWidth = w;
+            break;
+          }
+          el = el.parentElement;
+        }
       }
-      // Fallback sur la fenêtre si rien trouvé
-      if (maxWidth < 100) maxWidth = Math.min(window.innerWidth - 32, 600);
-      // Appliquer sur le container ET son parent direct pour casser le layout VF
-      container.style.width = maxWidth + 'px';
-      container.style.minWidth = maxWidth + 'px';
-      container.style.maxWidth = maxWidth + 'px';
-      // Forcer aussi l'élément parent direct (bubble VF)
-      if (container.parentElement) {
-        container.parentElement.style.width = maxWidth + 'px';
-        container.parentElement.style.maxWidth = maxWidth + 'px';
-      }
-      console.log(`[CAL] width appliquée: ${maxWidth}px`);
+
+      // Soustraire padding pour rester dans le container (scrollbar + marges VF)
+      const PADDING = 40;
+      const finalWidth = Math.max(targetWidth - PADDING, 280);
+
+      container.style.width = finalWidth + 'px';
+      container.style.minWidth = finalWidth + 'px';
+      container.style.maxWidth = finalWidth + 'px';
+      console.log(`[CAL] width finale: ${finalWidth}px`);
     };
 
     requestAnimationFrame(() => {
-      applyMaxWidth();
-      // Double RAF pour s'assurer que le layout est recalculé
-      requestAnimationFrame(applyMaxWidth);
+      applyFitWidth();
+      requestAnimationFrame(applyFitWidth);
     });
 
     // ── PROGRESS BAR ──

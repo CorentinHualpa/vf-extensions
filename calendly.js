@@ -1,7 +1,6 @@
 /**
- *  Calendly – Voiceflow Extension v3.3
- *  Style inline dans le container (comme LoaderExtension)
- *  Loader visible → swap vers Calendly
+ *  Calendly – Voiceflow Extension v3.4
+ *  Fix: container width forcé en JS (résout le bug "2px width")
  */
 export const CalendlyExtension = {
   name: 'Calendly',
@@ -13,14 +12,12 @@ export const CalendlyExtension = {
   },
   render: ({ trace, element }) => {
     console.log('[CAL] render start');
-
     let config = trace.payload || {};
     if (config.body) {
       try {
         config = typeof config.body === 'string' ? JSON.parse(config.body) : config.body;
       } catch (e) { console.error('[CAL] parse error:', e); }
     }
-
     const {
       url,
       height = 580,
@@ -38,16 +35,38 @@ export const CalendlyExtension = {
       return;
     }
 
+    // ── FORCER LA LARGEUR DU CONTAINER PARENT ──
+    // Le bug v3.3 : element.offsetWidth = 2px car VF ne donne pas de width au parent
+    // Fix : on remonte dans le DOM pour trouver le bon conteneur et forcer sa largeur
+    const forceParentWidth = () => {
+      let el = element;
+      for (let i = 0; i < 8; i++) {
+        if (!el) break;
+        const w = el.offsetWidth;
+        console.log(`[CAL] parent[${i}] width=${w}, tag=${el.tagName}, class=${el.className}`);
+        if (w > 50) break; // On a trouvé un ancêtre avec une vraie largeur
+        if (el.style) {
+          el.style.width = '100%';
+          el.style.minWidth = '320px';
+          el.style.display = 'block';
+        }
+        el = el.parentElement;
+      }
+    };
+    forceParentWidth();
+
     // ── CONTAINER UNIQUE ──
     const container = document.createElement('div');
     container.classList.add('cal-ext-root');
 
-    // ── STYLE INLINE (dans le container, pas dans <head>) ──
+    // ── STYLE INLINE ──
     const styleEl = document.createElement('style');
     styleEl.textContent = `
 .cal-ext-root {
   width: 100% !important;
+  min-width: 320px !important;
   max-width: 100% !important;
+  display: block !important;
   position: relative !important;
   border-radius: 16px !important;
   overflow: hidden !important;
@@ -57,7 +76,6 @@ export const CalendlyExtension = {
   height: ${height}px !important;
   box-sizing: border-box !important;
 }
-
 /* ═══ LOADER ═══ */
 .cal-ext-loader {
   position: absolute !important;
@@ -78,8 +96,6 @@ export const CalendlyExtension = {
   opacity: 0 !important;
   pointer-events: none !important;
 }
-
-/* Icône calendrier animée */
 .cal-ext-icon {
   width: 56px !important;
   height: 56px !important;
@@ -138,8 +154,6 @@ export const CalendlyExtension = {
   0%, 100% { background: #d5d5d5; transform: scale(1); }
   50% { background: ${brandColor}; transform: scale(1.4); }
 }
-
-/* Texte */
 .cal-ext-txt {
   font-family: 'Inter', -apple-system, sans-serif !important;
   font-size: 14px !important;
@@ -148,8 +162,6 @@ export const CalendlyExtension = {
   display: block !important;
   text-align: center !important;
 }
-
-/* Barre de progression */
 .cal-ext-bar-bg {
   width: 200px !important;
   height: 4px !important;
@@ -166,7 +178,6 @@ export const CalendlyExtension = {
   transition: width 0.15s linear !important;
   display: block !important;
 }
-
 /* ═══ WIDGET CALENDLY ═══ */
 .cal-ext-widget {
   width: 100% !important;
@@ -209,7 +220,7 @@ export const CalendlyExtension = {
     `;
     container.appendChild(loader);
 
-    // ── WIDGET (derrière le loader, z-index inférieur) ──
+    // ── WIDGET ──
     const widget = document.createElement('div');
     widget.className = 'cal-ext-widget';
     container.appendChild(widget);
@@ -217,8 +228,39 @@ export const CalendlyExtension = {
     // ── INJECT ──
     element.appendChild(container);
 
-    console.log('[CAL] DOM injected, container:', container.offsetWidth, 'x', container.offsetHeight);
-    console.log('[CAL] loader:', loader.offsetWidth, 'x', loader.offsetHeight);
+    // ── FIX WIDTH : forcer après injection dans le DOM ──
+    // requestAnimationFrame garantit que le layout est calculé
+    requestAnimationFrame(() => {
+      const actualWidth = container.offsetWidth;
+      console.log(`[CAL] container post-inject: ${actualWidth} x ${container.offsetHeight}`);
+
+      if (actualWidth < 50) {
+        // Le container est toujours trop étroit — forcer en JS avec le parent chat bubble
+        let parent = container.parentElement;
+        let found = false;
+        for (let i = 0; i < 10; i++) {
+          if (!parent) break;
+          const pw = parent.offsetWidth;
+          console.log(`[CAL] checking ancestor[${i}]: width=${pw}`);
+          if (pw > 100) {
+            // On a trouvé un ancêtre avec une vraie largeur, forcer le container
+            container.style.width = pw + 'px';
+            container.style.minWidth = pw + 'px';
+            console.log(`[CAL] width forcé à ${pw}px via ancestor[${i}]`);
+            found = true;
+            break;
+          }
+          parent = parent.parentElement;
+        }
+        if (!found) {
+          // Fallback : utiliser la largeur du chat widget ou une valeur sûre
+          const fallbackWidth = Math.min(window.innerWidth - 40, 500);
+          container.style.width = fallbackWidth + 'px';
+          container.style.minWidth = fallbackWidth + 'px';
+          console.log(`[CAL] width fallback: ${fallbackWidth}px`);
+        }
+      }
+    });
 
     // ── PROGRESS BAR ──
     const bar = loader.querySelector('.cal-ext-bar');
@@ -242,8 +284,7 @@ export const CalendlyExtension = {
       }, 500);
     };
 
-    // ── LOAD + INIT CALENDLY ──
-    // CSS Calendly
+    // ── CSS CALENDLY ──
     if (!document.querySelector('link[href*="calendly.com/assets/external/widget.css"]')) {
       const link = document.createElement('link');
       link.rel = 'stylesheet';
@@ -255,7 +296,6 @@ export const CalendlyExtension = {
       if (!window.Calendly || !window.Calendly.initInlineWidget) {
         return setTimeout(startCalendly, 200);
       }
-
       const prefillObj = {};
       if (prefillName) prefillObj.name = prefillName;
       if (prefillEmail) prefillObj.email = prefillEmail;
@@ -267,7 +307,6 @@ export const CalendlyExtension = {
           if (v && String(v).trim()) prefillObj.customAnswers[k] = String(v);
         });
       }
-
       console.log('[CAL] initInlineWidget...');
       window.Calendly.initInlineWidget({
         url: url,
@@ -281,6 +320,17 @@ export const CalendlyExtension = {
         if (iframe) {
           clearInterval(poll);
           console.log('[CAL] iframe found');
+
+          // ── FIX SUPPLÉMENTAIRE : forcer la width de l'iframe aussi ──
+          requestAnimationFrame(() => {
+            const cw = container.offsetWidth;
+            if (cw > 50) {
+              iframe.style.width = cw + 'px';
+              iframe.style.minWidth = cw + 'px';
+              console.log(`[CAL] iframe width forcé: ${cw}px`);
+            }
+          });
+
           iframe.addEventListener('load', () => {
             console.log('[CAL] iframe loaded');
             reveal();
@@ -324,13 +374,11 @@ export const CalendlyExtension = {
     const calendlyListener = async (e) => {
       if (!e.data?.event || !e.data.event.startsWith("calendly")) return;
       const details = e.data.payload || {};
-
       if (e.data.event === "calendly.event_scheduled") {
         console.log("[CAL] ✅ RDV confirmé");
         const eventUri = details.event?.uri || details.uri;
         const inviteeUri = details.invitee?.uri;
         const parseUuid = (uri) => uri?.match(/scheduled_events\/([^\/]+)/)?.[1] || null;
-
         const payload = {
           event: "scheduled", eventUri, inviteeUri,
           eventName: details.event_type?.name || "",
@@ -340,7 +388,6 @@ export const CalendlyExtension = {
           startTime: details.event?.start_time || "",
           endTime: details.event?.end_time || "",
         };
-
         if (calendlyToken && inviteeUri) {
           try {
             const r = await fetch(inviteeUri, { headers: { Authorization: `Bearer ${calendlyToken}` } });
@@ -353,15 +400,12 @@ export const CalendlyExtension = {
             if (r.ok) { const d = await r.json(); payload.startTime = d.resource.start_time || payload.startTime; payload.endTime = d.resource.end_time || payload.endTime; }
           } catch (err) { /* */ }
         }
-
         window.voiceflow.calendlyEventData = payload;
         window.voiceflow.chat.interact({ type: "complete", payload });
       }
     };
-
     window.addEventListener("message", calendlyListener);
     return () => window.removeEventListener("message", calendlyListener);
   }
 };
-
 export default CalendlyExtension;

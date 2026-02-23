@@ -72,6 +72,7 @@ export const CalendlyExtension = {
   margin: 0 auto !important;
   height: ${height}px !important;
   box-sizing: border-box !important;
+  transition: height 0.3s ease !important;
 }
 .cal-ext-loader {
   position: absolute !important;

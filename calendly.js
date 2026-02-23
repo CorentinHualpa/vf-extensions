@@ -228,43 +228,67 @@ export const CalendlyExtension = {
     // ── INJECT ──
     element.appendChild(container);
 
-    // ── FIX WIDTH : s'adapter au container VF disponible ──
+    // ── FIX WIDTH : cibler le dialogue VF et s'y adapter ──
     const applyFitWidth = () => {
-      // Stratégie : trouver la largeur du chat messages area
-      // On remonte jusqu'au premier ancêtre qui a une largeur > 100px
-      // puis on soustrait le padding pour ne pas déborder
-      let targetWidth = element.offsetWidth;
-      console.log(`[CAL] element.offsetWidth = ${targetWidth}`);
+      // 1. Chercher le conteneur de dialogue VF par sélecteurs connus
+      const dialogueSelectors = [
+        '[class*="vfrc-chat--dialogue"]',
+        '[class*="vfrc-chat"]',
+        '[class*="vfrc-widget"]',
+        '[class*="c-chat"]',
+      ];
+      let refEl = null;
+      for (const sel of dialogueSelectors) {
+        const found = document.querySelector(sel);
+        if (found && found.offsetWidth > 100) { refEl = found; break; }
+      }
 
-      if (targetWidth < 100) {
-        // Remonter jusqu'au premier ancêtre avec une vraie largeur
+      // 2. Si pas trouvé par classe, remonter le DOM depuis element
+      if (!refEl) {
         let el = element.parentElement;
-        for (let i = 0; i < 12; i++) {
+        for (let i = 0; i < 15; i++) {
           if (!el || el === document.body) break;
-          const w = el.offsetWidth;
-          console.log(`[CAL] ancestor[${i}] width=${w}`);
-          if (w > 100) {
-            targetWidth = w;
-            break;
-          }
+          if (el.offsetWidth > 100) { refEl = el; break; }
           el = el.parentElement;
         }
       }
 
-      // Soustraire padding pour rester dans le container (scrollbar + marges VF)
-      const PADDING = 40;
-      const finalWidth = Math.max(targetWidth - PADDING, 280);
+      if (!refEl) {
+        console.log('[CAL] no ref found, skip width fix');
+        return;
+      }
+
+      const refWidth = refEl.offsetWidth;
+      // Padding : 24px left/right de la bubble VF = 48px total, + 2px border
+      const PADDING = 50;
+      const finalWidth = Math.max(refWidth - PADDING, 280);
+      console.log(`[CAL] refEl width=${refWidth} → container=${finalWidth}px`);
 
       container.style.width = finalWidth + 'px';
       container.style.minWidth = finalWidth + 'px';
       container.style.maxWidth = finalWidth + 'px';
-      console.log(`[CAL] width finale: ${finalWidth}px`);
+
+      // Forcer l'iframe aussi si elle existe déjà
+      const iframe = widget.querySelector('iframe');
+      if (iframe) {
+        iframe.style.width = finalWidth + 'px';
+        iframe.style.minWidth = finalWidth + 'px';
+      }
     };
 
+    // Appliquer immédiatement + après layout
     requestAnimationFrame(() => {
       applyFitWidth();
       requestAnimationFrame(applyFitWidth);
     });
+
+    // ResizeObserver : se réadapter si la fenêtre change de taille
+    if (window.ResizeObserver) {
+      const ro = new ResizeObserver(() => applyFitWidth());
+      ro.observe(document.body);
+      // Nettoyer après 30s (le calendrier est affiché, plus besoin)
+      setTimeout(() => ro.disconnect(), 30000);
+    }
 
     // ── PROGRESS BAR ──
     const bar = loader.querySelector('.cal-ext-bar');

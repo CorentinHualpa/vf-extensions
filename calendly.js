@@ -64,11 +64,12 @@ export const CalendlyExtension = {
 .cal-ext-root {
   display: block !important;
   position: relative !important;
-  border-radius: 16px !important;
+  border-radius: 12px !important;
   overflow: hidden !important;
   background: #ffffff !important;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.08) !important;
-  border: 1px solid rgba(0,0,0,0.06) !important;
+  box-shadow: none !important;
+  border: none !important;
+  margin: 0 auto !important;
   height: ${height}px !important;
   box-sizing: border-box !important;
   /* width sera appliquée en JS */

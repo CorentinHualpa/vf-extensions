@@ -355,6 +355,7 @@ export const CalendlyExtension = {
         url: finalUrl,
         parentElement: widget,
         prefill: prefillObj,
+        resize: true,  // Active le redimensionnement automatique natif
       });
 
       // Detecter l'iframe
@@ -413,12 +414,22 @@ export const CalendlyExtension = {
       if (!e.data?.event?.startsWith('calendly')) return;
       const details = e.data.payload || {};
 
+      // Logger TOUS les events Calendly pour debug
+      console.log('[CAL EVENT]', e.data.event, JSON.stringify(e.data.payload));
+
       // Adapter la hauteur dynamiquement selon le contenu Calendly
       if (e.data.event === 'calendly.page_height') {
-        const newHeight = e.data.payload?.height;
-        if (newHeight && newHeight > 100) {
+        // Calendly envoie payload.height comme string "NNNpx" ou number
+        const raw = e.data.payload?.height ?? e.data.payload?.size;
+        const newHeight = typeof raw === 'string' ? parseInt(raw, 10) : Number(raw);
+        console.log(`[CAL] page_height raw="${raw}" parsed=${newHeight}px`);
+        if (newHeight && newHeight > 50) {
           container.style.height = newHeight + 'px';
-          console.log(`[CAL] height adapté: ${newHeight}px`);
+          const iframe = widget.querySelector('iframe');
+          if (iframe) {
+            iframe.style.height = newHeight + 'px';
+            iframe.style.minHeight = newHeight + 'px';
+          }
         }
         return;
       }

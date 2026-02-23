@@ -64,15 +64,16 @@ export const CalendlyExtension = {
 .cal-ext-root {
   display: block !important;
   position: relative !important;
-  overflow: hidden !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
   background: transparent !important;
   box-shadow: none !important;
   border: none !important;
   border-radius: 0 !important;
   margin: 0 auto !important;
-  height: ${height}px !important;
+  min-height: ${height}px !important;
+  height: auto !important;
   box-sizing: border-box !important;
-  transition: height 0.3s ease !important;
 }
 .cal-ext-loader {
   position: absolute !important;
@@ -165,14 +166,17 @@ export const CalendlyExtension = {
   transition: width 0.15s linear !important;
 }
 .cal-ext-widget {
-  position: absolute !important;
-  inset: 0 !important;
+  position: relative !important;
+  width: 100% !important;
   z-index: 10 !important;
 }
-.cal-ext-widget .calendly-inline-widget,
+.cal-ext-widget .calendly-inline-widget {
+  width: 100% !important;
+  display: block !important;
+}
 .cal-ext-widget .calendly-inline-widget iframe {
   width: 100% !important;
-  height: 100% !important;
+  display: block !important;
   border: none !important;
 }
     `;
@@ -374,6 +378,10 @@ export const CalendlyExtension = {
         clearInterval(poll);
         console.log('[CAL] iframe found');
 
+        // Hauteur initiale de l'iframe (avant le premier page_height)
+        iframe.style.height = height + 'px';
+        iframe.style.minHeight = height + 'px';
+
         // Forcer la width sur l'iframe après layout
         requestAnimationFrame(() => {
           applyWidth();
@@ -433,12 +441,14 @@ export const CalendlyExtension = {
         const newHeight = typeof raw === 'string' ? parseInt(raw, 10) : Number(raw);
         console.log(`[CAL] page_height raw="${raw}" parsed=${newHeight}px`);
         if (newHeight && newHeight > 50) {
-          container.style.height = newHeight + 'px';
+          // Container en height:auto → on resize uniquement l'iframe
           const iframe = widget.querySelector('iframe');
           if (iframe) {
             iframe.style.height = newHeight + 'px';
             iframe.style.minHeight = newHeight + 'px';
           }
+          // Container min-height pour éviter le collapse
+          container.style.minHeight = newHeight + 'px';
         }
         return;
       }

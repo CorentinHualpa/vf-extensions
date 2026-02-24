@@ -312,6 +312,79 @@ export const CalendlyExtension = {
       requestAnimationFrame(applyWidth);
     });
 
+    // ── FIX SCROLL : forcer overflow sur les parents VF ──
+    // L'iframe cross-origin ne bubble pas les events touch/wheel
+    // → on force overflow-y: auto sur la chaîne VF jusqu'au dialogue
+    const fixParentScroll = () => {
+      const scrollSelectors = [
+        '[class*="vfrc-chat--dialogue"]',
+        '[class*="vfrc-chat-window"]',
+        '[class*="vfrc-chat"]',
+      ];
+      for (const sel of scrollSelectors) {
+        const el = document.querySelector(sel);
+        if (el) {
+          el.style.overflowY = 'auto';
+          el.style.webkitOverflowScrolling = 'touch';
+        }
+      }
+      // Remonter depuis element aussi
+      let el = element.parentElement;
+      for (let i = 0; i < 10; i++) {
+        if (!el || el === document.body) break;
+        const cs = window.getComputedStyle(el);
+        if (cs.overflow === 'hidden' || cs.overflowY === 'hidden') {
+          el.style.overflowY = 'auto';
+        }
+        el = el.parentElement;
+      }
+    };
+    fixParentScroll();
+
+    // ── FIX SCROLL IFRAME CROSS-ORIGIN ──
+    // Overlay qui capte wheel/touch pour scroller le dialogue VF,
+    // et s'efface 300ms sur click/tap pour laisser les interactions Calendly passer.
+    const overlay = document.createElement('div');
+    overlay.style.cssText = [
+      'position:absolute', 'top:0', 'left:0', 'right:0',
+      'z-index:20', 'background:transparent', 'cursor:default',
+      `height:${height}px`  // sera mis à jour par page_height
+    ].join(';') + ';';
+    container.appendChild(overlay);  // Sur container, pas widget, pour couvrir toute la hauteur
+
+    const getScrollParent = () => {
+      let el = element.parentElement;
+      for (let i = 0; i < 15; i++) {
+        if (!el || el === document.body) return document.documentElement;
+        const cs = window.getComputedStyle(el);
+        if (/auto|scroll/.test(cs.overflowY) && el.scrollHeight > el.clientHeight) return el;
+        el = el.parentElement;
+      }
+      return document.documentElement;
+    };
+
+    overlay.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      getScrollParent()?.scrollBy({ top: e.deltaY * 1.5, behavior: 'smooth' });
+    }, { passive: false });
+
+    let _ty = 0;
+    overlay.addEventListener('touchstart', (e) => { _ty = e.touches[0].clientY; }, { passive: true });
+    overlay.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      const dy = _ty - e.touches[0].clientY;
+      _ty = e.touches[0].clientY;
+      getScrollParent()?.scrollBy({ top: dy, behavior: 'auto' });
+    }, { passive: false });
+
+    // Désactiver overlay 300ms sur click/tap → les interactions Calendly passent
+    const disableOverlay = () => {
+      overlay.style.pointerEvents = 'none';
+      setTimeout(() => { overlay.style.pointerEvents = 'auto'; }, 300);
+    };
+    overlay.addEventListener('mousedown', disableOverlay);
+    overlay.addEventListener('touchend', disableOverlay);
+
     // ResizeObserver pour s'adapter aux changements de taille
     if (window.ResizeObserver) {
       const ro = new ResizeObserver(() => applyWidth());
@@ -441,14 +514,14 @@ export const CalendlyExtension = {
         const newHeight = typeof raw === 'string' ? parseInt(raw, 10) : Number(raw);
         console.log(`[CAL] page_height raw="${raw}" parsed=${newHeight}px`);
         if (newHeight && newHeight > 50) {
-          // Container en height:auto → on resize uniquement l'iframe
           const iframe = widget.querySelector('iframe');
           if (iframe) {
             iframe.style.height = newHeight + 'px';
             iframe.style.minHeight = newHeight + 'px';
           }
-          // Container min-height pour éviter le collapse
           container.style.minHeight = newHeight + 'px';
+          // Sync overlay height avec le contenu réel
+          overlay.style.height = newHeight + 'px';
         }
         return;
       }

@@ -342,16 +342,8 @@ export const CalendlyExtension = {
     fixParentScroll();
 
     // ── FIX SCROLL IFRAME CROSS-ORIGIN ──
-    // Overlay qui capte wheel/touch pour scroller le dialogue VF,
-    // et s'efface 300ms sur click/tap pour laisser les interactions Calendly passer.
-    const overlay = document.createElement('div');
-    overlay.style.cssText = [
-      'position:absolute', 'top:0', 'left:0', 'right:0',
-      'z-index:20', 'background:transparent', 'cursor:default',
-      `height:${height}px`  // sera mis à jour par page_height
-    ].join(';') + ';';
-    container.appendChild(overlay);  // Sur container, pas widget, pour couvrir toute la hauteur
-
+    // Pas d'overlay (cause double-clic). On intercepte au niveau window en capture
+    // phase uniquement quand la souris/touch est au-dessus du container.
     const getScrollParent = () => {
       let el = element.parentElement;
       for (let i = 0; i < 15; i++) {
@@ -363,27 +355,50 @@ export const CalendlyExtension = {
       return document.documentElement;
     };
 
-    overlay.addEventListener('wheel', (e) => {
+    const isOverContainer = () => {
+      const rect = container.getBoundingClientRect();
+      const x = _lastX, y = _lastY;
+      return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+    };
+
+    let _lastX = 0, _lastY = 0;
+    window.addEventListener('mousemove', (e) => { _lastX = e.clientX; _lastY = e.clientY; }, { passive: true });
+
+    // Wheel capturé au niveau window avant que l'iframe ne l'absorbe
+    const wheelHandler = (e) => {
+      if (!isOverContainer()) return;
       e.preventDefault();
       getScrollParent()?.scrollBy({ top: e.deltaY * 1.5, behavior: 'smooth' });
-    }, { passive: false });
-
-    let _ty = 0;
-    overlay.addEventListener('touchstart', (e) => { _ty = e.touches[0].clientY; }, { passive: true });
-    overlay.addEventListener('touchmove', (e) => {
-      e.preventDefault();
-      const dy = _ty - e.touches[0].clientY;
-      _ty = e.touches[0].clientY;
-      getScrollParent()?.scrollBy({ top: dy, behavior: 'auto' });
-    }, { passive: false });
-
-    // Désactiver overlay 300ms sur click/tap → les interactions Calendly passent
-    const disableOverlay = () => {
-      overlay.style.pointerEvents = 'none';
-      setTimeout(() => { overlay.style.pointerEvents = 'auto'; }, 300);
     };
-    overlay.addEventListener('mousedown', disableOverlay);
-    overlay.addEventListener('touchend', disableOverlay);
+    window.addEventListener('wheel', wheelHandler, { passive: false, capture: true });
+
+    // Touch : même approche
+    let _ty = 0;
+    const touchStartHandler = (e) => {
+      const rect = container.getBoundingClientRect();
+      const t = e.touches[0];
+      if (t.clientX < rect.left || t.clientX > rect.right || t.clientY < rect.top || t.clientY > rect.bottom) return;
+      _ty = t.clientY;
+    };
+    const touchMoveHandler = (e) => {
+      if (!_ty) return;
+      const rect = container.getBoundingClientRect();
+      const t = e.touches[0];
+      if (t.clientX < rect.left || t.clientX > rect.right) return;
+      e.preventDefault();
+      const dy = _ty - t.clientY;
+      _ty = t.clientY;
+      getScrollParent()?.scrollBy({ top: dy, behavior: 'auto' });
+    };
+    window.addEventListener('touchstart', touchStartHandler, { passive: true, capture: true });
+    window.addEventListener('touchmove', touchMoveHandler, { passive: false, capture: true });
+
+    // Cleanup au démontage
+    const cleanup = () => {
+      window.removeEventListener('wheel', wheelHandler, { capture: true });
+      window.removeEventListener('touchstart', touchStartHandler, { capture: true });
+      window.removeEventListener('touchmove', touchMoveHandler, { capture: true });
+    };
 
     // ResizeObserver pour s'adapter aux changements de taille
     if (window.ResizeObserver) {
@@ -520,8 +535,7 @@ export const CalendlyExtension = {
             iframe.style.minHeight = newHeight + 'px';
           }
           container.style.minHeight = newHeight + 'px';
-          // Sync overlay height avec le contenu réel
-          overlay.style.height = newHeight + 'px';
+
         }
         return;
       }

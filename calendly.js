@@ -1,5 +1,5 @@
 /**
- *  Calendly – Voiceflow Extension v3.5
+ *  Calendly – Voiceflow Extension v3.6
  *  - Fix largeur : utilise element.closest() sur les containers VF connus
  *  - Hide event type details + GDPR banner par défaut
  *  - Prefill nom / email / téléphone
@@ -439,15 +439,22 @@ export const CalendlyExtension = {
         return setTimeout(startCalendly, 200);
       }
 
+      // Filtre les valeurs VF non initialisées : "0", "", "{var_name}"
+      const isValidValue = (v) => {
+        if (!v && v !== false) return false;
+        const s = String(v).trim();
+        return s !== '' && s !== '0' && !/^\{[^}]+\}$/.test(s);
+      };
+
       const prefillObj = {};
-      if (prefillName)  prefillObj.name = prefillName;
-      if (prefillEmail) prefillObj.email = prefillEmail;
-      if (prefillPhone) prefillObj.phone_number = prefillPhone;
+      if (isValidValue(prefillName))  prefillObj.name = prefillName;
+      if (isValidValue(prefillEmail)) prefillObj.email = prefillEmail;
+      if (isValidValue(prefillPhone)) prefillObj.phone_number = prefillPhone;
       if (customAnswers && typeof customAnswers === 'object') {
         prefillObj.customAnswers = {};
         Object.keys(customAnswers).forEach(k => {
           const v = customAnswers[k];
-          if (v && String(v).trim()) prefillObj.customAnswers[k] = String(v);
+          if (isValidValue(v)) prefillObj.customAnswers[k] = String(v);
         });
       }
 

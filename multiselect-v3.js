@@ -520,7 +520,7 @@ export const MultiSelect = {
               lock();
               window.voiceflow.chat.interact({
                 type: 'complete',
-                payload: { selection: opt.name, buttonPath: opt.action || 'Default' },
+                payload: { label: opt.name, selection: opt.name, buttonPath: opt.action || 'Default' },
               });
             }
           });
@@ -607,6 +607,7 @@ export const MultiSelect = {
             window.voiceflow.chat.interact({
               type: 'complete',
               payload: {
+                label: formatted,
                 selections: res,
                 formattedResult: formatted,
                 buttonText: cfg.text,

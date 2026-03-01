@@ -136,6 +136,24 @@ export const MultiSelect = {
         setChat(true);
       };
 
+      // ── Inject user bubble into chat ────────────────────────
+      const injectUserBubble = (text) => {
+        try {
+          const dialog = host.querySelector('.vfrc-chat--dialog');
+          if (!dialog) return;
+          const bubble = document.createElement('div');
+          bubble.className = 'vfrc-user-response';
+          bubble.style.cssText = 'display:flex;justify-content:flex-end;padding:8px 16px;';
+          const msg = document.createElement('div');
+          msg.className = 'vfrc-message';
+          msg.style.cssText = `background:${color};color:#fff;padding:10px 14px;border-radius:12px;max-width:80%;white-space:pre-line;font-size:${buttonFontSize}px;line-height:1.5;`;
+          msg.textContent = text;
+          bubble.appendChild(msg);
+          dialog.appendChild(bubble);
+          bubble.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        } catch (e) { console.warn('Bubble inject failed:', e); }
+      };
+
       // ── Container ───────────────────────────────────────────
       const container = document.createElement('div');
       container.id = uid;
@@ -518,9 +536,10 @@ export const MultiSelect = {
             // Single select → auto-submit
             if (!multiselect) {
               lock();
+              injectUserBubble(opt.name);
               window.voiceflow.chat.interact({
                 type: 'complete',
-                payload: { label: opt.name, selection: opt.name, buttonPath: opt.action || 'Default' },
+                payload: { selection: opt.name, buttonPath: opt.action || 'Default' },
               });
             }
           });
@@ -604,10 +623,11 @@ export const MultiSelect = {
               return block;
             }).join('\n\n');
 
+            injectUserBubble(formatted);
+
             window.voiceflow.chat.interact({
               type: 'complete',
               payload: {
-                label: formatted,
                 selections: res,
                 formattedResult: formatted,
                 buttonText: cfg.text,

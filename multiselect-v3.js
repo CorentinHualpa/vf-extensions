@@ -519,9 +519,16 @@ export const MultiSelect = {
             if (!multiselect) {
               lock();
               window.voiceflow.chat.interact({
-                type: opt.action || 'Default',
-                payload: { label: opt.name, selection: opt.name, buttonPath: opt.action || 'Default' },
+                type: 'complete',
+                payload: { selection: opt.name, buttonPath: opt.action || 'Default' },
               });
+              // Delayed text inject for Agent step context
+              setTimeout(() => {
+                window.voiceflow.chat.interact({
+                  type: 'text',
+                  payload: opt.name,
+                });
+              }, 1500);
             }
           });
 
@@ -605,9 +612,8 @@ export const MultiSelect = {
             }).join('\n\n');
 
             window.voiceflow.chat.interact({
-              type: cfg.path || 'Default',
+              type: 'complete',
               payload: {
-                label: formatted,
                 selections: res,
                 formattedResult: formatted,
                 buttonText: cfg.text,
@@ -615,6 +621,13 @@ export const MultiSelect = {
                 isEmpty: res.every(r => !r.selections.length && !r.userInput),
               },
             });
+            // Delayed text inject for Agent step context
+            setTimeout(() => {
+              window.voiceflow.chat.interact({
+                type: 'text',
+                payload: formatted,
+              });
+            }, 1500);
           });
 
           wrap.appendChild(btn);

@@ -1,6 +1,6 @@
 /**
  *  ╔════════════════════════════════════════════════╗
- *  ║  MultiSelect V2 – Clean & Minimal Edition      ║
+ *  ║  MultiSelect V3 – Clean & Minimal Edition      ║
  *  ║                                                ║
  *  ║  Thèmes : dark (défaut) / light               ║
  *  ║  Config minimale : color + sections            ║
@@ -377,7 +377,6 @@ export const MultiSelect = {
       container.appendChild(style);
 
       // ── State ───────────────────────────────────────────────
-      // Map<inputElement, { sectionIdx, optName, action }>
       const inputs = new Map();
 
       // ── Update logic ────────────────────────────────────────
@@ -425,7 +424,6 @@ export const MultiSelect = {
         const card = document.createElement('div');
         card.className = 'ms-card';
 
-        // Section accent color (falls back to main color)
         const sectionColor = sec.color || color;
         if (isDark) {
           const sc = hexToRgb(sectionColor);
@@ -479,7 +477,6 @@ export const MultiSelect = {
           const label = document.createElement('span');
           label.innerHTML = opt.name;
 
-          // Hidden real input for state
           const inp = document.createElement('input');
           inp.type = multiselect ? 'checkbox' : 'radio';
           inp.name = multiselect ? `ms-${uid}-${sIdx}` : `ms-${uid}`;
@@ -498,7 +495,6 @@ export const MultiSelect = {
             if (multiselect) {
               inp.checked = !inp.checked;
             } else {
-              // Radio behavior
               getAllInputs().forEach(i => {
                 i.checked = false;
                 i.closest('.ms-opt')?.classList.remove('ms-opt--selected');
@@ -595,16 +591,24 @@ export const MultiSelect = {
               const sels = sectionInputs
                 .filter(i => i.checked && inputs.get(i).action !== 'all')
                 .map(i => inputs.get(i).optName);
-              // Find textarea in this section's card
               const cardEl = grid.children[idx];
               const ui = cardEl?.querySelector('.ms-textarea')?.value?.trim() || '';
               return { section: s.label, selections: sels, userInput: ui };
             }).filter(r => r.selections.length || r.userInput);
 
+            // Format lisible
+            const formatted = res.map(s => {
+              let block = s.section + ' :\n';
+              if (s.selections.length) block += s.selections.join('\n');
+              if (s.userInput) block += (s.selections.length ? '\n' : '') + '(Précision : "' + s.userInput + '")';
+              return block;
+            }).join('\n\n');
+
             window.voiceflow.chat.interact({
               type: 'complete',
               payload: {
                 selections: res,
+                formattedResult: formatted,
                 buttonText: cfg.text,
                 buttonPath: cfg.path || 'Default',
                 isEmpty: res.every(r => !r.selections.length && !r.userInput),

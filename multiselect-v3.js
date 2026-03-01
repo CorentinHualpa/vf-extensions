@@ -519,7 +519,7 @@ export const MultiSelect = {
             if (!multiselect) {
               lock();
               window.voiceflow.chat.interact({
-                type: 'complete',
+                type: opt.action || 'Default',
                 payload: { label: opt.name, selection: opt.name, buttonPath: opt.action || 'Default' },
               });
             }
@@ -605,7 +605,7 @@ export const MultiSelect = {
             }).join('\n\n');
 
             window.voiceflow.chat.interact({
-              type: 'complete',
+              type: cfg.path || 'Default',
               payload: {
                 label: formatted,
                 selections: res,

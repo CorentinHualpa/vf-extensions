@@ -1,9 +1,14 @@
 /**
  *  ╔════════════════════════════════════════════════╗
- *  ║  MultiSelect V3 – Clean & Minimal Edition      ║
+ *  ║  MultiSelect V3 – Text-only interact           ║
  *  ║                                                ║
  *  ║  Thèmes : dark (défaut) / light               ║
  *  ║  Config minimale : color + sections            ║
+ *  ║                                                ║
+ *  ║  FLOW REQUIS :                                 ║
+ *  ║  Custom Action → "stop on action" DÉSACTIVÉ   ║
+ *  ║  → retour à l'Agent step qui attend un input   ║
+ *  ║  → le text arrive comme message user            ║
  *  ╚════════════════════════════════════════════════╝
  *
  *  PAYLOAD MINIMAL :
@@ -11,28 +16,6 @@
  *    "color": "#3778F4",
  *    "sections": [
  *      { "label": "Ma section", "options": [{ "name": "Option A" }, { "name": "Option B" }] }
- *    ]
- *  }
- *
- *  PAYLOAD COMPLET :
- *  {
- *    "color": "#3778F4",
- *    "theme": "dark",              // "dark" | "light"
- *    "multiselect": true,
- *    "totalMaxSelect": 0,          // 0 = illimité
- *    "minSelect": 1,               // minimum requis pour valider
- *    "gridColumns": 2,             // 1 ou 2
- *    "useGlobalAll": false,
- *    "globalAllSelectText": "Tout sélectionner",
- *    "globalAllDeselectText": "Tout désélectionner",
- *    "chat": true,                 // false = désactive le chat pendant la sélection
- *    "chatDisabledText": "🚫",
- *    "buttonFontSize": 14,
- *    "textDelay": 1500,            // délai avant inject text (ms)
- *    "sections": [...],
- *    "buttons": [
- *      { "text": "Confirmer", "path": "Default" },
- *      { "text": "◀️ Retour", "path": "Previous_step" }
  *    ]
  *  }
  */
@@ -58,7 +41,6 @@ export const MultiSelect = {
         chat            = true,
         chatDisabledText = '🚫',
         buttonFontSize  = 14,
-        textDelay       = 1500,
         sections        = [],
         buttons         = [{ text: 'Confirmer', path: 'Default' }],
       } = trace.payload;
@@ -505,19 +487,13 @@ export const MultiSelect = {
 
             syncLimits();
 
-            // Single select → complete + delayed text
+            // Single select → text only (like synthèse button)
             if (!multiselect) {
               lock();
               window.voiceflow.chat.interact({
-                type: 'complete',
-                payload: { selection: opt.name, buttonPath: opt.action || 'Default' },
+                type: 'text',
+                payload: opt.name,
               });
-              setTimeout(() => {
-                window.voiceflow.chat.interact({
-                  type: 'text',
-                  payload: opt.name,
-                });
-              }, textDelay);
             }
           });
 
@@ -592,7 +568,7 @@ export const MultiSelect = {
               return { section: s.label, selections: sels, userInput: ui };
             }).filter(r => r.selections.length || r.userInput);
 
-            // Format lisible pour la bulle user
+            // Format lisible
             const formatted = res.map(s => {
               let block = s.section + ' :\n';
               if (s.selections.length) block += s.selections.join('\n');
@@ -600,25 +576,11 @@ export const MultiSelect = {
               return block;
             }).join('\n\n');
 
-            // 1. Complete → données structurées (silencieux)
+            // Text only — comme le bouton synthèse
             window.voiceflow.chat.interact({
-              type: 'complete',
-              payload: {
-                selections: res,
-                formattedResult: formatted,
-                buttonText: cfg.text,
-                buttonPath: cfg.path || 'Default',
-                isEmpty: res.every(r => !r.selections.length && !r.userInput),
-              },
+              type: 'text',
+              payload: formatted,
             });
-
-            // 2. Text différé → bulle user visible pour l'Agent
-            setTimeout(() => {
-              window.voiceflow.chat.interact({
-                type: 'text',
-                payload: formatted,
-              });
-            }, textDelay);
           });
 
           wrap.appendChild(btn);

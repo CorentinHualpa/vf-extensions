@@ -515,20 +515,13 @@ export const MultiSelect = {
 
             syncLimits();
 
-            // Single select → auto-submit
+            // Single select → auto-submit (complete only, no delayed text)
             if (!multiselect) {
               lock();
               window.voiceflow.chat.interact({
                 type: 'complete',
                 payload: { selection: opt.name, buttonPath: opt.action || 'Default' },
               });
-              // Delayed text inject for Agent step context
-              setTimeout(() => {
-                window.voiceflow.chat.interact({
-                  type: 'text',
-                  payload: opt.name,
-                });
-              }, 1500);
             }
           });
 
@@ -611,6 +604,7 @@ export const MultiSelect = {
               return block;
             }).join('\n\n');
 
+            // Complete only — no delayed text inject
             window.voiceflow.chat.interact({
               type: 'complete',
               payload: {
@@ -621,13 +615,6 @@ export const MultiSelect = {
                 isEmpty: res.every(r => !r.selections.length && !r.userInput),
               },
             });
-            // Delayed text inject for Agent step context
-            setTimeout(() => {
-              window.voiceflow.chat.interact({
-                type: 'text',
-                payload: formatted,
-              });
-            }, 1500);
           });
 
           wrap.appendChild(btn);

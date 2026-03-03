@@ -1,39 +1,12 @@
 /**
  *  ╔════════════════════════════════════════════════╗
- *  ║  MultiSelect V3 – Clean & Minimal Edition      ║
+ *  ║  MultiSelect V3 – Double interact + dead-end   ║
  *  ║                                                ║
- *  ║  Thèmes : dark (défaut) / light               ║
- *  ║  Config minimale : color + sections            ║
+ *  ║  FLOW REQUIS :                                 ║
+ *  ║  Custom Action → stop on action ON             ║
+ *  ║  JS capture → Default → RIEN (déconnecté)     ║
+ *  ║  Le text différé crée un nouveau tour          ║
  *  ╚════════════════════════════════════════════════╝
- *
- *  PAYLOAD MINIMAL :
- *  {
- *    "color": "#3778F4",
- *    "sections": [
- *      { "label": "Ma section", "options": [{ "name": "Option A" }, { "name": "Option B" }] }
- *    ]
- *  }
- *
- *  PAYLOAD COMPLET :
- *  {
- *    "color": "#3778F4",
- *    "theme": "dark",              // "dark" | "light"
- *    "multiselect": true,
- *    "totalMaxSelect": 0,          // 0 = illimité
- *    "minSelect": 1,               // minimum requis pour valider
- *    "gridColumns": 2,             // 1 ou 2
- *    "useGlobalAll": false,
- *    "globalAllSelectText": "Tout sélectionner",
- *    "globalAllDeselectText": "Tout désélectionner",
- *    "chat": true,                 // false = désactive le chat pendant la sélection
- *    "chatDisabledText": "🚫",
- *    "buttonFontSize": 14,
- *    "sections": [...],
- *    "buttons": [
- *      { "text": "Confirmer", "path": "Default" },
- *      { "text": "◀️ Retour", "path": "Previous_step" }
- *    ]
- *  }
  */
 
 export const MultiSelect = {
@@ -57,6 +30,7 @@ export const MultiSelect = {
         chat            = true,
         chatDisabledText = '🚫',
         buttonFontSize  = 14,
+        textDelay       = 1500,
         sections        = [],
         buttons         = [{ text: 'Confirmer', path: 'Default' }],
       } = trace.payload;
@@ -70,11 +44,6 @@ export const MultiSelect = {
         return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
       };
       const rgb = hexToRgb(color);
-      const lighten = (hex, pct) => {
-        const { r, g, b } = hexToRgb(hex);
-        const l = c => Math.min(255, Math.floor(c + (255 - c) * pct));
-        return `rgb(${l(r)},${l(g)},${l(b)})`;
-      };
 
       // ── Theme tokens ────────────────────────────────────────
       const T = isDark
@@ -145,9 +114,7 @@ export const MultiSelect = {
       const fs = buttonFontSize;
       const style = document.createElement('style');
       style.textContent = `
-/* ── Reset ────────────────────────────────────── */
 #${uid}, #${uid} * { box-sizing: border-box; margin: 0; padding: 0; }
-
 #${uid} {
   font-family: 'Inter', -apple-system, system-ui, sans-serif;
   font-size: ${fs}px;
@@ -155,8 +122,6 @@ export const MultiSelect = {
   color: ${T.text};
   width: 100%;
 }
-
-/* ── Grid ─────────────────────────────────────── */
 #${uid} .ms-grid {
   display: grid;
   grid-template-columns: ${gridColumns >= 2 ? 'repeat(2, 1fr)' : '1fr'};
@@ -165,8 +130,6 @@ export const MultiSelect = {
 @media (max-width: 480px) {
   #${uid} .ms-grid { grid-template-columns: 1fr; }
 }
-
-/* ── Section card ─────────────────────────────── */
 #${uid} .ms-card {
   background: ${T.cardBg};
   border: 1px solid ${T.cardBorder};
@@ -178,7 +141,6 @@ export const MultiSelect = {
   transform: translateY(-2px);
   box-shadow: ${T.shadow};
 }
-
 #${uid} .ms-card-title {
   padding: 12px 16px;
   font-weight: 700;
@@ -186,15 +148,12 @@ export const MultiSelect = {
   border-bottom: 1px solid ${T.cardBorder};
   color: ${T.text};
 }
-
 #${uid} .ms-card-body {
   display: flex;
   flex-direction: column;
   gap: 4px;
   padding: 8px;
 }
-
-/* ── Option row ───────────────────────────────── */
 #${uid} .ms-opt {
   display: flex;
   align-items: center;
@@ -228,8 +187,6 @@ export const MultiSelect = {
   border-style: solid;
   border-color: ${T.optionSelectedBorder};
 }
-
-/* ── Custom checkbox/radio ────────────────────── */
 #${uid} .ms-check {
   width: ${Math.round(fs * 1.15)}px;
   height: ${Math.round(fs * 1.15)}px;
@@ -252,11 +209,7 @@ export const MultiSelect = {
   border-radius: 50%;
   background: #fff;
 }
-
-/* ── User input ───────────────────────────────── */
-#${uid} .ms-input-wrap {
-  padding: 8px;
-}
+#${uid} .ms-input-wrap { padding: 8px; }
 #${uid} .ms-input-label {
   font-size: ${Math.round(fs * 0.9)}px;
   color: ${T.textMuted};
@@ -282,8 +235,6 @@ export const MultiSelect = {
   box-shadow: 0 0 0 3px rgba(${rgb.r},${rgb.g},${rgb.b},0.15);
 }
 #${uid} .ms-textarea::placeholder { color: ${T.textMuted}; font-style: italic; }
-
-/* ── Global all ───────────────────────────────── */
 #${uid} .ms-global-all {
   display: flex;
   justify-content: center;
@@ -309,8 +260,6 @@ export const MultiSelect = {
   border-color: ${T.optionSelectedBorder};
   border-style: solid;
 }
-
-/* ── Buttons ──────────────────────────────────── */
 #${uid} .ms-buttons {
   display: flex;
   flex-wrap: wrap;
@@ -339,7 +288,6 @@ export const MultiSelect = {
   box-shadow: 0 4px 16px rgba(${rgb.r},${rgb.g},${rgb.b},0.4);
 }
 #${uid} .ms-btn:active { transform: translateY(1px); }
-
 #${uid} .ms-btn-secondary {
   background: ${isDark ? 'rgba(255,255,255,0.1)' : '#e8e8ec'};
   color: ${T.text};
@@ -349,7 +297,6 @@ export const MultiSelect = {
   background: ${isDark ? 'rgba(255,255,255,0.18)' : '#ddd'};
   box-shadow: none;
 }
-
 #${uid} .ms-error {
   color: #ef4444;
   font-size: ${Math.round(fs * 0.8)}px;
@@ -357,18 +304,13 @@ export const MultiSelect = {
   text-align: center;
   min-height: ${Math.round(fs * 1.2)}px;
 }
-
-/* ── Shake ────────────────────────────────────── */
 @keyframes ms-shake {
   0%, 100% { transform: translateX(0); }
   20%, 60% { transform: translateX(-5px); }
   40%, 80% { transform: translateX(5px); }
 }
 #${uid} .ms-shake { animation: ms-shake 0.35s ease; }
-
-/* ── Locked state ─────────────────────────────── */
 #${uid}.ms-locked { opacity: 0.5; pointer-events: none; }
-
 @media (max-width: 480px) {
   #${uid} .ms-buttons { flex-direction: column; }
   #${uid} .ms-btn-wrap { max-width: none; }
@@ -378,10 +320,7 @@ export const MultiSelect = {
 
       // ── State ───────────────────────────────────────────────
       const inputs = new Map();
-
-      // ── Update logic ────────────────────────────────────────
       const getAllInputs = () => Array.from(inputs.keys());
-
       const countChecked = () => getAllInputs().filter(i => i.checked && inputs.get(i).action !== 'all').length;
 
       const syncLimits = () => {
@@ -395,7 +334,6 @@ export const MultiSelect = {
           }
         });
 
-        // Sync per-section "all" toggles
         sections.forEach((_, idx) => {
           const sectionInputs = getAllInputs().filter(i => inputs.get(i).sectionIdx === idx);
           const allInput = sectionInputs.find(i => inputs.get(i).action === 'all');
@@ -406,7 +344,6 @@ export const MultiSelect = {
           allInput.closest('.ms-opt')?.classList.toggle('ms-opt--selected', everyChecked);
         });
 
-        // Global all button
         const gBtn = container.querySelector('.ms-global-all-btn');
         if (gBtn) {
           const all = getAllInputs().filter(i => inputs.get(i).action !== 'all');
@@ -431,7 +368,6 @@ export const MultiSelect = {
           card.style.borderColor = `rgba(${sc.r},${sc.g},${sc.b},0.25)`;
         }
 
-        // Title
         if (sec.label) {
           const title = document.createElement('div');
           title.className = 'ms-card-title';
@@ -443,12 +379,10 @@ export const MultiSelect = {
           card.appendChild(title);
         }
 
-        // Options
         const body = document.createElement('div');
         body.className = 'ms-card-body';
 
         (sec.options || []).forEach(opt => {
-          // User input field
           if (opt.action === 'user_input') {
             const wrap = document.createElement('div');
             wrap.className = 'ms-input-wrap';
@@ -467,7 +401,6 @@ export const MultiSelect = {
             return;
           }
 
-          // Regular option
           const row = document.createElement('div');
           row.className = 'ms-opt' + (opt.action === 'all' ? ' ms-opt--all' : '') + (opt.grey ? ' ms-opt--disabled' : '');
 
@@ -504,7 +437,6 @@ export const MultiSelect = {
 
             row.classList.toggle('ms-opt--selected', inp.checked);
 
-            // "All" toggle logic
             if (opt.action === 'all') {
               const siblings = getAllInputs().filter(i => inputs.get(i).sectionIdx === sIdx && inputs.get(i).action !== 'all');
               siblings.forEach(i => {
@@ -515,13 +447,21 @@ export const MultiSelect = {
 
             syncLimits();
 
-            // Single select → auto-submit (complete only, no delayed text)
+            // Single select → complete to resolve, then text for Agent
             if (!multiselect) {
               lock();
+              // 1. Resolve the Custom Action (silent)
               window.voiceflow.chat.interact({
                 type: 'complete',
                 payload: { selection: opt.name, buttonPath: opt.action || 'Default' },
               });
+              // 2. After flow dies (Default → nothing), send visible text
+              setTimeout(() => {
+                window.voiceflow.chat.interact({
+                  type: 'text',
+                  payload: opt.name,
+                });
+              }, textDelay);
             }
           });
 
@@ -596,7 +536,6 @@ export const MultiSelect = {
               return { section: s.label, selections: sels, userInput: ui };
             }).filter(r => r.selections.length || r.userInput);
 
-            // Format lisible
             const formatted = res.map(s => {
               let block = s.section + ' :\n';
               if (s.selections.length) block += s.selections.join('\n');
@@ -604,7 +543,7 @@ export const MultiSelect = {
               return block;
             }).join('\n\n');
 
-            // Complete only — no delayed text inject
+            // 1. Resolve the Custom Action (silent, stores data via JS capture)
             window.voiceflow.chat.interact({
               type: 'complete',
               payload: {
@@ -615,6 +554,14 @@ export const MultiSelect = {
                 isEmpty: res.every(r => !r.selections.length && !r.userInput),
               },
             });
+
+            // 2. After flow dies (Default → nothing), send visible user message
+            setTimeout(() => {
+              window.voiceflow.chat.interact({
+                type: 'text',
+                payload: formatted,
+              });
+            }, textDelay);
           });
 
           wrap.appendChild(btn);

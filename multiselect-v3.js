@@ -1,6 +1,10 @@
 /**
  *  ╔════════════════════════════════════════════════╗
- *  ║  MultiSelect V3 – Double interact + dead-end   ║
+ *  ║  MultiSelect V3.1 – Adaptive layout            ║
+ *  ║                                                ║
+ *  ║  CHANGEMENTS :                                 ║
+ *  ║  - Options en 2 colonnes si section > 5 opts   ║
+ *  ║  - Card full-width si 1 seule section          ║
  *  ║                                                ║
  *  ║  FLOW REQUIS :                                 ║
  *  ║  Custom Action → stop on action ON             ║
@@ -37,6 +41,10 @@ export const MultiSelect = {
 
       const uid = `ms_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       const isDark = theme === 'dark';
+
+      // ── Adaptive layout logic ───────────────────────────────
+      const isSingleSection = sections.length === 1;
+      const MULTI_COL_THRESHOLD = 5; // options > 5 → 2 columns inside card
 
       // ── Helpers ─────────────────────────────────────────────
       const hexToRgb = hex => {
@@ -124,7 +132,7 @@ export const MultiSelect = {
 }
 #${uid} .ms-grid {
   display: grid;
-  grid-template-columns: ${gridColumns >= 2 ? 'repeat(2, 1fr)' : '1fr'};
+  grid-template-columns: ${isSingleSection ? '1fr' : (gridColumns >= 2 ? 'repeat(2, 1fr)' : '1fr')};
   gap: 8px;
 }
 @media (max-width: 480px) {
@@ -148,11 +156,28 @@ export const MultiSelect = {
   border-bottom: 1px solid ${T.cardBorder};
   color: ${T.text};
 }
+/* ── Card body : default single column ── */
 #${uid} .ms-card-body {
   display: flex;
   flex-direction: column;
   gap: 4px;
   padding: 8px;
+}
+/* ── Card body : 2 columns when many options ── */
+#${uid} .ms-card-body.ms-card-body--multicol {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+  padding: 8px;
+}
+/* user_input spans full width in multicol mode */
+#${uid} .ms-card-body.ms-card-body--multicol .ms-input-wrap {
+  grid-column: 1 / -1;
+}
+@media (max-width: 480px) {
+  #${uid} .ms-card-body.ms-card-body--multicol {
+    grid-template-columns: 1fr;
+  }
 }
 #${uid} .ms-opt {
   display: flex;
@@ -379,8 +404,12 @@ export const MultiSelect = {
           card.appendChild(title);
         }
 
+        // ── Count real options (exclude user_input) to decide layout ──
+        const realOptions = (sec.options || []).filter(o => o.action !== 'user_input');
+        const useMultiCol = realOptions.length > MULTI_COL_THRESHOLD;
+
         const body = document.createElement('div');
-        body.className = 'ms-card-body';
+        body.className = 'ms-card-body' + (useMultiCol ? ' ms-card-body--multicol' : '');
 
         (sec.options || []).forEach(opt => {
           if (opt.action === 'user_input') {
@@ -450,12 +479,10 @@ export const MultiSelect = {
             // Single select → complete to resolve, then text for Agent
             if (!multiselect) {
               lock();
-              // 1. Resolve the Custom Action (silent)
               window.voiceflow.chat.interact({
                 type: 'complete',
                 payload: { selection: opt.name, buttonPath: opt.action || 'Default' },
               });
-              // 2. After flow dies (Default → nothing), send visible text
               setTimeout(() => {
                 window.voiceflow.chat.interact({
                   type: 'text',
@@ -543,7 +570,6 @@ export const MultiSelect = {
               return block;
             }).join('\n\n');
 
-            // 1. Resolve the Custom Action (silent, stores data via JS capture)
             window.voiceflow.chat.interact({
               type: 'complete',
               payload: {
@@ -555,7 +581,6 @@ export const MultiSelect = {
               },
             });
 
-            // 2. After flow dies (Default → nothing), send visible user message
             setTimeout(() => {
               window.voiceflow.chat.interact({
                 type: 'text',

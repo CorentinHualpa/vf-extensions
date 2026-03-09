@@ -22,7 +22,12 @@ export const FileUpload = {
   name: 'FileUpload',
   type: 'response',
 
-  match: ({ trace }) => trace.payload?.name === 'file_upload',
+  match: ({ trace }) => {
+    return trace.type === 'file_upload'
+      || trace.type === 'ext_file_upload'
+      || trace.payload?.name === 'file_upload'
+      || trace.payload?.name === 'ext_file_upload';
+  },
 
   render: ({ trace, element }) => {
     try {

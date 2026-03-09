@@ -99,11 +99,11 @@ export const FileUpload = {
         cardBg: '#111111',
         cardBorder: '#1F1F1F',
         cardHoverBorder: '#2A2A2A',
-        text: '#F5F5F5',
-        textMuted: '#8A8A8A',
-        textDim: '#555555',
+        text: '#FFFFFF',
+        textMuted: '#B0B0B0',
+        textDim: '#888888',
         zoneBg: '#161616',
-        zoneBorder: '#2A2A2A',
+        zoneBorder: '#333333',
         zoneHoverBg: '#1C1C1C',
         zoneDragBg: `rgba(${pc.r},${pc.g},${pc.b},0.12)`,
         zoneDragBorder: primaryColor,
@@ -244,19 +244,21 @@ export const FileUpload = {
 .fu-card:hover { border-color: ${T.cardHoverBorder}; }
 
 /* ── Header ── */
-.fu-header { padding: 28px 28px 0; }
+.fu-header { padding: 28px 28px 8px; }
 .fu-title {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
-  color: ${T.text};
+  color: ${primaryColor};
   letter-spacing: -0.3px;
   line-height: 1.3;
+  margin-bottom: 6px;
 }
 .fu-subtitle {
-  font-size: 13px;
+  font-size: 14px;
   color: ${T.textMuted};
-  margin-top: 4px;
-  line-height: 1.5;
+  margin-top: 0;
+  margin-bottom: 4px;
+  line-height: 1.6;
 }
 
 /* ── Body ── */
@@ -286,7 +288,7 @@ export const FileUpload = {
 .fu-zone-icon {
   width: 48px;
   height: 48px;
-  margin: 0 auto 16px;
+  margin: 0 auto 20px;
   color: ${primaryColor};
   opacity: 0.8;
   transition: all 0.25s ease;
@@ -296,24 +298,25 @@ export const FileUpload = {
   transform: translateY(-2px);
 }
 .fu-zone-text {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   color: ${T.text};
-  margin-bottom: 6px;
+  margin-bottom: 10px;
 }
 .fu-zone-desc {
-  font-size: 13px;
+  font-size: 14px;
   color: ${T.textMuted};
-  line-height: 1.5;
+  line-height: 1.6;
+  margin-bottom: 4px;
 }
 .fu-zone-meta {
-  margin-top: 12px;
-  font-size: 12px;
+  margin-top: 16px;
+  font-size: 13px;
   color: ${T.textDim};
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 16px;
   flex-wrap: wrap;
 }
 .fu-zone-meta span {
@@ -525,8 +528,10 @@ export const FileUpload = {
 .fu-buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 20px;
+  gap: 10px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid ${T.cardBorder};
 }
 .fu-btn {
   flex: 1 1 auto;

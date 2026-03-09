@@ -1,13 +1,13 @@
 /**
  *  ╔═══════════════════════════════════════════════════════════╗
  *  ║  Carousel – Voiceflow Response Extension                  ║
- *  ║  VERSION 4.6 - SUPPORT 4 CARDS PER VIEW                  ║
+ *  ║  VERSION 4.7 - SMART CONTAINER DETECTION                 ║
  *  ║                                                           ║
  *  ║  • Choix automatique showcase (1-2 items) / gallery (3+) ║
  *  ║  • Support 2, 3 ou 4 cartes côte à côte (gallery)       ║
  *  ║  • Thème clair ou sombre configurable                    ║
- *  ║  • Détection widget Voiceflow (1 carte forcée)           ║
- *  ║  • Affichage mobile optimisé (1 carte en plein écran)    ║
+ *  ║  • Détection basée sur largeur réelle (pas iframe)       ║
+ *  ║  • Affichage mobile/widget étroit optimisé (1 carte)     ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
 export const CarouselExtension = {
@@ -38,11 +38,13 @@ export const CarouselExtension = {
         return;
       }
       
-      // ✅ DÉTECTION WIDGET VOICEFLOW
-      const isInWidget = () => {
-        if (window.self !== window.top) return true;
-        const parentWidth = element.parentElement?.offsetWidth || window.innerWidth;
-        return parentWidth < 500;
+      // ✅ v4.7: DÉTECTION BASÉE SUR LA LARGEUR RÉELLE DU CONTENEUR
+      const getContainerWidth = () => {
+        return element.parentElement?.offsetWidth || element.offsetWidth || window.innerWidth;
+      };
+      
+      const isNarrowContainer = () => {
+        return getContainerWidth() < 500;
       };
       
       // ✅ CHOIX AUTOMATIQUE DU MODE selon le contexte
@@ -50,8 +52,7 @@ export const CarouselExtension = {
       let slidesPerView = cardsPerView;
       
       if (!mode || !slidesPerView) {
-        // Dans le widget: toujours 1 carte
-        if (isInWidget()) {
+        if (isNarrowContainer()) {
           mode = 'showcase';
           slidesPerView = 1;
         } else if (items.length <= 2) {
@@ -72,14 +73,13 @@ export const CarouselExtension = {
       // Validation du mode
       const validModes = ['showcase', 'gallery'];
       mode = validModes.includes(mode) ? mode : 'showcase';
-      // ✅ v4.6: max 4 cartes (était 3 en v4.5)
       slidesPerView = mode === 'gallery' ? Math.min(4, Math.max(2, slidesPerView)) : 1;
       
-      // ✅ FORCER showcase dans le widget, peu importe le payload
-      if (isInWidget()) {
+      // ✅ v4.7: FORCER showcase uniquement si conteneur étroit (widget serré / mobile)
+      if (isNarrowContainer()) {
         mode = 'showcase';
         slidesPerView = 1;
-        console.log('🔧 Widget détecté - Forçage mode showcase (1 carte)');
+        console.log('🔧 Conteneur étroit détecté (' + getContainerWidth() + 'px) - Forçage mode showcase');
       }
       
       // Identifiant unique
@@ -193,7 +193,7 @@ export const CarouselExtension = {
       container.setAttribute('data-display-mode', mode);
       container.setAttribute('data-cards-per-view', slidesPerView);
       container.setAttribute('data-theme', theme);
-      container.setAttribute('data-in-widget', isInWidget() ? 'true' : 'false');
+      container.setAttribute('data-in-widget', isNarrowContainer() ? 'true' : 'false');
       
       // CSS
       const styleEl = document.createElement('style');
@@ -438,7 +438,7 @@ export const CarouselExtension = {
   min-width: calc((100% - 32px) / 3) !important;
   max-width: calc((100% - 32px) / 3) !important;
 }
-/* ✅ v4.6: 4 cartes: (100% - 3*gap) / 4 */
+/* 4 cartes: (100% - 3*gap) / 4 */
 .vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="4"] .vf-carousel-card {
   flex: 0 0 calc((100% - 48px) / 4) !important;
   min-width: calc((100% - 48px) / 4) !important;
@@ -446,7 +446,7 @@ export const CarouselExtension = {
 }
 
 /* ═══════════════════════════════════════════════════════════ */
-/* ✅ MODE WIDGET - TOUJOURS 1 CARTE EN PLEIN ÉCRAN           */
+/* ✅ MODE CONTENEUR ÉTROIT - TOUJOURS 1 CARTE PLEIN ÉCRAN    */
 /* ═══════════════════════════════════════════════════════════ */
 .vf-carousel-container[data-in-widget="true"] .vf-carousel-card {
   flex: 0 0 100% !important;
@@ -511,7 +511,7 @@ export const CarouselExtension = {
       0 10px 25px rgba(0, 0, 0, 0.3);
   }
   
-  /* Pas d'effet hover dans le widget */
+  /* Pas d'effet hover dans le widget étroit */
   .vf-carousel-container[data-in-widget="true"] .vf-carousel-card:hover {
     transform: none;
   }
@@ -538,12 +538,12 @@ export const CarouselExtension = {
 .vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="3"] .vf-carousel-image-container {
   padding-bottom: 45%;
 }
-/* ✅ v4.6: Mode gallery 4 cartes: image plus compacte 40% */
+/* Mode gallery 4 cartes: image plus compacte 40% */
 .vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="4"] .vf-carousel-image-container {
   padding-bottom: 40%;
 }
 
-/* Widget mode: image 55% */
+/* Widget étroit: image 55% */
 .vf-carousel-container[data-in-widget="true"] .vf-carousel-image-container {
   padding-bottom: 55% !important;
 }
@@ -571,7 +571,7 @@ export const CarouselExtension = {
     transform: scale(1.08);
   }
   
-  /* Pas d'effet hover dans le widget */
+  /* Pas d'effet hover dans le widget étroit */
   .vf-carousel-container[data-in-widget="true"] .vf-carousel-card:hover .vf-carousel-image {
     transform: none;
   }
@@ -601,14 +601,14 @@ export const CarouselExtension = {
   min-height: 120px;
   gap: 8px;
 }
-/* ✅ v4.6: Mode gallery 4 cartes: contenu très compact */
+/* Mode gallery 4 cartes: contenu très compact */
 .vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="4"] .vf-carousel-content {
   padding: 12px;
   min-height: 110px;
   gap: 8px;
 }
 
-/* Widget mode: contenu adapté */
+/* Widget étroit: contenu adapté */
 .vf-carousel-container[data-in-widget="true"] .vf-carousel-content {
   padding: 16px;
   min-height: 140px;
@@ -641,7 +641,7 @@ export const CarouselExtension = {
 .vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="3"] .vf-carousel-card-title {
   font-size: 14px;
 }
-/* ✅ v4.6: Titre encore plus compact pour 4 cartes */
+/* Titre compact pour 4 cartes */
 .vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="4"] .vf-carousel-card-title {
   font-size: 13px;
   -webkit-line-clamp: 1;
@@ -685,14 +685,14 @@ export const CarouselExtension = {
   -webkit-line-clamp: 3;
   font-size: 12px;
 }
-/* ✅ v4.6: Gallery 4 cartes: 2 lignes, police réduite */
+/* Gallery 4 cartes: 2 lignes, police réduite */
 .vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="4"] .vf-carousel-description {
   -webkit-line-clamp: 2;
   font-size: 11px;
   line-height: 1.4;
 }
 
-/* Widget mode: 4 lignes */
+/* Widget étroit: 4 lignes */
 .vf-carousel-container[data-in-widget="true"] .vf-carousel-description {
   -webkit-line-clamp: 4 !important;
   font-size: 13px !important;
@@ -738,7 +738,7 @@ export const CarouselExtension = {
     box-shadow: 0 6px 20px rgba(var(--rgb-1), 0.6);
   }
   
-  /* Pas d'effet hover dans le widget */
+  /* Pas d'effet hover dans le widget étroit */
   .vf-carousel-container[data-in-widget="true"] .vf-carousel-button:hover {
     transform: none;
   }
@@ -748,7 +748,7 @@ export const CarouselExtension = {
   transform: translateY(0);
 }
 
-/* ✅ v4.6: Bouton compact pour 4 cartes */
+/* Bouton compact pour 4 cartes */
 .vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="4"] .vf-carousel-button {
   padding: 10px 12px;
   font-size: 11px;
@@ -804,7 +804,7 @@ export const CarouselExtension = {
   display: none;
 }
 
-/* Widget mode: toujours afficher les contrôles si plus d'1 item */
+/* Widget étroit: toujours afficher les contrôles si plus d'1 item */
 .vf-carousel-container[data-in-widget="true"][data-items-count="1"] .vf-carousel-controls {
   display: none !important;
 }
@@ -975,7 +975,7 @@ export const CarouselExtension = {
       const isMobile = () => window.innerWidth <= 768;
       
       const getSlidesPerView = () => {
-        if (isInWidget() || isMobile()) return 1;
+        if (isNarrowContainer() || isMobile()) return 1;
         return slidesPerView;
       };
       
@@ -986,7 +986,7 @@ export const CarouselExtension = {
         const track = container.querySelector('.vf-carousel-track');
         const currentSlidesPerView = getSlidesPerView();
         
-        if (mode === 'showcase' || isInWidget() || isMobile()) {
+        if (mode === 'showcase' || isNarrowContainer() || isMobile()) {
           const translateX = -(currentIndex * 100);
           track.style.transform = `translateX(${translateX}%)`;
         } else {
@@ -1161,7 +1161,7 @@ export const CarouselExtension = {
       // Calcul du nombre de dots selon l'écran
       const calculateDots = () => {
         const currentSlidesPerView = getSlidesPerView();
-        return isInWidget() || isMobile() || mode === 'showcase' 
+        return isNarrowContainer() || isMobile() || mode === 'showcase' 
           ? items.length 
           : Math.ceil(items.length / currentSlidesPerView);
       };
@@ -1186,9 +1186,13 @@ export const CarouselExtension = {
       
       // Gestion du redimensionnement
       let resizeTimeout;
-      window.addEventListener('resize', () => {
+      const handleResize = () => {
         clearTimeout(resizeTimeout);
         resizeTimeout = setTimeout(() => {
+          // ✅ v4.7: Recalculer data-in-widget au resize
+          const nowNarrow = isNarrowContainer();
+          container.setAttribute('data-in-widget', nowNarrow ? 'true' : 'false');
+          
           currentIndex = 0;
           updateCarouselPosition();
           
@@ -1204,7 +1208,8 @@ export const CarouselExtension = {
             updateCarouselPosition();
           }
         }, 300);
-      });
+      };
+      window.addEventListener('resize', handleResize);
       
       // Support trackpad
       let wheelTimeout;
@@ -1288,12 +1293,12 @@ export const CarouselExtension = {
       
       element.appendChild(container);
       
-      console.log(`✅ Carousel v4.6 ${mode.toUpperCase()} - Thème: ${theme.toUpperCase()} (ID: ${uniqueId}) - ${items.length} items - ${slidesPerView} cardsPerView - Widget: ${isInWidget()} - Mobile: ${isMobile()} - Autoplay: ${autoplay}`);
+      console.log(`✅ Carousel v4.7 ${mode.toUpperCase()} - Thème: ${theme.toUpperCase()} (ID: ${uniqueId}) - ${items.length} items - ${slidesPerView} cardsPerView - Narrow: ${isNarrowContainer()} (${getContainerWidth()}px) - Mobile: ${isMobile()} - Autoplay: ${autoplay}`);
       
       // Cleanup
       return () => {
         stopAutoplay();
-        window.removeEventListener('resize', resizeTimeout);
+        window.removeEventListener('resize', handleResize);
       };
       
     } catch (error) {

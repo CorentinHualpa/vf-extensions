@@ -1,12 +1,12 @@
 /**
  *  ╔═══════════════════════════════════════════════════════════╗
  *  ║  Carousel – Voiceflow Response Extension                  ║
- *  ║  VERSION 4.7 - SMART CONTAINER DETECTION                 ║
+ *  ║  VERSION 4.7.1 - POST-MOUNT WIDTH DETECTION              ║
  *  ║                                                           ║
  *  ║  • Choix automatique showcase (1-2 items) / gallery (3+) ║
  *  ║  • Support 2, 3 ou 4 cartes côte à côte (gallery)       ║
  *  ║  • Thème clair ou sombre configurable                    ║
- *  ║  • Détection basée sur largeur réelle (pas iframe)       ║
+ *  ║  • Détection largeur post-mount (requestAnimationFrame)  ║
  *  ║  • Affichage mobile/widget étroit optimisé (1 carte)     ║
  *  ╚═══════════════════════════════════════════════════════════╝
  */
@@ -38,9 +38,10 @@ export const CarouselExtension = {
         return;
       }
       
-      // ✅ v4.7: DÉTECTION BASÉE SUR LA LARGEUR RÉELLE DU CONTENEUR
+      // ✅ v4.7.1: DÉTECTION BASÉE SUR LA LARGEUR RÉELLE - REMONTE AU CONTENEUR VF
       const getContainerWidth = () => {
-        return element.parentElement?.offsetWidth || element.offsetWidth || window.innerWidth;
+        const vfMessage = element.closest('.vfrc-message') || element.parentElement;
+        return vfMessage?.offsetWidth || element.parentElement?.offsetWidth || element.offsetWidth || window.innerWidth;
       };
       
       const isNarrowContainer = () => {
@@ -52,10 +53,7 @@ export const CarouselExtension = {
       let slidesPerView = cardsPerView;
       
       if (!mode || !slidesPerView) {
-        if (isNarrowContainer()) {
-          mode = 'showcase';
-          slidesPerView = 1;
-        } else if (items.length <= 2) {
+        if (items.length <= 2) {
           mode = 'showcase';
           slidesPerView = 1;
         } else if (items.length <= 3) {
@@ -75,11 +73,16 @@ export const CarouselExtension = {
       mode = validModes.includes(mode) ? mode : 'showcase';
       slidesPerView = mode === 'gallery' ? Math.min(4, Math.max(2, slidesPerView)) : 1;
       
-      // ✅ v4.7: FORCER showcase uniquement si conteneur étroit (widget serré / mobile)
-      if (isNarrowContainer()) {
+      // ✅ v4.7.1: Garder les valeurs payload comme référence pour le recalcul post-mount
+      const targetMode = mode;
+      const targetSlidesPerView = slidesPerView;
+      
+      // ✅ v4.7.1: Pré-check narrow (peut être faux avant mount, sera recalculé)
+      let initialNarrow = isNarrowContainer();
+      if (initialNarrow) {
         mode = 'showcase';
         slidesPerView = 1;
-        console.log('🔧 Conteneur étroit détecté (' + getContainerWidth() + 'px) - Forçage mode showcase');
+        console.log('🔧 Pré-mount: conteneur étroit détecté (' + getContainerWidth() + 'px) - Showcase temporaire');
       }
       
       // Identifiant unique
@@ -125,7 +128,6 @@ export const CarouselExtension = {
       
       // ✅ VARIABLES DE THÈME
       const themeVars = theme === 'light' ? {
-        // MODE CLAIR
         containerBg: 'rgba(255, 255, 255, 0.98)',
         containerBorder: 'rgba(0, 0, 0, 0.08)',
         containerShadow: '0 15px 50px rgba(0, 0, 0, 0.08)',
@@ -133,20 +135,17 @@ export const CarouselExtension = {
         backgroundOpacity: '0.15',
         backgroundBrightness: '1.1',
         imageBackgroundOpacity: '0.3',
-        
         titleBg: 'rgba(255, 255, 255, 0.95)',
         titleColor: '#1a1a1a',
         titleBorder: 'rgba(0, 0, 0, 0.1)',
         titleShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
         titleTextShadow: 'none',
-        
         navBtnBg: 'rgba(255, 255, 255, 0.95)',
         navBtnBorder: 'rgba(0, 0, 0, 0.15)',
         navBtnColor: color1,
         navBtnHoverBg: color1,
         navBtnHoverColor: '#ffffff',
         navBtnShadow: '0 4px 15px rgba(0, 0, 0, 0.1)',
-        
         dotBg: 'rgba(0, 0, 0, 0.2)',
         dotBorder: 'rgba(0, 0, 0, 0.3)',
         dotHoverBg: 'rgba(0, 0, 0, 0.4)',
@@ -154,7 +153,6 @@ export const CarouselExtension = {
         dotActiveBorder: color1,
         dotGlow: `0 0 15px rgba(${r1}, ${g1}, ${b1}, 0.5)`
       } : {
-        // MODE SOMBRE
         containerBg: 'rgba(0, 0, 0, 0.3)',
         containerBorder: 'rgba(255, 255, 255, 0.1)',
         containerShadow: '0 15px 50px rgba(0, 0, 0, 0.3)',
@@ -162,20 +160,17 @@ export const CarouselExtension = {
         backgroundOpacity: '1',
         backgroundBrightness: '0.7',
         imageBackgroundOpacity: '0.9',
-        
         titleBg: 'rgba(0, 0, 0, 0.7)',
         titleColor: '#ffffff',
         titleBorder: 'rgba(255, 255, 255, 0.2)',
         titleShadow: '0 8px 30px rgba(0, 0, 0, 0.4)',
         titleTextShadow: '0 2px 10px rgba(0, 0, 0, 0.8)',
-        
         navBtnBg: 'rgba(0, 0, 0, 0.6)',
         navBtnBorder: 'rgba(255, 255, 255, 0.8)',
         navBtnColor: '#fff',
         navBtnHoverBg: 'rgba(255, 255, 255, 0.9)',
         navBtnHoverColor: color1,
         navBtnShadow: '0 4px 15px rgba(0, 0, 0, 0.3)',
-        
         dotBg: 'rgba(255, 255, 255, 0.3)',
         dotBorder: 'rgba(255, 255, 255, 0.6)',
         dotHoverBg: 'rgba(255, 255, 255, 0.6)',
@@ -193,7 +188,7 @@ export const CarouselExtension = {
       container.setAttribute('data-display-mode', mode);
       container.setAttribute('data-cards-per-view', slidesPerView);
       container.setAttribute('data-theme', theme);
-      container.setAttribute('data-in-widget', isNarrowContainer() ? 'true' : 'false');
+      container.setAttribute('data-in-widget', initialNarrow ? 'true' : 'false');
       
       // CSS
       const styleEl = document.createElement('style');
@@ -252,35 +247,25 @@ export const CarouselExtension = {
   box-sizing: border-box !important;
   display: block !important;
   z-index: 1 !important;
-  
   box-shadow: ${themeVars.containerShadow}, 0 0 0 1px ${themeVars.containerBorder};
 }
-
-/* Widget mode: padding réduit */
 .vf-carousel-container[data-in-widget="true"] {
   padding: 16px !important;
   border-radius: 16px;
 }
-
 @media (max-width: 768px) {
   .vf-carousel-container {
     padding: 12px !important;
     border-radius: 16px;
   }
 }
-
 /* ✅ Fond avec dégradé (si pas d'image) */
 .vf-carousel-container[data-has-background="false"]::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  top: 0; left: 0; right: 0; bottom: 0;
   border-radius: var(--border-radius);
-  background: linear-gradient(135deg, 
-    var(--color-1) 0%, 
-    var(--color-2) 100%);
+  background: linear-gradient(135deg, var(--color-1) 0%, var(--color-2) 100%);
   z-index: -2;
   opacity: ${themeVars.backgroundOpacity};
 }
@@ -288,10 +273,7 @@ export const CarouselExtension = {
 .vf-carousel-container[data-has-background="true"]::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  top: 0; left: 0; right: 0; bottom: 0;
   border-radius: var(--border-radius);
   background-image: url('${backgroundImage}');
   background-size: cover;
@@ -306,21 +288,15 @@ export const CarouselExtension = {
 .vf-carousel-container::after {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  top: 0; left: 0; right: 0; bottom: 0;
   border-radius: var(--border-radius);
   background: ${themeVars.overlayBg};
   z-index: -1;
 }
-
-/* Widget mode: border radius réduit */
 .vf-carousel-container[data-in-widget="true"]::before,
 .vf-carousel-container[data-in-widget="true"]::after {
   border-radius: 16px;
 }
-
 @media (max-width: 768px) {
   .vf-carousel-container[data-has-background="false"]::before,
   .vf-carousel-container[data-has-background="true"]::before,
@@ -328,9 +304,8 @@ export const CarouselExtension = {
     border-radius: 16px;
   }
 }
-
 /* ═══════════════════════════════════════════════════════════ */
-/* ✅ TITRE STYLÉ                                               */
+/* ✅ TITRE                                                     */
 /* ═══════════════════════════════════════════════════════════ */
 .vf-carousel-title {
   position: relative;
@@ -343,28 +318,20 @@ export const CarouselExtension = {
   color: ${themeVars.titleColor};
   letter-spacing: -0.3px;
   line-height: 1.2;
-  
   background: ${themeVars.titleBg};
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border-radius: 12px;
   border: 2px solid ${themeVars.titleBorder};
-  
-  box-shadow: 
-    ${themeVars.titleShadow},
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  
+  box-shadow: ${themeVars.titleShadow}, inset 0 1px 0 rgba(255, 255, 255, 0.1);
   text-shadow: ${themeVars.titleTextShadow};
 }
-
-/* Widget mode: titre plus compact */
 .vf-carousel-container[data-in-widget="true"] .vf-carousel-title {
   font-size: 18px;
   padding: 12px 16px;
   margin-bottom: 16px;
   border-radius: 10px;
 }
-
 @media (max-width: 768px) {
   .vf-carousel-title {
     font-size: 16px;
@@ -384,19 +351,16 @@ export const CarouselExtension = {
   width: 100%;
   box-sizing: border-box;
 }
-
 @media (max-width: 768px) {
   .vf-carousel-viewport {
     border-radius: 12px;
     margin-bottom: 12px;
   }
 }
-
 .vf-carousel-container[data-in-widget="true"] .vf-carousel-viewport {
   border-radius: 12px;
   margin-bottom: 12px;
 }
-
 .vf-carousel-track {
   display: flex;
   gap: 16px;
@@ -405,11 +369,9 @@ export const CarouselExtension = {
   width: 100%;
   box-sizing: border-box;
 }
-
 .vf-carousel-container[data-in-widget="true"] .vf-carousel-track {
   gap: 0;
 }
-
 @media (max-width: 768px) {
   .vf-carousel-track {
     gap: 12px;
@@ -426,36 +388,31 @@ export const CarouselExtension = {
 /* ═══════════════════════════════════════════════════════════ */
 /* ✅ CARTES - MODE GALLERY (2, 3 ou 4 cartes côte à côte)   */
 /* ═══════════════════════════════════════════════════════════ */
-/* 2 cartes: (100% - 1*gap) / 2 */
 .vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="2"] .vf-carousel-card {
   flex: 0 0 calc((100% - 16px) / 2) !important;
   min-width: calc((100% - 16px) / 2) !important;
   max-width: calc((100% - 16px) / 2) !important;
 }
-/* 3 cartes: (100% - 2*gap) / 3 */
 .vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="3"] .vf-carousel-card {
   flex: 0 0 calc((100% - 32px) / 3) !important;
   min-width: calc((100% - 32px) / 3) !important;
   max-width: calc((100% - 32px) / 3) !important;
 }
-/* 4 cartes: (100% - 3*gap) / 4 */
 .vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="4"] .vf-carousel-card {
   flex: 0 0 calc((100% - 48px) / 4) !important;
   min-width: calc((100% - 48px) / 4) !important;
   max-width: calc((100% - 48px) / 4) !important;
 }
-
 /* ═══════════════════════════════════════════════════════════ */
-/* ✅ MODE CONTENEUR ÉTROIT - TOUJOURS 1 CARTE PLEIN ÉCRAN    */
+/* ✅ MODE CONTENEUR ÉTROIT - TOUJOURS 1 CARTE                 */
 /* ═══════════════════════════════════════════════════════════ */
 .vf-carousel-container[data-in-widget="true"] .vf-carousel-card {
   flex: 0 0 100% !important;
   min-width: 100% !important;
   max-width: 100% !important;
 }
-
 /* ═══════════════════════════════════════════════════════════ */
-/* ✅ CORRECTION MOBILE - TOUJOURS 1 CARTE EN PLEIN ÉCRAN      */
+/* ✅ MOBILE - TOUJOURS 1 CARTE                                 */
 /* ═══════════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
   .vf-carousel-container[data-display-mode="showcase"] .vf-carousel-card,
@@ -469,7 +426,6 @@ export const CarouselExtension = {
     max-width: 100% !important;
   }
 }
-
 /* ═══════════════════════════════════════════════════════════ */
 /* ✅ STYLES COMMUNS DES CARTES                                */
 /* ═══════════════════════════════════════════════════════════ */
@@ -482,36 +438,23 @@ export const CarouselExtension = {
   cursor: pointer;
   position: relative;
   box-sizing: border-box;
-  
-  box-shadow: 
-    0 10px 30px rgba(0, 0, 0, 0.3),
-    0 5px 15px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), 0 5px 15px rgba(0, 0, 0, 0.2);
 }
-
 @media (max-width: 768px) {
   .vf-carousel-card {
     border-radius: 12px;
-    box-shadow: 
-      0 8px 24px rgba(0, 0, 0, 0.25),
-      0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(0, 0, 0, 0.15);
   }
 }
-
 .vf-carousel-container[data-in-widget="true"] .vf-carousel-card {
   border-radius: 12px;
 }
-
 @media (min-width: 769px) {
   .vf-carousel-card:hover {
     transform: translateY(-6px) scale(1.01);
     border-color: rgba(255, 255, 255, 0.6);
-    
-    box-shadow: 
-      0 20px 50px rgba(0, 0, 0, 0.4),
-      0 10px 25px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4), 0 10px 25px rgba(0, 0, 0, 0.3);
   }
-  
-  /* Pas d'effet hover dans le widget étroit */
   .vf-carousel-container[data-in-widget="true"] .vf-carousel-card:hover {
     transform: none;
   }
@@ -526,38 +469,29 @@ export const CarouselExtension = {
   overflow: hidden;
   background: linear-gradient(135deg, #f5f5f5, #e8e8e8);
 }
-/* Mode showcase: image 50% */
 .vf-carousel-container[data-display-mode="showcase"] .vf-carousel-image-container {
   padding-bottom: 50%;
 }
-/* Mode gallery 2 cartes: image 45% */
 .vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="2"] .vf-carousel-image-container {
   padding-bottom: 45%;
 }
-/* Mode gallery 3 cartes: image 45% */
 .vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="3"] .vf-carousel-image-container {
   padding-bottom: 45%;
 }
-/* Mode gallery 4 cartes: image plus compacte 40% */
 .vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="4"] .vf-carousel-image-container {
   padding-bottom: 40%;
 }
-
-/* Widget étroit: image 55% */
 .vf-carousel-container[data-in-widget="true"] .vf-carousel-image-container {
   padding-bottom: 55% !important;
 }
-
 @media (max-width: 768px) {
   .vf-carousel-image-container {
     padding-bottom: 60% !important;
   }
 }
-
 .vf-carousel-image {
   position: absolute;
-  top: 0;
-  left: 0;
+  top: 0; left: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -565,13 +499,10 @@ export const CarouselExtension = {
   transition: transform 0.6s ease;
   transform-origin: center center;
 }
-
 @media (min-width: 769px) {
   .vf-carousel-card:hover .vf-carousel-image {
     transform: scale(1.08);
   }
-  
-  /* Pas d'effet hover dans le widget étroit */
   .vf-carousel-container[data-in-widget="true"] .vf-carousel-card:hover .vf-carousel-image {
     transform: none;
   }
@@ -589,32 +520,26 @@ export const CarouselExtension = {
   z-index: 2;
   background: rgba(255, 255, 255, 0.98);
 }
-/* Mode gallery 2 cartes: contenu normal */
 .vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="2"] .vf-carousel-content {
   padding: 16px;
   min-height: 130px;
   gap: 10px;
 }
-/* Mode gallery 3 cartes: contenu compact */
 .vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="3"] .vf-carousel-content {
   padding: 14px;
   min-height: 120px;
   gap: 8px;
 }
-/* Mode gallery 4 cartes: contenu très compact */
 .vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="4"] .vf-carousel-content {
   padding: 12px;
   min-height: 110px;
   gap: 8px;
 }
-
-/* Widget étroit: contenu adapté */
 .vf-carousel-container[data-in-widget="true"] .vf-carousel-content {
   padding: 16px;
   min-height: 140px;
   gap: 10px;
 }
-
 @media (max-width: 768px) {
   .vf-carousel-content {
     padding: 16px;
@@ -628,7 +553,6 @@ export const CarouselExtension = {
   color: #1a1a1a;
   line-height: 1.3;
   margin: 0;
-  
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -641,16 +565,13 @@ export const CarouselExtension = {
 .vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="3"] .vf-carousel-card-title {
   font-size: 14px;
 }
-/* Titre compact pour 4 cartes */
 .vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="4"] .vf-carousel-card-title {
   font-size: 13px;
   -webkit-line-clamp: 1;
 }
-
 .vf-carousel-container[data-in-widget="true"] .vf-carousel-card-title {
   font-size: 16px;
 }
-
 @media (max-width: 768px) {
   .vf-carousel-card-title {
     font-size: 16px;
@@ -664,40 +585,32 @@ export const CarouselExtension = {
   color: #555 !important;
   line-height: 1.5;
   margin: 0;
-  
   display: -webkit-box;
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* Showcase: 5 lignes */
 .vf-carousel-container[data-display-mode="showcase"] .vf-carousel-description {
   -webkit-line-clamp: 5;
   font-size: 14px;
 }
-/* Gallery 2 cartes: 3 lignes */
 .vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="2"] .vf-carousel-description {
   -webkit-line-clamp: 3;
   font-size: 12px;
 }
-/* Gallery 3 cartes: 3 lignes */
 .vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="3"] .vf-carousel-description {
   -webkit-line-clamp: 3;
   font-size: 12px;
 }
-/* Gallery 4 cartes: 2 lignes, police réduite */
 .vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="4"] .vf-carousel-description {
   -webkit-line-clamp: 2;
   font-size: 11px;
   line-height: 1.4;
 }
-
-/* Widget étroit: 4 lignes */
 .vf-carousel-container[data-in-widget="true"] .vf-carousel-description {
   -webkit-line-clamp: 4 !important;
   font-size: 13px !important;
 }
-
 @media (max-width: 768px) {
   .vf-carousel-description {
     font-size: 13px;
@@ -721,48 +634,37 @@ export const CarouselExtension = {
   letter-spacing: 0.5px;
   position: relative;
   overflow: hidden;
-  
-  box-shadow: 
-    0 4px 15px rgba(var(--rgb-1), 0.4);
-  
+  box-shadow: 0 4px 15px rgba(var(--rgb-1), 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
   min-height: 44px;
 }
-
 @media (min-width: 769px) {
   .vf-carousel-button:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(var(--rgb-1), 0.6);
   }
-  
-  /* Pas d'effet hover dans le widget étroit */
   .vf-carousel-container[data-in-widget="true"] .vf-carousel-button:hover {
     transform: none;
   }
 }
-
 .vf-carousel-button:active {
   transform: translateY(0);
 }
-
-/* Bouton compact pour 4 cartes */
 .vf-carousel-container[data-display-mode="gallery"][data-cards-per-view="4"] .vf-carousel-button {
   padding: 10px 12px;
   font-size: 11px;
   min-height: 38px;
   letter-spacing: 0.3px;
 }
-
 .vf-carousel-container[data-in-widget="true"] .vf-carousel-button {
   padding: 12px 16px;
   font-size: 12px;
   min-height: 42px;
   border-radius: 8px;
 }
-
 @media (max-width: 768px) {
   .vf-carousel-button {
     padding: 12px 18px;
@@ -783,19 +685,16 @@ export const CarouselExtension = {
   z-index: 3;
   gap: 16px;
 }
-
 @media (max-width: 768px) {
   .vf-carousel-controls {
     margin-top: 12px;
     gap: 12px;
   }
 }
-
 .vf-carousel-container[data-in-widget="true"] .vf-carousel-controls {
   margin-top: 12px;
   gap: 12px;
 }
-
 /* Masquer si pas nécessaire */
 .vf-carousel-container[data-display-mode="showcase"][data-items-count="1"] .vf-carousel-controls,
 .vf-carousel-container[data-display-mode="gallery"][data-items-count="2"][data-cards-per-view="2"] .vf-carousel-controls,
@@ -803,27 +702,20 @@ export const CarouselExtension = {
 .vf-carousel-container[data-display-mode="gallery"][data-items-count="4"][data-cards-per-view="4"] .vf-carousel-controls {
   display: none;
 }
-
-/* Widget étroit: toujours afficher les contrôles si plus d'1 item */
 .vf-carousel-container[data-in-widget="true"][data-items-count="1"] .vf-carousel-controls {
   display: none !important;
 }
-
 .vf-carousel-container[data-in-widget="true"]:not([data-items-count="1"]) .vf-carousel-controls {
   display: flex !important;
 }
-
-/* Sur mobile, toujours afficher les contrôles si plus d'1 item */
 @media (max-width: 768px) {
   .vf-carousel-container[data-items-count="1"] .vf-carousel-controls {
     display: none !important;
   }
-  
   .vf-carousel-container:not([data-items-count="1"]) .vf-carousel-controls {
     display: flex !important;
   }
 }
-
 .vf-carousel-nav-button {
   width: 44px;
   height: 44px;
@@ -840,10 +732,8 @@ export const CarouselExtension = {
   justify-content: center;
   font-size: 20px;
   font-weight: bold;
-  
   box-shadow: ${themeVars.navBtnShadow};
 }
-
 @media (min-width: 769px) {
   .vf-carousel-nav-button:hover:not(:disabled) {
     background: ${themeVars.navBtnHoverBg};
@@ -853,7 +743,6 @@ export const CarouselExtension = {
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
   }
 }
-
 .vf-carousel-nav-button:active:not(:disabled) {
   transform: scale(1);
 }
@@ -862,13 +751,11 @@ export const CarouselExtension = {
   cursor: not-allowed;
   transform: none;
 }
-
 .vf-carousel-container[data-in-widget="true"] .vf-carousel-nav-button {
   width: 38px;
   height: 38px;
   font-size: 18px;
 }
-
 @media (max-width: 768px) {
   .vf-carousel-nav-button {
     width: 42px;
@@ -877,7 +764,7 @@ export const CarouselExtension = {
   }
 }
 /* ═══════════════════════════════════════════════════════════ */
-/* ✅ DOTS DE NAVIGATION                                        */
+/* ✅ DOTS                                                      */
 /* ═══════════════════════════════════════════════════════════ */
 .vf-carousel-dots {
   display: flex;
@@ -886,17 +773,14 @@ export const CarouselExtension = {
   align-items: center;
   flex: 1;
 }
-
 @media (max-width: 768px) {
   .vf-carousel-dots {
     gap: 10px;
   }
 }
-
 .vf-carousel-container[data-in-widget="true"] .vf-carousel-dots {
   gap: 8px;
 }
-
 .vf-carousel-dot {
   width: 10px;
   height: 10px;
@@ -906,19 +790,16 @@ export const CarouselExtension = {
   cursor: pointer;
   transition: var(--transition-smooth);
 }
-
 @media (max-width: 768px) {
   .vf-carousel-dot {
     width: 11px;
     height: 11px;
   }
 }
-
 .vf-carousel-container[data-in-widget="true"] .vf-carousel-dot {
   width: 9px;
   height: 9px;
 }
-
 .vf-carousel-dot:hover {
   background: ${themeVars.dotHoverBg};
   transform: scale(1.2);
@@ -929,29 +810,20 @@ export const CarouselExtension = {
   transform: scale(1.3);
   box-shadow: ${themeVars.dotGlow};
 }
-
 @media (max-width: 768px) {
   .vf-carousel-dot.active {
     transform: scale(1.4);
   }
 }
-
 .vf-carousel-container[data-in-widget="true"] .vf-carousel-dot.active {
   transform: scale(1.3);
 }
-
 /* ═══════════════════════════════════════════════════════════ */
 /* ✅ ANIMATIONS                                                */
 /* ═══════════════════════════════════════════════════════════ */
 @keyframes fadeInUp {
-  from { 
-    opacity: 0; 
-    transform: translateY(30px); 
-  }
-  to { 
-    opacity: 1; 
-    transform: translateY(0); 
-  }
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 .vf-carousel-container {
   animation: fadeInUp 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
@@ -986,7 +858,7 @@ export const CarouselExtension = {
         const track = container.querySelector('.vf-carousel-track');
         const currentSlidesPerView = getSlidesPerView();
         
-        if (mode === 'showcase' || isNarrowContainer() || isMobile()) {
+        if (currentSlidesPerView === 1) {
           const translateX = -(currentIndex * 100);
           track.style.transform = `translateX(${translateX}%)`;
         } else {
@@ -1028,7 +900,6 @@ export const CarouselExtension = {
         const currentSlidesPerView = getSlidesPerView();
         if (autoplay === true && items.length > currentSlidesPerView) {
           autoplayInterval = setInterval(nextSlide, autoplayDelay);
-          console.log('✅ Autoplay activé');
         }
       };
       
@@ -1036,7 +907,6 @@ export const CarouselExtension = {
         if (autoplayInterval) {
           clearInterval(autoplayInterval);
           autoplayInterval = null;
-          console.log('⏸️ Autoplay arrêté');
         }
       };
       
@@ -1089,7 +959,6 @@ export const CarouselExtension = {
         card.className = 'vf-carousel-card';
         card.setAttribute('data-index', index);
         
-        // Image container
         const imageContainer = document.createElement('div');
         imageContainer.className = 'vf-carousel-image-container';
         
@@ -1101,7 +970,6 @@ export const CarouselExtension = {
           img.alt = item.title || 'Carousel item';
           img.loading = 'lazy';
           img.onerror = () => {
-            console.warn(`❌ Image failed to load: ${fixedImageUrl}`);
             imageContainer.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:48px;color:#ccc;">🌴</div>';
           };
           imageContainer.appendChild(img);
@@ -1109,7 +977,6 @@ export const CarouselExtension = {
           imageContainer.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:48px;color:#ccc;">🌴</div>';
         }
         
-        // Contenu
         const content = document.createElement('div');
         content.className = 'vf-carousel-content';
         
@@ -1138,7 +1005,6 @@ export const CarouselExtension = {
         
         card.appendChild(imageContainer);
         card.appendChild(content);
-        
         card.addEventListener('click', () => handleCardAction(item, index));
         track.appendChild(card);
       });
@@ -1158,21 +1024,26 @@ export const CarouselExtension = {
       const dotsContainer = document.createElement('div');
       dotsContainer.className = 'vf-carousel-dots';
       
-      // Calcul du nombre de dots selon l'écran
       const calculateDots = () => {
         const currentSlidesPerView = getSlidesPerView();
-        return isNarrowContainer() || isMobile() || mode === 'showcase' 
+        return (isNarrowContainer() || isMobile() || mode === 'showcase')
           ? items.length 
           : Math.ceil(items.length / currentSlidesPerView);
       };
       
-      const totalDots = calculateDots();
-      for (let i = 0; i < totalDots; i++) {
-        const dot = document.createElement('button');
-        dot.className = 'vf-carousel-dot';
-        dot.addEventListener('click', () => goToSlide(i));
-        dotsContainer.appendChild(dot);
-      }
+      // ✅ v4.7.1: Fonction pour reconstruire les dots
+      const rebuildDots = () => {
+        const totalDots = calculateDots();
+        dotsContainer.innerHTML = '';
+        for (let i = 0; i < totalDots; i++) {
+          const dot = document.createElement('button');
+          dot.className = 'vf-carousel-dot';
+          dot.addEventListener('click', () => goToSlide(i));
+          dotsContainer.appendChild(dot);
+        }
+      };
+      
+      rebuildDots();
       
       const nextBtn = document.createElement('button');
       nextBtn.className = 'vf-carousel-nav-button vf-carousel-next';
@@ -1189,24 +1060,20 @@ export const CarouselExtension = {
       const handleResize = () => {
         clearTimeout(resizeTimeout);
         resizeTimeout = setTimeout(() => {
-          // ✅ v4.7: Recalculer data-in-widget au resize
           const nowNarrow = isNarrowContainer();
           container.setAttribute('data-in-widget', nowNarrow ? 'true' : 'false');
           
-          currentIndex = 0;
-          updateCarouselPosition();
-          
-          const newTotalDots = calculateDots();
-          if (newTotalDots !== dotsContainer.children.length) {
-            dotsContainer.innerHTML = '';
-            for (let i = 0; i < newTotalDots; i++) {
-              const dot = document.createElement('button');
-              dot.className = 'vf-carousel-dot';
-              dot.addEventListener('click', () => goToSlide(i));
-              dotsContainer.appendChild(dot);
-            }
-            updateCarouselPosition();
+          if (nowNarrow) {
+            container.setAttribute('data-display-mode', 'showcase');
+            container.setAttribute('data-cards-per-view', '1');
+          } else {
+            container.setAttribute('data-display-mode', targetMode);
+            container.setAttribute('data-cards-per-view', targetSlidesPerView);
           }
+          
+          currentIndex = 0;
+          rebuildDots();
+          updateCarouselPosition();
         }, 300);
       };
       window.addEventListener('resize', handleResize);
@@ -1217,15 +1084,9 @@ export const CarouselExtension = {
         if (Math.abs(e.deltaX) > Math.abs(e.deltaY) && Math.abs(e.deltaX) > 10) {
           e.preventDefault();
           stopAutoplay();
-          
           clearTimeout(wheelTimeout);
-          
-          if (e.deltaX > 10) {
-            nextSlide();
-          } else if (e.deltaX < -10) {
-            prevSlide();
-          }
-          
+          if (e.deltaX > 10) nextSlide();
+          else if (e.deltaX < -10) prevSlide();
           if (autoplay === true) {
             wheelTimeout = setTimeout(startAutoplay, 2000);
           }
@@ -1248,25 +1109,16 @@ export const CarouselExtension = {
       
       track.addEventListener('touchend', () => {
         if (!isDragging) return;
-        
         const touchDiff = touchStartX - touchEndX;
         const threshold = 50;
-        
         if (Math.abs(touchDiff) > threshold) {
-          if (touchDiff > 0) {
-            nextSlide();
-          } else {
-            prevSlide();
-          }
+          if (touchDiff > 0) nextSlide();
+          else prevSlide();
         }
-        
         touchStartX = 0;
         touchEndX = 0;
         isDragging = false;
-        
-        if (autoplay === true) {
-          setTimeout(startAutoplay, 2000);
-        }
+        if (autoplay === true) setTimeout(startAutoplay, 2000);
       });
       
       // Support clavier
@@ -1275,7 +1127,7 @@ export const CarouselExtension = {
         if (e.key === 'ArrowRight') nextSlide();
       });
       
-      // Pause autoplay au hover (seulement si activé)
+      // Pause autoplay au hover
       if (autoplay === true) {
         container.addEventListener('mouseenter', stopAutoplay);
         container.addEventListener('mouseleave', startAutoplay);
@@ -1286,14 +1138,57 @@ export const CarouselExtension = {
       
       if (autoplay === true) {
         setTimeout(startAutoplay, 1000);
-        console.log('✅ Carousel avec autoplay activé');
-      } else {
-        console.log('✅ Carousel sans autoplay (contrôle manuel uniquement)');
       }
       
       element.appendChild(container);
       
-      console.log(`✅ Carousel v4.7 ${mode.toUpperCase()} - Thème: ${theme.toUpperCase()} (ID: ${uniqueId}) - ${items.length} items - ${slidesPerView} cardsPerView - Narrow: ${isNarrowContainer()} (${getContainerWidth()}px) - Mobile: ${isMobile()} - Autoplay: ${autoplay}`);
+      console.log(`✅ Carousel v4.7.1 INIT - Mode: ${mode} - Slides: ${slidesPerView} - Narrow: ${initialNarrow} (${getContainerWidth()}px) - Target: ${targetMode}/${targetSlidesPerView}`);
+      
+      // ═══════════════════════════════════════════════════════════
+      // ✅ v4.7.1: RECALCUL POST-MOUNT (le DOM a sa largeur finale)
+      // ═══════════════════════════════════════════════════════════
+      requestAnimationFrame(() => {
+        const postMountWidth = getContainerWidth();
+        const nowNarrow = isNarrowContainer();
+        
+        console.log(`🔧 Post-mount: width=${postMountWidth}px, narrow=${nowNarrow}, initialNarrow=${initialNarrow}`);
+        
+        // Si le conteneur est finalement large mais on avait détecté narrow au départ
+        if (!nowNarrow && initialNarrow) {
+          console.log(`✅ Recalcul: passage de showcase → ${targetMode} (${targetSlidesPerView} cartes) - ${postMountWidth}px`);
+          
+          // Mettre à jour les variables actives
+          mode = targetMode;
+          slidesPerView = targetSlidesPerView;
+          
+          // Mettre à jour les data attributes
+          container.setAttribute('data-in-widget', 'false');
+          container.setAttribute('data-display-mode', targetMode);
+          container.setAttribute('data-cards-per-view', targetSlidesPerView);
+          
+          // Reset et recalcul
+          currentIndex = 0;
+          rebuildDots();
+          updateCarouselPosition();
+        }
+        // Si le conteneur est étroit et on n'avait pas détecté narrow au départ
+        else if (nowNarrow && !initialNarrow) {
+          console.log(`✅ Recalcul: passage de ${targetMode} → showcase - ${postMountWidth}px`);
+          
+          mode = 'showcase';
+          slidesPerView = 1;
+          
+          container.setAttribute('data-in-widget', 'true');
+          container.setAttribute('data-display-mode', 'showcase');
+          container.setAttribute('data-cards-per-view', '1');
+          
+          currentIndex = 0;
+          rebuildDots();
+          updateCarouselPosition();
+        }
+        
+        console.log(`✅ Carousel v4.7.1 FINAL - Mode: ${mode} - Slides: ${slidesPerView} - Width: ${postMountWidth}px - Items: ${items.length} - Theme: ${theme} - Autoplay: ${autoplay}`);
+      });
       
       // Cleanup
       return () => {

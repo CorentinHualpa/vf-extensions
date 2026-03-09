@@ -420,15 +420,27 @@ export const FormExtension = {
     element.style.maxWidth = '100%';
     element.appendChild(container);
 
-    setTimeout(() => {
-      const msgEl = element.closest('.vfrc-message');
-      if (msgEl) {
-        msgEl.style.width = '100%';
-        msgEl.style.maxWidth = '100%';
-        const bc = msgEl.querySelector('.vfrc-bubble-content');
-        if (bc) { bc.style.width = '100%'; bc.style.maxWidth = '100%'; }
+    // ── Force full-width en remontant toute la chaîne parent VF ──
+    const forceFullWidth = () => {
+      let el = element;
+      for (let i = 0; i < 8; i++) {
+        if (!el || el.tagName === 'BODY') break;
+        el.style.width = '100%';
+        el.style.maxWidth = '100%';
+        // Certains wrappers VF utilisent flex avec un max-width interne
+        if (getComputedStyle(el).display === 'flex') {
+          el.style.flex = '1 1 100%';
+        }
+        el = el.parentElement;
       }
-    }, 0);
+    };
+    
+    // Exécuter après le render VF
+    requestAnimationFrame(() => {
+      forceFullWidth();
+      // Double RAF pour s'assurer que le layout VF est finalisé
+      requestAnimationFrame(forceFullWidth);
+    });
 
     console.log(`✅ Form v2.0 prêt (${uid}) — theme: ${theme}, fields: ${fields.length}`);
   },

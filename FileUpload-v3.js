@@ -176,6 +176,20 @@ export const FileUpload = {
 
       const style = document.createElement('style');
       style.textContent = `
+/* ── Force la bulle VF parent à 100% ── */
+.vfrc-message--extension-FileUpload,
+.vfrc-message--extension-FileUpload .vfrc-bubble,
+.vfrc-message--extension-FileUpload .vfrc-bubble-content,
+.vfrc-message--extension-FileUpload .vfrc-message-content,
+.vfrc-message.vfrc-message--extension-FileUpload {
+  margin: 0 !important;
+  padding: 0 !important;
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap');
 
 #${uid}, #${uid} * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -933,6 +947,23 @@ export const FileUpload = {
           }
         });
       });
+
+      // ── Forcer la largeur sur element et ses parents VF ──
+      element.style.width = '100%';
+      element.style.maxWidth = '100%';
+
+      setTimeout(() => {
+        const messageElement = element.closest('.vfrc-message');
+        if (messageElement) {
+          messageElement.style.width = '100%';
+          messageElement.style.maxWidth = '100%';
+          const bubbleContent = messageElement.querySelector('.vfrc-bubble-content');
+          if (bubbleContent) {
+            bubbleContent.style.width = '100%';
+            bubbleContent.style.maxWidth = '100%';
+          }
+        }
+      }, 0);
 
       console.log(`✅ FileUpload v2.1 prêt (${uid}) — mode: ${uploadMode}, theme: ${theme}, minFiles: ${requiredFiles}, maxFiles: ${maxFiles}`);
 

@@ -192,7 +192,7 @@ export const FileUpload = {
 
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap');
 
-#${uid}, #${uid} * { box-sizing: border-box; margin: 0; padding: 0; }
+#${uid}, #${uid} * { box-sizing: border-box; }
 
 @keyframes fu-fadeIn {
   from { opacity: 0; transform: translateY(12px); }
@@ -233,7 +233,7 @@ export const FileUpload = {
 }
 
 /* ── Card ── */
-.fu-card {
+#${uid} .fu-card {
   background: ${T.cardBg};
   border: 1px solid ${T.cardBorder};
   border-radius: 16px;
@@ -241,31 +241,30 @@ export const FileUpload = {
   box-shadow: ${T.shadow};
   transition: border-color 0.3s ease;
 }
-.fu-card:hover { border-color: ${T.cardHoverBorder}; }
+#${uid} .fu-card:hover { border-color: ${T.cardHoverBorder}; }
 
 /* ── Header ── */
-.fu-header { padding: 28px 28px 8px; }
-.fu-title {
+#${uid} .fu-header { padding: 28px 28px 8px; }
+#${uid} .fu-title {
   font-size: 22px;
   font-weight: 700;
   color: ${primaryColor};
   letter-spacing: -0.3px;
   line-height: 1.3;
-  margin-bottom: 6px;
+  margin: 0 0 6px 0;
 }
-.fu-subtitle {
+#${uid} .fu-subtitle {
   font-size: 14px;
   color: ${T.textMuted};
-  margin-top: 0;
-  margin-bottom: 4px;
+  margin: 0 0 4px 0;
   line-height: 1.6;
 }
 
 /* ── Body ── */
-.fu-body { padding: 20px 28px 28px; }
+#${uid} .fu-body { padding: 20px 28px 28px; }
 
 /* ── Drop Zone ── */
-.fu-zone {
+#${uid} .fu-zone {
   position: relative;
   background: ${T.zoneBg};
   border: 2px dashed ${T.zoneBorder};
@@ -276,16 +275,16 @@ export const FileUpload = {
   transition: all 0.25s ease;
   overflow: hidden;
 }
-.fu-zone:hover {
+#${uid} .fu-zone:hover {
   background: ${T.zoneHoverBg};
   border-color: ${primaryColor};
 }
-.fu-zone.drag {
+#${uid} .fu-zone.drag {
   background: ${T.zoneDragBg};
   border-color: ${T.zoneDragBorder};
   border-style: solid;
 }
-.fu-zone-icon {
+#${uid} .fu-zone-icon {
   width: 48px;
   height: 48px;
   margin: 0 auto 20px;
@@ -293,24 +292,24 @@ export const FileUpload = {
   opacity: 0.8;
   transition: all 0.25s ease;
 }
-.fu-zone:hover .fu-zone-icon {
+#${uid} .fu-zone:hover .fu-zone-icon {
   opacity: 1;
   transform: translateY(-2px);
 }
-.fu-zone-text {
+#${uid} .fu-zone-text {
   font-size: 16px;
   font-weight: 600;
   color: ${T.text};
-  margin-bottom: 10px;
+  margin: 0 0 10px 0;
 }
-.fu-zone-desc {
+#${uid} .fu-zone-desc {
   font-size: 14px;
   color: ${T.textMuted};
   line-height: 1.6;
-  margin-bottom: 4px;
+  margin: 0 0 4px 0;
 }
-.fu-zone-meta {
-  margin-top: 16px;
+#${uid} .fu-zone-meta {
+  margin: 16px 0 0 0;
   font-size: 13px;
   color: ${T.textDim};
   display: flex;
@@ -319,12 +318,12 @@ export const FileUpload = {
   gap: 16px;
   flex-wrap: wrap;
 }
-.fu-zone-meta span {
+#${uid} .fu-zone-meta span {
   display: flex;
   align-items: center;
   gap: 4px;
 }
-.fu-zone input[type="file"] {
+#${uid} .fu-zone input[type="file"] {
   position: absolute;
   inset: 0;
   opacity: 0;
@@ -333,25 +332,25 @@ export const FileUpload = {
 }
 
 /* ── Files View ── */
-.fu-files-view { display: none; }
-.fu-files-view.show { display: block; animation: fu-fadeIn 0.3s ease; }
+#${uid} .fu-files-view { display: none; }
+#${uid} .fu-files-view.show { display: block; animation: fu-fadeIn 0.3s ease; }
 
 /* ── Counter ── */
-.fu-counter {
+#${uid} .fu-counter {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 10px 14px;
   background: ${T.counterBg};
   border-radius: 10px;
-  margin-bottom: 12px;
+  margin: 0 0 12px 0;
 }
-.fu-counter-text {
+#${uid} .fu-counter-text {
   font-size: 13px;
   font-weight: 600;
   color: ${T.text};
 }
-.fu-counter-badge {
+#${uid} .fu-counter-badge {
   font-size: 12px;
   font-weight: 700;
   padding: 3px 10px;
@@ -359,13 +358,13 @@ export const FileUpload = {
   background: rgba(${pc.r},${pc.g},${pc.b},0.15);
   color: ${primaryColor};
 }
-.fu-counter-badge.ok {
+#${uid} .fu-counter-badge.ok {
   background: ${T.successBg};
   color: ${T.successText};
 }
 
 /* ── Add more zone ── */
-.fu-add-zone {
+#${uid} .fu-add-zone {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -377,38 +376,38 @@ export const FileUpload = {
   cursor: pointer;
   transition: all 0.2s ease;
   position: relative;
-  margin-bottom: 12px;
+  margin: 0 0 12px 0;
   font-size: 13px;
   color: ${T.textMuted};
   font-weight: 500;
 }
-.fu-add-zone:hover {
+#${uid} .fu-add-zone:hover {
   background: ${T.zoneHoverBg};
   border-color: ${primaryColor};
   color: ${primaryColor};
 }
-.fu-add-zone input[type="file"] {
+#${uid} .fu-add-zone input[type="file"] {
   position: absolute;
   inset: 0;
   opacity: 0;
   cursor: pointer;
 }
-.fu-add-icon { width: 18px; height: 18px; }
+#${uid} .fu-add-icon { width: 18px; height: 18px; }
 
 /* ── File List ── */
-.fu-list {
+#${uid} .fu-list {
   display: flex;
   flex-direction: column;
   gap: 6px;
   max-height: 240px;
   overflow-y: auto;
-  padding-right: 4px;
+  padding: 0 4px 0 0;
 }
-.fu-list::-webkit-scrollbar { width: 4px; }
-.fu-list::-webkit-scrollbar-track { background: transparent; }
-.fu-list::-webkit-scrollbar-thumb { background: ${T.textDim}; border-radius: 4px; }
+#${uid} .fu-list::-webkit-scrollbar { width: 4px; }
+#${uid} .fu-list::-webkit-scrollbar-track { background: transparent; }
+#${uid} .fu-list::-webkit-scrollbar-thumb { background: ${T.textDim}; border-radius: 4px; }
 
-.fu-file {
+#${uid} .fu-file {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -419,8 +418,8 @@ export const FileUpload = {
   animation: fu-slideIn 0.25s ease;
   min-width: 0;
 }
-.fu-file:hover { background: ${T.fileHoverBg}; }
-.fu-file-icon {
+#${uid} .fu-file:hover { background: ${T.fileHoverBg}; }
+#${uid} .fu-file-icon {
   width: 32px;
   height: 32px;
   min-width: 32px;
@@ -431,9 +430,9 @@ export const FileUpload = {
   align-items: center;
   justify-content: center;
 }
-.fu-file-icon svg { width: 16px; height: 16px; }
-.fu-file-info { flex: 1; min-width: 0; overflow: hidden; }
-.fu-file-name {
+#${uid} .fu-file-icon svg { width: 16px; height: 16px; }
+#${uid} .fu-file-info { flex: 1; min-width: 0; overflow: hidden; }
+#${uid} .fu-file-name {
   font-size: 13px;
   font-weight: 500;
   color: ${T.text};
@@ -441,19 +440,19 @@ export const FileUpload = {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.fu-file-size {
+#${uid} .fu-file-size {
   font-size: 11px;
   color: ${T.textDim};
-  margin-top: 1px;
+  margin: 1px 0 0 0;
 }
-.fu-file-status {
+#${uid} .fu-file-status {
   font-size: 11px;
-  margin-top: 2px;
+  margin: 2px 0 0 0;
 }
-.fu-file-status.uploading { color: ${primaryColor}; animation: fu-pulse 1.5s infinite; }
-.fu-file-status.success { color: ${T.successText}; }
-.fu-file-status.error { color: ${T.errorText}; }
-.fu-file-del {
+#${uid} .fu-file-status.uploading { color: ${primaryColor}; animation: fu-pulse 1.5s infinite; }
+#${uid} .fu-file-status.success { color: ${T.successText}; }
+#${uid} .fu-file-status.error { color: ${T.errorText}; }
+#${uid} .fu-file-del {
   width: 28px;
   height: 28px;
   min-width: 28px;
@@ -466,35 +465,37 @@ export const FileUpload = {
   align-items: center;
   justify-content: center;
   transition: all 0.15s ease;
+  padding: 0;
+  margin: 0;
 }
-.fu-file-del:hover { background: ${T.errorBg}; color: ${T.errorText}; }
-.fu-file-del:disabled { opacity: 0.3; cursor: not-allowed; }
+#${uid} .fu-file-del:hover { background: ${T.errorBg}; color: ${T.errorText}; }
+#${uid} .fu-file-del:disabled { opacity: 0.3; cursor: not-allowed; }
 
 /* ── Messages ── */
-.fu-msg {
+#${uid} .fu-msg {
   padding: 10px 14px;
   border-radius: 10px;
   font-size: 13px;
   font-weight: 500;
-  margin-top: 12px;
+  margin: 12px 0 0 0;
   display: none;
   text-align: center;
 }
-.fu-msg.show { display: block; animation: fu-fadeIn 0.25s ease; }
-.fu-msg.success { background: ${T.successBg}; color: ${T.successText}; }
-.fu-msg.error { background: ${T.errorBg}; color: ${T.errorText}; animation: fu-shake 0.4s ease; }
-.fu-msg.warn { background: ${T.warnBg}; color: ${T.warnText}; }
+#${uid} .fu-msg.show { display: block; animation: fu-fadeIn 0.25s ease; }
+#${uid} .fu-msg.success { background: ${T.successBg}; color: ${T.successText}; }
+#${uid} .fu-msg.error { background: ${T.errorBg}; color: ${T.errorText}; animation: fu-shake 0.4s ease; }
+#${uid} .fu-msg.warn { background: ${T.warnBg}; color: ${T.warnText}; }
 
 /* ── Upload Progress ── */
-.fu-progress { display: none; margin-top: 16px; }
-.fu-progress.show { display: block; animation: fu-fadeIn 0.3s ease; }
-.fu-progress-bar-bg {
+#${uid} .fu-progress { display: none; margin: 16px 0 0 0; }
+#${uid} .fu-progress.show { display: block; animation: fu-fadeIn 0.3s ease; }
+#${uid} .fu-progress-bar-bg {
   height: 6px;
   background: ${T.counterBg};
   border-radius: 6px;
   overflow: hidden;
 }
-.fu-progress-bar {
+#${uid} .fu-progress-bar {
   height: 100%;
   width: 0%;
   background: linear-gradient(90deg, ${primaryColor}, ${isDark ? '#FCD34D' : '#F59E0B'});
@@ -503,37 +504,37 @@ export const FileUpload = {
   background-size: 200% 100%;
   animation: fu-progressShimmer 2s infinite linear;
 }
-.fu-progress-text {
+#${uid} .fu-progress-text {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  margin-top: 10px;
+  margin: 10px 0 0 0;
   font-size: 13px;
   color: ${T.textMuted};
   font-weight: 500;
 }
-.fu-progress-dots { display: flex; gap: 3px; }
-.fu-progress-dots span {
+#${uid} .fu-progress-dots { display: flex; gap: 3px; }
+#${uid} .fu-progress-dots span {
   width: 5px;
   height: 5px;
   background: ${primaryColor};
   border-radius: 50%;
   animation: fu-dotPulse 1.2s infinite;
 }
-.fu-progress-dots span:nth-child(2) { animation-delay: 0.15s; }
-.fu-progress-dots span:nth-child(3) { animation-delay: 0.3s; }
+#${uid} .fu-progress-dots span:nth-child(2) { animation-delay: 0.15s; }
+#${uid} .fu-progress-dots span:nth-child(3) { animation-delay: 0.3s; }
 
 /* ── Buttons ── */
-.fu-buttons {
+#${uid} .fu-buttons {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: 24px;
-  padding-top: 20px;
+  margin: 24px 0 0 0;
+  padding: 20px 0 0 0;
   border-top: 1px solid ${T.cardBorder};
 }
-.fu-btn {
+#${uid} .fu-btn {
   flex: 1 1 auto;
   min-width: 140px;
   padding: 13px 20px;
@@ -547,8 +548,9 @@ export const FileUpload = {
   text-align: center;
   position: relative;
   overflow: hidden;
+  margin: 0;
 }
-.fu-btn::after {
+#${uid} .fu-btn::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -556,41 +558,41 @@ export const FileUpload = {
   transform: translateX(-100%);
   transition: transform 0.5s ease;
 }
-.fu-btn:hover::after { transform: translateX(100%); }
-.fu-btn-primary {
+#${uid} .fu-btn:hover::after { transform: translateX(100%); }
+#${uid} .fu-btn-primary {
   background: ${primaryColor};
   color: ${isDark ? '#0D0D0D' : '#FFFFFF'};
   box-shadow: 0 4px 16px rgba(${pc.r},${pc.g},${pc.b},0.3);
 }
-.fu-btn-primary:hover:not(:disabled) {
+#${uid} .fu-btn-primary:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 6px 24px rgba(${pc.r},${pc.g},${pc.b},0.45);
 }
-.fu-btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-.fu-btn-secondary {
+#${uid} .fu-btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+#${uid} .fu-btn-secondary {
   background: ${T.btnSecondaryBg};
   color: ${T.text};
   border: 1px solid ${T.cardBorder};
 }
-.fu-btn-secondary:hover {
+#${uid} .fu-btn-secondary:hover {
   background: ${T.btnSecondaryHoverBg};
   transform: translateY(-1px);
 }
-.fu-btn-ghost {
+#${uid} .fu-btn-ghost {
   background: transparent;
   color: ${T.textMuted};
 }
-.fu-btn-ghost:hover {
+#${uid} .fu-btn-ghost:hover {
   background: ${T.btnGhostHoverBg};
   color: ${T.text};
 }
 
 @media (max-width: 480px) {
-  .fu-header { padding: 20px 20px 0; }
-  .fu-body { padding: 16px 20px 20px; }
-  .fu-buttons { flex-direction: column; }
-  .fu-btn { min-width: auto; }
-  .fu-zone { padding: 28px 16px; }
+  #${uid} .fu-header { padding: 20px 20px 0; }
+  #${uid} .fu-body { padding: 16px 20px 20px; }
+  #${uid} .fu-buttons { flex-direction: column; }
+  #${uid} .fu-btn { min-width: auto; }
+  #${uid} .fu-zone { padding: 28px 16px; }
 }
 
 #${uid}.fu-done { opacity: 0.6; pointer-events: none; filter: grayscale(20%); }

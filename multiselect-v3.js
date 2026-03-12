@@ -1,14 +1,17 @@
 /**
  *  ╔════════════════════════════════════════════════╗
- *  ║  MultiSelect V3.1 – Adaptive layout            ║
+ *  ║  MultiSelect V3.3 – Chat toggle + Full width   ║
  *  ║                                                ║
- *  ║  CHANGEMENTS :                                 ║
- *  ║  - Options en 2 colonnes si section > 5 opts   ║
- *  ║  - Card full-width si 1 seule section          ║
+ *  ║  CHANGEMENTS vs V3.1 :                         ║
+ *  ║  - chat: true → input reste actif (défaut)     ║
+ *  ║  - chat: false → bloque input explicitement    ║
+ *  ║  - MutationObserver verrouille si user tape     ║
+ *  ║  - Double-RAF DOM walking pour full width       ║
+ *  ║  - Cards centrées et optimisées en largeur      ║
  *  ║                                                ║
  *  ║  FLOW REQUIS :                                 ║
  *  ║  Custom Action → stop on action ON             ║
- *  ║  JS capture → Default → RIEN (déconnecté)     ║
+ *  ║  JS capture → Default → Agent step             ║
  *  ║  Le text différé crée un nouveau tour          ║
  *  ╚════════════════════════════════════════════════╝
  */
@@ -44,7 +47,7 @@ export const MultiSelect = {
 
       // ── Adaptive layout logic ───────────────────────────────
       const isSingleSection = sections.length === 1;
-      const MULTI_COL_THRESHOLD = 5; // options > 5 → 2 columns inside card
+      const MULTI_COL_THRESHOLD = 5;
 
       // ── Helpers ─────────────────────────────────────────────
       const hexToRgb = hex => {
@@ -94,6 +97,38 @@ export const MultiSelect = {
       const root = element.getRootNode();
       const host = root instanceof ShadowRoot ? root : document;
 
+      // ── Force full width via double-RAF DOM walking ─────────
+      const forceFullWidth = () => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            let el = element;
+            for (let i = 0; i < 10; i++) {
+              if (!el) break;
+              el.style.width = '100%';
+              el.style.maxWidth = '100%';
+              el.style.flex = '1 1 100%';
+              // Target known Voiceflow wrapper classes
+              if (el.classList) {
+                if (
+                  el.classList.contains('vfrc-system-response') ||
+                  el.classList.contains('vfrc-message') ||
+                  el.classList.contains('vfrc-message-content') ||
+                  el.classList.contains('vfrc-bubble') ||
+                  el.classList.contains('vfrc-bubble-content')
+                ) {
+                  el.style.width = '100%';
+                  el.style.maxWidth = '100%';
+                  el.style.padding = '0';
+                  el.style.margin = '0';
+                }
+              }
+              el = el.parentElement;
+            }
+          });
+        });
+      };
+      forceFullWidth();
+
       // ── Chat control ────────────────────────────────────────
       const setChat = enabled => {
         const ic = host.querySelector('.vfrc-input-container');
@@ -105,13 +140,45 @@ export const MultiSelect = {
         const snd = host.querySelector('#vfrc-send-message');
         if (snd) snd.disabled = !enabled;
       };
-      if (!chat) setChat(false);
+
+      // ── Only disable chat if explicitly set to false ────────
+      if (chat === false) setChat(false);
+
+      // ── Track if extension already submitted ────────────────
+      let submitted = false;
 
       // ── Lock UI after interact ──────────────────────────────
       const lock = () => {
+        if (submitted) return;
+        submitted = true;
         container.classList.add('ms-locked');
         setChat(true);
+        if (chatObserver) chatObserver.disconnect();
       };
+
+      // ── MutationObserver: detect user typing in chat ────────
+      let chatObserver = null;
+      if (chat !== false) {
+        const dialog = host.querySelector('.vfrc-chat--dialog');
+        if (dialog) {
+          chatObserver = new MutationObserver(mutations => {
+            if (submitted) { chatObserver.disconnect(); return; }
+            for (const mut of mutations) {
+              for (const node of mut.addedNodes) {
+                if (node.nodeType !== 1) continue;
+                if (
+                  node.classList?.contains('vfrc-user-response') ||
+                  node.querySelector?.('.vfrc-user-response')
+                ) {
+                  lock();
+                  return;
+                }
+              }
+            }
+          });
+          chatObserver.observe(dialog, { childList: true, subtree: true });
+        }
+      }
 
       // ── Container ───────────────────────────────────────────
       const container = document.createElement('div');
@@ -129,11 +196,13 @@ export const MultiSelect = {
   line-height: 1.5;
   color: ${T.text};
   width: 100%;
+  max-width: 100%;
 }
 #${uid} .ms-grid {
   display: grid;
   grid-template-columns: ${isSingleSection ? '1fr' : (gridColumns >= 2 ? 'repeat(2, 1fr)' : '1fr')};
   gap: 8px;
+  width: 100%;
 }
 @media (max-width: 480px) {
   #${uid} .ms-grid { grid-template-columns: 1fr; }
@@ -144,6 +213,7 @@ export const MultiSelect = {
   border-radius: 12px;
   overflow: hidden;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  min-width: 0;
 }
 #${uid} .ms-card:hover {
   transform: translateY(-2px);
@@ -156,21 +226,18 @@ export const MultiSelect = {
   border-bottom: 1px solid ${T.cardBorder};
   color: ${T.text};
 }
-/* ── Card body : default single column ── */
 #${uid} .ms-card-body {
   display: flex;
   flex-direction: column;
   gap: 4px;
   padding: 8px;
 }
-/* ── Card body : 2 columns when many options ── */
 #${uid} .ms-card-body.ms-card-body--multicol {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 4px;
   padding: 8px;
 }
-/* user_input spans full width in multicol mode */
 #${uid} .ms-card-body.ms-card-body--multicol .ms-input-wrap {
   grid-column: 1 / -1;
 }
@@ -291,11 +358,17 @@ export const MultiSelect = {
   gap: 8px;
   padding: 12px 0 4px;
   justify-content: center;
-}
-#${uid} .ms-btn-wrap { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 140px; max-width: 280px; }
-#${uid} .ms-btn {
   width: 100%;
-  padding: ${Math.round(fs * 0.85)}px ${Math.round(fs * 1.5)}px;
+}
+#${uid} .ms-btn-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 0 1 auto;
+}
+#${uid} .ms-btn {
+  width: auto;
+  min-width: 180px;
+  padding: ${Math.round(fs * 0.85)}px ${Math.round(fs * 2)}px;
   border: none;
   border-radius: 10px;
   background: ${color};
@@ -307,6 +380,7 @@ export const MultiSelect = {
   box-shadow: 0 2px 8px rgba(${rgb.r},${rgb.g},${rgb.b},0.3);
   position: relative;
   overflow: hidden;
+  white-space: nowrap;
 }
 #${uid} .ms-btn:hover {
   transform: translateY(-1px);
@@ -337,8 +411,9 @@ export const MultiSelect = {
 #${uid} .ms-shake { animation: ms-shake 0.35s ease; }
 #${uid}.ms-locked { opacity: 0.5; pointer-events: none; }
 @media (max-width: 480px) {
-  #${uid} .ms-buttons { flex-direction: column; }
-  #${uid} .ms-btn-wrap { max-width: none; }
+  #${uid} .ms-buttons { flex-direction: column; align-items: center; }
+  #${uid} .ms-btn-wrap { width: 100%; }
+  #${uid} .ms-btn { width: 100%; }
 }
 `;
       container.appendChild(style);
@@ -404,7 +479,6 @@ export const MultiSelect = {
           card.appendChild(title);
         }
 
-        // ── Count real options (exclude user_input) to decide layout ──
         const realOptions = (sec.options || []).filter(o => o.action !== 'user_input');
         const useMultiCol = realOptions.length > MULTI_COL_THRESHOLD;
 
@@ -452,6 +526,7 @@ export const MultiSelect = {
           row.appendChild(inp);
 
           row.addEventListener('click', () => {
+            if (submitted) return;
             if (row.classList.contains('ms-opt--disabled')) return;
 
             if (multiselect) {
@@ -476,7 +551,6 @@ export const MultiSelect = {
 
             syncLimits();
 
-            // Single select → complete to resolve, then text for Agent
             if (!multiselect) {
               lock();
               window.voiceflow.chat.interact({
@@ -509,6 +583,7 @@ export const MultiSelect = {
         btn.className = 'ms-global-all-btn';
         btn.textContent = globalAllSelectText;
         btn.addEventListener('click', () => {
+          if (submitted) return;
           const all = getAllInputs().filter(i => inputs.get(i).action !== 'all' && !i.disabled);
           const allChecked = all.length > 0 && all.every(i => i.checked);
           all.forEach(i => {
@@ -538,6 +613,8 @@ export const MultiSelect = {
           err.className = 'ms-error';
 
           btn.addEventListener('click', () => {
+            if (submitted) return;
+
             const checked = countChecked();
             const userInputs = Array.from(container.querySelectorAll('.ms-textarea')).filter(t => t.value.trim()).length;
             const total = checked + userInputs;
@@ -600,6 +677,12 @@ export const MultiSelect = {
       // ── Mount ───────────────────────────────────────────────
       element.appendChild(container);
       syncLimits();
+
+      // ── Cleanup ─────────────────────────────────────────────
+      return () => {
+        if (chatObserver) chatObserver.disconnect();
+        setChat(true);
+      };
 
     } catch (err) {
       console.error('❌ MultiSelect Error:', err);

@@ -1,6 +1,6 @@
-// AuditGenerator.js – v3.3 POLLING
+// AuditGenerator.js – v3.4 POLLING
 // © Corentin – Extension Voiceflow pour génération d'audit
-// v3.3 - Ajout audit_sender dans webhook body
+// v3.4 - Ajout audit_sender + user_name dans webhook body
 //
 export const AuditGenerator = {
   name: 'AuditGenerator',
@@ -86,13 +86,13 @@ export const AuditGenerator = {
     // ---------- CONFIG ----------
     const p = trace?.payload || {};
     
-    console.log('[AuditGenerator v3.3 POLLING] Payload reçu:', JSON.stringify(p, null, 2));
+    console.log('[AuditGenerator v3.4 POLLING] Payload reçu:', JSON.stringify(p, null, 2));
     
     // ========================================
     // GÉNÉRATION DU JOB_ID UNIQUE
     // ========================================
     const job_id = `audit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    console.log('[AuditGenerator v3.3] Job ID généré:', job_id);
+    console.log('[AuditGenerator v3.4] Job ID généré:', job_id);
     
     // Couleur principale configurable
     const primaryColor = p.primaryColor || '#8B5CF6';
@@ -154,6 +154,7 @@ export const AuditGenerator = {
     const langue = p.langue || 'fr';
     const userEmail = p.user_email || '';
     const auditSender = p.audit_sender || ''; // ← AJOUT v3.3
+    const userName = p.user_name || ''; // ← AJOUT v3.4
     const conversationHistory = p.conversationHistory || '';
     
     // Webhook config
@@ -177,10 +178,10 @@ export const AuditGenerator = {
     const totalSeconds = Math.max(120, Number(loaderCfg.totalSeconds) || 120);
     const autoCloseDelayMs = Number(loaderCfg.autoCloseDelayMs) > 0 ? Number(loaderCfg.autoCloseDelayMs) : 800;
     
-    console.log('[AuditGenerator v3.3] Durée simulation:', totalSeconds, 'secondes');
-    console.log('[AuditGenerator v3.3] Polling URL:', pollingUrl);
-    console.log('[AuditGenerator v3.3] Polling interval:', pollingIntervalMs, 'ms');
-    console.log('[AuditGenerator v3.3] audit_sender:', auditSender); // ← AJOUT v3.3
+    console.log('[AuditGenerator v3.4] Durée simulation:', totalSeconds, 'secondes');
+    console.log('[AuditGenerator v3.4] Polling URL:', pollingUrl);
+    console.log('[AuditGenerator v3.4] Polling interval:', pollingIntervalMs, 'ms');
+    console.log('[AuditGenerator v3.4] audit_sender:', auditSender); // ← AJOUT v3.3
     
     // Phases par défaut
     const defaultPhases = [
@@ -238,7 +239,7 @@ export const AuditGenerator = {
       seconds: Math.max(1, Math.round(phase.seconds * scaleFactor))
     }));
     
-    console.log('[AuditGenerator v3.3] timedPhases FINAL:', timedPhases);
+    console.log('[AuditGenerator v3.4] timedPhases FINAL:', timedPhases);
     
     const pathSuccess = p.pathSuccess || 'Default';
     const pathError = p.pathError || 'Fail';
@@ -795,8 +796,8 @@ export const AuditGenerator = {
     
     // ---------- Send Webhook (Fire & Forget) ----------
     function sendWebhook() {
-      console.log('[AuditGenerator v3.3] Envoi webhook avec job_id:', job_id);
-      console.log('[AuditGenerator v3.3] audit_sender envoyé:', auditSender); // ← AJOUT v3.3
+      console.log('[AuditGenerator v3.4] Envoi webhook avec job_id:', job_id);
+      console.log('[AuditGenerator v3.4] audit_sender envoyé:', auditSender); // ← AJOUT v3.3
       
       const body = JSON.stringify({
         job_id: job_id,
@@ -805,10 +806,11 @@ export const AuditGenerator = {
         langue: langue,
         user_email: userEmail,
         audit_sender: auditSender,        // ← AJOUT v3.3
+        user_name: userName,               // ← AJOUT v3.4
         conversationHistory: conversationHistory
       });
       
-      console.log('[AuditGenerator v3.3] Body length:', body.length);
+      console.log('[AuditGenerator v3.4] Body length:', body.length);
       
       fetch(webhookUrl, { 
         method: webhookMethod, 
@@ -816,28 +818,28 @@ export const AuditGenerator = {
         body: body
       })
       .then(response => {
-        console.log('[AuditGenerator v3.3] Webhook réponse status:', response.status);
+        console.log('[AuditGenerator v3.4] Webhook réponse status:', response.status);
       })
       .catch(error => {
-        console.error('[AuditGenerator v3.3] Webhook erreur:', error.message);
+        console.error('[AuditGenerator v3.4] Webhook erreur:', error.message);
       });
     }
     
     // ---------- Polling Status ----------
     function startPolling() {
       if (!pollingUrl) {
-        console.log('[AuditGenerator v3.3] Pas de polling URL, mode simulation seule');
+        console.log('[AuditGenerator v3.4] Pas de polling URL, mode simulation seule');
         return;
       }
       
-      console.log('[AuditGenerator v3.3] Démarrage polling...');
+      console.log('[AuditGenerator v3.4] Démarrage polling...');
       
       pollingTimer = setInterval(async () => {
         pollingAttempts++;
-        console.log(`[AuditGenerator v3.3] Polling attempt ${pollingAttempts}/${pollingMaxAttempts}`);
+        console.log(`[AuditGenerator v3.4] Polling attempt ${pollingAttempts}/${pollingMaxAttempts}`);
         
         if (pollingAttempts > pollingMaxAttempts) {
-          console.log('[AuditGenerator v3.3] Max polling attempts atteint');
+          console.log('[AuditGenerator v3.4] Max polling attempts atteint');
           clearInterval(pollingTimer);
           showSuccessWithoutPdf();
           return;
@@ -847,22 +849,22 @@ export const AuditGenerator = {
           const response = await fetch(`${pollingUrl}?job_id=${encodeURIComponent(job_id)}`);
           const data = await response.json();
           
-          console.log('[AuditGenerator v3.3] Polling response:', data);
+          console.log('[AuditGenerator v3.4] Polling response:', data);
           
           if (data.status === 'completed' && data.pdfUrl) {
-            console.log('[AuditGenerator v3.3] PDF prêt !', data.pdfUrl);
+            console.log('[AuditGenerator v3.4] PDF prêt !', data.pdfUrl);
             clearInterval(pollingTimer);
             pdfUrl = data.pdfUrl;
             isComplete = true;
             showSuccess(data.pdfUrl);
           } else if (data.status === 'error') {
-            console.error('[AuditGenerator v3.3] Erreur workflow:', data.error);
+            console.error('[AuditGenerator v3.4] Erreur workflow:', data.error);
             clearInterval(pollingTimer);
             showError(data.error || 'Erreur lors de la génération');
           }
           
         } catch (error) {
-          console.error('[AuditGenerator v3.3] Polling error:', error.message);
+          console.error('[AuditGenerator v3.4] Polling error:', error.message);
         }
       }, pollingIntervalMs);
     }
@@ -889,7 +891,7 @@ export const AuditGenerator = {
           
           loaderCounter.textContent = `Étape ${idx + 1}/${timedPhases.length}`;
           
-          console.log(`[AuditGenerator v3.3] Phase ${idx + 1}/${timedPhases.length}: ${phase.label}`);
+          console.log(`[AuditGenerator v3.4] Phase ${idx + 1}/${timedPhases.length}: ${phase.label}`);
         }
       };
       
@@ -947,7 +949,7 @@ export const AuditGenerator = {
           paint();
           
           if (!isComplete) {
-            console.log('[AuditGenerator v3.3] Simulation terminée, en attente du polling...');
+            console.log('[AuditGenerator v3.4] Simulation terminée, en attente du polling...');
             loader.classList.add('waiting');
             loaderPhase.textContent = '⏳ Finalisation en cours...';
             loaderCounter.textContent = 'Veuillez patienter...';
@@ -1064,12 +1066,12 @@ export const AuditGenerator = {
     }
     
     // ---------- START ----------
-    console.log('[AuditGenerator v3.3 POLLING] ========== DÉMARRAGE ==========');
-    console.log('[AuditGenerator v3.3] Job ID:', job_id);
-    console.log('[AuditGenerator v3.3] Durée simulation:', totalSeconds, 'secondes');
-    console.log('[AuditGenerator v3.3] Polling URL:', pollingUrl);
-    console.log('[AuditGenerator v3.3] Webhook URL:', webhookUrl);
-    console.log('[AuditGenerator v3.3] audit_sender:', auditSender);
+    console.log('[AuditGenerator v3.4 POLLING] ========== DÉMARRAGE ==========');
+    console.log('[AuditGenerator v3.4] Job ID:', job_id);
+    console.log('[AuditGenerator v3.4] Durée simulation:', totalSeconds, 'secondes');
+    console.log('[AuditGenerator v3.4] Polling URL:', pollingUrl);
+    console.log('[AuditGenerator v3.4] Webhook URL:', webhookUrl);
+    console.log('[AuditGenerator v3.4] audit_sender:', auditSender);
     
     sendWebhook();
     startPolling();
